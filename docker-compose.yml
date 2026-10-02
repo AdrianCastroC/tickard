@@ -1,0 +1,16 @@
+services:
+  mysql:
+    image: mysql:8.4
+    container_name: gestor-mysql
+    environment:
+      MYSQL_DATABASE: gestor
+      MYSQL_USER: gestor
+      MYSQL_PASSWORD: secret
+      MYSQL_ROOT_PASSWORD: root
+    ports:
+      - "3306:3306"
+    volumes:
+      - gestor-mysql:/var/lib/mysql
+
+volumes:
+  gestor-mysql:
