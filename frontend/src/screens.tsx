@@ -1,10 +1,11 @@
-import { FormEvent, type CSSProperties, type ReactNode, useEffect, useMemo, useRef, useState } from 'react'
+import { type FormEvent, type CSSProperties, type ReactNode, useEffect, useMemo, useRef, useState } from 'react'
+
 import { DndContext, DragOverlay, PointerSensor, closestCorners, useDroppable, useSensor, useSensors, type CollisionDetection, type DragEndEvent } from '@dnd-kit/core'
 import { SortableContext, arrayMove, useSortable, horizontalListSortingStrategy, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { api, setToken, uploadFile, type Attachment, type BoardCategory, type BoardPayload, type Card, type CardModule, type CardModuleType, type ChecklistItem, type Comment, type CommentReactionType, type Person, type Profile, type Project } from './api'
 
-const priorityLabel: Record<string, string> = { baja: 'Baja', media: 'Media', alta: 'Alta', urgente: 'Urgente' }
+const priorityLabel = { baja: 'Baja', media: 'Media', alta: 'Alta', urgente: 'Urgente', } satisfies Record<NonNullable<Card['priority']>, string>
 const DEFAULT_CARD_STRIPE = '#147a5f'
 
 function cardStripeStyle(color?: string | null): CSSProperties {
@@ -685,7 +686,7 @@ export function Workspace() {
       return false
     }
   })
-  const [boardToDelete, setBoardToDelete] = useState<Board | null>(null)
+  const [boardToDelete, setBoardToDelete] = useState<{id: number; name: string} | null>(null)
   const [deleteConfirmation, setDeleteConfirmation] = useState('')
 
   function toggleSideMini() {
@@ -963,7 +964,7 @@ export function Workspace() {
     setAccountModal('notifications')
     const items = await api<{ id: number; body: string }[]>('/notifications')
     setNotes(items)
-    if (profile.unread > 0) {
+    if (profile && profile.unread > 0) {
       await api('/notifications/read', { method: 'POST' })
       setProfile({ ...profile, unread: 0 })
     }
@@ -1352,8 +1353,8 @@ export function Workspace() {
             <input type="text" placeholder={boardToDelete.name} value={deleteConfirmation} onChange={(event) => setDeleteConfirmation(event.target.value)} autoFocus />
 
             <div className="modal-actions">
-              <button type="button" onClick={() => {setBoardToDelete(null); setDeleteConfirmation('')}}>Cancelar</button>
-              <button type="button" className="danger" disabled={deleteConfirmation !== boardToDelete.name} onClick={() => deleteBoard(boardToDelete.id, deleteConfirmation)}><TrashIcon />Eliminar tablero</button>
+              <button type="button" className="ghost" onClick={() => {setBoardToDelete(null); setDeleteConfirmation('')}}>Cancelar</button>
+              <button type="button" className="ghost danger" disabled={deleteConfirmation !== boardToDelete.name} onClick={() => deleteBoard(boardToDelete.id, deleteConfirmation)}><TrashIcon />Eliminar tablero</button>
             </div>
           </div>
         </div>
@@ -1476,8 +1477,8 @@ export function Workspace() {
                 onMove={move}
                 onMoveColumn={moveColumn}
                 onAdd={(id, name) => setCreateColumn({ id, name })}
-                onCreatedColumn={() => loadBoard(view.board.id)}
-                onRefresh={() => loadBoard(view.board.id)}
+                onCreatedColumn={() => void loadBoard(view.board.id)}
+                onRefresh={() => void loadBoard(view.board.id)}
                 onManageCategories={() => setShowCategories(true)}
               />
               <BoardPulse columns={view.columns} />
