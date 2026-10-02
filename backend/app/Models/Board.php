@@ -34,4 +34,9 @@ class Board extends Model
     {
         return ['Backlog', 'Por hacer', 'En progreso', 'En revisión', 'Completado'];
     }
+
+    public function cards(): HasMany
+    {
+        return $this->hasMany(Card::class);
+    }
 }

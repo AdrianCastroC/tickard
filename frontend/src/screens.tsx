@@ -96,6 +96,14 @@ function EditIcon() {
   )
 }
 
+function ConfigIcon() {
+  return (
+    <svg className="menu-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" aria-hidden="true">
+      <path fill="currentColor" d="M541.4 162.6C549 155 561.7 156.9 565.5 166.9C572.3 184.6 576 203.9 576 224C576 312.4 504.4 384 416 384C398.5 384 381.6 381.2 365.8 376L178.9 562.9C150.8 591 105.2 591 77.1 562.9C49 534.8 49 489.2 77.1 461.1L264 274.2C258.8 258.4 256 241.6 256 224C256 135.6 327.6 64 416 64C436.1 64 455.4 67.7 473.1 74.5C483.1 78.3 484.9 91 477.4 98.6L388.7 187.3C385.7 190.3 384 194.4 384 198.6L384 240C384 248.8 391.2 256 400 256L441.4 256C445.6 256 449.7 254.3 452.7 251.3L541.4 162.6z"/>
+    </svg>
+  )
+}
+
 function PencilIcon({ className = 'menu-icon' }: { className?: string }) {
   return (
     <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" aria-hidden="true">
@@ -211,6 +219,8 @@ function SettingsIcon() {
     </AccountIco>
   )
 }
+
+
 
 function BellIcon() {
   return (
@@ -675,6 +685,8 @@ export function Workspace() {
       return false
     }
   })
+  const [boardToDelete, setBoardToDelete] = useState<Board | null>(null)
+  const [deleteConfirmation, setDeleteConfirmation] = useState('')
 
   function toggleSideMini() {
     setSideMini((current) => {
@@ -825,6 +837,21 @@ export function Workspace() {
     setNamingBoard(false)
     setBoardName('')
     openBoardTab(item, created)
+  }
+
+  async function deleteBoard(boardId: number, confirmationName: string) {
+    await api(`/boards/${boardId}`, { 
+      method: 'DELETE', 
+      body: JSON.stringify({ confirmation_name: confirmationName })
+    })
+
+    setBoardToDelete(null)
+    setDeleteConfirmation('')
+    await loadProfile()
+    setBoardMenu(null)
+    setNamingBoard(false)
+    setBoardName('')
+    closeTab(boardId)
   }
 
   function closeTab(boardId: number) {
@@ -1248,8 +1275,9 @@ export function Workspace() {
                       </form>
                     ) : (
                       <>
-                        <button type="button" onClick={() => setNamingBoard(true)}>Nuevo tablero</button>
-                        <button type="button" onClick={() => manageProject(item)}>Gestionar proyecto</button>
+                        <button type="button" onClick={() => setNamingBoard(true)}><PlusIcon /> Nuevo tablero</button>
+                        <button type="button" onClick={() => manageProject(item)}><ConfigIcon /> Gestionar proyecto</button>
+                        <button type="button" className="danger" onClick={() => deleteProject(item.id)}><TrashIcon /> Eliminar</button>
                       </>
                     )}
                   </div>
@@ -1285,6 +1313,7 @@ export function Workspace() {
                   {boardMenu === boardItem.id && (
                     <div className="project-menu">
                       <button type="button" onClick={() => manageBoardCategories(item, boardItem)}>Categorías</button>
+                      <button type="button" className="danger" onClick={() => {setBoardToDelete(boardItem); setDeleteConfirmation('')}}><TrashIcon /> Eliminar</button>
                     </div>
                   )}
                 </div>
@@ -1310,6 +1339,25 @@ export function Workspace() {
           </form>
         )}
       </aside>
+      {boardToDelete && (
+        <div className="modal-back" onClick={() => {
+          setBoardToDelete(null)
+          setDeleteConfirmation('')
+        }}>
+          <div className="modal" onClick={(event) => event.stopPropagation()}>
+            <h2>Eliminar tablero</h2>
+            <p>¿Estás seguro de querer eliminar el tablero {''} <strong>{boardToDelete.name}</strong>?</p>
+            <p>Se eliminaran permanentemente todas las tarjetas y datos contenidos en este tablero.</p>
+            <p>Escribe <strong>{boardToDelete.name}</strong> para confirmar.</p>
+            <input type="text" placeholder={boardToDelete.name} value={deleteConfirmation} onChange={(event) => setDeleteConfirmation(event.target.value)} autoFocus />
+
+            <div className="modal-actions">
+              <button type="button" onClick={() => {setBoardToDelete(null); setDeleteConfirmation('')}}>Cancelar</button>
+              <button type="button" className="danger" disabled={deleteConfirmation !== boardToDelete.name} onClick={() => deleteBoard(boardToDelete.id, deleteConfirmation)}><TrashIcon />Eliminar tablero</button>
+            </div>
+          </div>
+        </div>
+      )}
       <section className="main">
         {tabs.length > 0 && (
           <div className="tabs">
@@ -4866,7 +4914,7 @@ function CardDrawer({ card, mode, board, currentUser, canEdit, onClose, onEdit, 
           }}
         >
           <div className="modal visibility-modal" onClick={(event) => event.stopPropagation()}>
-            <div className="row">
+            <div className="visibility-modal-row">
               <h2>Visibilidad</h2>
               <button className="icon-close" type="button" aria-label="Cerrar" onClick={() => setVisibilityOpen(false)}>
                 <CloseIcon />

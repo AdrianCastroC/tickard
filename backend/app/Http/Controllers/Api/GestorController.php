@@ -167,6 +167,20 @@ class GestorController extends Controller
         return response()->json(['id' => $board->id, 'name' => $board->name], 201);
     }
 
+    public function deleteBoard(Request $request, Board $board)
+    {
+        abort_unless(ProjectAccess::canManage($request->user(), $board->project), 403);
+
+        $hasCards = $board->cards()->exists();
+        if ($hasCards) {
+            $data = $request->validate(['confirmation_name' => ['required', 'string', ]]);
+            abort_unless($data['confirmation_name'] === $board->name, 422, 'El nombre del tablero no coincide.');
+        }
+
+        $board->delete();
+        return response()->noContent();
+    }
+
     public function storeColumn(Request $request, Board $board)
     {
         abort_unless(ProjectAccess::canManage($request->user(), $board->project), 403);

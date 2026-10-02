@@ -29,7 +29,11 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::delete('/teams/{team}', [GestorController::class, 'destroyTeam']);
 
     Route::post('/projects', [GestorController::class, 'storeProject']);
+    Route::delete('/projects/{project}', [GestorController::class, 'deleteProject']);
+
     Route::post('/projects/{project}/boards', [GestorController::class, 'storeBoard']);
+    Route::delete('/boards/{board}', [GestorController::class, 'deleteBoard']);
+
     Route::patch('/projects/{project}', [GestorController::class, 'updateProject']);
     Route::post('/projects/{project}/labels', [GestorController::class, 'storeLabel']);
     Route::post('/projects/{project}/invitations', [GestorController::class, 'invite']);

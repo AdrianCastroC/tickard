@@ -1170,6 +1170,7 @@ h1, h2, h3, p { margin: 0; }
   gap: 16px;
 }
 .visibility-modal h2 { margin: 0; font-size: 22px; }
+.visibility-modal-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .visibility-list {
   display: flex;
   flex-direction: column;
