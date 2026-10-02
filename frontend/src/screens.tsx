@@ -954,10 +954,10 @@ export function Workspace() {
     setDeleteProjectConfirmation('')
     
     const data = await loadProfile()
-    const remainigTabs = tabs.filter((tab) => tab.projectId !== projectId)
-    setTabs(remainigTabs)
+    const remainingTabs = tabs.filter((tab) => tab.projectId !== projectId)
+    setTabs(remainingTabs)
     if (project?.id === projectId) {
-      const fallback = remainigTabs.at(-1)?.boardId 
+      const fallback = remainingTabs.at(-1)?.boardId 
         ?? data.projects.at(-1)?.boards.at(0)?.id 
         ?? null
       chooseBoard(fallback)
