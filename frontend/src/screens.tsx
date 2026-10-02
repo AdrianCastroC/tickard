@@ -686,8 +686,10 @@ export function Workspace() {
       return false
     }
   })
+  const [projectToDelete, setProjectToDelete] = useState<Project | null>(null)
+  const [deleteProjectConfirmation, setDeleteProjectConfirmation] = useState('')
   const [boardToDelete, setBoardToDelete] = useState<{id: number; name: string} | null>(null)
-  const [deleteConfirmation, setDeleteConfirmation] = useState('')
+  const [deleteBoardConfirmation, setDeleteBoardConfirmation] = useState('')
 
   function toggleSideMini() {
     setSideMini((current) => {
@@ -847,7 +849,7 @@ export function Workspace() {
     })
 
     setBoardToDelete(null)
-    setDeleteConfirmation('')
+    setDeleteBoardConfirmation('')
     await loadProfile()
     setBoardMenu(null)
     setNamingBoard(false)
@@ -941,6 +943,30 @@ export function Workspace() {
     const owner = data.projects.find((item) => item.id === created.id) ?? created
     const boardRef = owner.boards[0]
     if (boardRef) openBoardTab(owner, boardRef)
+  }
+
+  async function deleteProject(projectId: number, confirmationName: string) {
+    await api(`/projects/${projectId}`, {
+      method: 'DELETE',
+      body: JSON.stringify({ confirmation_name: confirmationName })
+    })
+    setProjectToDelete(null)
+    setDeleteProjectConfirmation('')
+    
+    const data = await loadProfile()
+    const remainigTabs = tabs.filter((tab) => tab.projectId !== projectId)
+    setTabs(remainigTabs)
+    if (project?.id === projectId) {
+      const fallback = remainigTabs.at(-1)?.boardId 
+        ?? data.projects.at(-1)?.boards.at(0)?.id 
+        ?? null
+      chooseBoard(fallback)
+      setSelected(null)
+      if (fallback) await loadBoard(fallback)
+      else setBoard(null)
+    }
+
+    setProjectMenu(null)
   }
 
   if (!profile) return <main className="login"><p>Cargando…</p></main>
@@ -1278,7 +1304,10 @@ export function Workspace() {
                       <>
                         <button type="button" onClick={() => setNamingBoard(true)}><PlusIcon /> Nuevo tablero</button>
                         <button type="button" onClick={() => manageProject(item)}><ConfigIcon /> Gestionar proyecto</button>
-                        <button type="button" className="danger" onClick={() => deleteProject(item.id)}><TrashIcon /> Eliminar</button>
+                        <button type="button" className="danger" onClick={() => {
+                          setProjectToDelete(item)
+                          setDeleteProjectConfirmation('')
+                        }}><TrashIcon /> Eliminar</button>
                       </>
                     )}
                   </div>
@@ -1314,7 +1343,7 @@ export function Workspace() {
                   {boardMenu === boardItem.id && (
                     <div className="project-menu">
                       <button type="button" onClick={() => manageBoardCategories(item, boardItem)}>Categorías</button>
-                      <button type="button" className="danger" onClick={() => {setBoardToDelete(boardItem); setDeleteConfirmation('')}}><TrashIcon /> Eliminar</button>
+                      <button type="button" className="danger" onClick={() => {setBoardToDelete(boardItem); setDeleteBoardConfirmation('')}}><TrashIcon /> Eliminar</button>
                     </div>
                   )}
                 </div>
@@ -1343,18 +1372,18 @@ export function Workspace() {
       {boardToDelete && (
         <div className="modal-back" onClick={() => {
           setBoardToDelete(null)
-          setDeleteConfirmation('')
+          setDeleteBoardConfirmation('')
         }}>
           <div className="modal" onClick={(event) => event.stopPropagation()}>
             <h2>Eliminar tablero</h2>
             <p>¿Estás seguro de querer eliminar el tablero {''} <strong>{boardToDelete.name}</strong>?</p>
             <p>Se eliminaran permanentemente todas las tarjetas y datos contenidos en este tablero.</p>
             <p>Escribe <strong>{boardToDelete.name}</strong> para confirmar.</p>
-            <input type="text" placeholder={boardToDelete.name} value={deleteConfirmation} onChange={(event) => setDeleteConfirmation(event.target.value)} autoFocus />
+            <input type="text" placeholder={boardToDelete.name} value={deleteBoardConfirmation} onChange={(event) => setDeleteBoardConfirmation(event.target.value)} autoFocus />
 
             <div className="modal-actions">
-              <button type="button" className="ghost" onClick={() => {setBoardToDelete(null); setDeleteConfirmation('')}}>Cancelar</button>
-              <button type="button" className="ghost danger" disabled={deleteConfirmation !== boardToDelete.name} onClick={() => deleteBoard(boardToDelete.id, deleteConfirmation)}><TrashIcon />Eliminar tablero</button>
+              <button type="button" className="ghost" onClick={() => {setBoardToDelete(null); setDeleteBoardConfirmation('')}}>Cancelar</button>
+              <button type="button" className="ghost danger" disabled={deleteBoardConfirmation !== boardToDelete.name} onClick={() => deleteBoard(boardToDelete.id, deleteBoardConfirmation)}><TrashIcon />Eliminar tablero</button>
             </div>
           </div>
         </div>

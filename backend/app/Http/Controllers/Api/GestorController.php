@@ -146,6 +146,17 @@ class GestorController extends Controller
         return response()->json($this->projectSummary($project, 'responsable'), 201);
     }
 
+    public function deleteProject(Request $request, Project $project)
+    {
+        abort_unless(ProjectAccess::canManage($request->user(), $project), 403);
+
+        $data = $request->validate(['confirmation_name' => ['required', 'string', ]]);
+        abort_unless($data['confirmation_name'] === $project->name, 422, 'El nombre del proyecto no coincide.');
+
+        $project->delete();
+        return response()->noContent();
+    }
+
     public function storeBoard(Request $request, Project $project)
     {
         abort_unless(ProjectAccess::canManage($request->user(), $project), 403);
