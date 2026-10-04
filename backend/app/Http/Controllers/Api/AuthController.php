@@ -54,6 +54,26 @@ public function login(Request $request)
         ];
     }
 
+    public function register(Request $request)
+    {
+        $data = $request->validate([
+            'name' => ['required', 'string', 'max:120'],
+            'email' => ['required', 'email', 'unique:users,email'],
+            'password' => ['required', 'string', 'min:8', 'confirmed'],
+        ]);
+
+        $user = User::create([
+            'name' => $data['name'],
+            'email' => $data['email'],
+            'password' => $data['password'],
+        ]);
+
+        return response()->json([
+            'token' => $user->createToken('api')->plainTextToken,
+            'user' => $this->profile($user),
+        ], 201);
+    }
+
 public function logout(Request $request)
     {
         $request->user()->currentAccessToken()->delete();

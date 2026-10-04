@@ -27,20 +27,24 @@ export function Login() {
   const [confirmation, setConfirmation] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   async function submit(event: FormEvent) {
     event.preventDefault()
     setError('')
-    if (mode === 'register') {
+    if (mode === 'register' && password !== confirmation) {
       if (password !== confirmation) setError('Las contraseñas no coinciden.')
       return
     }
+    setIsSubmitting(true)
     try {
-      const result = await api<{ token: string; user: Profile }>('/login', { method: 'POST', body: JSON.stringify({ email, password }) })
+      const result = await api<{ token: string; user: Profile }>(mode === 'login' ? '/login' : '/register', { method: 'POST', body: JSON.stringify(mode === 'login' ? { email, password } : { name, email, password, password_confirmation: confirmation }) })
       setToken(result.token)
       window.location.href = '/'
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'No se pudo entrar.')
+    } finally {
+      setIsSubmitting(false)
     }
   }
 
@@ -52,7 +56,7 @@ export function Login() {
         <h1>Organiza. Marca. Completa.</h1><p>Tus tareas, proyectos y equipos,<br />en un solo lugar.</p>
         <div className="auth-features"><Feature icon={<FeatureIcon type="tasks" />} title="Tareas" text="Organiza tu día" /><Feature icon={<FeatureIcon type="boards" />} title="Tableros" text="Visualiza el progreso" /><Feature icon={<FeatureIcon type="teams" />} title="Equipos" text="Colabora sin límites" /><Feature icon={<FeatureIcon type="projects" />} title="Proyectos" text="Convierte planes en resultados" /></div>
       </div>
-      <form className="auth-card" onSubmit={submit}>
+      <form className="auth-card" onSubmit={submit} aria-busy={isSubmitting}>
         <div className="auth-tabs" role="tablist" aria-label="Acceso"><button type="button" className={mode === 'login' ? 'active' : ''} onClick={() => { setMode('login'); setError('') }}>Iniciar sesión</button><button type="button" className={mode === 'register' ? 'active' : ''} onClick={() => { setMode('register'); setError('') }}>Crear cuenta</button></div>
         <div className="auth-heading"><h2>{mode === 'login' ? 'Bienvenido' : 'Crea tu cuenta'}</h2><p>{mode === 'login' ? 'Accede a tu cuenta de Tickard' : 'Empieza a organizarte con Tickard'}</p></div>
         {mode === 'register' && <label className="auth-field"><span>Nombre</span><input value={name} onChange={(event) => setName(event.target.value)} type="text" placeholder="Tu nombre" /></label>}
@@ -61,6 +65,7 @@ export function Login() {
         {mode === 'register' && <label className="auth-field"><span aria-hidden="true">♙</span><input value={confirmation} onChange={(event) => setConfirmation(event.target.value)} type={showPassword ? 'text' : 'password'} placeholder="Confirmar contraseña" /><button className="auth-eye" type="button" aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'} onClick={() => setShowPassword((visible) => !visible)}><EyeIcon visible={showPassword} /></button></label>}
         {mode === 'login' && <div className="auth-options"><label><input type="checkbox" /> Recordarme</label><button type="button">¿Has olvidado tu contraseña?</button></div>}
         {error && <p className="error auth-error">{error}</p>}
+        {isSubmitting && <p className="auth-submitting">Cargando…</p>}
         <button className="auth-submit" type="submit">{mode === 'login' ? 'Iniciar sesión' : 'Crear cuenta'} <span aria-hidden="true">→</span></button>
         {mode === 'login' && <><div className="auth-divider"><span>o continúa con</span></div><div className="auth-socials"><button type="button" aria-label="Google"><b className="google-mark">G</b></button><button type="button" aria-label="Apple"><b className="apple-mark">●</b></button><button type="button" aria-label="Microsoft"><b className="microsoft-mark"><i /><i /><i /><i /></b></button></div><p className="auth-switch">¿No tienes cuenta? <button type="button" onClick={() => setMode('register')}>Crear cuenta</button></p></>}
       </form>

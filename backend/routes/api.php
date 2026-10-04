@@ -9,6 +9,7 @@ use App\Http\Controllers\Api\ProjectsController;
 use Illuminate\Support\Facades\Route;
 
 Route::post('/login', [AuthController::class, 'login']);
+Route::post('/register', [AuthController::class, 'register']);
 Route::get('/invitations/{token}', [InvitationsController::class, 'showInvitation']);
 Route::post('/invitations/{token}/accept', [InvitationsController::class, 'acceptInvitation']);
 

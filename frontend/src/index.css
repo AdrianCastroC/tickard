@@ -186,6 +186,7 @@ h1, h2, h3, p { margin: 0; }
 .auth-switch { margin-top: 39px; text-align: center; color: #60768a; font-size: 16px; }
 .auth-switch button { padding-left: 8px; font-size: 16px; }
 .auth-error { margin: 0 0 14px; }
+.auth-submitting { margin: 0 0 12px; color: #60768a; text-align: center; font-size: 14px; }
 @media (max-width: 900px) { .auth-layout { grid-template-columns: 1fr; gap: 30px; padding-top: 10px; } .auth-hero { display: none; } .auth-card { max-width: 510px; margin: auto; } }
 @media (max-width: 520px) { .auth-header { padding: 18px 22px; } .auth-header img { width: 130px; } .auth-language { font-size: 13px; } .auth-layout { padding: 20px 16px 40px; } .auth-card { padding: 25px 20px 30px; border-radius: 18px; } .auth-heading { margin-top: 42px; } .auth-options { gap: 8px; font-size: 13px; } }
 
