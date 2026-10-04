@@ -9,6 +9,7 @@ use App\Models\Department;
 use App\Models\Project;
 use App\Models\Team;
 use App\Models\User;
+use App\Models\Workspace;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 
@@ -41,6 +42,10 @@ class DatabaseSeeder extends Seeder
                 'password' => 'password',
                 'client_company_id' => $client->id,
             ]);
+
+            foreach ([$ana, $luis, $marta, $elena] as $user) {
+                Workspace::createInitialFor($user);
+            }
 
             $project = Project::create([
                 'name' => 'Portal de clientes',

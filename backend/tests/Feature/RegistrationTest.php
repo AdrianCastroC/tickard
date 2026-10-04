@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\User;
+use App\Models\Workspace;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Tests\TestCase;
@@ -27,6 +28,15 @@ class RegistrationTest extends TestCase
         $this->assertFalse($user->is_admin);
         $this->assertNull($user->client_company_id);
         $this->assertTrue(Hash::check('secret123', $user->password));
+        $workspace = $user->ownedWorkspaces()->firstOrFail();
+        $this->assertSame('Mi espacio', $workspace->name);
+        $this->assertSame($user->id, $workspace->owner_id);
+        $this->assertDatabaseHas('workspace_members', [
+            'workspace_id' => $workspace->id,
+            'user_id' => $user->id,
+            'role' => 'owner',
+        ]);
+        $this->assertTrue($user->workspaces->contains($workspace));
         $this->withHeader('Authorization', 'Bearer '.$response->json('token'))
             ->getJson('/api/me')
             ->assertOk()

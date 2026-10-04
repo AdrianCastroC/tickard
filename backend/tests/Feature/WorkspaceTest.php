@@ -75,4 +75,20 @@ class WorkspaceTest extends TestCase
         $this->assertTrue($owner->workspaces->first()->is($workspace));
         $this->assertTrue($owner->ownedWorkspaces->first()->is($workspace));
     }
+
+    public function test_existing_user_gets_one_initial_workspace_idempotently(): void
+    {
+        $user = User::factory()->create();
+
+        $first = Workspace::createInitialFor($user);
+        $second = Workspace::createInitialFor($user);
+
+        $this->assertTrue($first->is($second));
+        $this->assertSame(1, $user->ownedWorkspaces()->count());
+        $this->assertDatabaseHas('workspace_members', [
+            'workspace_id' => $first->id,
+            'user_id' => $user->id,
+            'role' => 'owner',
+        ]);
+    }
 }

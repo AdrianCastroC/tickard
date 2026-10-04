@@ -11,6 +11,25 @@ class Workspace extends Model
 {
     protected $fillable = ['name', 'owner_id'];
 
+    public static function createInitialFor(User $user): self
+    {
+        $workspace = $user->ownedWorkspaces()->first();
+        if ($workspace) {
+            return $workspace;
+        }
+
+        $workspace = self::create([
+            'name' => 'Mi espacio',
+            'owner_id' => $user->id,
+        ]);
+        $workspace->memberships()->create([
+            'user_id' => $user->id,
+            'role' => 'owner',
+        ]);
+
+        return $workspace;
+    }
+
     public function owner(): BelongsTo
     {
         return $this->belongsTo(User::class, 'owner_id');

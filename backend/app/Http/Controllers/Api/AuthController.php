@@ -20,6 +20,7 @@ use App\Models\Project;
 use App\Models\ProjectMember;
 use App\Models\Team;
 use App\Models\User;
+use App\Models\Workspace;
 use App\Support\CardPresenter;
 use App\Support\Notifier;
 use App\Support\ProjectAccess;
@@ -62,11 +63,16 @@ public function login(Request $request)
             'password' => ['required', 'string', 'min:8', 'confirmed'],
         ]);
 
-        $user = User::create([
-            'name' => $data['name'],
-            'email' => $data['email'],
-            'password' => $data['password'],
-        ]);
+        $user = DB::transaction(function () use ($data) {
+            $user = User::create([
+                'name' => $data['name'],
+                'email' => $data['email'],
+                'password' => $data['password'],
+            ]);
+            Workspace::createInitialFor($user);
+
+            return $user;
+        });
 
         return response()->json([
             'token' => $user->createToken('api')->plainTextToken,
