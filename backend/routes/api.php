@@ -1,68 +1,73 @@
 <?php
 
-use App\Http\Controllers\Api\GestorController;
+use App\Http\Controllers\Api\AdministrationController;
+use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\CardsController;
+use App\Http\Controllers\Api\CardDetailsController;
+use App\Http\Controllers\Api\InvitationsController;
+use App\Http\Controllers\Api\ProjectsController;
 use Illuminate\Support\Facades\Route;
 
-Route::post('/login', [GestorController::class, 'login']);
-Route::get('/invitations/{token}', [GestorController::class, 'showInvitation']);
-Route::post('/invitations/{token}/accept', [GestorController::class, 'acceptInvitation']);
+Route::post('/login', [AuthController::class, 'login']);
+Route::get('/invitations/{token}', [InvitationsController::class, 'showInvitation']);
+Route::post('/invitations/{token}/accept', [InvitationsController::class, 'acceptInvitation']);
 
 Route::middleware('auth:sanctum')->group(function () {
-    Route::post('/logout', [GestorController::class, 'logout']);
-    Route::get('/me', [GestorController::class, 'me']);
-    Route::patch('/me', [GestorController::class, 'updateMe']);
-    Route::post('/me/avatar', [GestorController::class, 'updateAvatar']);
-    Route::get('/notifications', [GestorController::class, 'notifications']);
-    Route::post('/notifications/read', [GestorController::class, 'readNotifications']);
+    Route::post('/logout', [AuthController::class, 'logout']);
+    Route::get('/me', [AuthController::class, 'me']);
+    Route::patch('/me', [AuthController::class, 'updateMe']);
+    Route::post('/me/avatar', [AuthController::class, 'updateAvatar']);
+    Route::get('/notifications', [AuthController::class, 'notifications']);
+    Route::post('/notifications/read', [AuthController::class, 'readNotifications']);
 
-    Route::get('/departments', [GestorController::class, 'departments']);
-    Route::post('/departments', [GestorController::class, 'storeDepartment']);
-    Route::patch('/departments/{department}', [GestorController::class, 'updateDepartment']);
-    Route::delete('/departments/{department}', [GestorController::class, 'destroyDepartment']);
+    Route::get('/departments', [AdministrationController::class, 'departments']);
+    Route::post('/departments', [AdministrationController::class, 'storeDepartment']);
+    Route::patch('/departments/{department}', [AdministrationController::class, 'updateDepartment']);
+    Route::delete('/departments/{department}', [AdministrationController::class, 'destroyDepartment']);
 
-    Route::get('/clients', [GestorController::class, 'clients']);
-    Route::post('/clients', [GestorController::class, 'storeClient']);
+    Route::get('/clients', [AdministrationController::class, 'clients']);
+    Route::post('/clients', [AdministrationController::class, 'storeClient']);
 
-    Route::get('/teams', [GestorController::class, 'teams']);
-    Route::post('/teams', [GestorController::class, 'storeTeam']);
-    Route::patch('/teams/{team}', [GestorController::class, 'updateTeam']);
-    Route::delete('/teams/{team}', [GestorController::class, 'destroyTeam']);
+    Route::get('/teams', [AdministrationController::class, 'teams']);
+    Route::post('/teams', [AdministrationController::class, 'storeTeam']);
+    Route::patch('/teams/{team}', [AdministrationController::class, 'updateTeam']);
+    Route::delete('/teams/{team}', [AdministrationController::class, 'destroyTeam']);
 
-    Route::post('/projects', [GestorController::class, 'storeProject']);
-    Route::delete('/projects/{project}', [GestorController::class, 'deleteProject']);
+    Route::post('/projects', [ProjectsController::class, 'storeProject']);
+    Route::delete('/projects/{project}', [ProjectsController::class, 'deleteProject']);
 
-    Route::post('/projects/{project}/boards', [GestorController::class, 'storeBoard']);
-    Route::delete('/boards/{board}', [GestorController::class, 'deleteBoard']);
+    Route::post('/projects/{project}/boards', [ProjectsController::class, 'storeBoard']);
+    Route::delete('/boards/{board}', [ProjectsController::class, 'deleteBoard']);
 
-    Route::patch('/projects/{project}', [GestorController::class, 'updateProject']);
-    Route::post('/projects/{project}/labels', [GestorController::class, 'storeLabel']);
-    Route::post('/projects/{project}/invitations', [GestorController::class, 'invite']);
+    Route::patch('/projects/{project}', [ProjectsController::class, 'updateProject']);
+    Route::post('/projects/{project}/labels', [ProjectsController::class, 'storeLabel']);
+    Route::post('/projects/{project}/invitations', [InvitationsController::class, 'invite']);
 
-    Route::get('/boards/{board}', [GestorController::class, 'showBoard']);
-    Route::post('/boards/{board}/columns', [GestorController::class, 'storeColumn']);
-    Route::post('/boards/{board}/categories', [GestorController::class, 'storeCategory']);
-    Route::patch('/columns/{column}', [GestorController::class, 'updateColumn']);
-    Route::post('/columns/{column}/move', [GestorController::class, 'moveColumn']);
-    Route::delete('/columns/{column}', [GestorController::class, 'destroyColumn']);
-    Route::patch('/categories/{category}', [GestorController::class, 'updateCategory']);
-    Route::delete('/categories/{category}', [GestorController::class, 'destroyCategory']);
-    Route::post('/boards/{board}/cards', [GestorController::class, 'storeCard']);
-    Route::patch('/cards/{card}', [GestorController::class, 'updateCard']);
-    Route::post('/cards/{card}/move', [GestorController::class, 'moveCard']);
-    Route::post('/cards/{card}/archive', [GestorController::class, 'archiveCard']);
-    Route::delete('/cards/{card}', [GestorController::class, 'destroyCard']);
-    Route::post('/cards/{card}/modules', [GestorController::class, 'storeModule']);
-    Route::post('/cards/{card}/modules/reorder', [GestorController::class, 'reorderModules']);
-    Route::patch('/modules/{module}', [GestorController::class, 'updateModule']);
-    Route::delete('/modules/{module}', [GestorController::class, 'destroyModule']);
-    Route::post('/cards/{card}/checklist', [GestorController::class, 'storeChecklistItem']);
-    Route::post('/cards/{card}/checklist/reorder', [GestorController::class, 'reorderChecklist']);
-    Route::patch('/checklist/{item}', [GestorController::class, 'updateChecklistItem']);
-    Route::delete('/checklist/{item}', [GestorController::class, 'destroyChecklistItem']);
-    Route::post('/cards/{card}/attachments', [GestorController::class, 'storeAttachment']);
-    Route::delete('/attachments/{attachment}', [GestorController::class, 'destroyAttachment']);
-    Route::post('/cards/{card}/comments', [GestorController::class, 'storeComment']);
-    Route::delete('/comments/{comment}', [GestorController::class, 'destroyComment']);
-    Route::patch('/comments/{comment}/visibility', [GestorController::class, 'updateCommentVisibility']);
-    Route::post('/comments/{comment}/reactions', [GestorController::class, 'reactToComment']);
+    Route::get('/boards/{board}', [ProjectsController::class, 'showBoard']);
+    Route::post('/boards/{board}/columns', [CardsController::class, 'storeColumn']);
+    Route::post('/boards/{board}/categories', [CardsController::class, 'storeCategory']);
+    Route::patch('/columns/{column}', [CardsController::class, 'updateColumn']);
+    Route::post('/columns/{column}/move', [CardsController::class, 'moveColumn']);
+    Route::delete('/columns/{column}', [CardsController::class, 'destroyColumn']);
+    Route::patch('/categories/{category}', [CardsController::class, 'updateCategory']);
+    Route::delete('/categories/{category}', [CardsController::class, 'destroyCategory']);
+    Route::post('/boards/{board}/cards', [CardsController::class, 'storeCard']);
+    Route::patch('/cards/{card}', [CardsController::class, 'updateCard']);
+    Route::post('/cards/{card}/move', [CardsController::class, 'moveCard']);
+    Route::post('/cards/{card}/archive', [CardsController::class, 'archiveCard']);
+    Route::delete('/cards/{card}', [CardsController::class, 'destroyCard']);
+    Route::post('/cards/{card}/modules', [CardDetailsController::class, 'storeModule']);
+    Route::post('/cards/{card}/modules/reorder', [CardDetailsController::class, 'reorderModules']);
+    Route::patch('/modules/{module}', [CardDetailsController::class, 'updateModule']);
+    Route::delete('/modules/{module}', [CardDetailsController::class, 'destroyModule']);
+    Route::post('/cards/{card}/checklist', [CardDetailsController::class, 'storeChecklistItem']);
+    Route::post('/cards/{card}/checklist/reorder', [CardDetailsController::class, 'reorderChecklist']);
+    Route::patch('/checklist/{item}', [CardDetailsController::class, 'updateChecklistItem']);
+    Route::delete('/checklist/{item}', [CardDetailsController::class, 'destroyChecklistItem']);
+    Route::post('/cards/{card}/attachments', [CardDetailsController::class, 'storeAttachment']);
+    Route::delete('/attachments/{attachment}', [CardDetailsController::class, 'destroyAttachment']);
+    Route::post('/cards/{card}/comments', [CardDetailsController::class, 'storeComment']);
+    Route::delete('/comments/{comment}', [CardDetailsController::class, 'destroyComment']);
+    Route::patch('/comments/{comment}/visibility', [CardDetailsController::class, 'updateCommentVisibility']);
+    Route::post('/comments/{comment}/reactions', [CardDetailsController::class, 'reactToComment']);
 });
