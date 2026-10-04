@@ -1,208 +1,487 @@
-# Bases del gestor de tareas
+# Tickard — Bases del producto
 
-Documento de referencia del producto, antes de programar. Los nombres de personas, clientes y tareas que aparecen en los mockups son de ejemplo.
+## 1. Qué es Tickard
 
-## Producto
+Tickard es una aplicación de gestión de trabajo, proyectos y tareas orientada tanto a usuarios individuales como a equipos y empresas.
 
-La aplicación se llama tickard. Es un gestor de tareas para una empresa informática. El trabajo se organiza en proyectos y cada proyecto tiene uno o varios tableros. El tablero es la pantalla principal: columnas y tarjetas que se arrastran con el ratón. Quien tenga ese tablero abierto ve el cambio al momento.
+La aplicación se organiza alrededor de espacios de trabajo (Workspaces), dentro de los cuales se encuentran los proyectos, tableros y tarjetas.
 
-La primera vista es un tablero Kanban. Lista, diagrama de Gantt y otras vistas posteriores muestran las mismas tarjetas; no son otro conjunto de tareas.
+La jerarquía principal es:
 
-## Personas y permisos
+**Workspace → Proyecto → Tablero → Tarjeta**
 
-Se entra con correo y contraseña.
+Tickard debe permitir empezar de forma sencilla y crecer posteriormente hacia necesidades más avanzadas de organización, colaboración, seguimiento y gestión.
 
-Hay una ficha por empresa cliente y, dentro, sus personas. Un proyecto pertenece a un cliente y el responsable elige qué personas de esa ficha entran.
 
-| Papel | Alcance | Puede |
-| --- | --- | --- |
-| Administrador | Toda la empresa | Usuarios, fichas de cliente y todos los proyectos |
-| Responsable | Cada proyecto | Tableros, columnas, miembros, visibilidad del cliente y tarjetas |
-| Editor | Cada proyecto | Crear, editar y mover tarjetas, y comentar |
-| Lector | Cada proyecto | Ver y comentar. No crea ni mueve tarjetas |
-| Cliente | Proyectos a los que está invitado | Ver lo que el proyecto permita y comentar. No crea ni mueve tarjetas |
+## 2. Cuentas de usuario
 
-El acceso de una persona interna se configura por proyecto: editor en uno, lectora en otro y sin acceso en un tercero.
+Cualquier persona puede registrarse directamente en Tickard.
 
-El equipo, lectores incluidos, puede marcar cada comentario como interno o visible para el cliente. El cliente solo escribe comentarios visibles.
+La cuenta representa la identidad de la persona y es independiente de las empresas u organizaciones a las que pertenezca.
 
-Las personas asignadas a una tarjeta son del equipo del proyecto. Una tarjeta puede tener varias.
+Una misma cuenta puede participar en varios Workspaces simultáneamente.
 
-Un departamento y un equipo no son lo mismo. El departamento es la estructura de la empresa y agrupa personas internas. El equipo es un grupo de trabajo, y se puede crear aparte. El administrador crea los dos. Una tarjeta se asigna a personas, a equipos, o a los dos. Quien pertenece a un equipo asignado ve esa tarjeta en Mis tareas. Las empresas cliente también se crean aparte: un proyecto pertenece a una de ellas.
+Por ejemplo:
 
-## Vistas
+- Mi espacio — Free
+- Invbit — Base
+- Empresa X — Pro
 
-Cada tablero abierto tiene un selector de vista. En la primera versión solo existe Kanban. Lista, tabla, Gantt y las que se añadan después reutilizan las tarjetas, los permisos y los filtros.
+El usuario utiliza siempre la misma cuenta para acceder a todos ellos.
 
-Las columnas pertenecen solo al Kanban. Un tablero nuevo nace con estas, y después se pueden renombrar, reordenar, añadir y quitar:
+Las cuentas no son Free, Base o Pro.
 
-1. Backlog
-2. Por hacer
-3. En progreso
-4. En revisión
-5. Completado
+El plan pertenece al Workspace.
 
-Las tarjetas también se reordenan dentro de una columna. Mover una tarjeta se refleja al momento para quien tenga el tablero abierto.
 
-Quien puede crear tarjetas ve «Añadir tarjeta» al final de cada columna. El formulario se abre encima del tablero y la tarjeta nace en esa columna.
+## 3. Workspace
 
-## Tarjeta
+El Workspace es el contenedor principal de trabajo de Tickard.
 
-### Primera versión
+Dentro de un Workspace se encuentran sus:
 
-- Título
-- Descripción
-- Varias personas asignadas, y equipos de la empresa
-- Fecha límite. El Gantt, cuando exista, usará también una fecha de inicio
-- Prioridad: Baja, Media, Alta, Urgente
-- Etiquetas del proyecto
-- Comentarios, cada uno interno o visible para el cliente
-- Historial breve: creada, movida, asignada y comentada
+- miembros;
+- departamentos;
+- equipos;
+- clientes;
+- proyectos;
+- tableros;
+- tarjetas;
+- configuración;
+- permisos;
+- y demás información relacionada con el trabajo de esa organización.
 
-Al crearla queda **interna**. El cliente no la ve hasta que alguien del equipo la marque como visible.
+Cada Workspace es independiente de los demás.
 
-### Versión siguiente
+Un usuario puede pertenecer a varios Workspaces y tener diferentes permisos en cada uno.
 
-- Adjuntos
-- Checklist
-- Estimación
-- Tiempo, a mano o con un temporizador
 
-El checklist cubre el desglose de la tarea. No habrá subtareas como tarjetas aparte.
+### Workspace personal
 
-## Qué ve el cliente
+Cuando una persona crea una cuenta en Tickard se crea automáticamente un Workspace personal con plan Free.
 
-El título se muestra siempre. En cada proyecto se activa o se desactiva el resto:
+Esto permite comenzar a utilizar Tickard inmediatamente sin necesidad de recibir una invitación ni pertenecer a una empresa.
 
-- Descripción
-- Asignación: personas y equipos, con el mismo interruptor
-- Fecha límite
-- Prioridad
-- Etiquetas
-- Comentarios
-- Adjuntos, checklist, estimación y tiempo, cuando existan
+El nombre inicial del Workspace podrá ser, por ejemplo, **Mi espacio**.
 
-Un proyecto nuevo deja visibles descripción, fecha, etiquetas y comentarios. Deja ocultos asignado, prioridad y los campos de la versión siguiente. El responsable puede cambiarlo.
 
-Una tarjeta interna no aparece en ningún tablero del proyecto para el cliente. Al marcarla como visible, entra en los tableros de ese proyecto con los campos que el proyecto tenga activos.
+### Workspaces compartidos
 
-## Avisos
+Los Workspaces pueden incorporar otros usuarios como miembros.
 
-- Dentro de la aplicación: al asignar una tarjeta y al comentar.
-- Por correo: al asignar y cuando comenta un cliente.
+Todos los miembros trabajan con las capacidades disponibles en el plan de ese Workspace.
 
-Cada persona puede desactivar los avisos de la aplicación, el correo, o los dos.
+Por ejemplo, si un usuario pertenece a:
 
-## Distribución de la pantalla
+- Mi espacio — Free
+- Invbit — Base
+- Empresa X — Pro
 
-La aplicación se divide en dos zonas.
+dispondrá de las funciones Free dentro de Mi espacio, de las funciones Base dentro de Invbit y de las funciones Pro dentro de Empresa X.
 
-**Lateral izquierdo.** Abre con la marca. Inicio y Mis tareas llevan al módulo de tableros. Personal, solo para el administrador, agrupa departamentos, equipos y clientes. Debajo, Proyectos: los que la persona puede abrir. El administrador ve todos. «Nuevo proyecto» es una acción de esa lista. Los miembros y la visibilidad del cliente se gestionan dentro del proyecto.
+El nivel de servicio no pertenece al usuario, sino al contexto en el que está trabajando.
 
-**Zona principal.** Arriba, la búsqueda, los avisos y la persona. El proyecto activo tiene el título, el botón Nueva tarea y, debajo, el icono de filtros. Los filtros no están siempre visibles. Los proyectos abiertos van en pestañas: abrir uno lo añade, y cerrar la pestaña no borra el proyecto ni el tablero. La vista de esta fase es Tablero.
 
-Debajo de las columnas, el tablero resume cada una con el número de tarjetas y el porcentaje que suponen sobre el total del tablero.
+## 4. Planes
 
-Si no hay ningún proyecto accesible, la zona principal muestra un estado vacío:
+Tickard tendrá inicialmente tres niveles de servicio:
 
-- Quien puede crear proyectos: iniciar un proyecto.
-- Quien no puede: esperar a que le asignen uno.
+- Free
+- Base
+- Pro
 
-## Pantallas de referencia
+El plan se asigna al Workspace.
 
-1. **Tablero del equipo.** Abierto en una pestaña, con filtros encima. Cinco columnas. Cada tarjeta muestra título, etiquetas, prioridad, fecha y asignados. Las ocultas al cliente llevan la marca Interna.
-2. **Detalle de la tarjeta.** Se abre al lado del tablero. Título, paso de interna a visible, descripción, asignados, fecha, prioridad, etiquetas y comentarios con su visibilidad.
-3. **Tablero del cliente.** Misma estructura, sin tarjetas internas, sin los campos apagados en el proyecto y sin la administración del lateral. El cliente comenta y no crea ni mueve tarjetas.
-4. **Proyecto.** Personas y su papel, e interruptores de lo que el cliente puede ver.
-5. **Sin proyectos.** Ilustración y la acción que corresponda al papel: iniciar un proyecto o esperar asignación.
+Todos los miembros de un mismo Workspace utilizan las capacidades correspondientes al plan contratado por ese Workspace.
 
-## Paleta
+Los límites, precios y características concretas de Free, Base y Pro se definirán posteriormente.
 
-Sale del gradiente [Iridescent](https://feralui.dev/gradients?g=2.Hc0xC4JAGIfxrxJ_13c4o6N6t1O5CguhpSEawiyOxBM9kBC31tY-R5vfKPwYYdtveOBpcQO3qJ0ta_ARnp7qSC9B8NRCiygcJadhEIhR_myupMaJ4B5lBobeJgcQ7mAM7-fw6r-fHoQKjLWKY7VKkv0GhLHdmcJNTJqBcM1t8_-m5zwDS0G4mNrZyhlbgKUk1I2pcrAvuq77AQ) de Feral, cuatro verdes japoneses en este orden:
+El plan Free deberá permitir probar y utilizar Tickard de forma real, incluyendo cierto nivel de colaboración.
 
-| Nombre | Hex | Uso |
-| --- | --- | --- |
-| Willow mist | `#F2FDF9` | Fondo más claro, tarjetas en claro |
-| Young willow | `#A8F0DC` | Selección suave, halos |
-| Clear bamboo | `#52CBB0` | Señal activa, foco, botón en oscuro |
-| Forest tea | `#147A5F` | Texto de acento, botón principal en claro, tinta verde |
+Base estará orientado al uso habitual de equipos y empresas.
 
-El gradiente completo se reserva al acceso y al estado vacío. El tablero de trabajo usa estos tonos en superficies planas para que las tarjetas se lean. Hay tema claro y tema oscuro.
+Pro añadirá herramientas y capacidades avanzadas.
 
-### Superficie y texto
+No se fijan todavía límites concretos de miembros, proyectos, almacenamiento u otras características.
 
-| Token | Claro | Oscuro | Uso |
-| --- | --- | --- | --- |
-| Canvas | `#e7f7f2` | `#0c2420` | Fondo del tablero |
-| Superficie | `#f7fefb` | `#14312b` | Tarjetas y paneles |
-| Lateral | `#d7f3ea` | `#102824` | Listado de proyectos |
-| Tinta | `#12312b` | `#f2fdf9` | Texto principal |
-| Secundario | `#3d6b60` | `#a8d9cc` | Fechas, metadatos, secciones |
-| Línea | `#c5e8de` | `#1e463e` | Bordes |
 
-### Acento
+## 5. Miembros, clientes e invitados
 
-| Token | Claro | Oscuro | Uso |
-| --- | --- | --- | --- |
-| Acento | `#147A5F` | `#a8f0dc` | Proyecto activo, pestaña abierta, enlaces |
-| Botón | `#147A5F` | `#52cbb0` | Fondo del botón principal |
-| Texto del botón | `#f2fdf9` | `#0c2420` | Texto sobre el botón |
-| Selección | `#a8f0dc` | `#1a4a40` | Fila seleccionada |
+Tickard distinguirá entre los usuarios que forman parte de una organización y los usuarios externos que reciben acceso limitado.
 
-### Estado de la tarea
+Los miembros forman parte del Workspace y trabajan normalmente dentro de sus proyectos.
 
-Alta y urgente quedan fuera del verde, para que no se confundan con una tarjeta seleccionada.
+Los clientes o invitados externos podrán recibir acceso únicamente a la información que la organización decida compartir con ellos.
 
-| Estado | Claro | Oscuro |
-| --- | --- | --- |
-| Baja | Fondo `#e7f4f0`, texto `#3d6258` | Fondo `#1a3330`, texto `#cfe7e0` |
-| Media | Fondo `#c8f3e6`, texto `#0f5c4c` | Fondo `#145246`, texto `#d7f3ea` |
-| Alta | Fondo `#f8ead3`, texto `#6a4b12` | Fondo `#3a2e18`, texto `#f3ddb0` |
-| Urgente | Fondo `#f8e4e4`, texto `#8a2b2b` | Fondo `#3a2222`, texto `#f3c7c7` |
-| Interna | Fondo `#efe8df`, texto `#5c4e3a` | Fondo `#2c2822`, texto `#e6dccf` |
+Un cliente podrá, dependiendo de los permisos configurados:
 
-### Etiquetas
+- consultar determinados proyectos;
+- consultar determinados tableros;
+- ver las tarjetas que sean visibles para clientes;
+- consultar únicamente determinados campos;
+- realizar comentarios cuando esté permitido.
 
-Seis tonos fijos, en pastilla: bosque, bambú, niebla, tinta, ciruela y arena. Bosque y bambú salen de la referencia; el resto distingue etiquetas que coincidirían si todo fuera verde.
+Los clientes no deben tener acceso a información interna.
 
-| Tono | Claro | Oscuro |
-| --- | --- | --- |
-| Bosque | Fondo `#d7f3ea`, texto `#147a5f` | Fondo `#1a4a40`, texto `#a8f0dc` |
-| Bambú | Fondo `#e7faf4`, texto `#0f6e62` | Fondo `#143832`, texto `#c8f6ea` |
-| Niebla | Fondo `#e7f4f0`, texto `#3d6258` | Fondo `#1a3330`, texto `#cfe7e0` |
-| Tinta | Fondo `#e7f4f0`, texto `#12312b` | Fondo `#102824`, texto `#f2fdf9` |
-| Ciruela | Fondo `#f3e8ee`, texto `#6e3a52` | Fondo `#32242c`, texto `#f0d5e2` |
-| Arena | Fondo `#f8ead3`, texto `#6a4b12` | Fondo `#3a2e18`, texto `#f3ddb0` |
+El tratamiento de clientes e invitados respecto a los límites y facturación de los planes queda pendiente de definir.
 
-## Construcción
 
-### Fase 1
+## 6. Proyectos
 
-Acceso, clientes, proyectos, permisos por proyecto, tableros, arrastre en tiempo real, tarjeta básica, visibilidad del cliente y avisos.
+Los proyectos pertenecen siempre a un Workspace.
 
-### Fase 2
+Un proyecto agrupa el trabajo relacionado con un objetivo, producto, cliente o iniciativa.
 
-Adjuntos, checklist, estimación y tiempo, con los mismos interruptores de visibilidad.
+Ejemplos:
 
-### Vistas posteriores
+- Portal de clientes
+- Nueva web corporativa
+- Aplicación móvil
+- Mantenimiento interno
 
-Lista, tabla y diagrama de Gantt sobre las mismas tarjetas. El selector de vista ya queda previsto en la primera versión, con Kanban como única opción activa. Lista prioriza lectura rápida; tabla prioriza comparar y editar campos en columnas.
+Un Workspace puede contener múltiples proyectos.
 
-## Arranque
+Los proyectos pueden estar asociados a un cliente cuando corresponda.
 
-- Solo el administrador crea proyectos. El responsable gestiona los que ya existen.
-- El primer usuario de la instalación es administrador.
-- Un proyecto nuevo pide la ficha de cliente y nace con un tablero llamado General y las cinco columnas de partida.
-- Las personas entran por invitación: reciben un correo y eligen su contraseña desde el enlace.
-- El tema claro es el de inicio. La persona puede pasar al oscuro.
-- Una tarjeta se archiva; no se borra. Una columna se puede quitar cuando no tiene tarjetas.
-- El correo de un comentario de cliente llega a los asignados y al responsable del proyecto.
 
-## Técnica
+## 7. Tableros
 
-- API en Laravel, con Sanctum para la sesión de la interfaz.
-- Interfaz en React y Vite, en español.
-- Tiempo real con Laravel Reverb.
-- Base de datos MySQL.
-- Dos partes en el repositorio: `backend` y `frontend`.
-- En local, los correos se guardan en el registro hasta configurar un servidor de correo.
+Los tableros pertenecen siempre a un proyecto.
+
+Un proyecto puede tener uno o varios tableros.
+
+Por ejemplo:
+
+**Portal de clientes**
+
+- Desarrollo
+- Incidencias
+- Entrega marzo
+
+Los tableros no constituyen una sección independiente de primer nivel dentro de Tickard.
+
+Se accede a ellos desde el proyecto al que pertenecen.
+
+Por este motivo, la navegación principal no necesita una sección global independiente llamada **Tableros**.
+
+
+## 8. Navegación principal
+
+La aplicación trabaja siempre dentro de un Workspace activo.
+
+El usuario podrá cambiar de Workspace mediante un selector situado en la navegación principal.
+
+Por ejemplo:
+
+- Mi espacio — Free
+- Invbit — Base
+- Empresa X — Pro
+
+Al cambiar de Workspace cambia todo el contexto de trabajo mostrado por Tickard.
+
+Esto incluye:
+
+- proyectos;
+- tableros;
+- departamentos;
+- equipos;
+- clientes;
+- miembros;
+- configuración;
+- y demás información asociada al Workspace.
+
+Los proyectos aparecerán en la navegación y podrán mostrar debajo sus respectivos tableros.
+
+
+## 9. Columnas
+
+Los tableros se organizan mediante columnas.
+
+Inicialmente pueden utilizarse columnas como:
+
+- Backlog
+- Por hacer
+- En progreso
+- En revisión
+- Completado
+
+Las columnas pueden ordenarse.
+
+Una columna puede eliminarse cuando no contiene tarjetas activas.
+
+
+## 10. Tarjetas
+
+Las tarjetas representan las unidades principales de trabajo.
+
+Una tarjeta puede contener:
+
+- título;
+- descripción;
+- responsables;
+- equipos;
+- fecha de vencimiento;
+- prioridad;
+- etiquetas;
+- categoría;
+- comentarios;
+- actividad.
+
+Tickard podrá ampliar progresivamente las tarjetas con:
+
+- adjuntos;
+- checklists;
+- estimaciones;
+- control de tiempo;
+- módulos adicionales.
+
+Las tarjetas pueden moverse entre columnas mediante arrastre.
+
+Una tarjeta puede archivarse cuando deja de estar activa.
+
+
+## 11. Visibilidad interna y clientes
+
+Las tarjetas pueden ser internas o visibles para clientes.
+
+Una tarjeta interna nunca debe mostrarse a un usuario externo.
+
+Cuando una tarjeta es visible para clientes, el Workspace o proyecto puede determinar qué información puede consultar el cliente.
+
+Entre los campos configurables pueden encontrarse:
+
+- descripción;
+- responsable;
+- fecha de vencimiento;
+- prioridad;
+- etiquetas;
+- comentarios.
+
+Los comentarios también pueden diferenciar entre contenido interno y contenido visible para clientes.
+
+La seguridad de esta información debe aplicarse en el backend y no depender únicamente de ocultar elementos en la interfaz.
+
+
+## 12. Roles
+
+Los permisos existirán en diferentes niveles.
+
+### Roles del Workspace
+
+Los roles exactos del Workspace se definirán en la documentación específica de Workspaces.
+
+Estos roles determinarán quién puede administrar aspectos generales de la organización, como:
+
+- miembros;
+- equipos;
+- departamentos;
+- clientes;
+- configuración;
+- plan;
+- proyectos.
+
+
+### Roles de proyecto
+
+Dentro de cada proyecto podrán existir diferentes niveles de acceso.
+
+El modelo inicial contempla:
+
+- Responsable
+- Editor
+- Lector
+- Cliente
+
+#### Responsable
+
+Puede gestionar el proyecto, sus tableros, miembros, configuración y contenido.
+
+#### Editor
+
+Puede trabajar con las tarjetas y modificar el contenido permitido.
+
+#### Lector
+
+Puede consultar el proyecto y participar mediante las acciones permitidas, pero no modificar su estructura.
+
+#### Cliente
+
+Es un usuario externo con acceso únicamente a la información que haya sido habilitada para clientes.
+
+La relación exacta entre roles de Workspace y roles de proyecto se definirá al desarrollar el nuevo modelo de permisos.
+
+
+## 13. Equipos
+
+Los equipos pertenecen al Workspace.
+
+Permiten agrupar miembros para facilitar asignaciones y organización.
+
+Ejemplos:
+
+- Frontend
+- Backend
+- Diseño
+- Marketing
+- Producto
+
+Una tarjeta puede asignarse tanto a personas concretas como a equipos.
+
+
+## 14. Departamentos
+
+Los departamentos pertenecen al Workspace.
+
+Representan la estructura organizativa más estable de una empresa.
+
+Ejemplos:
+
+- Desarrollo
+- Administración
+- Comercial
+- Marketing
+- Recursos Humanos
+
+Equipos y departamentos son conceptos diferentes.
+
+Un departamento representa la estructura organizativa.
+
+Un equipo representa una agrupación operativa de personas.
+
+
+## 15. Clientes
+
+Los clientes pertenecen al Workspace.
+
+Un Workspace puede gestionar múltiples clientes y asociar proyectos a ellos.
+
+Los usuarios externos asociados a clientes podrán acceder únicamente a los proyectos y contenidos que les hayan sido habilitados.
+
+
+## 16. Invitaciones
+
+Las invitaciones sirven para incorporar personas a un Workspace o conceder acceso externo cuando corresponda.
+
+Las invitaciones no son el mecanismo principal para crear una identidad en Tickard.
+
+Cualquier persona puede registrarse directamente.
+
+Si una invitación corresponde a una persona que ya tiene una cuenta Tickard, utilizará esa misma cuenta para incorporarse al Workspace.
+
+Si todavía no tiene cuenta, podrá registrarse y posteriormente incorporarse al Workspace utilizando la invitación.
+
+Aceptar una invitación nunca debe permitir modificar las credenciales de una cuenta existente.
+
+
+## 17. Notificaciones
+
+Tickard podrá generar notificaciones por eventos relevantes, como:
+
+- asignación de tarjetas;
+- menciones;
+- comentarios;
+- invitaciones;
+- cambios importantes;
+- vencimientos.
+
+Inicialmente existirán notificaciones dentro de la aplicación y podrán complementarse con correo electrónico.
+
+
+## 18. Tiempo real
+
+Los cambios realizados en un tablero deberán poder reflejarse para los usuarios que estén trabajando simultáneamente en él.
+
+El sistema deberá evolucionar hacia sincronización en tiempo real.
+
+La tecnología concreta utilizada para esta funcionalidad podrá decidirse durante su implementación.
+
+
+## 19. Apariencia
+
+Tickard tendrá una interfaz limpia orientada al trabajo diario.
+
+La identidad visual utilizará principalmente una paleta verde.
+
+La aplicación deberá disponer de:
+
+- modo claro;
+- modo oscuro;
+- diseño adaptable;
+- navegación consistente;
+- componentes reutilizables.
+
+La interfaz debe priorizar claridad y rapidez sobre elementos decorativos innecesarios.
+
+
+## 20. Estructura funcional
+
+La estructura principal de Tickard queda definida como:
+
+Workspace
+→ Proyecto
+→ Tablero
+→ Columna
+→ Tarjeta
+
+Alrededor del Workspace existen además:
+
+- miembros;
+- equipos;
+- departamentos;
+- clientes;
+- configuración;
+- plan.
+
+Esta estructura constituye la base funcional sobre la que crecerá Tickard.
+
+
+## 21. Arquitectura técnica actual
+
+### Backend
+
+- Laravel
+- API REST
+- Laravel Sanctum para autenticación
+
+La estrategia definitiva de autenticación para producción se revisará antes del lanzamiento.
+
+
+### Frontend
+
+- React
+- TypeScript
+- Vite
+
+La interfaz consume la API del backend.
+
+
+### Base de datos
+
+- MySQL
+
+
+### Desarrollo local
+
+El entorno de desarrollo utiliza Docker para los servicios que lo requieran.
+
+El correo electrónico durante desarrollo puede enviarse al log u otro sistema de pruebas.
+
+
+## 22. Principios de evolución
+
+Tickard debe poder evolucionar sin comprometer los datos existentes de los usuarios.
+
+Los cambios importantes en arquitectura o base de datos deberán realizarse mediante migraciones.
+
+Las nuevas funcionalidades deben integrarse progresivamente sin obligar a reconstruir el sistema cada vez que el producto crezca.
+
+Se priorizará:
+
+- código comprensible;
+- componentes reutilizables;
+- separación de responsabilidades;
+- seguridad aplicada en backend;
+- compatibilidad con datos existentes;
+- evolución progresiva del producto.
+
+No se añadirá complejidad arquitectónica únicamente por anticipar necesidades que todavía no existen.
