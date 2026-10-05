@@ -41,8 +41,6 @@ export function Workspace() {
   })
   const [projectToDelete, setProjectToDelete] = useState<Project | null>(null)
   const [deleteProjectConfirmation, setDeleteProjectConfirmation] = useState('')
-  void projectToDelete
-  void deleteProjectConfirmation
   const [boardToDelete, setBoardToDelete] = useState<{id: number; name: string} | null>(null)
   const [deleteBoardConfirmation, setDeleteBoardConfirmation] = useState('')
 
@@ -323,7 +321,6 @@ export function Workspace() {
 
     setProjectMenu(null)
   }
-  void deleteProject
 
   if (!profile) return <main className="login"><p>Cargando…</p></main>
 
@@ -511,10 +508,6 @@ export function Workspace() {
           </button>
         </div>
         <nav className="nav">
-          <button className="nav-item" type="button" title="Inicio" onClick={() => { setAssignee(''); setTeamId(''); setPersonal(null) }}>
-            <NavIcon><path d="M4 11.5 12 4l8 7.5V20a1 1 0 0 1-1 1h-5v-6H10v6H5a1 1 0 0 1-1-1z" /></NavIcon>
-            <span className="side-label-text">Inicio</span>
-          </button>
           {view?.role !== 'cliente' && (
             <button
               className={assignee === String(profile.user.id) ? 'nav-item on' : 'nav-item'}
@@ -725,6 +718,62 @@ export function Workspace() {
           </form>
         )}
       </aside>
+      {projectToDelete && (
+        <div className="modal-back" onClick={() => {
+          setProjectToDelete(null)
+          setDeleteProjectConfirmation('')
+        }}>
+          <div className="modal" onClick={(event) => event.stopPropagation()}>
+            <h2>Eliminar proyecto</h2>
+
+            <p>
+              ¿Estás seguro de querer eliminar el proyecto{' '}
+              <strong>{projectToDelete.name}</strong>?
+            </p>
+
+            <p>
+              Se eliminarán permanentemente todos los tableros, tarjetas y datos
+              contenidos en este proyecto.
+            </p>
+
+            <p>
+              Escribe <strong>{projectToDelete.name}</strong> para confirmar.
+            </p>
+
+            <input
+              type="text"
+              placeholder={projectToDelete.name}
+              value={deleteProjectConfirmation}
+              onChange={(event) => setDeleteProjectConfirmation(event.target.value)}
+              autoFocus
+            />
+
+            <div className="modal-actions">
+              <button
+                type="button"
+                className="ghost"
+                onClick={() => {
+                  setProjectToDelete(null)
+                  setDeleteProjectConfirmation('')
+                }}
+              >
+                Cancelar
+              </button>
+
+              <button
+                type="button"
+                className="ghost danger"
+                disabled={deleteProjectConfirmation !== projectToDelete.name}
+                onClick={() =>
+                  deleteProject(projectToDelete.id, deleteProjectConfirmation)
+                }
+              >
+                <TrashIcon /> Eliminar proyecto
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       {boardToDelete && (
         <div className="modal-back" onClick={() => {
           setBoardToDelete(null)

@@ -138,6 +138,42 @@ h1, h2, h3, p { margin: 0; }
   gap: 4px;
   overflow: auto;
 }
+
+.body .side.is-mini {
+  width: 64px;
+  flex: 0 0 64px;
+  padding-left: 10px;
+  padding-right: 10px;
+}
+
+.body .side.is-mini .side-label-text {
+  display: none;
+}
+
+.body .side.is-mini .nav-item,
+.body .side.is-mini .add-project,
+.body .side.is-mini .projects button,
+.body .side.is-mini .admin-link {
+  justify-content: center;
+  padding-left: 8px;
+  padding-right: 8px;
+}
+
+.body .side.is-mini .nav-item.sub {
+  padding-left: 8px;
+}
+
+.body .side.is-mini .kicker-icon {
+  justify-content: center;
+  margin-left: 0;
+  margin-right: 0;
+}
+
+.body .side.is-mini .side-tools button {
+  margin-left: auto;
+  margin-right: auto;
+}
+
 .brand { display: flex; align-items: center; margin: 0; }
 .auth-screen { min-height: 100vh; overflow: hidden; color: #09272b; background: radial-gradient(ellipse at 37% 52%, #fff 0 30%, transparent 62%), radial-gradient(ellipse at 94% -4%, #54d3bd 0, #bdf4e8 31%, transparent 59%), radial-gradient(ellipse at -10% 108%, #38c6ad 0, #b9f3e7 34%, transparent 67%), #f8fffd; position: relative; }
 .auth-screen::before { content: ''; position: absolute; width: 75vw; height: 45vw; right: -20vw; top: -22vw; border-radius: 50%; background: linear-gradient(145deg, rgba(32, 183, 157, .78), rgba(136, 235, 216, .22) 72%, transparent); filter: blur(10px); transform: rotate(29deg); pointer-events: none; }
