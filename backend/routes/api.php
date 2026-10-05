@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\CardDetailsController;
 use App\Http\Controllers\Api\InvitationsController;
 use App\Http\Controllers\Api\ProjectsController;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\Api\WorkspacesController;
 
 Route::post('/login', [AuthController::class, 'login']);
 Route::post('/register', [AuthController::class, 'register']);
@@ -20,6 +21,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/me/avatar', [AuthController::class, 'updateAvatar']);
     Route::get('/notifications', [AuthController::class, 'notifications']);
     Route::post('/notifications/read', [AuthController::class, 'readNotifications']);
+    
+    Route::post('/workspaces', [WorkspacesController::class, 'store']);
 
     Route::get('/departments', [AdministrationController::class, 'departments']);
     Route::post('/departments', [AdministrationController::class, 'storeDepartment']);

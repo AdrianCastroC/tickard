@@ -13,12 +13,17 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 
-#[Fillable(['name', 'email', 'password', 'is_admin', 'client_company_id', 'theme', 'avatar_path', 'notify_in_app', 'notify_email'])]
+#[Fillable(['name', 'email', 'password', 'is_admin', 'plan', 'client_company_id', 'theme', 'avatar_path', 'notify_in_app', 'notify_email'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
     use HasApiTokens, HasFactory, Notifiable;
+
+    public const PLAN_FREE = 'free';
+    public const PLAN_BASE = 'base';
+    public const PLAN_PRO = 'pro';
+    public const PLAN_BUSINESS = 'business';
 
     protected function casts(): array
     {
@@ -80,6 +85,7 @@ class User extends Authenticatable
             'name' => $this->name,
             'email' => $this->email,
             'is_admin' => $this->is_admin,
+            'plan' => $this->plan,
             'theme' => $this->theme,
             'avatar_url' => $this->avatarUrl(),
             'notify_in_app' => $this->notify_in_app,

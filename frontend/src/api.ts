@@ -126,6 +126,7 @@ export type Profile = {
     name: string
     email: string
     is_admin: boolean
+    plan: 'free' | 'base' | 'pro' | 'business'
     theme: 'light' | 'dark' | 'system'
     avatar_url?: string | null
     notify_in_app: boolean

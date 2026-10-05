@@ -78,6 +78,19 @@ export function Workspace() {
     return data
   }
 
+  async function createWorkspace() {
+    const name = window.prompt('Nombre del workspace')?.trim()
+  
+    if (!name) return
+  
+    const created = await api<{ id: number }>('/workspaces', {
+      method: 'POST',
+      body: JSON.stringify({ name }),
+    })
+  
+    await changeWorkspace(created.id)
+  }
+
   async function changeWorkspace(workspaceId: number) {
     if (workspaceId === activeWorkspaceId) {
       setWorkspaceMenuOpen(false)
@@ -507,11 +520,15 @@ export function Workspace() {
                     <div className="account-head-text">
                       <strong>{profile.user.name}</strong>
                       <span>{profile.user.email}</span>
-                      {profile.user.is_admin
-                        ? <em className="account-plan">Administrador</em>
-                        : profile.user.client_company
-                          ? <em className="account-plan">Cliente</em>
-                          : <em className="account-plan">Miembro</em>}
+                      <em className="account-plan">
+                        {profile.user.is_admin
+                          ? 'Administrador'
+                          : profile.user.client_company
+                            ? 'Cliente'
+                            : 'Miembro'}
+                        {' · '}
+                        {profile.user.plan.charAt(0).toUpperCase() + profile.user.plan.slice(1)}
+                      </em>
                     </div>
                   </div>
 
@@ -687,6 +704,7 @@ export function Workspace() {
             <button
               type="button"
               className="workspace-menu-create"
+              onClick={() => void createWorkspace()}
             >
               <PlusIcon />
               <span>Nuevo workspace</span>

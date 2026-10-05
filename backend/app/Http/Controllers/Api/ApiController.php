@@ -98,7 +98,7 @@ protected function internalIds(array $ids): array
                 'id' => $workspace->id,
                 'name' => $workspace->name,
                 'role' => $workspace->pivot->role,
-                'plan' => $workspace->plan,
+                'plan' => $workspace->effectivePlan(),
             ])
             ->values();
 

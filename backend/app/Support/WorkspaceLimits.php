@@ -2,6 +2,7 @@
 
 namespace App\Support;
 
+use App\Models\User;
 use App\Models\Workspace;
 
 class WorkspaceLimits
@@ -52,5 +53,27 @@ class WorkspaceLimits
         }
 
         return $workspace->projects()->count() < $limit;
+    }
+
+    public static function maxOwnedWorkspaces(User $user): ?int
+    {
+        return match ($user->plan) {
+            User::PLAN_FREE => 1,
+            User::PLAN_BASE => 5,
+            User::PLAN_PRO => null,
+            User::PLAN_BUSINESS => null,
+            default => 1,
+        };
+    }
+
+    public static function canCreateWorkspace(User $user): bool
+    {
+        $limit = self::maxOwnedWorkspaces($user);
+
+        if ($limit === null) {
+            return true;
+        }
+
+        return $user->ownedWorkspaces()->count() < $limit;
     }
 }

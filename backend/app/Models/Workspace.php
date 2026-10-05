@@ -10,16 +10,23 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Workspace extends Model
 {
-    protected $fillable = ['name', 'owner_id', 'plan'];
+    protected $fillable = [
+        'name',
+        'owner_id',
+        'extra_seats',
+    ];
 
-    public const PLAN_FREE = 'free';
-    public const PLAN_BASE = 'base';
-    public const PLAN_PRO = 'pro';
-    public const PLAN_BUSINESS = 'business';
+    protected function casts(): array
+    {
+        return [
+            'extra_seats' => 'integer',
+        ];
+    }
 
     public static function createInitialFor(User $user): self
     {
         $workspace = $user->ownedWorkspaces()->first();
+
         if ($workspace) {
             return $workspace;
         }
@@ -27,7 +34,7 @@ class Workspace extends Model
         $workspace = self::create([
             'name' => 'Mi espacio',
             'owner_id' => $user->id,
-            'plan' => self::PLAN_FREE,
+            'extra_seats' => 0,
         ]);
 
         $workspace->memberships()->create([
@@ -36,6 +43,11 @@ class Workspace extends Model
         ]);
 
         return $workspace;
+    }
+
+    public function effectivePlan(): string
+    {
+        return $this->owner?->plan ?? User::PLAN_FREE;
     }
 
     public function owner(): BelongsTo

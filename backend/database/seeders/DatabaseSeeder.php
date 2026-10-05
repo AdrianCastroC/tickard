@@ -23,24 +23,28 @@ class DatabaseSeeder extends Seeder
                 'email' => 'ana@gestor.test',
                 'password' => 'password',
                 'is_admin' => true,
+                'plan' => User::PLAN_PRO,
             ]);
 
             $luis = User::create([
                 'name' => 'Luis Pérez',
                 'email' => 'luis@gestor.test',
                 'password' => 'password',
+                'plan' => User::PLAN_BASE,
             ]);
 
             $marta = User::create([
                 'name' => 'Marta Gil',
                 'email' => 'marta@gestor.test',
                 'password' => 'password',
+                'plan' => User::PLAN_FREE,
             ]);
 
             $elena = User::create([
                 'name' => 'Elena Soto',
                 'email' => 'elena@gestor.test',
                 'password' => 'password',
+                'plan' => User::PLAN_FREE,
             ]);
 
             $anaWorkspace = Workspace::createInitialFor($ana);
