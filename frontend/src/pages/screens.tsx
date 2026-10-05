@@ -1,8 +1,8 @@
 import { type FormEvent, useEffect, useRef, useState } from 'react'
 import { api, setToken, uploadFile, type BoardPayload, type Card, type Profile, type Project } from '../api'
-import { NavIcon, PlusIcon, TrashIcon, formatDate, type OpenTab } from '../shared/ui'
-import { CardDrawer, CloseIcon } from '../features/cards/CardDetail'
-import { BoardPulse, CreateCardModal, Filters, Kanban, orderedColumnCards } from '../features/board/Board'
+import { NavIcon, TrashIcon, formatDate, type OpenTab } from '../shared/ui'
+import { CardDrawer } from '../features/cards/CardDetail'
+import { BoardPulse, CreateCardModal, Kanban, orderedColumnCards } from '../features/board/Board'
 import { CategoriesDrawer, ClientsDrawer, ProjectDrawer, RosterDrawer } from '../features/administration/Drawers'
 import { Header } from '../features/header/Header'
 import { AccountModal } from '../features/account/AccountModal'
@@ -10,6 +10,7 @@ import { resolveTheme } from '../features/account/theme'
 import { Sidebar } from '../features/sidebar/Sidebar'
 import { WorkspaceSelector } from '../features/sidebar/WorkspaceSelector/WorkspaceSelector'
 import { ProjectsSection } from '../features/sidebar/ProjectsSection/ProjectsSection'
+import { MainContent } from '../features/workspace/MainContent'
 export function Workspace() {
   const [profile, setProfile] = useState<Profile | null>(null)
   const [openId, setOpenId] = useState<number | null>(null)
@@ -354,7 +355,7 @@ export function Workspace() {
 
   }
 
-  if (!profile) return <main className="login"><p>CargandoÃ¢â‚¬Â¦</p></main>
+  if (!profile) return <main className="login"><p>CargandoÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦</p></main>
 
   const filtersActive = Boolean(assignee || teamId || label || priority)
   const backlog = view?.columns.find((column) => column.name === 'Backlog') ?? view?.columns[0]
@@ -420,12 +421,12 @@ export function Workspace() {
             <h2>Eliminar proyecto</h2>
 
             <p>
-              Ã‚Â¿EstÃƒÂ¡s seguro de querer eliminar el proyecto{' '}
+              Ãƒâ€šÃ‚Â¿EstÃƒÆ’Ã‚Â¡s seguro de querer eliminar el proyecto{' '}
               <strong>{projectToDelete.name}</strong>?
             </p>
 
             <p>
-              Se eliminarÃƒÂ¡n permanentemente todos los tableros, tarjetas y datos
+              Se eliminarÃƒÆ’Ã‚Â¡n permanentemente todos los tableros, tarjetas y datos
               contenidos en este proyecto.
             </p>
 
@@ -474,7 +475,7 @@ export function Workspace() {
         }}>
           <div className="modal" onClick={(event) => event.stopPropagation()}>
             <h2>Eliminar tablero</h2>
-            <p>Ã‚Â¿EstÃƒÂ¡s seguro de querer eliminar el tablero {''} <strong>{boardToDelete.name}</strong>?</p>
+            <p>Ãƒâ€šÃ‚Â¿EstÃƒÆ’Ã‚Â¡s seguro de querer eliminar el tablero {''} <strong>{boardToDelete.name}</strong>?</p>
             <p>Se eliminaran permanentemente todas las tarjetas y datos contenidos en este tablero.</p>
             <p>Escribe <strong>{boardToDelete.name}</strong> para confirmar.</p>
             <input type="text" placeholder={boardToDelete.name} value={deleteBoardConfirmation} onChange={(event) => setDeleteBoardConfirmation(event.target.value)} autoFocus />
@@ -486,134 +487,27 @@ export function Workspace() {
           </div>
         </div>
       )}
-      <section className="main">
-        {tabs.length > 0 && (
-          <div className="tabs">
-            {tabs.map((tab) => (
-              <button
-                key={tab.boardId}
-                className={tab.boardId === openId ? 'on' : ''}
-                type="button"
-                onClick={() => { chooseBoard(tab.boardId); setAssignee(''); setTeamId(''); setSelected(null); loadBoard(tab.boardId) }}
-              >
-                {tab.title}
-                <span className="tab-x" onClick={(event) => { event.stopPropagation(); closeTab(tab.boardId) }} aria-label="Cerrar pestaÃƒÂ±a" role="button">
-                  <CloseIcon />
-                </span>
-              </button>
-            ))}
-          </div>
-        )}
-        {!view && !openId && (
-          <div className="empty-board">
-            <div>
-              <h2>{profile.user.is_admin ? 'Inicia un proyecto' : 'Espera a que te asignen un proyecto'}</h2>
-              <p className="muted">
-                {profile.user.is_admin
-                  ? 'Crea el primer proyecto desde el lateral y abre su tablero.'
-                  : 'Cuando un responsable te aÃƒÂ±ada, el proyecto saldrÃƒÂ¡ en el lateral.'}
-              </p>
-            </div>
-          </div>
-        )}
-        {(view || openId) && (
-          <div className="board-head">
-            <h1>{view?.board.name || project?.boards.find((item) => item.id === openId)?.name}</h1>
-            {(view?.board.project_name || project?.name) && (
-              <p className="subtitle">{view?.board.project_name || project?.name}</p>
-            )}
-            {view && (
-              <div className="views">
-                <button className="primary" type="button">
-                  <NavIcon>
-                    <path d="M5 3v14" />
-                    <path d="M12 3v8" />
-                    <path d="M19 3v18" />
-                  </NavIcon>
-                  Tablero
-                </button>
-                <button type="button" disabled>
-                  <NavIcon>
-                    <path d="M21 5H3" />
-                    <path d="M15 12H3" />
-                    <path d="M17 19H3" />
-                  </NavIcon>
-                  Lista
-                </button>
-                <button type="button" disabled>
-                  <NavIcon>
-                    <path d="M12 3v18" />
-                    <rect width="18" height="18" x="3" y="3" rx="2" />
-                    <path d="M3 9h18" />
-                    <path d="M3 15h18" />
-                  </NavIcon>
-                  Tabla
-                </button>
-                <button type="button" disabled>
-                  <NavIcon>
-                    <path d="M6 5h12" />
-                    <path d="M4 12h10" />
-                    <path d="M12 19h8" />
-                  </NavIcon>
-                  Gantt
-                </button>
-                <div className="task-actions">
-                  <button className={showFilters || filtersActive ? 'icon-button on' : 'icon-button'} type="button" aria-label="Filtros" onClick={() => setShowFilters((current) => !current)}>
-                    <NavIcon><path d="M4 6h16M7 12h10M10 18h4" /></NavIcon>
-                  </button>
-                  {canEdit && backlog && (
-                    <button className="primary" type="button" onClick={() => setCreateColumn({ id: backlog.id, name: backlog.name })}><PlusIcon /> Nueva tarea</button>
-                  )}
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-        {openId && !view && <div className="empty-board"><p className="muted">Cargando el tableroÃ¢â‚¬Â¦</p></div>}
-        {view && (
-          <>
-            {showFilters && (
-              <Filters
-                clientView={clientView}
-                visibility={view.visibility}
-                members={view.members}
-                labels={view.labels}
-                assignee={assignee}
-                teamId={teamId}
-                teams={view.teams ?? []}
-                label={label}
-                priority={priority}
-                onAssignee={setAssignee}
-                onTeam={setTeamId}
-                onLabel={setLabel}
-                onPriority={setPriority}
-              />
-            )}
-            <div className="workspace">
-              <Kanban
-                board={view}
-                canEdit={canEdit}
-                canManage={canManage}
-                query={query}
-                assignee={assignee}
-                teamId={teamId}
-                label={label}
-                priority={priority}
-                onOpen={(card) => setSelected({ card, mode: 'view' })}
-                onEdit={(card) => setSelected({ card, mode: 'edit' })}
-                onMove={move}
-                onMoveColumn={moveColumn}
-                onAdd={(id, name) => setCreateColumn({ id, name })}
-                onCreatedColumn={() => void loadBoard(view.board.id)}
-                onRefresh={() => void loadBoard(view.board.id)}
-                onManageCategories={() => setShowCategories(true)}
-              />
-              <BoardPulse columns={view.columns} />
-            </div>
-          </>
-        )}
-      </section>
-      {selected && view && openCard && (
+      <MainContent
+        tabs={tabs}
+        activeBoardId={openId}
+        onSelectTab={(boardId) => { chooseBoard(boardId); setAssignee(''); setTeamId(''); setSelected(null); void loadBoard(boardId) }}
+        onCloseTab={closeTab}
+        showBoard={Boolean(view || openId)}
+        title={view?.board.name || project?.boards.find((item) => item.id === openId)?.name}
+        subtitle={view?.board.project_name || project?.name}
+        canEdit={canEdit}
+        backlog={backlog}
+        filtersActive={filtersActive}
+        filtersOpen={showFilters}
+        onToggleFilters={() => setShowFilters((current) => !current)}
+        onAdd={(column) => setCreateColumn(column)}
+        filterProps={{ open: Boolean(view && showFilters), clientView, visibility: view?.visibility ?? {}, members: view?.members ?? [], labels: view?.labels ?? [], assignee, teamId, teams: view?.teams ?? [], label, priority, onAssignee: setAssignee, onTeam: setTeamId, onLabel: setLabel, onPriority: setPriority }}
+      >
+        {!view && !openId && <div className="empty-board"><div><h2>{profile.user.is_admin ? 'Inicia un proyecto' : 'Espera a que te asignen un proyecto'}</h2><p className="muted">{profile.user.is_admin ? 'Crea el primer proyecto desde el lateral y abre su tablero.' : 'Cuando un responsable te añada, el proyecto saldrá en el lateral.'}</p></div></div>}
+        {openId && !view && <div className="empty-board"><p className="muted">Cargando el tablero…</p></div>}
+        {view && <div className="workspace"><Kanban board={view} canEdit={canEdit} canManage={canManage} query={query} assignee={assignee} teamId={teamId} label={label} priority={priority} onOpen={(card) => setSelected({ card, mode: 'view' })} onEdit={(card) => setSelected({ card, mode: 'edit' })} onMove={move} onMoveColumn={moveColumn} onAdd={(id, name) => setCreateColumn({ id, name })} onCreatedColumn={() => void loadBoard(view.board.id)} onRefresh={() => void loadBoard(view.board.id)} onManageCategories={() => setShowCategories(true)} /><BoardPulse columns={view.columns} /></div>}
+      </MainContent>
+            {selected && view && openCard && (
         <CardDrawer
           card={openCard}
           mode={selected.mode}
@@ -654,7 +548,7 @@ export function Workspace() {
 }
 
 function formatDateLong(value?: string | null) {
-  if (!value) return 'Ã¢â‚¬â€'
+  if (!value) return 'ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â'
   return new Intl.DateTimeFormat('es', { day: 'numeric', month: 'short', year: 'numeric' }).format(new Date(value))
 }
 
