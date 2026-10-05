@@ -54,32 +54,58 @@ protected function internalIds(array $ids): array
         ]);
     }
 
-    protected function profile(User $user): array
+    protected function profile(User $user, ?int $workspaceId = null): array
     {
-        $user->load('clientCompany', 'memberships.project.clientCompany', 'memberships.project.boards');
-
-        $projects = Project::with(['clientCompany', 'boards'])->get()->filter(
-            fn (Project $project) => ProjectAccess::canView($user, $project)
-        )->map(fn (Project $project) => $this->projectSummary($project, ProjectAccess::role($user, $project)))->values();
-
-        $unread = AppNotification::where('user_id', $user->id)->whereNull('read_at')->count();
+        $user->load(
+            'clientCompany',
+            'memberships.project.clientCompany',
+            'memberships.project.boards'
+        );
 
         $workspaces = $user->workspaces()
-        ->withPivot('role')
-        ->orderBy('name')
-        ->get()
-        ->map(fn (Workspace $workspace) => [
-            'id' => $workspace->id,
-            'name' => $workspace->name,
-            'role' => $workspace->pivot->role,
-            'plan' => $workspace->plan,
-        ])
-        ->values();
+            ->withPivot('role')
+            ->orderBy('name')
+            ->get();
+
+        $activeWorkspace = $workspaceId
+            ? $workspaces->firstWhere('id', $workspaceId)
+            : null;
+
+        $activeWorkspace ??= $workspaces->first();
+
+        $projects = $activeWorkspace
+            ? Project::with(['clientCompany', 'boards'])
+                ->where('workspace_id', $activeWorkspace->id)
+                ->get()
+                ->filter(
+                    fn (Project $project) => ProjectAccess::canView($user, $project)
+                )
+                ->map(
+                    fn (Project $project) => $this->projectSummary(
+                        $project,
+                        ProjectAccess::role($user, $project)
+                    )
+                )
+                ->values()
+            : collect();
+
+        $unread = AppNotification::where('user_id', $user->id)
+            ->whereNull('read_at')
+            ->count();
+
+        $workspaceList = $workspaces
+            ->map(fn (Workspace $workspace) => [
+                'id' => $workspace->id,
+                'name' => $workspace->name,
+                'role' => $workspace->pivot->role,
+                'plan' => $workspace->plan,
+            ])
+            ->values();
 
         return [
             'user' => $user->toApi(),
             'unread' => $unread,
-            'workspaces' => $workspaces,
+            'workspaces' => $workspaceList,
             'projects' => $projects,
         ];
     }

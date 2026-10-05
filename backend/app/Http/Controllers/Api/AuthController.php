@@ -34,7 +34,7 @@ use Illuminate\Validation\ValidationException;
 
 class AuthController extends ApiController
 {
-public function login(Request $request)
+    public function login(Request $request)
     {
         $data = $request->validate([
             'email' => ['required', 'email'],
@@ -80,19 +80,24 @@ public function login(Request $request)
         ], 201);
     }
 
-public function logout(Request $request)
+    public function logout(Request $request)
     {
         $request->user()->currentAccessToken()->delete();
 
         return response()->noContent();
     }
 
-public function me(Request $request)
+    public function me(Request $request)
     {
-        return $this->profile($request->user());
+        $workspaceId = $request->integer('workspace_id') ?: null;
+    
+        return $this->profile(
+            $request->user(),
+            $workspaceId
+        );
     }
 
-public function updateMe(Request $request)
+    public function updateMe(Request $request)
     {
         $data = $request->validate([
             'name' => ['sometimes', 'string', 'max:120'],
@@ -113,7 +118,7 @@ public function updateMe(Request $request)
         return $this->profile($user->fresh());
     }
 
-public function updateAvatar(Request $request)
+    public function updateAvatar(Request $request)
     {
         $data = $request->validate([
             'avatar' => ['required', 'image', 'max:5120'],
@@ -130,7 +135,7 @@ public function updateAvatar(Request $request)
         return $this->profile($user->fresh());
     }
 
-public function notifications(Request $request)
+    public function notifications(Request $request)
     {
         return AppNotification::where('user_id', $request->user()->id)->latest()->limit(20)->get()->map(fn ($item) => [
             'id' => $item->id,
@@ -139,7 +144,7 @@ public function notifications(Request $request)
         ]);
     }
 
-public function readNotifications(Request $request)
+    public function readNotifications(Request $request)
     {
         AppNotification::where('user_id', $request->user()->id)->whereNull('read_at')->update(['read_at' => now()]);
 

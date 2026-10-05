@@ -257,6 +257,204 @@ h1, h2, h3, p { margin: 0; }
   stroke: none;
 }
 
+.workspace-header {
+  position: relative;
+  margin: 4px 0 12px;
+}
+
+.workspace-header-main {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.workspace-selector {
+  flex: 1;
+  min-width: 0;
+  height: 42px;
+  padding: 6px 8px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ink);
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  text-align: left;
+}
+
+.workspace-selector:hover,
+.workspace-header-action:hover {
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+}
+
+.workspace-header-icon {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 18px;
+  color: var(--muted);
+}
+
+.workspace-header-icon path,
+.workspace-menu-icon path {
+  fill: currentColor;
+  stroke: none;
+}
+
+.workspace-header-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.workspace-header-chevron {
+  flex: 0 0 auto;
+  color: var(--muted);
+  font-size: 18px;
+  line-height: 1;
+  transition: transform 0.15s ease;
+}
+
+.workspace-header-chevron.open {
+  transform: rotate(90deg);
+}
+
+.workspace-header-action {
+  width: 32px;
+  height: 32px;
+  flex: 0 0 32px;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--muted);
+  display: grid;
+  place-items: center;
+}
+
+.workspace-header-action .menu-icon,
+.workspace-header-action .nav-icon {
+  width: 17px;
+  height: 17px;
+}
+
+.workspace-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  z-index: 30;
+  padding: 6px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface);
+  box-shadow: 0 10px 28px rgb(18 49 43 / 14%);
+}
+
+.workspace-menu-item,
+.workspace-menu-create {
+  min-height: 36px;
+  padding: 7px 9px;
+  border-radius: 7px;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.workspace-menu-item.on {
+  background: var(--canvas);
+  font-weight: 600;
+}
+
+.workspace-menu-icon {
+  width: 15px;
+  height: 15px;
+  flex: 0 0 15px;
+  color: var(--muted);
+}
+
+.workspace-menu-separator {
+  height: 1px;
+  margin: 5px 3px;
+  background: var(--line);
+}
+
+.workspace-menu-create {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.workspace-menu-create .plus-icon {
+  width: 14px;
+  height: 14px;
+}
+
+.body .side.is-mini .workspace-header {
+  margin-bottom: 10px;
+}
+
+.body .side.is-mini .workspace-header-main {
+  justify-content: center;
+}
+
+.body .side.is-mini .workspace-selector {
+  width: 44px;
+  height: 44px;
+  flex: 0 0 44px;
+  padding: 0;
+  justify-content: center;
+}
+
+.body .side.is-mini .workspace-header-icon {
+  width: 20px;
+  height: 20px;
+  flex-basis: 20px;
+}
+
+.side-section-toggle {
+  width: 100%;
+}
+
+.side-section-chevron {
+  margin-left: auto;
+  font-size: 18px;
+  line-height: 1;
+  color: var(--muted);
+  transition: transform 0.15s ease;
+}
+
+.side-section-chevron.open {
+  transform: rotate(90deg);
+}
+
+.body .side.is-mini .side-section-chevron {
+  display: none;
+}
+
+.nav-item.sub-level-2 {
+  padding-left: 48px;
+}
+
+.projects {
+  padding-left: 28px;
+}
+
+.projects .project-row > button:first-child {
+  padding-left: 8px;
+}
+
+.projects .board-row {
+  margin-left: 20px;
+}
+
+.projects .board-link {
+  padding-left: 8px;
+}
+
 .kicker { color: var(--muted); font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; margin: 16px 8px 4px; }
 .kicker-icon {
   display: flex;

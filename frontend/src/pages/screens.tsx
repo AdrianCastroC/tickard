@@ -47,6 +47,7 @@ export function Workspace() {
       return null
     }
   })
+  const [workspaceMenuOpen, setWorkspaceMenuOpen] = useState(false)
   const [personalOpen, setPersonalOpen] = useState(true)
   const [projectsOpen, setProjectsOpen] = useState(true)
   const [projectToDelete, setProjectToDelete] = useState<Project | null>(null)
@@ -66,11 +67,66 @@ export function Workspace() {
     })
   }
 
-  async function loadProfile() {
-    const data = await api<Profile>('/me')
+  async function loadProfile(workspaceId?: number | null) {
+    const path = workspaceId
+      ? `/me?workspace_id=${workspaceId}`
+      : '/me'
+  
+    const data = await api<Profile>(path)
     setProfile(data)
     document.documentElement.dataset.theme = resolveTheme(data.user.theme)
     return data
+  }
+
+  async function changeWorkspace(workspaceId: number) {
+    if (workspaceId === activeWorkspaceId) {
+      setWorkspaceMenuOpen(false)
+      return
+    }
+  
+    setActiveWorkspaceId(workspaceId)
+  
+    try {
+      localStorage.setItem('tickard:active-workspace', String(workspaceId))
+    } catch {
+      /* ignore */
+    }
+  
+    setWorkspaceMenuOpen(false)
+  
+    setTabs([])
+    chooseBoard(null)
+    setBoard(null)
+    setSelected(null)
+  
+    setPersonal(null)
+    setAssignee('')
+    setTeamId('')
+    setLabel('')
+    setPriority('')
+  
+    setProjectMenu(null)
+    setBoardMenu(null)
+    setNamingBoard(false)
+    setNewProject(false)
+  
+    const data = await loadProfile(workspaceId)
+  
+    const firstProject = data.projects[0]
+    const firstBoard = firstProject?.boards[0]
+  
+    if (firstProject && firstBoard) {
+      setTabs([
+        {
+          boardId: firstBoard.id,
+          projectId: firstProject.id,
+          title: firstBoard.name,
+        },
+      ])
+  
+      chooseBoard(firstBoard.id)
+      await loadBoard(firstBoard.id)
+    }
   }
 
   function chooseBoard(id: number | null) {
@@ -91,7 +147,7 @@ export function Workspace() {
   }
 
   useEffect(() => {
-    loadProfile().then((data) => {
+    loadProfile(activeWorkspaceId).then((data) => {
 
       const availableWorkspaceIds = data.workspaces.map((workspace) => workspace.id)
 
@@ -213,7 +269,7 @@ export function Workspace() {
       method: 'POST',
       body: JSON.stringify({ name }),
     })
-    await loadProfile()
+    await loadProfile(activeWorkspaceId)
     setProjectMenu(null)
     setNamingBoard(false)
     setBoardName('')
@@ -228,7 +284,7 @@ export function Workspace() {
 
     setBoardToDelete(null)
     setDeleteBoardConfirmation('')
-    await loadProfile()
+    await loadProfile(activeWorkspaceId)
     setBoardMenu(null)
     setNamingBoard(false)
     setBoardName('')
@@ -316,7 +372,7 @@ export function Workspace() {
       method: 'POST',
       body: JSON.stringify({ name, client_name: clientName }),
     })
-    const data = await loadProfile()
+    const data = await loadProfile(activeWorkspaceId)
     setNewProject(false)
     const owner = data.projects.find((item) => item.id === created.id) ?? created
     const boardRef = owner.boards[0]
@@ -331,7 +387,7 @@ export function Workspace() {
     setProjectToDelete(null)
     setDeleteProjectConfirmation('')
     
-    const data = await loadProfile()
+    const data = await loadProfile(activeWorkspaceId)
     const remainingTabs = tabs.filter((tab) => tab.projectId !== projectId)
     setTabs(remainingTabs)
     if (project?.id === projectId) {
@@ -510,39 +566,24 @@ export function Workspace() {
       )}
       <div className="body">
       <aside className={`side${sideMini ? ' is-mini' : ''}`}>
-        <div className="side-tools">
+      <div className="workspace-header">
+        <div className="workspace-header-main">
           <button
-            className="side-toggle"
             type="button"
-            aria-label={sideMini ? 'Maximizar panel' : 'Minimizar panel'}
-            title={sideMini ? 'Maximizar panel' : 'Minimizar panel'}
-            aria-pressed={sideMini}
-            onClick={toggleSideMini}
-          >
-            <NavIcon>
-              {sideMini ? (
-                <>
-                  <rect width="18" height="18" x="3" y="3" rx="2" />
-                  <path d="M9 3v18" />
-                  <path d="m14 9 3 3-3 3" />
-                </>
-              ) : (
-                <>
-                  <rect width="18" height="18" x="3" y="3" rx="2" />
-                  <path d="M9 3v18" />
-                  <path d="m16 15-3-3 3-3" />
-                </>
-              )}
-            </NavIcon>
-          </button>
-        </div>
-        <nav className="nav">
-          <p
-            className="kicker kicker-icon"
-            title={activeWorkspace?.name ?? 'Workspace'}
+            className="workspace-selector"
+            title={sideMini ? 'Abrir panel' : activeWorkspace?.name ?? 'Workspace'}
+            aria-expanded={!sideMini && workspaceMenuOpen}
+            onClick={() => {
+              if (sideMini) {
+                toggleSideMini()
+                return
+              }
+
+              setWorkspaceMenuOpen((current) => !current)
+            }}
           >
             <svg
-              className="nav-icon workspace-icon"
+              className="workspace-header-icon"
               viewBox="0 0 640 640"
               aria-hidden="true"
             >
@@ -551,10 +592,100 @@ export function Workspace() {
               />
             </svg>
 
-            <span className="side-label-text">
-              {activeWorkspace?.name ?? 'Workspace'}
-            </span>
-          </p>
+            {!sideMini && (
+              <>
+                <span className="workspace-header-name">
+                  {activeWorkspace?.name ?? 'Workspace'}
+                </span>
+
+                <span
+                  className={`workspace-header-chevron${workspaceMenuOpen ? ' open' : ''}`}
+                >
+                  ›
+                </span>
+              </>
+            )}
+          </button>
+
+          {!sideMini && (
+            <>
+              <button
+                type="button"
+                className="workspace-header-action"
+                title="Minimizar panel"
+                aria-label="Minimizar panel"
+                onClick={() => {
+                  setWorkspaceMenuOpen(false)
+                  toggleSideMini()
+                }}
+              >
+                <NavIcon>
+                  <rect width="18" height="18" x="3" y="3" rx="2" />
+                  <path d="M9 3v18" />
+                  <path d="m16 15-3-3 3-3" />
+                </NavIcon>
+              </button>
+            </>
+          )}
+        </div>
+        {!sideMini && workspaceMenuOpen && (
+          <div className="workspace-menu">
+            {profile.workspaces.map((workspace) => {
+              const isActive = workspace.id === activeWorkspace?.id
+
+              return (
+                <div
+                  key={workspace.id}
+                  className={
+                    isActive
+                      ? 'workspace-menu-item on'
+                      : 'workspace-menu-item'
+                  }
+                >
+                  <button
+                    type="button"
+                    className="workspace-menu-select"
+                    title={workspace.name}
+                    onClick={() => void changeWorkspace(workspace.id)}
+                  >
+                    <svg
+                      className="workspace-menu-icon"
+                      viewBox="0 0 640 640"
+                      aria-hidden="true"
+                    >
+                      <path d="M192 64C156.7 64 128 92.7 128 128L128 512C128 547.3 156.7 576 192 576L448 576C483.3 576 512 547.3 512 512L512 128C512 92.7 483.3 64 448 64L192 64z" />
+                    </svg>
+
+                    <span>{workspace.name}</span>
+                  </button>
+
+                  {isActive && (
+                    <button
+                      type="button"
+                      className="workspace-menu-edit"
+                      title="Editar nombre"
+                      aria-label={`Editar ${workspace.name}`}
+                    >
+                      <PencilIcon />
+                    </button>
+                  )}
+                </div>
+              )
+            })}
+
+            <div className="workspace-menu-separator" />
+
+            <button
+              type="button"
+              className="workspace-menu-create"
+            >
+              <PlusIcon />
+              <span>Nuevo workspace</span>
+            </button>
+          </div>
+        )}
+      </div>
+        <nav className="nav">
           {view?.role !== 'cliente' && (
             <button
               className={assignee === String(profile.user.id) ? 'nav-item sub on' : 'nav-item sub'}
@@ -577,7 +708,7 @@ export function Workspace() {
             <>
               <button
                 type="button"
-                className="nav-item sub section-toggle"
+                className="nav-item sub side-section-toggle"
                 title="Personal"
                 onClick={() => setPersonalOpen((current) => !current)}
               >
@@ -592,13 +723,13 @@ export function Workspace() {
 
                 <span className="side-label-text">Personal</span>
 
-                <span className={`section-chevron${personalOpen ? ' open' : ''}`}>
+                <span className={`side-section-chevron${personalOpen ? ' open' : ''}`}>
                   ›
                 </span>
               </button>
               {personalOpen && (
                 <>
-                  <button className={personal === 'departments' ? 'nav-item sub on' : 'nav-item sub'} type="button" title="Departamentos" onClick={() => setPersonal('departments')}>
+                  <button className={personal === 'departments' ? 'nav-item sub sub-level-2 on' : 'nav-item sub sub-level-2'} type="button" title="Departamentos" onClick={() => setPersonal('departments')}>
                     <NavIcon>
                       <path d="M2.97 12.92A2 2 0 0 0 2 14.63v3.24a2 2 0 0 0 .97 1.71l3 1.8a2 2 0 0 0 2.06 0L12 19v-5.5l-5-3-4.03 2.42Z"/>
                       <path d="m7 16.5-4.74-2.85"/>
@@ -615,7 +746,7 @@ export function Workspace() {
                     </NavIcon>
                     <span className="side-label-text">Departamentos</span>
                   </button>
-                  <button className={personal === 'teams' ? 'nav-item sub on' : 'nav-item sub'} type="button" title="Equipos" onClick={() => setPersonal('teams')}>
+                  <button className={personal === 'teams' ? 'nav-item sub sub-level-2 on' : 'nav-item sub sub-level-2'} type="button" title="Equipos" onClick={() => setPersonal('teams')}>
                     <NavIcon>
                       <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
                       <path d="M16 3.128a4 4 0 0 1 0 7.744"/>
@@ -624,7 +755,7 @@ export function Workspace() {
                     </NavIcon>
                     <span className="side-label-text">Equipos</span>
                   </button>
-                  <button className={personal === 'clients' ? 'nav-item sub on' : 'nav-item sub'} type="button" title="Clientes" onClick={() => setPersonal('clients')}>
+                  <button className={personal === 'clients' ? 'nav-item sub sub-level-2 on' : 'nav-item sub sub-level-2'} type="button" title="Clientes" onClick={() => setPersonal('clients')}>
                     <NavIcon>
                       <path d="M16.051 12.616a1 1 0 0 1 1.909.024l.737 1.452a1 1 0 0 0 .737.535l1.634.256a1 1 0 0 1 .588 1.806l-1.172 1.168a1 1 0 0 0-.282.866l.259 1.613a1 1 0 0 1-1.541 1.134l-1.465-.75a1 1 0 0 0-.912 0l-1.465.75a1 1 0 0 1-1.539-1.133l.258-1.613a1 1 0 0 0-.282-.866l-1.156-1.153a1 1 0 0 1 .572-1.822l1.633-.256a1 1 0 0 0 .737-.535z"/>
                       <path d="M8 15H7a4 4 0 0 0-4 4v2"/>
@@ -638,7 +769,7 @@ export function Workspace() {
           )} 
           <button
             type="button"
-            className="nav-item sub section-toggle"
+            className="nav-item sub side-section-toggle"
             title="Proyectos"
             onClick={() => setProjectsOpen((current) => !current)}
           >
@@ -649,7 +780,7 @@ export function Workspace() {
 
             <span className="side-label-text">Proyectos</span>
 
-            <span className={`section-chevron${projectsOpen ? ' open' : ''}`}>
+            <span className={`side-section-chevron${projectsOpen ? ' open' : ''}`}>
               ›
             </span>
           </button>
