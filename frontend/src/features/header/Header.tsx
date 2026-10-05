@@ -11,7 +11,6 @@ type HeaderProps = {
   onOpenProfile: () => void
   onOpenSettings: () => void
   onOpenNotifications: () => void
-  onNotesChange: (notes: { id: number; body: string }[]) => void
   onAvatarChange: (file: File) => void | Promise<void>
 }
 
@@ -22,7 +21,6 @@ export function Header({
   onOpenProfile,
   onOpenSettings,
   onOpenNotifications,
-  onNotesChange,
   onAvatarChange,
 }: HeaderProps) {
   return (
@@ -40,7 +38,6 @@ export function Header({
             onOpenProfile={onOpenProfile}
             onOpenSettings={onOpenSettings}
             onOpenNotifications={onOpenNotifications}
-            onNotesChange={onNotesChange}
             onAvatarChange={onAvatarChange}
           />
         </div>

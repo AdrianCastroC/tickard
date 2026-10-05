@@ -1,4 +1,4 @@
-﻿import { type FormEvent, useState } from 'react'
+import { type FormEvent, useState } from 'react'
 import { api, type BoardPayload } from '../../api'
 
 export function CategoriesDrawer({ board, onClose, onChange }: {
@@ -22,7 +22,7 @@ export function CategoriesDrawer({ board, onClose, onChange }: {
       setName('')
       await onChange()
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : 'No se pudo crear la categorÃ­a.')
+      setError(caught instanceof Error ? caught.message : 'No se pudo crear la categoría.')
     }
   }
 
@@ -45,15 +45,15 @@ export function CategoriesDrawer({ board, onClose, onChange }: {
     <div className="drawer-back" onClick={onClose}>
       <aside className="drawer" onClick={(event) => event.stopPropagation()}>
         <div className="row">
-          <h2>CategorÃ­as del tablero</h2>
+          <h2>Categorías del tablero</h2>
           <button className="ghost" type="button" onClick={onClose}>Cerrar</button>
         </div>
         <p className="muted">
-          Las categorÃ­as son del tablero y se comparten entre columnas. Al mover una tarjeta se mantiene la categorÃ­a.
+          Las categorías son del tablero y se comparten entre columnas. Al mover una tarjeta se mantiene la categoría.
           En el tablero solo se muestran si hay alguna tarjeta asignada a ellas.
         </p>
         <ul className="notes">
-          {categories.length === 0 && <li className="muted">TodavÃ­a no hay categorÃ­as.</li>}
+          {categories.length === 0 && <li className="muted">Todavía no hay categorías.</li>}
           {categories.map((category) => (
             <li key={category.id}>
               {editing === category.id ? (
@@ -73,10 +73,10 @@ export function CategoriesDrawer({ board, onClose, onChange }: {
           ))}
         </ul>
         <form className="composer" onSubmit={create}>
-          <h3>Nueva categorÃ­a</h3>
+          <h3>Nueva categoría</h3>
           <label className="field">Nombre<input value={name} onChange={(event) => setName(event.target.value)} /></label>
           {error && <p className="error">{error}</p>}
-          <button className="primary" type="submit">Crear categorÃ­a</button>
+          <button className="primary" type="submit">Crear categoría</button>
         </form>
       </aside>
     </div>

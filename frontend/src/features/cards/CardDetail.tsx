@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 
 import { DndContext, PointerSensor, closestCorners, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core'
 import { SortableContext, arrayMove, verticalListSortingStrategy } from '@dnd-kit/sortable'
@@ -161,7 +161,7 @@ export function CardDrawer({ card, mode, board, currentUser, canEdit, onClose, o
   const colorInputRef = useRef<HTMLInputElement>(null)
   const editing = mode === 'edit' && canEdit
   const team = board.members.filter((member) => member.role !== 'cliente')
-  const columnName = board.columns.find((column) => column.id === card.column_id)?.name ?? 'â€”'
+  const columnName = board.columns.find((column) => column.id === card.column_id)?.name ?? '—'
   const categoryName = board.categories?.find((category) => category.id === card.category_id)?.name
   const attachments = card.attachments ?? []
   void attachments
@@ -243,7 +243,7 @@ export function CardDrawer({ card, mode, board, currentUser, canEdit, onClose, o
   }
 
   async function deleteCard() {
-    if (!window.confirm(`Â¿Eliminar Â«${card.title}Â»? Esta acciÃ³n no se puede deshacer.`)) return
+    if (!window.confirm(`¿Eliminar «${card.title}»? Esta acción no se puede deshacer.`)) return
     await api(`/cards/${card.id}`, { method: 'DELETE' })
     onClose()
     await onChange()
@@ -320,7 +320,7 @@ export function CardDrawer({ card, mode, board, currentUser, canEdit, onClose, o
                 className="card-modal-title-input"
                 value={title}
                 onChange={(event) => setTitle(event.target.value)}
-                placeholder="TÃ­tulo de la tarea"
+                placeholder="Título de la tarea"
               />
             ) : (
               <div className="card-modal-title-row">
@@ -338,11 +338,11 @@ export function CardDrawer({ card, mode, board, currentUser, canEdit, onClose, o
                 <h3>
                   <SectionToggle
                     icon={<DescriptionIcon />}
-                    label="DescripciÃ³n"
+                    label="Descripción"
                     collapsed={descCollapsed}
                     onToggle={() => setDescCollapsed((open) => !open)}
                   />
-                  DescripciÃ³n
+                  Descripción
                 </h3>
               </div>
               {!descCollapsed && (
@@ -351,7 +351,7 @@ export function CardDrawer({ card, mode, board, currentUser, canEdit, onClose, o
                 ) : descriptionHtml ? (
                   <div className="card-modal-copy rich" dangerouslySetInnerHTML={{ __html: descriptionHtml }} />
                 ) : (
-                  <p className="card-modal-copy">Sin descripciÃ³n.</p>
+                  <p className="card-modal-copy">Sin descripción.</p>
                 )
               )}
             </section>
@@ -407,7 +407,7 @@ export function CardDrawer({ card, mode, board, currentUser, canEdit, onClose, o
                     className="module-add-btn"
                     onClick={() => setAddModuleOpen((open) => !open)}
                   >
-                    <PlusIcon className="plus-icon" /> AÃ±adir mÃ³dulo
+                    <PlusIcon className="plus-icon" /> Añadir módulo
                   </button>
                   {addModuleOpen && (
                     <div className="module-add-menu" role="menu">
@@ -524,7 +524,7 @@ export function CardDrawer({ card, mode, board, currentUser, canEdit, onClose, o
                   <button
                     className="add-face"
                     type="button"
-                    aria-label="AÃ±adir asignados"
+                    aria-label="Añadir asignados"
                     aria-expanded={pickingAssignees}
                     onClick={() => setPickingAssignees((open) => !open)}
                   >
@@ -562,13 +562,13 @@ export function CardDrawer({ card, mode, board, currentUser, canEdit, onClose, o
 
             {(editing || categoryName) && (
               <div className="side-field">
-                <span className="side-label"><CategoryIcon /> CategorÃ­a</span>
+                <span className="side-label"><CategoryIcon /> Categoría</span>
                 {editing && (board.categories ?? []).length > 0 ? (
                   <SideSelect
                     value={card.category_id ? String(card.category_id) : ''}
                     onChange={(next) => save({ category_id: next ? Number(next) : null })}
                     options={[
-                      { value: '', label: 'Sin categorÃ­a' },
+                      { value: '', label: 'Sin categoría' },
                       ...(board.categories ?? []).map((category) => ({
                         value: String(category.id),
                         label: category.name,
@@ -576,7 +576,7 @@ export function CardDrawer({ card, mode, board, currentUser, canEdit, onClose, o
                     ]}
                   />
                 ) : (
-                  <div className="side-value"><strong>{categoryName || 'â€”'}</strong></div>
+                  <div className="side-value"><strong>{categoryName || '—'}</strong></div>
                 )}
               </div>
             )}
@@ -606,7 +606,7 @@ export function CardDrawer({ card, mode, board, currentUser, canEdit, onClose, o
                   <button
                     className="add-face"
                     type="button"
-                    aria-label="AÃ±adir etiquetas"
+                    aria-label="Añadir etiquetas"
                     aria-expanded={pickingLabels}
                     onClick={() => setPickingLabels((open) => !open)}
                   >
@@ -656,7 +656,7 @@ export function CardDrawer({ card, mode, board, currentUser, canEdit, onClose, o
                     <button
                       className="add-face"
                       type="button"
-                      aria-label="AÃ±adir equipos"
+                      aria-label="Añadir equipos"
                       aria-expanded={pickingTeams}
                       onClick={() => setPickingTeams((open) => !open)}
                     >

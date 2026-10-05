@@ -1,4 +1,4 @@
-﻿import { priorityLabel } from '../../shared/ui'
+import { priorityLabel } from '../../shared/ui'
 
 export function Filters(props: {
   clientView: boolean

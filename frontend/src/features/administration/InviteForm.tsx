@@ -1,4 +1,4 @@
-﻿import { type FormEvent, useState } from 'react'
+import { type FormEvent, useState } from 'react'
 import { api } from '../../api'
 
 export function InviteForm({ projectId }: { projectId: number }) {
@@ -23,7 +23,7 @@ export function InviteForm({ projectId }: { projectId: number }) {
         <option value="lector">Lector</option>
         <option value="cliente">Cliente</option>
       </select>
-      <button className="primary" type="submit">Enviar invitaciÃ³n</button>
+      <button className="primary" type="submit">Enviar invitación</button>
       {link && <p>Enlace: {link}</p>}
     </form>
   )

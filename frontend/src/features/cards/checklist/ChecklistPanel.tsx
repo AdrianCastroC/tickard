@@ -1,4 +1,4 @@
-﻿import { type FormEvent, useEffect, useMemo, useRef, useState } from 'react'
+import { type FormEvent, useEffect, useMemo, useRef, useState } from 'react'
 import { DndContext, PointerSensor, closestCorners, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core'
 import { SortableContext, arrayMove, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
@@ -80,9 +80,9 @@ function CheckItemDateMenu({ value, onChange, onClose, minDate, maxDate }: {
   return (
     <div className="check-pop check-date-pop" role="dialog" aria-label="Fecha del elemento">
       <div className="side-date-head">
-        <button type="button" className="icon-close" aria-label="Mes anterior" onClick={() => setCursor(new Date(year, month - 1, 1))}>â€¹</button>
+        <button type="button" className="icon-close" aria-label="Mes anterior" onClick={() => setCursor(new Date(year, month - 1, 1))}>‹</button>
         <strong>{monthLabel}</strong>
-        <button type="button" className="icon-close" aria-label="Mes siguiente" onClick={() => setCursor(new Date(year, month + 1, 1))}>â€º</button>
+        <button type="button" className="icon-close" aria-label="Mes siguiente" onClick={() => setCursor(new Date(year, month + 1, 1))}>›</button>
       </div>
       <div className="side-date-week">
         {['L', 'M', 'X', 'J', 'V', 'S', 'D'].map((label) => <span key={label}>{label}</span>)}
@@ -258,7 +258,7 @@ function SortableCheckItem({ item, editing, canEdit, members, cardDueDate, onTog
             <button
               type="button"
               className="icon-close"
-              aria-label="MÃ¡s opciones"
+              aria-label="Más opciones"
               aria-expanded={menuOpen}
               onClick={() => {
                 setMenuOpen((open) => !open)
@@ -434,14 +434,14 @@ export function ChecklistPanel({ card, module, editing, canEdit, members, dragPr
         {editing && (
           <div className="module-head-actions">
             <button type="button" className="ghost check-add-btn" onClick={() => setAdding((open) => !open)}>
-              <PlusIcon className="plus-icon" /> AÃ±adir elemento
+              <PlusIcon className="plus-icon" /> Añadir elemento
             </button>
             {onRemove && (
               <button
                 type="button"
                 className="ghost icon-btn module-remove-btn"
-                aria-label="Eliminar mÃ³dulo"
-                title="Eliminar mÃ³dulo"
+                aria-label="Eliminar módulo"
+                title="Eliminar módulo"
                 onClick={() => { void onRemove() }}
               >
                 <TrashIcon />
@@ -483,7 +483,7 @@ export function ChecklistPanel({ card, module, editing, canEdit, members, dragPr
                 placeholder="Nuevo elemento"
                 maxLength={240}
               />
-              <button className="primary" type="submit" disabled={!checkBody.trim()}>AÃ±adir</button>
+              <button className="primary" type="submit" disabled={!checkBody.trim()}>Añadir</button>
               <button className="ghost" type="button" onClick={() => { setAdding(false); setCheckBody('') }}>Cancelar</button>
             </form>
           )}

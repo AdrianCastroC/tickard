@@ -1,4 +1,4 @@
-﻿import { type FormEvent, useState } from 'react'
+import { type FormEvent, useState } from 'react'
 import { api, type BoardPayload } from '../../api'
 import { priorityLabel } from '../../shared/ui'
 
@@ -22,7 +22,7 @@ export function CreateCardModal({ board, column, onClose, onCreated }: {
   async function submit(event: FormEvent) {
     event.preventDefault()
     if (!title.trim()) {
-      setError('Escribe un tÃ­tulo.')
+      setError('Escribe un título.')
       return
     }
     try {
@@ -49,18 +49,18 @@ export function CreateCardModal({ board, column, onClose, onCreated }: {
     <div className="modal-back" onClick={onClose}>
       <form className="modal" onClick={(event) => event.stopPropagation()} onSubmit={submit}>
         <h2>Nueva tarjeta</h2>
-        <p className="muted">Se aÃ±ade a {column.name}.</p>
-        <label className="field">TÃ­tulo<input value={title} onChange={(event) => setTitle(event.target.value)} /></label>
-        <label className="field">DescripciÃ³n<textarea value={description} onChange={(event) => setDescription(event.target.value)} rows={3} /></label>
+        <p className="muted">Se añade a {column.name}.</p>
+        <label className="field">Título<input value={title} onChange={(event) => setTitle(event.target.value)} /></label>
+        <label className="field">Descripción<textarea value={description} onChange={(event) => setDescription(event.target.value)} rows={3} /></label>
         {categories.length > 0 && (
-          <label className="field">CategorÃ­a
+          <label className="field">Categoría
             <select value={categoryId} onChange={(event) => setCategoryId(event.target.value)}>
-              <option value="">Sin categorÃ­a</option>
+              <option value="">Sin categoría</option>
               {categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}
             </select>
           </label>
         )}
-        <label className="field">Fecha lÃ­mite<input type="date" value={due} onChange={(event) => setDue(event.target.value)} /></label>
+        <label className="field">Fecha límite<input type="date" value={due} onChange={(event) => setDue(event.target.value)} /></label>
         <label className="field">Prioridad
           <select value={priority} onChange={(event) => setPriority(event.target.value)}>
             {Object.entries(priorityLabel).map(([value, text]) => <option key={value} value={value}>{text}</option>)}
@@ -80,7 +80,7 @@ export function CreateCardModal({ board, column, onClose, onCreated }: {
         )}
         {error && <p className="error">{error}</p>}
         <div className="row">
-          <button className="primary" type="submit">AÃ±adir tarea</button>
+          <button className="primary" type="submit">Añadir tarea</button>
           <button className="ghost" type="button" onClick={onClose}>Cancelar</button>
         </div>
       </form>

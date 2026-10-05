@@ -1,0 +1,71 @@
+import { useState } from 'react'
+import { createPortal } from 'react-dom'
+import type { Profile, Project } from '../../api'
+import { CategoriesDrawer } from '../administration'
+import { CardDrawer } from '../cards/CardDetail'
+import { BoardHeader } from '../workspace/BoardHeader'
+import { FiltersBar } from '../workspace/FiltersBar'
+import { BoardPulse } from './BoardPulse'
+import { CreateCardModal } from './CreateCardModal'
+import { Kanban } from './Kanban'
+import type { useBoard } from './useBoard'
+import type { useBoardFilters } from './useBoardFilters'
+
+type Props = {
+  state: ReturnType<typeof useBoard>
+  filters: ReturnType<typeof useBoardFilters>
+  activeBoardId: number | null
+  project?: Project
+  profile: Profile
+  query: string
+}
+
+export function BoardSurface({ state, filters, activeBoardId, project, profile, query }: Props) {
+  const { board: view, selected, setSelected, openCard, refresh, move, moveColumn } = state
+  const [createColumn, setCreateColumn] = useState<{ id: number; name: string } | null>(null)
+  const [showCategories, setShowCategories] = useState(false)
+  const canEdit = view?.role === 'responsable' || view?.role === 'editor'
+  const canManage = view?.role === 'responsable'
+  const clientView = view?.role === 'cliente'
+  const backlog = view?.columns.find((column) => column.name === 'Backlog') ?? view?.columns[0]
+
+  return <>
+    <BoardHeader show={Boolean(view || activeBoardId)}
+      title={view?.board.name || project?.boards.find((item) => item.id === activeBoardId)?.name}
+      subtitle={view?.board.project_name || project?.name}
+      canEdit={canEdit} backlog={backlog} filtersActive={filters.active} filtersOpen={filters.open}
+      onToggleFilters={() => filters.setOpen((current) => !current)} onAdd={setCreateColumn} />
+    <FiltersBar open={Boolean(view && filters.open)} clientView={clientView}
+      visibility={view?.visibility ?? {}} members={view?.members ?? []} labels={view?.labels ?? []}
+      assignee={filters.assignee} teamId={filters.teamId} teams={view?.teams ?? []}
+      label={filters.label} priority={filters.priority}
+      onAssignee={filters.setAssignee} onTeam={filters.setTeamId}
+      onLabel={filters.setLabel} onPriority={filters.setPriority} />
+    {!view && !activeBoardId && <div className="empty-board"><div><h2>{profile.user.is_admin ? 'Inicia un proyecto' : 'Espera a que te asignen un proyecto'}</h2><p className="muted">{profile.user.is_admin ? 'Crea el primer proyecto desde el lateral y abre su tablero.' : 'Cuando un responsable te añada, el proyecto saldrá en el lateral.'}</p></div></div>}
+    {activeBoardId && !view && <div className="empty-board"><p className="muted">Cargando el tablero…</p></div>}
+    {view && <div className="workspace">
+      <Kanban board={view} canEdit={canEdit} canManage={canManage} query={query}
+        assignee={filters.assignee} teamId={filters.teamId} label={filters.label} priority={filters.priority}
+        onOpen={(card) => setSelected({ card, mode: 'view' })}
+        onEdit={(card) => setSelected({ card, mode: 'edit' })}
+        onMove={move} onMoveColumn={moveColumn}
+        onAdd={(id, name) => setCreateColumn({ id, name })}
+        onCreatedColumn={refresh} onRefresh={refresh}
+        onManageCategories={() => setShowCategories(true)} />
+      <BoardPulse columns={view.columns} />
+    </div>}
+    {createPortal(<>
+      {selected && view && openCard && <CardDrawer card={openCard} mode={selected.mode}
+        board={view} currentUser={profile.user} canEdit={canEdit}
+        onClose={() => setSelected(null)}
+        onEdit={() => setSelected({ card: openCard, mode: 'edit' })}
+        onView={() => setSelected({ card: openCard, mode: 'view' })}
+        onChange={refresh} />}
+      {showCategories && view && <CategoriesDrawer board={view}
+        onClose={() => setShowCategories(false)} onChange={refresh} />}
+      {createColumn && view && <CreateCardModal board={view} column={createColumn}
+        onClose={() => setCreateColumn(null)}
+        onCreated={async () => { setCreateColumn(null); await refresh() }} />}
+    </>, document.body)}
+  </>
+}

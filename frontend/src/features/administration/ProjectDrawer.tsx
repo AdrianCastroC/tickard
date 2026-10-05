@@ -1,13 +1,13 @@
-﻿import { useState } from 'react'
+import { useState } from 'react'
 import { api, type BoardPayload } from '../../api'
 import { InviteForm } from './InviteForm'
 
 export function ProjectDrawer({ board, onClose, onChange }: { board: BoardPayload; onClose: () => void; onChange: () => Promise<void> }) {
   const [visibility, setVisibility] = useState(board.visibility)
   const fields = [
-    ['description', 'DescripciÃ³n'],
-    ['assignee', 'AsignaciÃ³n'],
-    ['due_date', 'Fecha lÃ­mite'],
+    ['description', 'Descripción'],
+    ['assignee', 'Asignación'],
+    ['due_date', 'Fecha límite'],
     ['priority', 'Prioridad'],
     ['labels', 'Etiquetas'],
     ['comments', 'Comentarios'],
@@ -16,7 +16,7 @@ export function ProjectDrawer({ board, onClose, onChange }: { board: BoardPayloa
   return (
     <div className="drawer-back" onClick={onClose}>
       <aside className="drawer" onClick={(event) => event.stopPropagation()}>
-        <h2>QuÃ© ve el cliente</h2>
+        <h2>Qué ve el cliente</h2>
         {fields.map(([key, label]) => (
           <label key={key} className="row">
             <input type="checkbox" checked={Boolean(visibility[key])} onChange={async (event) => {
@@ -30,7 +30,7 @@ export function ProjectDrawer({ board, onClose, onChange }: { board: BoardPayloa
         ))}
         <h2>Personas</h2>
         <ul className="notes">
-          {board.members.map((member) => <li key={member.id}>{member.name} Â· {member.role}</li>)}
+          {board.members.map((member) => <li key={member.id}>{member.name} · {member.role}</li>)}
         </ul>
         <InviteForm projectId={board.board.project_id} />
       </aside>

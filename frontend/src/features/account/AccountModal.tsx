@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useEffectEvent } from 'react'
 import { api, type Profile } from '../../api'
 import { BellIcon, ProfileUserIcon, SettingsIcon } from '../../shared/ui'
 import { CloseIcon } from '../cards/CardDetail'
@@ -10,10 +10,15 @@ import { SettingsSection } from './SettingsSection'
 export type AccountSection = 'profile' | 'settings' | 'notifications'
 type Props = { section: AccountSection; profile: Profile; notes: { id: number; body: string }[]; workspaceId: number | null; onSection: (section: AccountSection) => void; onProfile: (value: Profile) => void; onNotes: (value: { id: number; body: string }[]) => void; onClose: () => void; onAvatar: (file: File) => Promise<void> }
 export function AccountModal({ section, profile, notes, workspaceId, onSection, onProfile, onNotes, onClose, onAvatar }: Props) {
+  const receiveNotes = useEffectEvent((items: { id: number; body: string }[]) => {
+    onNotes(items)
+    return profile.unread > 0
+  })
+  const markRead = useEffectEvent(() => onProfile({ ...profile, unread: 0 }))
   useEffect(() => {
     if (section !== 'notifications') return
     let cancelled = false
-    void (async () => { const items = await api<{ id: number; body: string }[]>('/notifications'); if (cancelled) return; onNotes(items); if (profile.unread > 0) { await api('/notifications/read', { method: 'POST' }); if (!cancelled) onProfile({ ...profile, unread: 0 }) } })()
+    void (async () => { const items = await api<{ id: number; body: string }[]>('/notifications'); if (cancelled) return; if (receiveNotes(items)) { await api('/notifications/read', { method: 'POST' }); if (!cancelled) markRead() } })()
     return () => { cancelled = true }
   }, [section])
   const titles = { profile: 'Mi perfil', settings: 'Configuración', notifications: 'Notificaciones' } as const

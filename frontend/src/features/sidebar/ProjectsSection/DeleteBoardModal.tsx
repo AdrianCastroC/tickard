@@ -8,6 +8,16 @@ export function DeleteBoardModal({ board, onClose, onConfirm }: {
 }) {
   const [confirmationName, setConfirmationName] = useState('')
 
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+  async function confirm() {
+    if (saving) return
+    setSaving(true); setError('')
+    try { await onConfirm(confirmationName) }
+    catch (caught) { setError(caught instanceof Error ? caught.message : 'No se pudo completar la acción.') }
+    finally { setSaving(false) }
+  }
+
   return (
     <div className="modal-back" onClick={onClose}>
       <div className="modal" onClick={(event) => event.stopPropagation()}>
@@ -22,13 +32,14 @@ export function DeleteBoardModal({ board, onClose, onConfirm }: {
           onChange={(event) => setConfirmationName(event.target.value)}
           autoFocus
         />
+        {error && <p className="error">{error}</p>}
         <div className="modal-actions">
           <button type="button" className="ghost" onClick={onClose}>Cancelar</button>
           <button
             type="button"
             className="ghost danger"
-            disabled={confirmationName !== board.name}
-            onClick={() => void onConfirm(confirmationName)}
+            disabled={saving || confirmationName !== board.name}
+            onClick={() => void confirm()}
           >
             <TrashIcon />Eliminar tablero
           </button>

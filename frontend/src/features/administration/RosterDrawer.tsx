@@ -1,4 +1,4 @@
-﻿import { type FormEvent, useEffect, useState } from 'react'
+import { type FormEvent, useEffect, useState } from 'react'
 import { api } from '../../api'
 
 export function RosterDrawer({
@@ -69,7 +69,7 @@ export function RosterDrawer({
         </div>
         <p className="muted">{hint}</p>
         <ul className="notes">
-          {items.length === 0 && <li>TodavÃ­a no hay nada.</li>}
+          {items.length === 0 && <li>Todavía no hay nada.</li>}
           {items.map((item) => (
             <li key={item.id}>
               <div className="row">

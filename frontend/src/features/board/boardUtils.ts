@@ -1,4 +1,4 @@
-﻿import { type BoardCategory, type Card } from '../../api'
+import { type BoardCategory, type Card } from '../../api'
 
 export function orderedColumnCards(column: { cards: Card[] }, categories: BoardCategory[]) {
   const uncategorized = column.cards.filter((card) => !card.category_id)

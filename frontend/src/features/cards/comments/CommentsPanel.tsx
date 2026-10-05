@@ -1,4 +1,4 @@
-﻿import { type Dispatch, type FormEvent, useEffect, useRef, useState, type SetStateAction } from 'react'
+import { type Dispatch, type FormEvent, useEffect, useRef, useState, type SetStateAction } from 'react'
 import { api, type BoardPayload, type Card, type Comment, type CommentReactionType } from '../../../api'
 import { Avatar, TrashIcon, autoGrowTextarea, formatRelative } from '../../../shared/ui'
 import { SectionToggle } from '../cardSectionUi'
@@ -285,8 +285,8 @@ export function CommentsPanel({ card, board, currentUser, editing, comments, onC
                                   <button
                                     type="button"
                                     className="ghost icon-btn module-remove-btn"
-                                    aria-label="Eliminar mÃ³dulo"
-                                    title="Eliminar mÃ³dulo"
+                                    aria-label="Eliminar módulo"
+                                    title="Eliminar módulo"
                                     onClick={() => { void onRemove() }}
                                   >
                                     <TrashIcon />
@@ -325,7 +325,7 @@ export function CommentsPanel({ card, board, currentUser, editing, comments, onC
                         autoGrowTextarea(event.target)
                       }}
                       onInput={(event) => autoGrowTextarea(event.currentTarget)}
-                      placeholder="Escribe un comentarioâ€¦"
+                      placeholder="Escribe un comentario…"
                       rows={1}
                     />
                     <div className="comment-box-actions">
@@ -387,7 +387,7 @@ export function CommentsPanel({ card, board, currentUser, editing, comments, onC
                               autoGrowTextarea(event.target)
                             }}
                             onInput={(event) => autoGrowTextarea(event.currentTarget)}
-                            placeholder={`Responder a ${authorName}â€¦`}
+                            placeholder={`Responder a ${authorName}…`}
                             rows={1}
                             autoFocus
                           />
@@ -432,7 +432,7 @@ export function CommentsPanel({ card, board, currentUser, editing, comments, onC
                                     type="button"
                                     className={`comment-visibility-btn${item.is_internal ? ' internal' : ' visible'}`}
                                     disabled={!canToggle}
-                                    title={item.is_internal ? 'Interno â€” hacer visible para el cliente' : 'Visible para el cliente â€” marcar interno'}
+                                    title={item.is_internal ? 'Interno — hacer visible para el cliente' : 'Visible para el cliente — marcar interno'}
                                     aria-label={item.is_internal ? 'Hacer visible para el cliente' : 'Marcar como interno'}
                                     onClick={() => void toggleVisibility()}
                                   >
@@ -496,7 +496,7 @@ export function CommentsPanel({ card, board, currentUser, editing, comments, onC
                     </div>
                   )
                 })}
-                {commentCount === 0 && <p className="muted">TodavÃ­a no hay comentarios.</p>}
+                {commentCount === 0 && <p className="muted">Todavía no hay comentarios.</p>}
               </div>
                 </>
               )}

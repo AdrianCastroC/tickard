@@ -1,4 +1,4 @@
-﻿import { useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import { api, uploadFile, type Attachment, type Card } from '../../../api'
 import { PlusIcon, TrashIcon } from '../../../shared/ui'
 import { SectionToggle } from '../cardSectionUi'

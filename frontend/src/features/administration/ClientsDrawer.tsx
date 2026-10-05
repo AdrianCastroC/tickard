@@ -1,4 +1,4 @@
-﻿import { type FormEvent, useEffect, useState } from 'react'
+import { type FormEvent, useEffect, useState } from 'react'
 import { api } from '../../api'
 
 export function ClientsDrawer({ workspaceId, onClose }: { workspaceId: number | null; onClose: () => void }) {
@@ -35,7 +35,7 @@ export function ClientsDrawer({ workspaceId, onClose }: { workspaceId: number | 
           {clients.map((client) => (
             <li key={client.id}>
               <strong>{client.name}</strong>
-              <p className="muted">{client.projects_count} {client.projects_count === 1 ? 'proyecto' : 'proyectos'} Â· {client.people_count} {client.people_count === 1 ? 'persona' : 'personas'}</p>
+              <p className="muted">{client.projects_count} {client.projects_count === 1 ? 'proyecto' : 'proyectos'} · {client.people_count} {client.people_count === 1 ? 'persona' : 'personas'}</p>
             </li>
           ))}
         </ul>

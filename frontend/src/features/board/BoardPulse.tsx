@@ -1,4 +1,4 @@
-﻿import { type BoardPayload } from '../../api'
+import { type BoardPayload } from '../../api'
 
 function columnShares(counts: number[]) {
   const total = counts.reduce((sum, count) => sum + count, 0)

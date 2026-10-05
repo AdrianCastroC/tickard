@@ -1,4 +1,4 @@
-﻿import { type FormEvent, type ReactNode, useEffect, useMemo, useRef, useState } from 'react'
+import { type FormEvent, type ReactNode, useEffect, useMemo, useRef, useState } from 'react'
 
 import { DndContext, DragOverlay, PointerSensor, closestCorners, useDroppable, useSensor, useSensors, type CollisionDetection, type DragEndEvent } from '@dnd-kit/core'
 import { SortableContext, arrayMove, useSortable, horizontalListSortingStrategy, verticalListSortingStrategy } from '@dnd-kit/sortable'
@@ -552,7 +552,7 @@ export function ColumnView({ column, categories, canEdit, canManage, pinned, onT
                         <PaletteIcon /> Cambiar color
                       </button>
                       <button type="button" onClick={() => { setMenuOpen(false); onManageCategories() }}>
-                        <CategoryIcon className="menu-icon" /> Gestionar categorÃ­a
+                        <CategoryIcon className="menu-icon" /> Gestionar categoría
                       </button>
                       <button
                         type="button"
@@ -566,12 +566,12 @@ export function ColumnView({ column, categories, canEdit, canManage, pinned, onT
                       </button>
                       {canEdit && (
                         <button type="button" onClick={() => { setMenuOpen(false); onAdd() }}>
-                          <PlusIcon className="menu-icon" /> AÃ±adir tarea
+                          <PlusIcon className="menu-icon" /> Añadir tarea
                         </button>
                       )}
                       <span
                         className="pop-menu-tip"
-                        title={hasCards ? 'No se puede eliminar una columna con tarjetas. MuÃ©velas o elimÃ­nalas antes.' : undefined}
+                        title={hasCards ? 'No se puede eliminar una columna con tarjetas. Muévelas o elimínalas antes.' : undefined}
                       >
                         <button
                           className="danger"
@@ -629,7 +629,7 @@ export function ColumnView({ column, categories, canEdit, canManage, pinned, onT
             )
           })}
           {canEdit
-            ? <button className="add-card" type="button" onClick={onAdd}><PlusIcon /> AÃ±adir tarea</button>
+            ? <button className="add-card" type="button" onClick={onAdd}><PlusIcon /> Añadir tarea</button>
             : column.cards.length === 0 && <p className="muted">Sin tarjetas</p>}
         </>
       )}
@@ -730,7 +730,7 @@ export function SideSelect<T extends string | number>({
       >
         <span className="side-select-main">
           {leading ?? current?.leading}
-          <strong>{current?.label ?? 'â€”'}</strong>
+          <strong>{current?.label ?? '—'}</strong>
         </span>
         <ChevronIcon />
       </button>
@@ -816,11 +816,11 @@ export function SideDatePicker({ value, onChange }: {
         <div className="side-date-menu" role="dialog" aria-label="Elegir fecha">
           <div className="side-date-head">
             <button type="button" className="icon-close" aria-label="Mes anterior" onClick={() => setCursor(new Date(year, month - 1, 1))}>
-              â€¹
+              ‹
             </button>
             <strong>{monthLabel}</strong>
             <button type="button" className="icon-close" aria-label="Mes siguiente" onClick={() => setCursor(new Date(year, month + 1, 1))}>
-              â€º
+              ›
             </button>
           </div>
           <div className="side-date-week">

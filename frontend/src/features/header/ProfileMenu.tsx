@@ -8,11 +8,10 @@ type ProfileMenuProps = {
   onOpenProfile: () => void
   onOpenSettings: () => void
   onOpenNotifications: () => void
-  onNotesChange: (notes: { id: number; body: string }[]) => void
   onAvatarChange: (file: File) => void | Promise<void>
 }
 
-export function ProfileMenu({ profile, onOpenProfile, onOpenSettings, onOpenNotifications, onNotesChange, onAvatarChange }: ProfileMenuProps) {
+export function ProfileMenu({ profile, onOpenProfile, onOpenSettings, onOpenNotifications, onAvatarChange }: ProfileMenuProps) {
   const [open, setOpen] = useState(false)
   const accountRef = useRef<HTMLDivElement>(null)
   const avatarInputRef = useRef<HTMLInputElement>(null)
@@ -25,12 +24,6 @@ export function ProfileMenu({ profile, onOpenProfile, onOpenSettings, onOpenNoti
     document.addEventListener('mousedown', close)
     return () => document.removeEventListener('mousedown', close)
   }, [open])
-
-  async function openAccount() {
-    setOpen(true)
-    const items = await api<{ id: number; body: string }[]>('/notifications')
-    onNotesChange(items)
-  }
 
   function openSection(section: () => void) {
     setOpen(false)
@@ -50,7 +43,7 @@ export function ProfileMenu({ profile, onOpenProfile, onOpenSettings, onOpenNoti
         type="button"
         aria-expanded={open}
         aria-label="Cuenta"
-        onClick={() => (open ? setOpen(false) : void openAccount())}
+        onClick={() => setOpen((current) => !current)}
       >
         <Avatar id={profile.user.id} name={profile.user.name} size={80} className="avatar" src={profile.user.avatar_url} />
         {profile.unread > 0 && <i className={styles.badge}>{profile.unread}</i>}
