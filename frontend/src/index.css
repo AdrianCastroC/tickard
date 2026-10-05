@@ -393,6 +393,44 @@ h1, h2, h3, p { margin: 0; }
   height: 14px;
 }
 
+.workspace-menu-item {
+  position: relative;
+}
+
+.workspace-menu-actions {
+  position: relative;
+  flex: 0 0 auto;
+}
+
+.workspace-options-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  z-index: 40;
+  width: 160px;
+  padding: 6px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface);
+  box-shadow: 0 12px 28px rgb(18 49 43 / 14%);
+}
+
+.workspace-options-menu button {
+  width: 100%;
+  border: 0;
+  border-radius: 7px;
+  padding: 8px 10px;
+  background: transparent;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  text-align: left;
+}
+
+.workspace-options-menu button:hover {
+  background: var(--canvas);
+}
+
 .body .side.is-mini .workspace-header {
   margin-bottom: 10px;
 }

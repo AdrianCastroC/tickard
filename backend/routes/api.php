@@ -21,8 +21,10 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/me/avatar', [AuthController::class, 'updateAvatar']);
     Route::get('/notifications', [AuthController::class, 'notifications']);
     Route::post('/notifications/read', [AuthController::class, 'readNotifications']);
-    
+
     Route::post('/workspaces', [WorkspacesController::class, 'store']);
+    Route::patch('/workspaces/{workspace}', [WorkspacesController::class, 'update']);
+    Route::delete('/workspaces/{workspace}', [WorkspacesController::class, 'destroy']);
 
     Route::get('/departments', [AdministrationController::class, 'departments']);
     Route::post('/departments', [AdministrationController::class, 'storeDepartment']);
