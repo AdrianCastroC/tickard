@@ -1,9 +1,10 @@
 import { type FormEvent, useEffect, useRef, useState } from 'react'
 import { api, setToken, uploadFile, type BoardPayload, type Card, type Profile, type Project } from '../api'
-import { Avatar, BellIcon, ComputerIcon, ConfigIcon, DotsIcon, FloppyIcon, GlobeIcon, HelpCircleIcon, LogoutIcon, MoonIcon, NavIcon, PencilIcon, PlusIcon, ProfileUserIcon, SettingsIcon, SparklesIcon, SunIcon, TrashIcon, VisibilityIcon, formatDate, type OpenTab } from '../shared/ui'
+import { Avatar, BellIcon, ComputerIcon, ConfigIcon, DotsIcon, FloppyIcon, MoonIcon, NavIcon, PencilIcon, PlusIcon, ProfileUserIcon, SettingsIcon, SunIcon, TrashIcon, VisibilityIcon, formatDate, type OpenTab } from '../shared/ui'
 import { CardDrawer, CloseIcon } from '../features/cards/CardDetail'
 import { BoardPulse, CreateCardModal, Filters, Kanban, orderedColumnCards } from '../features/board/Board'
 import { CategoriesDrawer, ClientsDrawer, ProjectDrawer, RosterDrawer } from '../features/administration/Drawers'
+import { Header } from '../features/header/Header'
 export function Workspace() {
   const [profile, setProfile] = useState<Profile | null>(null)
   const [openId, setOpenId] = useState<number | null>(null)
@@ -12,10 +13,7 @@ export function Workspace() {
   const [selected, setSelected] = useState<{ card: Card; mode: 'view' | 'edit' } | null>(null)
   const [showProject, setShowProject] = useState(false)
   const [notes, setNotes] = useState<{ id: number; body: string }[]>([])
-  const [accountOpen, setAccountOpen] = useState(false)
   const [accountModal, setAccountModal] = useState<'profile' | 'settings' | 'notifications' | null>(null)
-  const accountRef = useRef<HTMLDivElement>(null)
-  const avatarInputRef = useRef<HTMLInputElement>(null)
   const [createColumn, setCreateColumn] = useState<{ id: number; name: string } | null>(null)
   const [newProject, setNewProject] = useState(false)
   const [projectMenu, setProjectMenu] = useState<number | null>(null)
@@ -268,17 +266,6 @@ export function Workspace() {
   }, [profile?.user.theme])
 
   useEffect(() => {
-    if (!accountOpen) return
-    function close(event: MouseEvent) {
-      if (!accountRef.current?.contains(event.target as Node)) {
-        setAccountOpen(false)
-      }
-    }
-    document.addEventListener('mousedown', close)
-    return () => document.removeEventListener('mousedown', close)
-  }, [accountOpen])
-
-  useEffect(() => {
     if (projectMenu === null && boardMenu === null) return
     function close(event: MouseEvent) {
       if (!menuRef.current?.contains(event.target as Node)) {
@@ -496,19 +483,7 @@ export function Workspace() {
   const filtersActive = Boolean(assignee || teamId || label || priority)
   const backlog = view?.columns.find((column) => column.name === 'Backlog') ?? view?.columns[0]
 
-  async function openAccount() {
-    setAccountOpen(true)
-    const items = await api<{ id: number; body: string }[]>('/notifications')
-    setNotes(items)
-  }
-
-  function openAccountModal(section: 'profile' | 'settings' | 'notifications') {
-    setAccountOpen(false)
-    setAccountModal(section)
-  }
-
   async function openNotificationsModal() {
-    setAccountOpen(false)
     setAccountModal('notifications')
     const items = await api<{ id: number; body: string }[]>('/notifications')
     setNotes(items)
@@ -529,121 +504,16 @@ export function Workspace() {
 
   return (
     <div className={`frame${sideMini ? ' is-side-mini' : ''}`}>
-      <header className="topbar">
-        <aside className="side">
-          <div className="brand"><img src="/logo-removebg.png" alt="tickard" /></div>
-        </aside>
-        <div className="top-main">
-          <div className="top-half">
-            <label className="search">
-              <NavIcon><circle cx="11" cy="11" r="6" /><path d="m16 16 4 4" /></NavIcon>
-              <input value={query} placeholder="Buscar tareas, proyectos..." onChange={(event) => setQuery(event.target.value)} />
-            </label>
-          </div>
-          <div className="top-half profile">
-            <div className="account" ref={accountRef}>
-              <button
-                className={`avatar-button${accountOpen ? ' on' : ''}`}
-                type="button"
-                aria-expanded={accountOpen}
-                aria-label="Cuenta"
-                onClick={() => {
-                  if (accountOpen) {
-                    setAccountOpen(false)
-                  } else {
-                    void openAccount()
-                  }
-                }}
-              >
-                <Avatar id={profile.user.id} name={profile.user.name} size={80} className="avatar" src={profile.user.avatar_url} />
-                {profile.unread > 0 && <i className="badge">{profile.unread}</i>}
-              </button>
-              {accountOpen && (
-                <div className="account-menu">
-                  <div className="account-head">
-                    <button
-                      type="button"
-                      className="account-avatar"
-                      aria-label="Cambiar foto de perfil"
-                      title="Cambiar foto de perfil"
-                      onClick={() => avatarInputRef.current?.click()}
-                    >
-                      <Avatar id={profile.user.id} name={profile.user.name} size={52} className="avatar" src={profile.user.avatar_url} />
-                      <span className="account-avatar-edit">
-                        <PencilIcon className="account-avatar-pencil" />
-                      </span>
-                    </button>
-                    <input
-                      ref={avatarInputRef}
-                      type="file"
-                      accept="image/*"
-                      hidden
-                      onChange={(event) => {
-                        const file = event.target.files?.[0]
-                        event.target.value = ''
-                        if (file) void changeAvatar(file)
-                      }}
-                    />
-                    <div className="account-head-text">
-                      <strong>{profile.user.name}</strong>
-                      <span>{profile.user.email}</span>
-                      <em className="account-plan">
-                        {profile.user.is_admin
-                          ? 'Administrador'
-                          : profile.user.client_company
-                            ? 'Cliente'
-                            : 'Miembro'}
-                        {' · '}
-                        {profile.user.plan.charAt(0).toUpperCase() + profile.user.plan.slice(1)}
-                      </em>
-                    </div>
-                  </div>
-
-                  <div className="account-section">
-                    <button type="button" className="account-item" onClick={() => openAccountModal('profile')}>
-                      <ProfileUserIcon /> Mi perfil
-                    </button>
-                    <button type="button" className="account-item" onClick={() => openAccountModal('settings')}>
-                      <SettingsIcon /> Configuración
-                    </button>
-                    <button type="button" className="account-item" onClick={() => { void openNotificationsModal() }}>
-                      <BellIcon /> Notificaciones
-                      {profile.unread > 0 && <i className="account-badge">{profile.unread}</i>}
-                    </button>
-                    <button type="button" className="account-item" disabled>
-                      <GlobeIcon /> Idioma
-                      <span className="account-meta">Español</span>
-                    </button>
-                  </div>
-
-                  <div className="account-section">
-                    <button type="button" className="account-item" disabled>
-                      <HelpCircleIcon /> Ayuda y soporte
-                    </button>
-                    <button type="button" className="account-item" disabled>
-                      <SparklesIcon /> Novedades
-                    </button>
-                  </div>
-
-                  <div className="account-section">
-                    <button
-                      type="button"
-                      className="account-item danger"
-                      onClick={async () => {
-                        await api('/logout', { method: 'POST' })
-                        setToken(null)
-                        window.location.href = '/login'
-                      }}
-                    >
-                      <LogoutIcon /> Cerrar sesión
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      </header>
+      <Header
+        profile={profile}
+        query={query}
+        onQueryChange={setQuery}
+        onOpenProfile={() => setAccountModal('profile')}
+        onOpenSettings={() => setAccountModal('settings')}
+        onOpenNotifications={() => { void openNotificationsModal() }}
+        onNotesChange={setNotes}
+        onAvatarChange={changeAvatar}
+      />
       {accountModal && (
         <AccountModal
           section={accountModal}

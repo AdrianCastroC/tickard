@@ -1,0 +1,31 @@
+.topbar { height: 100px; flex: 0 0 auto; display: flex; align-items: stretch; position: relative; z-index: 4; background: var(--surface); }
+.topbar :global(.side) { display: flex; align-items: center; justify-content: center; padding: 0; }
+.topMain { flex: 1; min-width: 0; display: flex; align-items: center; padding: 0 20px; border-bottom: 1px solid var(--line); }
+.topHalf { flex: 1 1 50%; min-width: 0; display: flex; align-items: center; }
+.profile { justify-content: flex-end; }
+.brand { width: 100%; height: 100%; margin: 0; padding: 9px; box-sizing: border-box; display: flex; align-items: center; }
+.brand img { display: block; width: 100%; height: 100%; object-fit: contain; }
+.search { flex: 1; width: 100%; display: flex; align-items: center; gap: 8px; background: var(--canvas); border: 1px solid var(--line); border-radius: 999px; padding: 8px 14px; color: var(--muted); }
+.search input { border: 0; background: transparent; width: 100%; outline: none; color: var(--ink); }
+.account { position: relative; flex: 0 0 auto; }
+.avatarButton { position: relative; width: 80px; height: 80px; border: 0; background: transparent; padding: 0; border-radius: 50%; cursor: pointer; }
+.avatarButton :global(.avatar) { width: 80px; height: 80px; }
+.avatarButtonOn :global(.avatar) { box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px color-mix(in srgb, var(--accent) 55%, transparent); }
+.badge { position: absolute; top: -4px; right: -4px; min-width: 16px; height: 16px; border-radius: 999px; background: #8a2b2b; color: white; font-style: normal; font-size: 10px; display: grid; place-items: center; }
+.accountMenu { position: absolute; top: calc(100% + 10px); right: 0; width: 300px; max-height: min(480px, 78vh); overflow: auto; background: var(--surface); border: 1px solid var(--line); border-radius: 16px; box-shadow: 0 18px 48px rgb(18 49 43 / 16%); padding: 10px; display: flex; flex-direction: column; gap: 4px; z-index: 30; }
+.accountHead { display: flex; align-items: center; gap: 12px; padding: 10px 10px 14px; }
+.accountHeadText { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.accountHeadText strong { font-size: 15px; font-weight: 700; color: var(--ink); line-height: 1.2; }
+.accountHeadText span { font-size: 12px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.accountPlan { align-self: flex-start; margin-top: 6px; font-style: normal; font-size: 11px; font-weight: 600; color: #147a5f; background: color-mix(in srgb, #a8f0dc 55%, var(--surface)); border-radius: 999px; padding: 3px 8px; }
+.accountSection { display: flex; flex-direction: column; gap: 2px; padding: 6px 0; border-top: 1px solid var(--line); }
+.accountItem { width: 100%; display: flex; align-items: center; gap: 10px; border: 0; background: transparent; border-radius: 10px; padding: 10px 12px; color: var(--ink); text-align: left; font-size: 14px; cursor: pointer; }
+.accountItem:hover:not(:disabled), .accountItem.on { background: var(--canvas); }
+.accountItem:disabled { opacity: .55; cursor: default; }
+.accountItem :global(.account-ico) { width: 18px; height: 18px; flex: 0 0 18px; color: var(--muted); }
+.accountBadge { margin-left: auto; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 999px; background: #8a2b2b; color: white; font-style: normal; font-size: 11px; font-weight: 700; display: grid; place-items: center; }
+.accountMeta { margin-left: auto; color: var(--muted); font-size: 13px; }
+.danger { color: #8a2b2b; }
+.danger:hover:not(:disabled) { background: color-mix(in srgb, #f8e4e4 70%, var(--surface)); }
+.danger :global(.account-ico) { color: #8a2b2b; }
+@media (max-width: 900px) { .topbar { height: auto; flex-wrap: wrap; padding: 12px; gap: 10px; } .topbar :global(.side) { width: auto; flex: 1 1 auto; border-right: 0; } .topMain { flex: 1 1 100%; padding-right: 0; border-bottom: 0; } .search { flex: 1 1 100%; } }
