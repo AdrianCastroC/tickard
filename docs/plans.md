@@ -6,13 +6,49 @@ Los precios y otras características comerciales todavía no están definidos.
 
 ---
 
-## 1. Planes
+## 1. Propiedad del plan
+
+El plan comercial pertenece a la cuenta de usuario.
+
+Cada usuario dispone de un único plan personal:
+
+- Free;
+- Base;
+- Pro;
+- Business.
+
+Los Workspaces de los que ese usuario sea propietario utilizan ese plan como su **plan efectivo**.
+
+Por ejemplo:
+
+Ana dispone de plan Pro y posee tres Workspaces.
+
+Los tres utilizan las capacidades correspondientes al plan Pro.
+
+Si Luis, cuyo plan personal es Free, pertenece como miembro a uno de esos Workspaces, podrá utilizar allí las capacidades Pro disponibles.
+
+Esto no convierte a Luis en usuario Pro.
+
+Los Workspaces propiedad de Luis continúan utilizando su plan Free.
+
+Pertenecer a Workspaces ajenos tampoco consume el límite de Workspaces propios del usuario.
+
+Por tanto, deben distinguirse:
+
+- **plan personal:** plan contratado por el usuario;
+- **plan efectivo del Workspace:** plan del propietario de ese Workspace;
+- **capacidad adicional del Workspace:** recursos contratados específicamente para ese Workspace, como asientos adicionales.
+
+---
+
+## 2. Planes
 
 ### Free
 
 - Máximo de **1 Workspace propio**.
 - Máximo de **3 proyectos por Workspace**.
-- Puede invitar a otros usuarios a sus Workspaces.
+- Incluye una cantidad limitada de miembros por Workspace.
+- Puede ampliar la capacidad de miembros mediante asientos adicionales cuando esta funcionalidad esté disponible.
 - Puede pertenecer como miembro a otros Workspaces.
 
 Los Workspaces a los que el usuario pertenece como miembro no consumen su límite de Workspaces propios.
@@ -23,7 +59,8 @@ Los Workspaces a los que el usuario pertenece como miembro no consumen su límit
 
 - Máximo de **5 Workspaces propios**.
 - Máximo de **10 proyectos por Workspace**.
-- Puede invitar a otros usuarios a sus Workspaces.
+- Incluye una cantidad de miembros por Workspace superior a Free.
+- Puede contratar asientos adicionales para Workspaces concretos.
 - Puede pertenecer como miembro a otros Workspaces.
 
 El límite de Workspaces evita que la creación de nuevos espacios pueda utilizarse simplemente como mecanismo para eludir el límite de proyectos.
@@ -34,10 +71,13 @@ El límite de Workspaces evita que la creación de nuevos espacios pueda utiliza
 
 - **Workspaces propios ilimitados**.
 - Máximo de **50 proyectos por Workspace**.
-- Puede invitar a otros usuarios a sus Workspaces.
+- Incluye una cantidad de miembros por Workspace superior a Base.
+- Puede contratar asientos adicionales para Workspaces concretos.
 - Puede pertenecer como miembro a otros Workspaces.
 
-Pro no dispone de proyectos ilimitados. El límite actual establecido es de 50 proyectos por Workspace.
+Pro no dispone de proyectos ilimitados.
+
+El límite actual establecido es de 50 proyectos por Workspace.
 
 ---
 
@@ -45,13 +85,24 @@ Pro no dispone de proyectos ilimitados. El límite actual establecido es de 50 p
 
 Business está orientado a organizaciones cuyas necesidades no encajen correctamente en los planes estándar.
 
-Sus límites y configuración se definirán **a medida** según las necesidades de cada organización.
+Sus límites y configuración podrán definirse a medida según las necesidades de cada organización.
 
-Las características concretas de Business todavía no están definidas.
+Esto podrá incluir:
+
+- número de Workspaces propios;
+- número de proyectos por Workspace;
+- miembros incluidos;
+- asientos adicionales;
+- almacenamiento;
+- límites de archivos;
+- automatizaciones;
+- otras capacidades empresariales.
+
+Las características comerciales concretas de Business todavía no están definidas.
 
 ---
 
-## 2. Workspaces propios y Workspaces compartidos
+## 3. Workspaces propios y Workspaces compartidos
 
 El límite de Workspaces se aplica únicamente a aquellos de los que el usuario es propietario.
 
@@ -70,15 +121,17 @@ En este caso únicamente utiliza:
 
 Los demás Workspaces no afectan a su límite porque pertenecen a otros usuarios.
 
+Las capacidades disponibles dentro de cada Workspace dependerán del plan de su propietario.
+
 ---
 
-## 3. Límite de proyectos
+## 4. Límite de proyectos
 
 El límite de proyectos se aplica individualmente a cada Workspace.
 
 Los límites actuales son:
 
-| Plan | Proyectos por Workspace |
+| Plan del propietario | Proyectos por Workspace |
 |---|---:|
 | Free | 3 |
 | Base | 10 |
@@ -95,7 +148,7 @@ Por tanto:
 
 ### Ejemplo
 
-Un Workspace Free contiene:
+Un Workspace cuyo propietario utiliza Free contiene:
 
 - Proyecto A — activo.
 - Proyecto B — activo.
@@ -113,7 +166,74 @@ La política concreta de papelera, período de recuperación y eliminación defi
 
 ---
 
-## 4. Archivado de proyectos
+## 5. Límite de miembros y asientos
+
+Cada Workspace dispone de una capacidad máxima de miembros.
+
+La capacidad incluida depende del plan de su propietario.
+
+El número concreto de miembros incluidos en Free, Base y Pro todavía no está definido.
+
+El límite se aplica individualmente a cada Workspace.
+
+Por ejemplo, un usuario Pro propietario de tres Workspaces dispone de la capacidad incluida por Pro en cada uno de ellos.
+
+Un miembro ocupa capacidad únicamente dentro de cada Workspace al que pertenece.
+
+La capacidad de un Workspace podrá ampliarse mediante la contratación de asientos adicionales.
+
+Los asientos adicionales:
+
+- pertenecen al Workspace para el que fueron adquiridos;
+- no aumentan el plan personal del propietario;
+- no convierten en usuarios de pago a sus miembros;
+- no se transfieren automáticamente a otros Workspaces;
+- permiten incorporar miembros adicionales al Workspace.
+
+La capacidad total se calcula como:
+
+**miembros incluidos por el plan + asientos adicionales**
+
+Por ejemplo:
+
+Un Workspace Pro dispone de:
+
+- X miembros incluidos;
+- 10 asientos adicionales.
+
+Su capacidad total será:
+
+**X + 10 miembros**
+
+Cuando todos los asientos estén ocupados, Tickard deberá impedir la incorporación de nuevos miembros.
+
+Para incorporar a otra persona será necesario:
+
+- eliminar a un miembro existente;
+- contratar uno o más asientos adicionales;
+- o cambiar a un plan que proporcione una capacidad superior.
+
+Eliminar un miembro libera un asiento.
+
+Los usuarios que pertenezcan a Workspaces ajenos no consumen ningún asiento de sus propios Workspaces.
+
+### Ejemplo
+
+Luis dispone de plan Free y es propietario de:
+
+`Mi espacio`
+
+También pertenece como miembro a:
+
+`Tickard Demo`
+
+Luis ocupa un asiento dentro de `Tickard Demo`.
+
+Sin embargo, su pertenencia a `Tickard Demo` no consume capacidad dentro de `Mi espacio`.
+
+---
+
+## 6. Archivado de proyectos
 
 El archivado está pensado principalmente para conservar proyectos como histórico o para consulta.
 
@@ -129,25 +249,29 @@ Los detalles exactos sobre las operaciones permitidas dentro de un proyecto arch
 
 ---
 
-## 5. Cambio a un plan inferior
+## 7. Cambio a un plan inferior
 
 Un cambio a un plan inferior nunca debe provocar la eliminación automática de información.
 
+Como el plan pertenece al usuario propietario, un downgrade afecta a los Workspaces de los que ese usuario sea propietario.
+
+Cada Workspace deberá comprobar individualmente si supera los nuevos límites.
+
 Por ejemplo:
 
-Un Workspace utiliza Pro y contiene **30 proyectos**.
+Ana dispone de Pro.
 
-El Workspace cambia posteriormente a Base, cuyo límite es de **10 proyectos**.
+Uno de sus Workspaces contiene **30 proyectos**.
 
-Tickard conservará los 30 proyectos, pero solamente podrán permanecer **10 proyectos operativos**.
+Ana cambia posteriormente a Base, cuyo límite es de **10 proyectos por Workspace**.
 
-Los restantes pasarán a estado archivado o de consulta.
+Tickard conservará los 30 proyectos.
 
 El Workspace quedaría temporalmente en una situación como:
 
 **30 / 10 proyectos**
 
-Mientras el número total de proyectos supere el límite del plan:
+Mientras el número total de proyectos supere el límite del nuevo plan:
 
 - no se podrán crear nuevos proyectos;
 - los proyectos existentes no se eliminarán automáticamente;
@@ -155,15 +279,17 @@ Mientras el número total de proyectos supere el límite del plan:
 - el usuario podrá eliminar proyectos para reducir el total;
 - el usuario podrá volver a contratar un plan con mayor capacidad.
 
+Si otros Workspaces propiedad de Ana no superan el límite Base, podrán continuar funcionando normalmente.
+
 De esta forma, un downgrade nunca provoca pérdida automática de información.
 
 ---
 
-## 6. Selección de proyectos durante un downgrade
+## 8. Selección de proyectos durante un downgrade
 
-Cuando un cambio de plan obligue a reducir el número de proyectos operativos, Tickard debe intentar conservar aquellos que resulten más importantes para el usuario.
+Cuando un cambio de plan obligue a reducir el número de proyectos operativos dentro de un Workspace, Tickard debe intentar conservar aquellos que resulten más importantes para el usuario.
 
-Siempre que sea posible, antes de aplicar el cambio el usuario podrá seleccionar manualmente qué proyectos desea mantener operativos.
+Siempre que sea posible, antes de aplicar las restricciones el usuario podrá seleccionar manualmente qué proyectos desea mantener operativos.
 
 La prioridad será:
 
@@ -181,9 +307,11 @@ Entre proyectos con la misma prioridad se utilizará la actividad reciente.
 
 ### Ejemplo
 
-Un Workspace Pro tiene 30 proyectos y cambia a Base.
+Un Workspace dispone de 30 proyectos mientras su propietario utiliza Pro.
 
-Base permite 10 proyectos operativos.
+El propietario cambia a Base.
+
+Base permite 10 proyectos operativos por Workspace.
 
 Si existen:
 
@@ -194,11 +322,11 @@ Tickard conservará primero los 4 proyectos importantes.
 
 Las 6 plazas restantes se asignarán a los proyectos con actividad más reciente.
 
-Los otros 20 proyectos quedarán archivados.
+Los otros 20 proyectos quedarán archivados o limitados a consulta según la política que se defina.
 
 ---
 
-## 7. Proyectos importantes
+## 9. Proyectos importantes
 
 Los proyectos podrán disponer de una marca de **Importante**.
 
@@ -214,7 +342,7 @@ El nombre técnico y la implementación de esta propiedad todavía no están def
 
 ---
 
-## 8. Actividad reciente
+## 10. Actividad reciente
 
 La actividad reciente podrá utilizarse para determinar qué proyectos tienen mayor prioridad cuando Tickard tenga que realizar una selección automática.
 
@@ -231,13 +359,51 @@ Estas posibilidades no constituyen todavía una decisión de implementación.
 
 ---
 
-## 9. Principios de los límites
+## 11. Asientos adicionales y cambios de plan
 
-Los límites de los planes deben seguir los siguientes principios:
+Los asientos adicionales pertenecen al Workspace y no al plan personal del usuario.
+
+Por tanto, un mismo propietario puede tener:
+
+- un Workspace sin asientos adicionales;
+- otro Workspace con 5 asientos adicionales;
+- otro Workspace con 20 asientos adicionales.
+
+Los asientos adicionales no se comparten entre ellos.
+
+Cuando el propietario cambia de plan, cambia también la cantidad de miembros incluidos de todos sus Workspaces.
+
+Los asientos adicionales contratados siguen perteneciendo al Workspace correspondiente.
+
+El comportamiento comercial exacto de estos asientos durante upgrades y downgrades todavía debe definirse.
+
+En cualquier caso, un downgrade no debe provocar la eliminación automática de miembros.
+
+Si después de un downgrade un Workspace supera su nueva capacidad de miembros, deberá entrar temporalmente en una situación de exceso de capacidad.
+
+Por ejemplo:
+
+**28 / 20 miembros**
+
+Mientras exista exceso de capacidad:
+
+- los miembros existentes no se eliminarán automáticamente;
+- no podrán incorporarse nuevos miembros;
+- podrá liberarse capacidad eliminando miembros;
+- podrán contratarse asientos adicionales;
+- podrá recuperarse un plan con mayor capacidad.
+
+Las restricciones adicionales que puedan aplicarse a un Workspace en exceso de capacidad todavía están pendientes de definir.
+
+---
+
+## 12. Principios de los límites
+
+Los límites de los planes deben seguir los siguientes principios.
 
 ### No perder información
 
-Un downgrade nunca debe eliminar automáticamente proyectos o información del usuario.
+Un downgrade nunca debe eliminar automáticamente proyectos, miembros o información del usuario.
 
 ### No permitir eludir límites mediante archivado
 
@@ -247,9 +413,29 @@ Los proyectos archivados continúan consumiendo una plaza.
 
 Participar en Workspaces ajenos no reduce la capacidad del usuario para crear los suyos.
 
-### Los límites se aplican por Workspace
+### El plan pertenece al propietario
 
-El límite de proyectos corresponde individualmente a cada Workspace.
+El plan comercial pertenece al usuario propietario.
+
+Los Workspaces propios utilizan las capacidades correspondientes a ese plan.
+
+### Los límites de recursos se aplican por Workspace
+
+Los límites de proyectos, miembros y otros recursos se calculan individualmente para cada Workspace.
+
+### Los miembros consumen capacidad del Workspace
+
+Cada persona incorporada a un Workspace ocupa capacidad dentro de ese Workspace.
+
+### Los asientos adicionales son locales al Workspace
+
+Los asientos adicionales contratados para un Workspace no pueden utilizarse automáticamente en otros Workspaces.
+
+### Los miembros no heredan el plan personal
+
+Trabajar dentro de un Workspace Pro permite utilizar las capacidades Pro de ese Workspace.
+
+Esto no convierte al miembro en usuario Pro ni modifica las capacidades de sus propios Workspaces.
 
 ### Business permanece flexible
 
@@ -257,14 +443,21 @@ Business no tendrá necesariamente los mismos límites que los planes estándar 
 
 ---
 
-## 10. Decisiones pendientes
+## 13. Decisiones pendientes
 
 Las siguientes cuestiones todavía no están definidas y no deben asumirse hasta que se tome una decisión explícita:
 
 - precios de los planes;
 - facturación mensual o anual;
 - período de prueba;
-- límites de miembros;
+- número exacto de miembros incluidos en Free;
+- número exacto de miembros incluidos en Base;
+- número exacto de miembros incluidos en Pro;
+- precio de cada asiento adicional;
+- posibles paquetes de asientos;
+- facturación mensual o anual de los asientos adicionales;
+- tratamiento de los asientos durante upgrades y downgrades;
+- posibilidad de cancelar o reducir asientos adicionales;
 - límites de almacenamiento;
 - límites de archivos;
 - funcionalidades adicionales exclusivas de Base;
@@ -274,10 +467,10 @@ Las siguientes cuestiones todavía no están definidas y no deben asumirse hasta
 - tiempo de conservación antes de una eliminación definitiva;
 - período de gracia durante un downgrade;
 - gestión de pagos;
-- facturación por miembros o seats;
 - comportamiento comercial de upgrades y downgrades;
 - definición técnica de proyecto importante;
 - definición técnica de actividad reciente;
-- operaciones exactas permitidas sobre proyectos archivados.
+- operaciones exactas permitidas sobre proyectos archivados;
+- restricciones adicionales aplicables cuando un Workspace supere temporalmente sus límites.
 
 Estas decisiones deberán documentarse cuando se definan y no deben inferirse durante la implementación.

@@ -14,19 +14,17 @@ Cada Workspace mantiene de forma independiente sus:
 - clientes;
 - configuración;
 - permisos;
-- plan.
+- asientos adicionales.
 
 Una misma cuenta de usuario puede pertenecer a varios Workspaces.
 
 El usuario trabaja siempre dentro de un Workspace activo y puede cambiar entre aquellos a los que tenga acceso.
 
-El plan pertenece al Workspace y no a la cuenta de usuario. Por tanto, una misma persona puede disponer de diferentes capacidades dependiendo del Workspace en el que esté trabajando.
+El plan comercial pertenece al usuario propietario.
 
-Ejemplo:
+Los Workspaces de los que ese usuario sea propietario heredan las capacidades correspondientes a su plan.
 
-- Mi espacio — Free
-- Invbit — Base
-- Empresa X — Pro
+Una misma cuenta puede pertenecer además a Workspaces propiedad de otros usuarios y disponer dentro de ellos de las capacidades correspondientes al plan de su propietario.
 
 ---
 
@@ -57,11 +55,12 @@ Al registrarse se crea automáticamente un Workspace inicial.
 
 Inicialmente:
 
-- tendrá plan Free;
+- el usuario tendrá plan Free;
+- el Workspace utilizará las capacidades correspondientes al plan Free de su propietario;
 - el usuario que lo crea será su propietario;
 - el usuario tendrá el rol de propietario dentro de ese Workspace;
 - podrá comenzar a utilizar Tickard inmediatamente;
-- podrá crear proyectos, tableros y tarjetas dentro de los límites del plan Free.
+- podrá crear proyectos, tableros y tarjetas dentro de los límites correspondientes a su plan.
 
 El nombre inicial será:
 
@@ -224,7 +223,9 @@ Ejemplo:
 
 Cambiar de Workspace cambia el contexto desde el que se accede a los proyectos.
 
-Los límites relacionados con el número de proyectos dependen del plan del Workspace y se documentan en `docs/plans.md`.
+Los límites relacionados con el número de proyectos dependen del plan del propietario del Workspace y se aplican individualmente a cada Workspace.
+
+Estos límites se documentan en `docs/plans.md`.
 
 ---
 
@@ -246,39 +247,132 @@ Al cambiar de Workspace deberán cambiar también los datos contextuales mostrad
 
 Esto evita mezclar información perteneciente a diferentes Workspaces.
 
-La implementación concreta del selector y la persistencia del Workspace activo se definirá durante su desarrollo.
+El Workspace activo podrá persistirse para que el usuario continúe trabajando en el mismo contexto al volver a acceder a Tickard.
 
 ---
 
-## 11. Plan del Workspace
+## 11. Plan efectivo del Workspace
 
-Cada Workspace dispone de su propio plan.
+El plan comercial pertenece al usuario propietario del Workspace.
 
-El plan no pertenece globalmente a la cuenta del usuario.
+Cada usuario puede disponer de uno de los planes de Tickard:
 
-Esto permite que una misma persona pueda participar simultáneamente en Workspaces con diferentes capacidades.
+- Free;
+- Base;
+- Pro;
+- Business.
+
+Los Workspaces de los que ese usuario sea propietario heredan automáticamente las capacidades correspondientes a su plan.
 
 Por ejemplo:
 
-- Mi espacio — Free;
-- Tickard Demo — Base;
-- Empresa X — Pro.
+Ana dispone de plan Pro y es propietaria de:
 
-Al cambiar de Workspace, las capacidades disponibles dependerán del plan del Workspace activo.
+- Mi espacio;
+- Tickard Demo;
+- Empresa X.
 
-Los límites y reglas de los planes se documentan en:
+Los tres Workspaces funcionan con las capacidades correspondientes al plan Pro.
+
+Un Workspace no convierte en usuarios Pro a sus miembros.
+
+Por ejemplo, Luis puede disponer de plan Free y ser miembro de `Tickard Demo`, propiedad de Ana.
+
+Dentro de `Tickard Demo`, Luis podrá utilizar las funcionalidades disponibles en ese Workspace Pro.
+
+Sin embargo, su propio Workspace `Mi espacio` continuará utilizando las capacidades correspondientes a su plan Free.
+
+Por tanto, deben distinguirse siempre dos conceptos:
+
+- **plan del usuario:** plan contratado por la cuenta;
+- **plan efectivo del Workspace:** corresponde al plan actual de su propietario.
+
+Si el propietario cambia de plan, sus Workspaces propios pasan a utilizar las capacidades del nuevo plan.
+
+Los datos existentes nunca deben eliminarse automáticamente como consecuencia de un downgrade.
+
+Las reglas concretas de límites, upgrades y downgrades se documentan en:
 
 `docs/plans.md`
 
 ---
 
-## 12. Invitaciones
+## 12. Asientos y miembros del Workspace
+
+Cada Workspace dispone de una capacidad máxima de miembros.
+
+La cantidad de miembros incluida depende del plan efectivo del Workspace.
+
+Este límite se aplica individualmente a cada Workspace.
+
+Por ejemplo, si el plan Pro incluye una determinada cantidad de miembros, cada Workspace propiedad de un usuario Pro dispone de esa capacidad de forma independiente.
+
+Un Workspace puede ampliar su capacidad mediante la contratación de asientos adicionales.
+
+Los asientos adicionales pertenecen únicamente al Workspace para el que fueron adquiridos.
+
+No se comparten automáticamente con otros Workspaces del mismo propietario.
+
+La capacidad total de miembros de un Workspace se calcula como:
+
+**miembros incluidos por el plan + asientos adicionales del Workspace**
+
+Por ejemplo:
+
+`Tickard Demo`
+
+- plan efectivo: Pro;
+- miembros incluidos por Pro: X;
+- asientos adicionales contratados: 10;
+- capacidad total: X + 10.
+
+Cuando un Workspace alcanza su capacidad máxima de miembros no podrán incorporarse nuevos miembros hasta que:
+
+- quede libre algún asiento;
+- se contraten asientos adicionales;
+- o el propietario cambie a un plan con mayor capacidad.
+
+Eliminar un miembro del Workspace libera la capacidad correspondiente a ese asiento.
+
+Los miembros invitados utilizan las capacidades del Workspace en el que están trabajando.
+
+Esto no modifica su plan personal ni las capacidades de los Workspaces de los que ellos mismos sean propietarios.
+
+Por ejemplo:
+
+Luis dispone de plan Free.
+
+Es propietario de:
+
+**Mi espacio**
+
+y miembro de:
+
+**Tickard Demo**
+
+Si `Tickard Demo` utiliza las capacidades Pro de Ana, Luis podrá utilizar esas capacidades mientras trabaje dentro de `Tickard Demo`.
+
+Al volver a `Mi espacio`, seguirá sujeto a las capacidades Free de su propia cuenta.
+
+Los asientos adicionales constituyen una ampliación de capacidad del Workspace y no una mejora del plan personal de sus miembros.
+
+---
+
+## 13. Invitaciones
 
 Una invitación concede acceso a un Workspace, pero no sustituye ni modifica la identidad de la cuenta del usuario.
 
 Si la persona invitada ya dispone de una cuenta de Tickard, deberá utilizar su cuenta existente para incorporarse al Workspace.
 
 Si todavía no dispone de una cuenta, deberá registrarse normalmente y posteriormente incorporarse al Workspace correspondiente.
+
+Antes de incorporar definitivamente a un nuevo miembro deberá comprobarse que el Workspace dispone de capacidad suficiente.
+
+Si todos los asientos disponibles están ocupados, la incorporación deberá quedar bloqueada hasta que:
+
+- se libere un asiento;
+- se contraten asientos adicionales;
+- o aumente la capacidad disponible mediante un cambio de plan.
 
 Una invitación nunca debe:
 
@@ -293,7 +387,7 @@ El funcionamiento detallado del proceso de invitación y aceptación se definir�
 
 ---
 
-## 13. Demo de desarrollo
+## 14. Demo de desarrollo
 
 La información de demostración utilizada durante el desarrollo seguirá el mismo modelo de Workspaces que utilizará el producto real.
 
@@ -308,6 +402,8 @@ Su Workspace inicial `Mi espacio` se renombra a:
 Ana es la propietaria de `Tickard Demo`.
 
 No se crea un segundo Workspace para la demo.
+
+Durante el desarrollo, Ana podrá utilizar un plan superior para facilitar las pruebas de funcionalidades y límites.
 
 ### Luis, Marta y Elena
 
@@ -335,7 +431,7 @@ De esta forma, la demo representa un Workspace colaborativo real y no un caso es
 
 ---
 
-## 14. Principios del modelo de Workspaces
+## 15. Principios del modelo de Workspaces
 
 El diseño de Workspaces debe respetar los siguientes principios.
 
@@ -363,13 +459,27 @@ No crea una identidad alternativa ni sustituye las credenciales de la persona.
 
 Pertenecer a Workspaces ajenos no consume el límite de Workspaces propios del usuario.
 
-### El plan depende del Workspace
+### El plan pertenece al propietario
 
-Las capacidades disponibles pueden ser diferentes en cada Workspace al que pertenece una misma cuenta.
+El plan comercial pertenece al usuario.
+
+Los Workspaces que posee utilizan las capacidades correspondientes a su plan.
+
+### Las capacidades dependen del Workspace activo
+
+Una persona puede disponer de diferentes capacidades dependiendo del Workspace en el que esté trabajando, ya que cada Workspace utiliza el plan de su propietario.
+
+### Los miembros consumen capacidad del Workspace
+
+Cada miembro incorporado ocupa capacidad dentro del Workspace correspondiente.
+
+### Los asientos pertenecen al Workspace
+
+La capacidad adicional contratada mediante asientos pertenece únicamente al Workspace para el que fue adquirida.
 
 ---
 
-## 15. Decisiones pendientes
+## 16. Decisiones pendientes
 
 Los siguientes aspectos del sistema de Workspaces todavía deben definirse con mayor detalle:
 
@@ -383,7 +493,13 @@ Los siguientes aspectos del sistema de Workspaces todavía deben definirse con m
 - eliminación de Workspaces;
 - comportamiento cuando un propietario quiera eliminar su cuenta;
 - configuración detallada del Workspace;
-- facturación y gestión de miembros o asientos.
+- número de miembros incluidos en cada plan;
+- precio de los asientos adicionales;
+- posibles paquetes de asientos;
+- modalidad de facturación de los asientos adicionales;
+- comportamiento de los asientos adicionales después de un downgrade;
+- transferencia o cancelación de asientos adicionales;
+- gestión de pagos y facturación.
 
 Los límites de los planes Free, Base, Pro y Business se documentan por separado en `docs/plans.md`.
 
