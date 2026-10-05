@@ -251,8 +251,12 @@ class ProjectsController extends ApiController
                 'name' => $category->name,
                 'position' => $category->position,
             ])->values(),
-            'teams' => $role === 'cliente' ? [] : Team::orderBy('name')->get(['id', 'name']),
-            'columns' => $columns,
+            'teams' => $role === 'cliente'
+                ? []
+                : Team::where('workspace_id', $project->workspace_id)
+                    ->orderBy('name')
+                    ->get(['id', 'name']),
+                        'columns' => $columns,
         ];
     }
 }

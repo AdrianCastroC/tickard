@@ -23,7 +23,7 @@ protected function internalIds(array $ids): array
 
     protected function syncCardTeams(Card $card, Project $project, array $teamIds, $alreadyNotified, User $actor): void
     {
-        $ids = Team::whereIn('id', $teamIds)->pluck('id');
+        $ids = Team::where('workspace_id', $project->workspace_id)->whereIn('id', $teamIds)->pluck('id');
         $previous = $card->teams()->pluck('teams.id');
         $card->teams()->sync($ids);
 

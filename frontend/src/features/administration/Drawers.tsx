@@ -1,11 +1,19 @@
 import { type FormEvent, useEffect, useState } from 'react'
 import { api, type BoardPayload } from '../../api'
 
-export function RosterDrawer({ title, hint, path, noun, onClose }: {
+export function RosterDrawer({
+  title,
+  hint,
+  path,
+  noun,
+  workspaceId,
+  onClose,
+}: {
   title: string
   hint: string
   path: 'teams' | 'departments'
   noun: string
+  workspaceId: number | null
   onClose: () => void
 }) {
   type Item = { id: number; name: string; members: { id: number; name: string }[] }
@@ -15,9 +23,15 @@ export function RosterDrawer({ title, hint, path, noun, onClose }: {
   const [name, setName] = useState('')
   const [members, setMembers] = useState<string[]>([])
   const [error, setError] = useState('')
+  const scopedPath = workspaceId
+  ? `/${path}?workspace_id=${workspaceId}`
+  : `/${path}`
 
   async function load() {
-    const data = await api<Record<string, Item[] | { id: number; name: string }[]>>(`/${path}`)
+    const data = await api<
+      Record<string, Item[] | { id: number; name: string }[]>
+    >(scopedPath)
+  
     setItems(data[path] as Item[])
     setPeople(data.people as { id: number; name: string }[])
   }
@@ -33,7 +47,11 @@ export function RosterDrawer({ title, hint, path, noun, onClose }: {
   async function save(event: FormEvent) {
     event.preventDefault()
     if (!name.trim()) return
-    const body = JSON.stringify({ name: name.trim(), member_ids: members.map(Number) })
+    const body = JSON.stringify({
+      workspace_id: workspaceId,
+      name: name.trim(),
+      member_ids: members.map(Number),
+    })
     if (editing) await api(`/${path}/${editing}`, { method: 'PATCH', body })
     else await api(`/${path}`, { method: 'POST', body })
     setEditing(null)
@@ -57,7 +75,7 @@ export function RosterDrawer({ title, hint, path, noun, onClose }: {
               <div className="row">
                 <strong>{item.name}</strong>
                 <button className="ghost" type="button" onClick={() => edit(item)}>Editar</button>
-                <button className="ghost" type="button" onClick={async () => { await api(`/${path}/${item.id}`, { method: 'DELETE' }); if (editing === item.id) { setEditing(null); setName(''); setMembers([]) }; await load() }}>Quitar</button>
+                <button className="ghost" type="button" onClick={async () => { await api(`/${path}/${item.id}`, {method: 'DELETE', body: JSON.stringify({workspace_id: workspaceId})}); if (editing === item.id) { setEditing(null); setName(''); setMembers([]) }; await load() }}>Quitar</button>
               </div>
               <p className="muted">{item.members.map((member) => member.name).join(', ') || 'Sin personas'}</p>
             </li>
@@ -82,13 +100,16 @@ export function RosterDrawer({ title, hint, path, noun, onClose }: {
   )
 }
 
-export function ClientsDrawer({ onClose }: { onClose: () => void }) {
+export function ClientsDrawer({ workspaceId, onClose }: { workspaceId: number | null; onClose: () => void }) {
   const [clients, setClients] = useState<{ id: number; name: string; projects_count: number; people_count: number }[]>([])
   const [name, setName] = useState('')
   const [error, setError] = useState('')
+  const scopedPath = workspaceId
+    ? `/clients?workspace_id=${workspaceId}`
+    : '/clients'
 
   async function load() {
-    setClients(await api<typeof clients>('/clients'))
+    setClients(await api<typeof clients>(scopedPath))
   }
 
   useEffect(() => { load().catch((caught) => setError(caught instanceof Error ? caught.message : 'No se pudieron cargar los clientes.')) }, [])
@@ -96,7 +117,7 @@ export function ClientsDrawer({ onClose }: { onClose: () => void }) {
   async function save(event: FormEvent) {
     event.preventDefault()
     if (!name.trim()) return
-    await api('/clients', { method: 'POST', body: JSON.stringify({ name: name.trim() }) })
+    await api('/clients', { method: 'POST', body: JSON.stringify({workspace_id: workspaceId, name: name.trim() }) })
     setName('')
     await load()
   }

@@ -1211,9 +1211,9 @@ export function Workspace() {
           onChange={async () => { if (openId) await loadBoard(openId) }}
         />
       )}
-      {personal === 'departments' && <RosterDrawer title="Departamentos" hint="Un departamento es la estructura de la empresa. Agrupa personas y no asigna la tarea." path="departments" noun="departamento" onClose={() => setPersonal(null)} />}
-      {personal === 'teams' && <RosterDrawer title="Equipos" hint="Un equipo es un grupo de trabajo. En una tarea se asigna a personas, a un equipo, o a los dos." path="teams" noun="equipo" onClose={() => { setPersonal(null); if (openId) loadBoard(openId) }} />}
-      {personal === 'clients' && <ClientsDrawer onClose={() => setPersonal(null)} />}
+      {personal === 'departments' && <RosterDrawer title="Departamentos" hint="Un departamento es la estructura de la empresa. Agrupa personas y no asigna la tarea." path="departments" noun="departamento" workspaceId={activeWorkspaceId} onClose={() => setPersonal(null)} />}
+      {personal === 'teams' && <RosterDrawer title="Equipos" hint="Un equipo es un grupo de trabajo. En una tarea se asigna a personas, a un equipo, o a los dos." path="teams" noun="equipo" workspaceId={activeWorkspaceId} onClose={() => {setPersonal(null); if (openId) {loadBoard(openId)}}}/>}
+      {personal === 'clients' && <ClientsDrawer workspaceId={activeWorkspaceId} onClose={() => setPersonal(null)} />}
       {createColumn && view && (
         <CreateCardModal
           board={view}
