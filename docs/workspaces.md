@@ -303,60 +303,36 @@ Cada Workspace dispone de una capacidad máxima de miembros.
 
 La cantidad de miembros incluida depende del plan efectivo del Workspace.
 
-Este límite se aplica individualmente a cada Workspace.
+Los límites provisionales actuales son:
 
-Por ejemplo, si el plan Pro incluye una determinada cantidad de miembros, cada Workspace propiedad de un usuario Pro dispone de esa capacidad de forma independiente.
+- Free: 3 miembros;
+- Base: 10 miembros;
+- Pro: 30 miembros;
+- Business: a medida.
+
+El propietario del Workspace cuenta como miembro y consume uno de estos asientos.
+
+Por tanto:
+
+- un Workspace Free permite propietario + 2 miembros adicionales;
+- un Workspace Base permite propietario + 9 miembros adicionales;
+- un Workspace Pro permite propietario + 29 miembros adicionales.
+
+Este límite se aplica individualmente a cada Workspace.
 
 Un Workspace puede ampliar su capacidad mediante la contratación de asientos adicionales.
 
-Los asientos adicionales pertenecen únicamente al Workspace para el que fueron adquiridos.
+Los asientos adicionales se adquirirán mediante packs y pertenecen únicamente al Workspace para el que fueron contratados.
 
-No se comparten automáticamente con otros Workspaces del mismo propietario.
+El precio unitario del asiento será progresivamente menor en planes superiores:
+
+**Free > Base > Pro**
+
+Business podrá utilizar condiciones personalizadas.
 
 La capacidad total de miembros de un Workspace se calcula como:
 
 **miembros incluidos por el plan + asientos adicionales del Workspace**
-
-Por ejemplo:
-
-`Tickard Demo`
-
-- plan efectivo: Pro;
-- miembros incluidos por Pro: X;
-- asientos adicionales contratados: 10;
-- capacidad total: X + 10.
-
-Cuando un Workspace alcanza su capacidad máxima de miembros no podrán incorporarse nuevos miembros hasta que:
-
-- quede libre algún asiento;
-- se contraten asientos adicionales;
-- o el propietario cambie a un plan con mayor capacidad.
-
-Eliminar un miembro del Workspace libera la capacidad correspondiente a ese asiento.
-
-Los miembros invitados utilizan las capacidades del Workspace en el que están trabajando.
-
-Esto no modifica su plan personal ni las capacidades de los Workspaces de los que ellos mismos sean propietarios.
-
-Por ejemplo:
-
-Luis dispone de plan Free.
-
-Es propietario de:
-
-**Mi espacio**
-
-y miembro de:
-
-**Tickard Demo**
-
-Si `Tickard Demo` utiliza las capacidades Pro de Ana, Luis podrá utilizar esas capacidades mientras trabaje dentro de `Tickard Demo`.
-
-Al volver a `Mi espacio`, seguirá sujeto a las capacidades Free de su propia cuenta.
-
-Los asientos adicionales constituyen una ampliación de capacidad del Workspace y no una mejora del plan personal de sus miembros.
-
----
 
 ## 13. Invitaciones
 
@@ -493,7 +469,6 @@ Los siguientes aspectos del sistema de Workspaces todavía deben definirse con m
 - eliminación de Workspaces;
 - comportamiento cuando un propietario quiera eliminar su cuenta;
 - configuración detallada del Workspace;
-- número de miembros incluidos en cada plan;
 - precio de los asientos adicionales;
 - posibles paquetes de asientos;
 - modalidad de facturación de los asientos adicionales;

@@ -172,15 +172,41 @@ Cada Workspace dispone de una capacidad máxima de miembros.
 
 La capacidad incluida depende del plan de su propietario.
 
-El número concreto de miembros incluidos en Free, Base y Pro todavía no está definido.
+Los límites provisionales actuales son:
+
+| Plan del propietario | Miembros incluidos por Workspace |
+|---|---:|
+| Free | 3 |
+| Base | 10 |
+| Pro | 30 |
+| Business | A medida |
+
+El propietario del Workspace cuenta como miembro y consume uno de los asientos incluidos.
+
+Por tanto:
+
+- Free permite al propietario y hasta 2 miembros adicionales;
+- Base permite al propietario y hasta 9 miembros adicionales;
+- Pro permite al propietario y hasta 29 miembros adicionales.
 
 El límite se aplica individualmente a cada Workspace.
 
-Por ejemplo, un usuario Pro propietario de tres Workspaces dispone de la capacidad incluida por Pro en cada uno de ellos.
+Por ejemplo, un usuario Pro propietario de tres Workspaces dispone de hasta 30 miembros incluidos en cada uno de ellos.
 
 Un miembro ocupa capacidad únicamente dentro de cada Workspace al que pertenece.
 
 La capacidad de un Workspace podrá ampliarse mediante la contratación de asientos adicionales.
+
+Los asientos adicionales se comercializarán mediante packs.
+
+El precio unitario de cada asiento adicional dependerá del plan del propietario:
+
+- en Free será el más alto;
+- en Base será inferior al de Free;
+- en Pro será inferior al de Base;
+- Business podrá utilizar condiciones personalizadas.
+
+Los tamaños concretos de los packs y sus precios todavía no están definidos.
 
 Los asientos adicionales:
 
@@ -198,40 +224,24 @@ Por ejemplo:
 
 Un Workspace Pro dispone de:
 
-- X miembros incluidos;
+- 30 miembros incluidos;
 - 10 asientos adicionales.
 
 Su capacidad total será:
 
-**X + 10 miembros**
+**40 miembros**
 
 Cuando todos los asientos estén ocupados, Tickard deberá impedir la incorporación de nuevos miembros.
 
 Para incorporar a otra persona será necesario:
 
 - eliminar a un miembro existente;
-- contratar uno o más asientos adicionales;
+- contratar uno o más packs de asientos adicionales;
 - o cambiar a un plan que proporcione una capacidad superior.
 
 Eliminar un miembro libera un asiento.
 
 Los usuarios que pertenezcan a Workspaces ajenos no consumen ningún asiento de sus propios Workspaces.
-
-### Ejemplo
-
-Luis dispone de plan Free y es propietario de:
-
-`Mi espacio`
-
-También pertenece como miembro a:
-
-`Tickard Demo`
-
-Luis ocupa un asiento dentro de `Tickard Demo`.
-
-Sin embargo, su pertenencia a `Tickard Demo` no consume capacidad dentro de `Mi espacio`.
-
----
 
 ## 6. Archivado de proyectos
 
@@ -450,9 +460,6 @@ Las siguientes cuestiones todavía no están definidas y no deben asumirse hasta
 - precios de los planes;
 - facturación mensual o anual;
 - período de prueba;
-- número exacto de miembros incluidos en Free;
-- número exacto de miembros incluidos en Base;
-- número exacto de miembros incluidos en Pro;
 - precio de cada asiento adicional;
 - posibles paquetes de asientos;
 - facturación mensual o anual de los asientos adicionales;
