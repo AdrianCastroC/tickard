@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class Project extends Model
 {
     protected $fillable = [
+        'workspace_id',
         'client_company_id',
         'name',
         'show_description',
@@ -49,5 +50,9 @@ class Project extends Model
     public function labels(): HasMany
     {
         return $this->hasMany(Label::class);
+    }
+    public function workspace(): BelongsTo
+    {
+        return $this->belongsTo(Workspace::class);
     }
 }

@@ -39,6 +39,16 @@ export function Workspace() {
       return false
     }
   })
+  const [activeWorkspaceId, setActiveWorkspaceId] = useState<number | null>(() => {
+    try {
+      const stored = localStorage.getItem('tickard:active-workspace')
+      return stored ? Number(stored) : null
+    } catch {
+      return null
+    }
+  })
+  const [personalOpen, setPersonalOpen] = useState(true)
+  const [projectsOpen, setProjectsOpen] = useState(true)
   const [projectToDelete, setProjectToDelete] = useState<Project | null>(null)
   const [deleteProjectConfirmation, setDeleteProjectConfirmation] = useState('')
   const [boardToDelete, setBoardToDelete] = useState<{id: number; name: string} | null>(null)
@@ -82,6 +92,21 @@ export function Workspace() {
 
   useEffect(() => {
     loadProfile().then((data) => {
+
+      const availableWorkspaceIds = data.workspaces.map((workspace) => workspace.id)
+
+      let workspaceId = activeWorkspaceId
+
+      if (!workspaceId || !availableWorkspaceIds.includes(workspaceId)) {
+        workspaceId = data.workspaces[0]?.id ?? null
+
+        if (workspaceId) {
+          localStorage.setItem('tickard:active-workspace', String(workspaceId))
+        }
+      }
+
+      setActiveWorkspaceId(workspaceId)
+
       const first = data.projects[0]
       const boardId = first?.boards[0]?.id ?? null
       if (first && boardId) {
@@ -324,6 +349,10 @@ export function Workspace() {
 
   if (!profile) return <main className="login"><p>Cargando…</p></main>
 
+  const activeWorkspace =
+    profile.workspaces.find((workspace) => workspace.id === activeWorkspaceId)
+    ?? profile.workspaces[0]
+
   const filtersActive = Boolean(assignee || teamId || label || priority)
   const backlog = view?.columns.find((column) => column.name === 'Backlog') ?? view?.columns[0]
 
@@ -508,9 +537,27 @@ export function Workspace() {
           </button>
         </div>
         <nav className="nav">
+          <p
+            className="kicker kicker-icon"
+            title={activeWorkspace?.name ?? 'Workspace'}
+          >
+            <svg
+              className="nav-icon workspace-icon"
+              viewBox="0 0 640 640"
+              aria-hidden="true"
+            >
+              <path
+                d="M192 64C156.7 64 128 92.7 128 128L128 512C128 547.3 156.7 576 192 576L448 576C483.3 576 512 547.3 512 512L512 128C512 92.7 483.3 64 448 64L192 64zM304 416L336 416C353.7 416 368 430.3 368 448L368 528L272 528L272 448C272 430.3 286.3 416 304 416zM224 176C224 167.2 231.2 160 240 160L272 160C280.8 160 288 167.2 288 176L288 208C288 216.8 280.8 224 272 224L240 224C231.2 224 224 216.8 224 208L224 176zM368 160L400 160C408.8 160 416 167.2 416 176L416 208C416 216.8 408.8 224 400 224L368 224C359.2 224 352 216.8 352 208L352 176C352 167.2 359.2 160 368 160zM224 304C224 295.2 231.2 288 240 288L272 288C280.8 288 288 295.2 288 304L288 336C288 344.8 280.8 352 272 352L240 352C231.2 352 224 344.8 224 336L224 304zM368 288L400 288C408.8 288 416 295.2 416 304L416 336C416 344.8 408.8 352 400 352L368 352C359.2 352 352 344.8 352 336L352 304C352 295.2 359.2 288 368 288z"
+              />
+            </svg>
+
+            <span className="side-label-text">
+              {activeWorkspace?.name ?? 'Workspace'}
+            </span>
+          </p>
           {view?.role !== 'cliente' && (
             <button
-              className={assignee === String(profile.user.id) ? 'nav-item on' : 'nav-item'}
+              className={assignee === String(profile.user.id) ? 'nav-item sub on' : 'nav-item sub'}
               type="button"
               title="Mis tareas"
               onClick={() => { setAssignee(String(profile.user.id)); setTeamId(''); setPersonal(null); setShowFilters(true) }}
@@ -526,31 +573,14 @@ export function Workspace() {
               <span className="side-label-text">Mis tareas</span>
             </button>
           )}
-          <p className="kicker kicker-icon" title="Tableros">
-            <NavIcon>
-              <rect width="18" height="18" x="3" y="3" rx="2"/>
-              <path d="M8 7v7"/>
-              <path d="M12 7v4"/>
-              <path d="M16 7v9"/>
-            </NavIcon>
-            <span className="side-label-text">Tableros</span>
-          </p>
-          <button
-            className={!assignee && !personal ? 'nav-item sub on' : 'nav-item sub'}
-            type="button"
-            title="Tablero"
-            onClick={() => { setPersonal(null); setAssignee(''); setTeamId('') }}
-          >
-            <NavIcon>
-              <path d="M5 3v14" />
-              <path d="M12 3v8" />
-              <path d="M19 3v18" />
-            </NavIcon>
-            <span className="side-label-text">Tablero</span>
-          </button>
           {profile.user.is_admin && (
             <>
-              <p className="kicker kicker-icon" title="Personal">
+              <button
+                type="button"
+                className="nav-item sub section-toggle"
+                title="Personal"
+                onClick={() => setPersonalOpen((current) => !current)}
+              >
                 <NavIcon>
                   <path d="M17 21v-1a2 2 0 00-2-2H9a2 2 0 00-2 2v1"/>
                   <path d="M19 10h1a2 2 0 012 2v1"/>
@@ -559,164 +589,264 @@ export function Workspace() {
                   <circle cx="18" cy="4" r="2"/>
                   <circle cx="6" cy="4" r="2"/>
                 </NavIcon>
+
                 <span className="side-label-text">Personal</span>
-              </p>
-              <button className={personal === 'departments' ? 'nav-item sub on' : 'nav-item sub'} type="button" title="Departamentos" onClick={() => setPersonal('departments')}>
-                <NavIcon>
-                  <path d="M2.97 12.92A2 2 0 0 0 2 14.63v3.24a2 2 0 0 0 .97 1.71l3 1.8a2 2 0 0 0 2.06 0L12 19v-5.5l-5-3-4.03 2.42Z"/>
-                  <path d="m7 16.5-4.74-2.85"/>
-                  <path d="m7 16.5 5-3"/>
-                  <path d="M7 16.5v5.17"/>
-                  <path d="M12 13.5V19l3.97 2.38a2 2 0 0 0 2.06 0l3-1.8a2 2 0 0 0 .97-1.71v-3.24a2 2 0 0 0-.97-1.71L17 10.5l-5 3Z"/>
-                  <path d="m17 16.5-5-3"/>
-                  <path d="m17 16.5 4.74-2.85"/>
-                  <path d="M17 16.5v5.17"/>
-                  <path d="M7.97 4.42A2 2 0 0 0 7 6.13v4.37l5 3 5-3V6.13a2 2 0 0 0-.97-1.71l-3-1.8a2 2 0 0 0-2.06 0l-3 1.8Z"/>
-                  <path d="M12 8 7.26 5.15"/>
-                  <path d="m12 8 4.74-2.85"/>
-                  <path d="M12 13.5V8"/>
-                </NavIcon>
-                <span className="side-label-text">Departamentos</span>
+
+                <span className={`section-chevron${personalOpen ? ' open' : ''}`}>
+                  ›
+                </span>
               </button>
-              <button className={personal === 'teams' ? 'nav-item sub on' : 'nav-item sub'} type="button" title="Equipos" onClick={() => setPersonal('teams')}>
-                <NavIcon>
-                  <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
-                  <path d="M16 3.128a4 4 0 0 1 0 7.744"/>
-                  <path d="M22 21v-2a4 4 0 0 0-3-3.87"/>
-                  <circle cx="9" cy="7" r="4"/>
-                </NavIcon>
-                <span className="side-label-text">Equipos</span>
-              </button>
-              <button className={personal === 'clients' ? 'nav-item sub on' : 'nav-item sub'} type="button" title="Clientes" onClick={() => setPersonal('clients')}>
-                <NavIcon>
-                  <path d="M16.051 12.616a1 1 0 0 1 1.909.024l.737 1.452a1 1 0 0 0 .737.535l1.634.256a1 1 0 0 1 .588 1.806l-1.172 1.168a1 1 0 0 0-.282.866l.259 1.613a1 1 0 0 1-1.541 1.134l-1.465-.75a1 1 0 0 0-.912 0l-1.465.75a1 1 0 0 1-1.539-1.133l.258-1.613a1 1 0 0 0-.282-.866l-1.156-1.153a1 1 0 0 1 .572-1.822l1.633-.256a1 1 0 0 0 .737-.535z"/>
-                  <path d="M8 15H7a4 4 0 0 0-4 4v2"/>
-                  <circle cx="10" cy="7" r="4"/>
-                </NavIcon>
-                <span className="side-label-text">Clientes</span>
-              </button>
+              {personalOpen && (
+                <>
+                  <button className={personal === 'departments' ? 'nav-item sub on' : 'nav-item sub'} type="button" title="Departamentos" onClick={() => setPersonal('departments')}>
+                    <NavIcon>
+                      <path d="M2.97 12.92A2 2 0 0 0 2 14.63v3.24a2 2 0 0 0 .97 1.71l3 1.8a2 2 0 0 0 2.06 0L12 19v-5.5l-5-3-4.03 2.42Z"/>
+                      <path d="m7 16.5-4.74-2.85"/>
+                      <path d="m7 16.5 5-3"/>
+                      <path d="M7 16.5v5.17"/>
+                      <path d="M12 13.5V19l3.97 2.38a2 2 0 0 0 2.06 0l3-1.8a2 2 0 0 0 .97-1.71v-3.24a2 2 0 0 0-.97-1.71L17 10.5l-5 3Z"/>
+                      <path d="m17 16.5-5-3"/>
+                      <path d="m17 16.5 4.74-2.85"/>
+                      <path d="M17 16.5v5.17"/>
+                      <path d="M7.97 4.42A2 2 0 0 0 7 6.13v4.37l5 3 5-3V6.13a2 2 0 0 0-.97-1.71l-3-1.8a2 2 0 0 0-2.06 0l-3 1.8Z"/>
+                      <path d="M12 8 7.26 5.15"/>
+                      <path d="m12 8 4.74-2.85"/>
+                      <path d="M12 13.5V8"/>
+                    </NavIcon>
+                    <span className="side-label-text">Departamentos</span>
+                  </button>
+                  <button className={personal === 'teams' ? 'nav-item sub on' : 'nav-item sub'} type="button" title="Equipos" onClick={() => setPersonal('teams')}>
+                    <NavIcon>
+                      <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+                      <path d="M16 3.128a4 4 0 0 1 0 7.744"/>
+                      <path d="M22 21v-2a4 4 0 0 0-3-3.87"/>
+                      <circle cx="9" cy="7" r="4"/>
+                    </NavIcon>
+                    <span className="side-label-text">Equipos</span>
+                  </button>
+                  <button className={personal === 'clients' ? 'nav-item sub on' : 'nav-item sub'} type="button" title="Clientes" onClick={() => setPersonal('clients')}>
+                    <NavIcon>
+                      <path d="M16.051 12.616a1 1 0 0 1 1.909.024l.737 1.452a1 1 0 0 0 .737.535l1.634.256a1 1 0 0 1 .588 1.806l-1.172 1.168a1 1 0 0 0-.282.866l.259 1.613a1 1 0 0 1-1.541 1.134l-1.465-.75a1 1 0 0 0-.912 0l-1.465.75a1 1 0 0 1-1.539-1.133l.258-1.613a1 1 0 0 0-.282-.866l-1.156-1.153a1 1 0 0 1 .572-1.822l1.633-.256a1 1 0 0 0 .737-.535z"/>
+                      <path d="M8 15H7a4 4 0 0 0-4 4v2"/>
+                      <circle cx="10" cy="7" r="4"/>
+                    </NavIcon>
+                    <span className="side-label-text">Clientes</span>
+                  </button>
+                </>
+              )}
+            </>
+          )} 
+          <button
+            type="button"
+            className="nav-item sub section-toggle"
+            title="Proyectos"
+            onClick={() => setProjectsOpen((current) => !current)}
+          >
+            <NavIcon>
+              <path d="m6 14 1.45-2.9A2 2 0 0 1 9.24 10H20a2 2 0 0 1 1.94 2.5l-1.55 6a2 2 0 0 1-1.94 1.5H4a2 2 0 0 1-2-2V5c0-1.1.9-2 2-2h3.93a2 2 0 0 1 1.66.9l.82 1.2a2 2 0 0 0 1.66.9H18a2 2 0 0 1 2 2v2" />
+              <circle cx="14" cy="15" r="1" />
+            </NavIcon>
+
+            <span className="side-label-text">Proyectos</span>
+
+            <span className={`section-chevron${projectsOpen ? ' open' : ''}`}>
+              ›
+            </span>
+          </button>
+
+          {projectsOpen && (
+            <>
+              <div className="projects">
+                {profile.projects.map((item) => (
+                  <div key={item.id} className="project">
+                    <div
+                      className="project-row"
+                      ref={projectMenu === item.id ? menuRef : undefined}
+                    >
+                      <button
+                        type="button"
+                        title={item.name}
+                        onClick={() => focusProject(item)}
+                      >
+                        <NavIcon>
+                          <path d="M2 6h4" />
+                          <path d="M2 10h4" />
+                          <path d="M2 14h4" />
+                          <path d="M2 18h4" />
+                          <rect width="16" height="20" x="4" y="2" rx="2" />
+                          <path d="M15 2v20" />
+                          <path d="M15 7h5" />
+                          <path d="M15 12h5" />
+                          <path d="M15 17h5" />
+                        </NavIcon>
+
+                        <span className="side-label-text">{item.name}</span>
+                      </button>
+
+                      {item.role === 'responsable' && (
+                        <button
+                          className={projectMenu === item.id ? 'more on' : 'more'}
+                          type="button"
+                          aria-label={`Opciones de ${item.name}`}
+                          onClick={() => {
+                            setProjectMenu(projectMenu === item.id ? null : item.id)
+                            setBoardMenu(null)
+                            setNamingBoard(false)
+                            setBoardName('')
+                          }}
+                        >
+                          <DotsIcon />
+                        </button>
+                      )}
+
+                      {projectMenu === item.id && (
+                        <div className="project-menu">
+                          {namingBoard ? (
+                            <form onSubmit={(event) => createBoard(event, item)}>
+                              <input
+                                value={boardName}
+                                placeholder="Nombre del tablero"
+                                onChange={(event) => setBoardName(event.target.value)}
+                                autoFocus
+                              />
+
+                              <button className="primary" type="submit">
+                                Crear tablero
+                              </button>
+                            </form>
+                          ) : (
+                            <>
+                              <button
+                                type="button"
+                                onClick={() => setNamingBoard(true)}
+                              >
+                                <PlusIcon /> Nuevo tablero
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => manageProject(item)}
+                              >
+                                <ConfigIcon /> Gestionar proyecto
+                              </button>
+
+                              <button
+                                type="button"
+                                className="danger"
+                                onClick={() => {
+                                  setProjectToDelete(item)
+                                  setDeleteProjectConfirmation('')
+                                }}
+                              >
+                                <TrashIcon /> Eliminar
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      )}
+                    </div>
+
+                    {item.boards.map((boardItem) => (
+                      <div
+                        key={boardItem.id}
+                        className={boardItem.id === openId ? 'board-row on' : 'board-row'}
+                        ref={boardMenu === boardItem.id ? menuRef : undefined}
+                      >
+                        <button
+                          className="board-link"
+                          type="button"
+                          onClick={() => openBoardTab(item, boardItem)}
+                        >
+                          {boardItem.name}
+                        </button>
+
+                        {item.role === 'responsable' && (
+                          <button
+                            className={boardMenu === boardItem.id ? 'more on' : 'more'}
+                            type="button"
+                            aria-label={`Opciones de ${boardItem.name}`}
+                            onClick={() => {
+                              setBoardMenu(
+                                boardMenu === boardItem.id ? null : boardItem.id
+                              )
+                              setProjectMenu(null)
+                              setNamingBoard(false)
+                            }}
+                          >
+                            <DotsIcon />
+                          </button>
+                        )}
+
+                        {boardMenu === boardItem.id && (
+                          <div className="project-menu">
+                            <button
+                              type="button"
+                              onClick={() =>
+                                manageBoardCategories(item, boardItem)
+                              }
+                            >
+                              Categorías
+                            </button>
+
+                            <button
+                              type="button"
+                              className="danger"
+                              onClick={() => {
+                                setBoardToDelete(boardItem)
+                                setDeleteBoardConfirmation('')
+                              }}
+                            >
+                              <TrashIcon /> Eliminar
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                ))}
+
+                {profile.projects.length === 0 && (
+                  <p className="muted side-label-text">
+                    Todavía no hay proyectos.
+                  </p>
+                )}
+
+                {profile.user.is_admin && !newProject && (
+                  <button
+                    className="add-project"
+                    type="button"
+                    title="Nuevo proyecto"
+                    onClick={() => setNewProject(true)}
+                  >
+                    <PlusIcon />
+                    <span className="side-label-text">Nuevo proyecto</span>
+                  </button>
+                )}
+              </div>
+
+              {profile.user.is_admin && newProject && !sideMini && (
+                <form onSubmit={createProject} className="field" noValidate>
+                  <input name="name" placeholder="Nombre del proyecto" />
+                  <input name="client_name" placeholder="Empresa cliente" />
+
+                  <div className="row">
+                    <button className="primary" type="submit">
+                      Crear
+                    </button>
+
+                    <button
+                      className="ghost"
+                      type="button"
+                      onClick={() => setNewProject(false)}
+                    >
+                      Cancelar
+                    </button>
+                  </div>
+                </form>
+              )}
             </>
           )}
         </nav>
-        <p className="kicker kicker-icon" title="Proyectos">
-          <NavIcon>
-            <path d="m6 14 1.45-2.9A2 2 0 0 1 9.24 10H20a2 2 0 0 1 1.94 2.5l-1.55 6a2 2 0 0 1-1.94 1.5H4a2 2 0 0 1-2-2V5c0-1.1.9-2 2-2h3.93a2 2 0 0 1 1.66.9l.82 1.2a2 2 0 0 0 1.66.9H18a2 2 0 0 1 2 2v2" />
-            <circle cx="14" cy="15" r="1" />
-          </NavIcon>
-          <span className="side-label-text">Proyectos</span>
-        </p>
-        <div className="projects">
-          {profile.projects.map((item) => (
-            <div key={item.id} className="project">
-              <div className="project-row" ref={projectMenu === item.id ? menuRef : undefined}>
-                <button
-                  type="button"
-                  title={item.name}
-                  onClick={() => focusProject(item)}
-                >
-                  <NavIcon>
-                    <path d="M2 6h4"/>
-                    <path d="M2 10h4"/>
-                    <path d="M2 14h4"/>
-                    <path d="M2 18h4"/>
-                    <rect width="16" height="20" x="4" y="2" rx="2"/>
-                    <path d="M15 2v20"/>
-                    <path d="M15 7h5"/>
-                    <path d="M15 12h5"/>
-                    <path d="M15 17h5"/>
-                  </NavIcon>
-                  <span className="side-label-text">{item.name}</span>
-                </button>
-                {item.role === 'responsable' && (
-                  <button
-                    className={projectMenu === item.id ? 'more on' : 'more'}
-                    type="button"
-                    aria-label={`Opciones de ${item.name}`}
-                    onClick={() => {
-                      setProjectMenu(projectMenu === item.id ? null : item.id)
-                      setBoardMenu(null)
-                      setNamingBoard(false)
-                      setBoardName('')
-                    }}
-                  >
-                    <DotsIcon />
-                  </button>
-                )}
-                {projectMenu === item.id && (
-                  <div className="project-menu">
-                    {namingBoard ? (
-                      <form onSubmit={(event) => createBoard(event, item)}>
-                        <input value={boardName} placeholder="Nombre del tablero" onChange={(event) => setBoardName(event.target.value)} autoFocus />
-                        <button className="primary" type="submit">Crear tablero</button>
-                      </form>
-                    ) : (
-                      <>
-                        <button type="button" onClick={() => setNamingBoard(true)}><PlusIcon /> Nuevo tablero</button>
-                        <button type="button" onClick={() => manageProject(item)}><ConfigIcon /> Gestionar proyecto</button>
-                        <button type="button" className="danger" onClick={() => {
-                          setProjectToDelete(item)
-                          setDeleteProjectConfirmation('')
-                        }}><TrashIcon /> Eliminar</button>
-                      </>
-                    )}
-                  </div>
-                )}
-              </div>
-              {item.boards.map((boardItem) => (
-                <div
-                  key={boardItem.id}
-                  className={boardItem.id === openId ? 'board-row on' : 'board-row'}
-                  ref={boardMenu === boardItem.id ? menuRef : undefined}
-                >
-                  <button
-                    className="board-link"
-                    type="button"
-                    onClick={() => openBoardTab(item, boardItem)}
-                  >
-                    {boardItem.name}
-                  </button>
-                  {item.role === 'responsable' && (
-                    <button
-                      className={boardMenu === boardItem.id ? 'more on' : 'more'}
-                      type="button"
-                      aria-label={`Opciones de ${boardItem.name}`}
-                      onClick={() => {
-                        setBoardMenu(boardMenu === boardItem.id ? null : boardItem.id)
-                        setProjectMenu(null)
-                        setNamingBoard(false)
-                      }}
-                    >
-                      <DotsIcon />
-                    </button>
-                  )}
-                  {boardMenu === boardItem.id && (
-                    <div className="project-menu">
-                      <button type="button" onClick={() => manageBoardCategories(item, boardItem)}>Categorías</button>
-                      <button type="button" className="danger" onClick={() => {setBoardToDelete(boardItem); setDeleteBoardConfirmation('')}}><TrashIcon /> Eliminar</button>
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          ))}
-          {profile.projects.length === 0 && <p className="muted side-label-text">Todavía no hay proyectos.</p>}
-          {profile.user.is_admin && !newProject && (
-            <button className="add-project" type="button" title="Nuevo proyecto" onClick={() => setNewProject(true)}>
-              <PlusIcon />
-              <span className="side-label-text">Nuevo proyecto</span>
-            </button>
-          )}
-        </div>
-        {profile.user.is_admin && newProject && !sideMini && (
-          <form onSubmit={createProject} className="field" noValidate>
-            <input name="name" placeholder="Nombre del proyecto" />
-            <input name="client_name" placeholder="Empresa cliente" />
-            <div className="row">
-              <button className="primary" type="submit">Crear</button>
-              <button className="ghost" type="button" onClick={() => setNewProject(false)}>Cancelar</button>
-            </div>
-          </form>
-        )}
       </aside>
       {projectToDelete && (
         <div className="modal-back" onClick={() => {

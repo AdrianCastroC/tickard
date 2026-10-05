@@ -113,6 +113,13 @@ export type Project = {
   boards: { id: number; name: string }[]
 }
 
+export type WorkspaceRef = {
+  id: number
+  name: string
+  role: 'owner' | 'member'
+  plan: 'free' | 'base' | 'pro' | 'business'
+}
+
 export type Profile = {
   user: {
     id: number
@@ -126,6 +133,7 @@ export type Profile = {
     client_company?: string | null
   }
   unread: number
+  workspaces: WorkspaceRef[]
   projects: Project[]
 }
 

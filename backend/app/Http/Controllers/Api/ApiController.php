@@ -12,6 +12,7 @@ use App\Models\Team;
 use App\Models\User;
 use App\Support\Notifier;
 use App\Support\ProjectAccess;
+use App\Models\Workspace;
 
 class ApiController extends Controller
 {
@@ -63,9 +64,22 @@ protected function internalIds(array $ids): array
 
         $unread = AppNotification::where('user_id', $user->id)->whereNull('read_at')->count();
 
+        $workspaces = $user->workspaces()
+        ->withPivot('role')
+        ->orderBy('name')
+        ->get()
+        ->map(fn (Workspace $workspace) => [
+            'id' => $workspace->id,
+            'name' => $workspace->name,
+            'role' => $workspace->pivot->role,
+            'plan' => $workspace->plan,
+        ])
+        ->values();
+
         return [
             'user' => $user->toApi(),
             'unread' => $unread,
+            'workspaces' => $workspaces,
             'projects' => $projects,
         ];
     }
