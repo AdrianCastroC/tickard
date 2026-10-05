@@ -754,7 +754,7 @@ export function Workspace() {
                     <span>{workspace.name}</span>
                   </button>
 
-                  {isActive && workspace.role === 'owner' && (
+                  {workspace.role === 'owner' && (
                     <div className="workspace-menu-actions">
                       <button
                         type="button"

@@ -272,10 +272,10 @@ h1, h2, h3, p { margin: 0; }
   flex: 1;
   min-width: 0;
   height: 42px;
-  padding: 6px 8px;
-  border: 0;
-  border-radius: 8px;
-  background: transparent;
+  padding: 9px 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: color-mix(in srgb, #d7f3ea 55%, var(--surface));
   color: var(--ink);
   display: flex;
   align-items: center;
@@ -284,6 +284,11 @@ h1, h2, h3, p { margin: 0; }
 }
 
 .workspace-selector:hover,
+.workspace-selector[aria-expanded="true"] {
+  border-color: color-mix(in srgb, #147a5f 35%, var(--line));
+  background: color-mix(in srgb, #d7f3ea 68%, var(--surface));
+}
+
 .workspace-header-action:hover {
   background: color-mix(in srgb, var(--accent) 8%, transparent);
 }
@@ -348,17 +353,17 @@ h1, h2, h3, p { margin: 0; }
   left: 0;
   right: 0;
   z-index: 30;
-  padding: 6px;
+  padding: 4px;
   border: 1px solid var(--line);
-  border-radius: 10px;
-  background: var(--surface);
-  box-shadow: 0 10px 28px rgb(18 49 43 / 14%);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--surface) 96%, #d7f3ea);
+  box-shadow: 0 10px 28px rgb(12 36 32 / 12%);
 }
 
 .workspace-menu-item,
 .workspace-menu-create {
   min-height: 36px;
-  padding: 7px 9px;
+  padding: 7px 10px;
   border-radius: 7px;
   display: flex;
   align-items: center;
@@ -366,8 +371,57 @@ h1, h2, h3, p { margin: 0; }
 }
 
 .workspace-menu-item.on {
-  background: var(--canvas);
+  background: #d7f3ea;
   font-weight: 600;
+}
+
+.workspace-menu-item:hover { background: var(--canvas); }
+
+.workspace-menu-select {
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  text-align: left;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.workspace-menu-item.on .workspace-menu-select {
+  color: #147a5f;
+  font-weight: 700;
+}
+
+.workspace-eye {
+  position: relative;
+  width: 16px;
+  height: 16px;
+  flex: 0 0 16px;
+  display: grid;
+  place-items: center;
+  color: var(--muted);
+}
+
+.workspace-eye svg {
+  width: 16px;
+  height: 16px;
+}
+
+.workspace-eye.is-owner { color: var(--accent); }
+.workspace-eye.is-member { color: var(--muted); }
+.workspace-eye.is-closed::after {
+  content: '';
+  position: absolute;
+  width: 19px;
+  height: 1.5px;
+  border-radius: 2px;
+  background: currentColor;
+  transform: rotate(-45deg);
 }
 
 .workspace-menu-icon {
