@@ -1,6 +1,98 @@
-import { ConfigIcon, DotsIcon, NavIcon, PlusIcon, TrashIcon } from '../../../shared/ui'
 import type { Project } from '../../../api'
+import { ConfigIcon, DotsIcon, NavIcon, PlusIcon, TrashIcon } from '../../../shared/ui'
 import { BoardItem } from './BoardItem'
-type Props = { project: Project; activeBoardId: number | null; projectMenu: boolean; boardMenu: number | null; namingBoard: boolean; saving: boolean; boardName: string; onOpen: (board: { id: number; name: string }) => void; onToggleMenu: () => void; onNewBoard: () => void; onManage: () => void; onDeleteProject: () => void; onBoardMenu: (id: number) => void; onCategories: (board: { id: number; name: string }) => void; onDeleteBoard: (board: { id: number; name: string }) => void; onBoardNameChange: (value: string) => void; onCreateBoard: (event: React.FormEvent<HTMLFormElement>) => void }
-export function ProjectItem({ project, activeBoardId, projectMenu, boardMenu, namingBoard, boardName, saving, onOpen, onToggleMenu, onNewBoard, onManage, onDeleteProject, onBoardMenu, onCategories, onDeleteBoard, onBoardNameChange, onCreateBoard }: Props) { return <div className="project"><div className="project-row"><button type="button" title={project.name} onClick={() => project.boards[0] && onOpen(project.boards[0])}><NavIcon><path d="M2 6h4"/><path d="M2 10h4"/><path d="M2 14h4"/><path d="M2 18h4"/><rect width="16" height="20" x="4" y="2" rx="2"/><path d="M15 2v20"/><path d="M15 7h5"/><path d="M15 12h5"/><path d="M15 17h5"/></NavIcon><span className="side-label-text">{project.name}</span></button>{project.role === 'responsable' && <button className={projectMenu ? 'more on' : 'more'} type="button" aria-label={`Opciones de ${project.name}`} onClick={onToggleMenu}><DotsIcon /></button>}{projectMenu && <div className="project-menu">{namingBoard ? <form onSubmit={onCreateBoard}><input name="name" value={boardName} placeholder="Nombre del tablero" onChange={(event) => onBoardNameChange(event.target.value)} autoFocus /><button className="primary" type="submit" disabled={saving}>Crear tablero</button></form> : <><button type="button" onClick={onNewBoard}><PlusIcon /> Nuevo tablero</button><button type="button" onClick={onManage}><ConfigIcon /> Gestionar proyecto</button><button type="button" className="danger" onClick={onDeleteProject}><TrashIcon /> Eliminar</button></>}</div>}</div>{project.boards.map((board) => <BoardItem key={board.id} board={board} active={board.id === activeBoardId} canManage={project.role === 'responsable'} menuOpen={boardMenu === board.id} onOpen={() => onOpen(board)} onToggleMenu={() => onBoardMenu(board.id)} onCategories={() => onCategories(board)} onDelete={() => onDeleteBoard(board)} />)}</div> }
 
+type Props = {
+  project: Project
+  activeBoardId: number | null
+  projectMenu: boolean
+  boardMenu: number | null
+  namingBoard: boolean
+  saving: boolean
+  boardName: string
+  onOpen: (board: { id: number; name: string }) => void
+  onToggleMenu: () => void
+  onNewBoard: () => void
+  onManage: () => void
+  onDeleteProject: () => void
+  onBoardMenu: (id: number) => void
+  onCategories: (board: { id: number; name: string }) => void
+  onDeleteBoard: (board: { id: number; name: string }) => void
+  onBoardNameChange: (value: string) => void
+  onCreateBoard: (event: React.FormEvent<HTMLFormElement>) => void
+}
+
+export function ProjectItem({
+  project,
+  activeBoardId,
+  projectMenu,
+  boardMenu,
+  namingBoard,
+  saving,
+  boardName,
+  onOpen,
+  onToggleMenu,
+  onNewBoard,
+  onManage,
+  onDeleteProject,
+  onBoardMenu,
+  onCategories,
+  onDeleteBoard,
+  onBoardNameChange,
+  onCreateBoard,
+}: Props) {
+  return (
+    <div className="project">
+      <div className="project-row">
+        <button type="button" title={project.name} onClick={() => project.boards[0] && onOpen(project.boards[0])}>
+          <NavIcon>
+            <path d="M2 6h4" />
+            <path d="M2 10h4" />
+            <path d="M2 14h4" />
+            <path d="M2 18h4" />
+            <rect width="16" height="20" x="4" y="2" rx="2" />
+            <path d="M15 2v20" />
+            <path d="M15 7h5" />
+            <path d="M15 12h5" />
+            <path d="M15 17h5" />
+          </NavIcon>
+          <span className="side-label-text">{project.name}</span>
+        </button>
+        {project.role === 'responsable' && (
+          <button className={projectMenu ? 'more on' : 'more'} type="button" aria-label={`Opciones de ${project.name}`} onClick={onToggleMenu}>
+            <DotsIcon />
+          </button>
+        )}
+        {projectMenu && (
+          <div className="project-menu">
+            {namingBoard ? (
+              <form onSubmit={onCreateBoard}>
+                <input name="name" value={boardName} placeholder="Nombre del tablero" onChange={(event) => onBoardNameChange(event.target.value)} autoFocus />
+                <button className="primary" type="submit" disabled={saving}>Crear tablero</button>
+              </form>
+            ) : (
+              <>
+                <button type="button" onClick={onNewBoard}><PlusIcon /> Nuevo tablero</button>
+                <button type="button" onClick={onManage}><ConfigIcon /> Gestionar proyecto</button>
+                <button type="button" className="danger" onClick={onDeleteProject}><TrashIcon /> Eliminar</button>
+              </>
+            )}
+          </div>
+        )}
+      </div>
+      {project.boards.map((board) => (
+        <BoardItem
+          key={board.id}
+          board={board}
+          active={board.id === activeBoardId}
+          canManage={project.role === 'responsable'}
+          menuOpen={boardMenu === board.id}
+          onOpen={() => onOpen(board)}
+          onToggleMenu={() => onBoardMenu(board.id)}
+          onCategories={() => onCategories(board)}
+          onDelete={() => onDeleteBoard(board)}
+        />
+      ))}
+    </div>
+  )
+}

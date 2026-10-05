@@ -191,6 +191,15 @@ function TrashIcon() {
   )
 }
 
+function CloseIcon() {
+  return (
+    <svg className="close-ico" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M18 6 6 18" />
+      <path d="m6 6 12 12" />
+    </svg>
+  )
+}
+
 function AccountIco({ children }: { children: ReactNode }) {
   return (
     <svg className="account-ico" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -598,7 +607,7 @@ export {
   priorityLabel, DEFAULT_CARD_STRIPE, cardStripeStyle, projectDots,
   NavIcon, DotsIcon, CollapseColumnIcon, ExpandColumnIcon, PlusIcon, UserPlusIcon,
   EditIcon, ConfigIcon, PencilIcon, SaveIcon, FloppyIcon, PaletteIcon, PinIcon,
-  UnpinIcon, VisibilityIcon, MinusIcon, ChevronIcon, ArchiveIcon, TrashIcon,
+ UnpinIcon, VisibilityIcon, MinusIcon, ChevronIcon, ArchiveIcon, TrashIcon, CloseIcon,
   AccountIco, ProfileUserIcon, SettingsIcon, BellIcon, MoonIcon, SunIcon, ComputerIcon,
   GlobeIcon, HelpCircleIcon, SparklesIcon, LogoutIcon, ChevronRightIcon, Avatar,
   autoGrowTextarea, formatDate, sanitizeDescriptionHtml, descriptionToEditorHtml,

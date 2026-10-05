@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { DndContext, PointerSensor, closestCorners, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core'
 import { SortableContext, arrayMove, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { api, type BoardPayload, type Card, type CardModule, type CardModuleType, type Comment, type Profile } from '../../api'
-import { ArchiveIcon, Avatar, DescriptionEditor, EditIcon, MinusIcon, PaletteIcon, PlusIcon, SaveIcon, TrashIcon, UserPlusIcon, VisibilityIcon,  formatDateLong, cardStripeStyle, DEFAULT_CARD_STRIPE, descriptionToEditorHtml, priorityLabel, sanitizeDescriptionHtml } from '../../shared/ui'
+import { ArchiveIcon, Avatar, CloseIcon, DescriptionEditor, EditIcon, MinusIcon, PaletteIcon, PlusIcon, SaveIcon, TrashIcon, UserPlusIcon, VisibilityIcon,  formatDateLong, cardStripeStyle, DEFAULT_CARD_STRIPE, descriptionToEditorHtml, priorityLabel, sanitizeDescriptionHtml } from '../../shared/ui'
 import { PriorityMark, PriorityPicker, SideDatePicker, SideSelect } from '../board'
 import { CalendarIcon, SectionToggle } from './cardSectionUi'
 import { FilesPanel } from './files/FilesPanel'
@@ -37,15 +37,6 @@ function EyeSlashIcon() {
     </svg>
   )
 }
-export function CloseIcon() {
-  return (
-    <svg className="close-ico" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M18 6 6 18" />
-      <path d="m6 6 12 12" />
-    </svg>
-  )
-}
-
 function DotIcon({ color = '#3b82f6' }: { color?: string }) {
   return <i className="status-dot" style={{ background: color }} aria-hidden="true" />
 }

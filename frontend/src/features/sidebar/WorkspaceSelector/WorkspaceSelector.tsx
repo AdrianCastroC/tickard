@@ -31,10 +31,16 @@ export function WorkspaceSelector({ profile, activeWorkspaceId, mini, onToggleMi
   }
   async function deleteWorkspace() {
     if (!remove) return
-    await api(`/workspaces/${remove.id}`, { method: 'DELETE', body: JSON.stringify({ confirmation_name: confirmation }) })
-    const fallback = profile.workspaces.find((workspace) => workspace.id !== remove.id)
+    const deletedId = remove.id
+    const wasActive = activeWorkspaceId === deletedId
+    await api(`/workspaces/${deletedId}`, { method: 'DELETE', body: JSON.stringify({ confirmation_name: confirmation }) })
+    const fallback = profile.workspaces.find((workspace) => workspace.id !== deletedId)
     setRemove(null); setConfirmation(''); closeMenu()
-    if (fallback) await onWorkspaceChange(fallback.id)
+    if (wasActive && fallback) {
+      await onWorkspaceChange(fallback.id)
+    } else {
+      await onProfileRefresh(activeWorkspaceId)
+    }
   }
 
   return <>

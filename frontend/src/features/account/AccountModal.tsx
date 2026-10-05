@@ -1,7 +1,6 @@
 import { useEffect, useEffectEvent } from 'react'
 import { api, type Profile } from '../../api'
-import { BellIcon, ProfileUserIcon, SettingsIcon } from '../../shared/ui'
-import { CloseIcon } from '../cards/CardDetail'
+import { BellIcon, CloseIcon, ProfileUserIcon, SettingsIcon } from '../../shared/ui'
 import styles from './AccountModal.module.css'
 import { NotificationsSection } from './NotificationsSection'
 import { ProfileSection } from './ProfileSection'

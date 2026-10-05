@@ -57,7 +57,7 @@ function WorkspaceContent({ workspace, profile, sidebar, query }: {
   }
 
   return <div className="body">
-    <Sidebar mini={sidebar.mini} onToggleMini={sidebar.toggle}>
+    <Sidebar mini={sidebar.mini}>
       <WorkspaceSelector profile={profile} activeWorkspaceId={workspace.activeWorkspaceId}
         mini={sidebar.mini} onToggleMini={sidebar.toggle}
         onWorkspaceChange={workspace.changeWorkspace} onProfileRefresh={workspace.refreshProfile} />
