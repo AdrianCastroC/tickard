@@ -5,7 +5,7 @@ import { SortableContext, arrayMove, useSortable, horizontalListSortingStrategy,
 import { CSS } from '@dnd-kit/utilities'
 import { api, type BoardCategory, type BoardPayload, type Card } from '../../api'
 import { Avatar, ChevronIcon, DotsIcon, EditIcon, ExpandColumnIcon, CollapseColumnIcon, PaletteIcon, PinIcon, PlusIcon, TrashIcon, UnpinIcon, VisibilityIcon, cardStripeStyle, DEFAULT_CARD_STRIPE, formatDate, formatDateLong, priorityLabel } from '../../shared/ui'
-import { orderedColumnCards } from './boardUtils'
+import { filteredBoardColumns, orderedColumnCards } from './boardUtils'
 function CalendarPickIcon() {
   return (
     <svg className="side-ico date-pick-ico" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" aria-hidden="true">
@@ -15,20 +15,6 @@ function CalendarPickIcon() {
 }
 function CategoryIcon({ className = 'side-ico' }: { className?: string }) {
   return <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" aria-hidden="true"><path fill="currentColor" d="M64 112C64 85.5 85.5 64 112 64L208 64C234.5 64 256 85.5 256 112L256 480C256 533 213 576 160 576C107 576 64 533 64 480L64 112zM304 473.6L304 202.1L352.1 154C370.8 135.3 401.2 135.3 420 154L487.9 221.9C506.6 240.6 506.6 271 487.9 289.8L304 473.6zM269.5 576L461.5 384L528.1 384C554.6 384 576.1 405.5 576.1 432L576.1 528C576.1 554.5 554.6 576 528.1 576L269.6 576z" /></svg>
-}
-
-function assignedTo(card: Card, userId: string) {
-  if (card.assignees?.some((person) => String(person.id) === userId)) return true
-  return card.teams?.some((team) => team.member_ids?.some((id) => String(id) === userId)) ?? false
-}
-
-function matches(card: Card, query: string, assignee: string, teamId: string, label: string, priority: string) {
-  if (query && !card.title.toLowerCase().includes(query.toLowerCase())) return false
-  if (assignee && !assignedTo(card, assignee)) return false
-  if (teamId && !card.teams?.some((team) => String(team.id) === teamId)) return false
-  if (label && !card.labels?.some((item) => String(item.id) === label)) return false
-  if (priority && card.priority !== priority) return false
-  return true
 }
 
 function columnSortId(id: number) {
@@ -116,10 +102,7 @@ export function Kanban(props: {
   const boardId = props.board.board.id
   const [pinnedIds, setPinnedIds] = useState<number[]>(() => readPinnedColumns(boardId))
   const categories = props.board.categories ?? []
-  const columns = useMemo(() => props.board.columns.map((column) => ({
-    ...column,
-    cards: column.cards.filter((card) => matches(card, props.query, props.assignee, props.teamId, props.label, props.priority)),
-  })), [props.board, props.query, props.assignee, props.teamId, props.label, props.priority])
+  const columns = useMemo(() => filteredBoardColumns(props.board, props.query, props.assignee, props.teamId, props.label, props.priority), [props.board, props.query, props.assignee, props.teamId, props.label, props.priority])
   const pinnedSet = useMemo(() => new Set(pinnedIds), [pinnedIds])
   const pinnedColumns = useMemo(() => {
     const byId = new Map(columns.map((column) => [column.id, column]))

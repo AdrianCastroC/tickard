@@ -1,15 +1,19 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
 import type { Profile, Project } from '../../api'
 import { CategoriesDrawer } from '../administration'
 import { CardDrawer } from '../cards/CardDetail'
 import { BoardHeader } from '../workspace/BoardHeader'
+import type { BoardViewMode } from '../workspace/BoardViews'
 import { FiltersBar } from '../workspace/FiltersBar'
 import { BoardPulse } from './BoardPulse'
 import { CreateCardModal } from './CreateCardModal'
 import { Kanban } from './Kanban'
+import { filteredBoardColumns } from './boardUtils'
 import type { useBoard } from './useBoard'
 import type { useBoardFilters } from './useBoardFilters'
+import { ListView } from './ListView'
+import { TableView } from './TableView'
 
 type Props = {
   state: ReturnType<typeof useBoard>
@@ -24,16 +28,27 @@ export function BoardSurface({ state, filters, activeBoardId, project, profile, 
   const { board: view, selected, setSelected, openCard, refresh, move, moveColumn } = state
   const [createColumn, setCreateColumn] = useState<{ id: number; name: string } | null>(null)
   const [showCategories, setShowCategories] = useState(false)
+  const [viewModes, setViewModes] = useState<Record<number, BoardViewMode>>({})
   const canEdit = view?.role === 'responsable' || view?.role === 'editor'
   const canManage = view?.role === 'responsable'
   const clientView = view?.role === 'cliente'
   const backlog = view?.columns.find((column) => column.name === 'Backlog') ?? view?.columns[0]
+  const filteredColumns = useMemo(() => view ? filteredBoardColumns(view, query, filters.assignee, filters.teamId, filters.label, filters.priority) : [], [view, query, filters.assignee, filters.teamId, filters.label, filters.priority])
+  const storedView = activeBoardId ? localStorage.getItem(`tickard:board-view:${activeBoardId}`) : null
+  const viewMode = activeBoardId ? viewModes[activeBoardId] ?? (storedView === 'list' || storedView === 'table' ? storedView : 'board') : 'board'
+
+  function changeViewMode(value: BoardViewMode) {
+    if (!activeBoardId) return
+    setViewModes((current) => ({ ...current, [activeBoardId]: value }))
+    localStorage.setItem(`tickard:board-view:${activeBoardId}`, value)
+  }
 
   return <>
     <BoardHeader show={Boolean(view || activeBoardId)}
       title={view?.board.name || project?.boards.find((item) => item.id === activeBoardId)?.name}
       subtitle={view?.board.project_name || project?.name}
       canEdit={canEdit} backlog={backlog} filtersActive={filters.active} filtersOpen={filters.open}
+      viewMode={viewMode} onViewModeChange={changeViewMode}
       onToggleFilters={() => filters.setOpen((current) => !current)} onAdd={setCreateColumn} />
     <FiltersBar open={Boolean(view && filters.open)} clientView={clientView}
       visibility={view?.visibility ?? {}} members={view?.members ?? []} labels={view?.labels ?? []}
@@ -44,15 +59,17 @@ export function BoardSurface({ state, filters, activeBoardId, project, profile, 
     {!view && !activeBoardId && <div className="empty-board"><div><h2>{profile.user.is_admin ? 'Inicia un proyecto' : 'Espera a que te asignen un proyecto'}</h2><p className="muted">{profile.user.is_admin ? 'Crea el primer proyecto desde el lateral y abre su tablero.' : 'Cuando un responsable te añada, el proyecto saldrá en el lateral.'}</p></div></div>}
     {activeBoardId && !view && <div className="empty-board"><p className="muted">Cargando el tablero…</p></div>}
     {view && <div className="workspace">
-      <Kanban board={view} canEdit={canEdit} canManage={canManage} query={query}
+      {viewMode === 'list' && <ListView board={view} cards={filteredColumns} onOpen={(card) => setSelected({ card, mode: 'view' })} />}
+      {viewMode === 'table' && <TableView board={view} cards={filteredColumns} onOpen={(card) => setSelected({ card, mode: 'view' })} />}
+      {viewMode === 'board' && <Kanban board={view} canEdit={canEdit} canManage={canManage} query={query}
         assignee={filters.assignee} teamId={filters.teamId} label={filters.label} priority={filters.priority}
         onOpen={(card) => setSelected({ card, mode: 'view' })}
         onEdit={(card) => setSelected({ card, mode: 'edit' })}
         onMove={move} onMoveColumn={moveColumn}
         onAdd={(id, name) => setCreateColumn({ id, name })}
         onCreatedColumn={refresh} onRefresh={refresh}
-        onManageCategories={() => setShowCategories(true)} />
-      <BoardPulse columns={view.columns} />
+        onManageCategories={() => setShowCategories(true)} />}
+      {viewMode === 'board' && <BoardPulse columns={view.columns} />}
     </div>}
     {createPortal(<>
       {selected && view && openCard && <CardDrawer card={openCard} mode={selected.mode}

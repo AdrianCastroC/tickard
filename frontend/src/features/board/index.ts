@@ -2,5 +2,5 @@ export { Kanban, PriorityMark, PriorityPicker, SideDatePicker, SideSelect, parse
 export { BoardPulse } from './BoardPulse'
 export { Filters } from './Filters'
 export { CreateCardModal } from './CreateCardModal'
-export { orderedColumnCards } from './boardUtils'
+export { filteredBoardColumns, matchesBoardFilters, orderedColumnCards } from './boardUtils'
 
