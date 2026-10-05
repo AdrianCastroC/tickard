@@ -1,11 +1,11 @@
-import { type FormEvent, type ReactNode, useEffect, useMemo, useRef, useState } from 'react'
+﻿import { type FormEvent, type ReactNode, useEffect, useMemo, useRef, useState } from 'react'
 
 import { DndContext, DragOverlay, PointerSensor, closestCorners, useDroppable, useSensor, useSensors, type CollisionDetection, type DragEndEvent } from '@dnd-kit/core'
 import { SortableContext, arrayMove, useSortable, horizontalListSortingStrategy, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { api, type BoardCategory, type BoardPayload, type Card } from '../../api'
-import { Avatar, ChevronIcon, CollapseColumnIcon, DotsIcon, EditIcon, ExpandColumnIcon, PaletteIcon, PinIcon, PlusIcon, TrashIcon, UnpinIcon, VisibilityIcon, cardStripeStyle, DEFAULT_CARD_STRIPE, formatDate, formatDateLong, priorityLabel } from '../../shared/ui'
-
+import { Avatar, ChevronIcon, DotsIcon, EditIcon, ExpandColumnIcon, CollapseColumnIcon, PaletteIcon, PinIcon, PlusIcon, TrashIcon, UnpinIcon, VisibilityIcon, cardStripeStyle, DEFAULT_CARD_STRIPE, formatDate, formatDateLong, priorityLabel } from '../../shared/ui'
+import { orderedColumnCards } from './boardUtils'
 function CalendarPickIcon() {
   return (
     <svg className="side-ico date-pick-ico" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" aria-hidden="true">
@@ -13,69 +13,8 @@ function CalendarPickIcon() {
     </svg>
   )
 }
-
 function CategoryIcon({ className = 'side-ico' }: { className?: string }) {
-  return (
-    <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" aria-hidden="true">
-      <path fill="currentColor" d="M64 112C64 85.5 85.5 64 112 64L208 64C234.5 64 256 85.5 256 112L256 480C256 533 213 576 160 576C107 576 64 533 64 480L64 112zM304 473.6L304 202.1L352.1 154C370.8 135.3 401.2 135.3 420 154L487.9 221.9C506.6 240.6 506.6 271 487.9 289.8L304 473.6zM269.5 576L461.5 384L528.1 384C554.6 384 576.1 405.5 576.1 432L576.1 528C576.1 554.5 554.6 576 528.1 576L269.6 576zM144 128C135.2 128 128 135.2 128 144L128 176C128 184.8 135.2 192 144 192L176 192C184.8 192 192 184.8 192 176L192 144C192 135.2 184.8 128 176 128L144 128zM128 272L128 304C128 312.8 135.2 320 144 320L176 320C184.8 320 192 312.8 192 304L192 272C192 263.2 184.8 256 176 256L144 256C135.2 256 128 263.2 128 272zM160 504C173.3 504 184 493.3 184 480C184 466.7 173.3 456 160 456C146.7 456 136 466.7 136 480C136 493.3 146.7 504 160 504z" />
-    </svg>
-  )
-}
-
-export function Filters(props: {
-  clientView: boolean
-  visibility: Record<string, boolean>
-  members: { id: number; name: string }[]
-  labels: { id: number; name: string }[]
-  assignee: string
-  teamId: string
-  teams: { id: number; name: string }[]
-  label: string
-  priority: string
-  onAssignee: (value: string) => void
-  onTeam: (value: string) => void
-  onLabel: (value: string) => void
-  onPriority: (value: string) => void
-}) {
-  const showAssignee = !props.clientView || props.visibility.assignee
-  const showPriority = !props.clientView || props.visibility.priority
-  const showLabels = !props.clientView || props.visibility.labels
-  return (
-    <form className="filters" onSubmit={(event) => event.preventDefault()}>
-      {showAssignee && (
-        <label className="field">Persona
-          <select value={props.assignee} onChange={(event) => props.onAssignee(event.target.value)}>
-            <option value="">Cualquiera</option>
-            {props.members.map((member) => <option key={member.id} value={member.id}>{member.name}</option>)}
-          </select>
-        </label>
-      )}
-      {showAssignee && props.teams.length > 0 && (
-        <label className="field">Equipo
-          <select value={props.teamId} onChange={(event) => props.onTeam(event.target.value)}>
-            <option value="">Cualquiera</option>
-            {props.teams.map((team) => <option key={team.id} value={team.id}>{team.name}</option>)}
-          </select>
-        </label>
-      )}
-      {showLabels && (
-        <label className="field">Etiqueta
-          <select value={props.label} onChange={(event) => props.onLabel(event.target.value)}>
-            <option value="">Cualquiera</option>
-            {props.labels.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
-          </select>
-        </label>
-      )}
-      {showPriority && (
-        <label className="field">Prioridad
-          <select value={props.priority} onChange={(event) => props.onPriority(event.target.value)}>
-            <option value="">Cualquiera</option>
-            {Object.entries(priorityLabel).map(([value, text]) => <option key={value} value={value}>{text}</option>)}
-          </select>
-        </label>
-      )}
-    </form>
-  )
+  return <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" aria-hidden="true"><path fill="currentColor" d="M64 112C64 85.5 85.5 64 112 64L208 64C234.5 64 256 85.5 256 112L256 480C256 533 213 576 160 576C107 576 64 533 64 480L64 112zM304 473.6L304 202.1L352.1 154C370.8 135.3 401.2 135.3 420 154L487.9 221.9C506.6 240.6 506.6 271 487.9 289.8L304 473.6zM269.5 576L461.5 384L528.1 384C554.6 384 576.1 405.5 576.1 432L576.1 528C576.1 554.5 554.6 576 528.1 576L269.6 576z" /></svg>
 }
 
 function assignedTo(card: Card, userId: string) {
@@ -134,14 +73,6 @@ function readPinnedColumns(boardId: number) {
   }
 }
 
-export function orderedColumnCards(column: { cards: Card[] }, categories: BoardCategory[]) {
-  const uncategorized = column.cards.filter((card) => !card.category_id)
-  const grouped = categories
-    .filter((category) => column.cards.some((card) => card.category_id === category.id))
-    .flatMap((category) => column.cards.filter((card) => card.category_id === category.id))
-  return [...uncategorized, ...grouped]
-}
-
 function insertIndexForCard(
   visual: Card[],
   categories: BoardCategory[],
@@ -159,6 +90,7 @@ function insertIndexForCard(
   })
   return insertAt + peerIndex
 }
+
 
 export function Kanban(props: {
   board: BoardPayload
@@ -620,7 +552,7 @@ export function ColumnView({ column, categories, canEdit, canManage, pinned, onT
                         <PaletteIcon /> Cambiar color
                       </button>
                       <button type="button" onClick={() => { setMenuOpen(false); onManageCategories() }}>
-                        <CategoryIcon className="menu-icon" /> Gestionar categoría
+                        <CategoryIcon className="menu-icon" /> Gestionar categorÃ­a
                       </button>
                       <button
                         type="button"
@@ -634,12 +566,12 @@ export function ColumnView({ column, categories, canEdit, canManage, pinned, onT
                       </button>
                       {canEdit && (
                         <button type="button" onClick={() => { setMenuOpen(false); onAdd() }}>
-                          <PlusIcon className="menu-icon" /> Añadir tarea
+                          <PlusIcon className="menu-icon" /> AÃ±adir tarea
                         </button>
                       )}
                       <span
                         className="pop-menu-tip"
-                        title={hasCards ? 'No se puede eliminar una columna con tarjetas. Muévelas o elimínalas antes.' : undefined}
+                        title={hasCards ? 'No se puede eliminar una columna con tarjetas. MuÃ©velas o elimÃ­nalas antes.' : undefined}
                       >
                         <button
                           className="danger"
@@ -697,7 +629,7 @@ export function ColumnView({ column, categories, canEdit, canManage, pinned, onT
             )
           })}
           {canEdit
-            ? <button className="add-card" type="button" onClick={onAdd}><PlusIcon /> Añadir tarea</button>
+            ? <button className="add-card" type="button" onClick={onAdd}><PlusIcon /> AÃ±adir tarea</button>
             : column.cards.length === 0 && <p className="muted">Sin tarjetas</p>}
         </>
       )}
@@ -729,38 +661,6 @@ export function CategoryGroup({ columnId, categoryKey: key, label, cards, render
       <SortableContext items={cards.map((card) => card.id)} strategy={verticalListSortingStrategy}>
         {cards.map(renderCard)}
       </SortableContext>
-    </div>
-  )
-}
-
-function columnShares(counts: number[]) {
-  const total = counts.reduce((sum, count) => sum + count, 0)
-  if (total === 0) return counts.map(() => 0)
-  const exact = counts.map((count) => (count / total) * 100)
-  const shares = exact.map((value) => Math.floor(value))
-  let leftover = 100 - shares.reduce((sum, value) => sum + value, 0)
-  exact
-    .map((value, index) => ({ index, fraction: value - Math.floor(value) }))
-    .sort((a, b) => b.fraction - a.fraction)
-    .forEach((item) => {
-      if (leftover <= 0) return
-      shares[item.index] += 1
-      leftover -= 1
-    })
-  return shares
-}
-
-export function BoardPulse({ columns }: { columns: BoardPayload['columns'] }) {
-  const shares = columnShares(columns.map((column) => column.cards.length))
-  return (
-    <div className="pulse">
-      {columns.map((column, index) => (
-        <article key={column.id}>
-          <p className="muted">{column.name}</p>
-          <strong>{column.cards.length}</strong>
-          <span>{shares[index]}% del tablero</span>
-        </article>
-      ))}
     </div>
   )
 }
@@ -830,7 +730,7 @@ export function SideSelect<T extends string | number>({
       >
         <span className="side-select-main">
           {leading ?? current?.leading}
-          <strong>{current?.label ?? '—'}</strong>
+          <strong>{current?.label ?? 'â€”'}</strong>
         </span>
         <ChevronIcon />
       </button>
@@ -916,11 +816,11 @@ export function SideDatePicker({ value, onChange }: {
         <div className="side-date-menu" role="dialog" aria-label="Elegir fecha">
           <div className="side-date-head">
             <button type="button" className="icon-close" aria-label="Mes anterior" onClick={() => setCursor(new Date(year, month - 1, 1))}>
-              ‹
+              â€¹
             </button>
             <strong>{monthLabel}</strong>
             <button type="button" className="icon-close" aria-label="Mes siguiente" onClick={() => setCursor(new Date(year, month + 1, 1))}>
-              ›
+              â€º
             </button>
           </div>
           <div className="side-date-week">
@@ -1067,89 +967,7 @@ export function SortableCard({ card, disabled, canEdit, onOpen, onEdit }: {
   )
 }
 
-export function CreateCardModal({ board, column, onClose, onCreated }: {
-  board: BoardPayload
-  column: { id: number; name: string }
-  onClose: () => void
-  onCreated: () => Promise<void>
-}) {
-  const [title, setTitle] = useState('')
-  const [description, setDescription] = useState('')
-  const [due, setDue] = useState('')
-  const [priority, setPriority] = useState('media')
-  const [assignees, setAssignees] = useState<string[]>([])
-  const [teams, setTeams] = useState<string[]>([])
-  const [categoryId, setCategoryId] = useState('')
-  const [error, setError] = useState('')
-  const team = board.members.filter((member) => member.role !== 'cliente')
-  const categories = board.categories ?? []
 
-  async function submit(event: FormEvent) {
-    event.preventDefault()
-    if (!title.trim()) {
-      setError('Escribe un título.')
-      return
-    }
-    try {
-      await api(`/boards/${board.board.id}/cards`, {
-        method: 'POST',
-        body: JSON.stringify({
-          column_id: column.id,
-          category_id: categoryId ? Number(categoryId) : null,
-          title: title.trim(),
-          description,
-          due_date: due || null,
-          priority,
-          assignee_ids: assignees.map(Number),
-          team_ids: teams.map(Number),
-        }),
-      })
-      await onCreated()
-    } catch (caught) {
-      setError(caught instanceof Error ? caught.message : 'No se pudo crear la tarjeta.')
-    }
-  }
 
-  return (
-    <div className="modal-back" onClick={onClose}>
-      <form className="modal" onClick={(event) => event.stopPropagation()} onSubmit={submit}>
-        <h2>Nueva tarjeta</h2>
-        <p className="muted">Se añade a {column.name}.</p>
-        <label className="field">Título<input value={title} onChange={(event) => setTitle(event.target.value)} /></label>
-        <label className="field">Descripción<textarea value={description} onChange={(event) => setDescription(event.target.value)} rows={3} /></label>
-        {categories.length > 0 && (
-          <label className="field">Categoría
-            <select value={categoryId} onChange={(event) => setCategoryId(event.target.value)}>
-              <option value="">Sin categoría</option>
-              {categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}
-            </select>
-          </label>
-        )}
-        <label className="field">Fecha límite<input type="date" value={due} onChange={(event) => setDue(event.target.value)} /></label>
-        <label className="field">Prioridad
-          <select value={priority} onChange={(event) => setPriority(event.target.value)}>
-            {Object.entries(priorityLabel).map(([value, text]) => <option key={value} value={value}>{text}</option>)}
-          </select>
-        </label>
-        <label className="field">Personas
-          <select multiple value={assignees} onChange={(event) => setAssignees([...event.target.selectedOptions].map((option) => option.value))}>
-            {team.map((member) => <option key={member.id} value={member.id}>{member.name}</option>)}
-          </select>
-        </label>
-        {(board.teams ?? []).length > 0 && (
-          <label className="field">Equipos
-            <select multiple value={teams} onChange={(event) => setTeams([...event.target.selectedOptions].map((option) => option.value))}>
-              {(board.teams ?? []).map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
-            </select>
-          </label>
-        )}
-        {error && <p className="error">{error}</p>}
-        <div className="row">
-          <button className="primary" type="submit">Añadir tarea</button>
-          <button className="ghost" type="button" onClick={onClose}>Cancelar</button>
-        </div>
-      </form>
-    </div>
-  )
-}
+
 

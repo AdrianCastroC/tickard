@@ -1,15 +1,17 @@
 import { type FormEvent, useEffect, useRef, useState } from 'react'
 import { api, setToken, uploadFile, type BoardPayload, type Card, type Profile, type Project } from '../api'
-import { NavIcon, TrashIcon, formatDate, type OpenTab } from '../shared/ui'
+import { NavIcon, formatDate, type OpenTab } from '../shared/ui'
 import { CardDrawer } from '../features/cards/CardDetail'
-import { BoardPulse, CreateCardModal, Kanban, orderedColumnCards } from '../features/board/Board'
-import { CategoriesDrawer, ClientsDrawer, ProjectDrawer, RosterDrawer } from '../features/administration/Drawers'
+import { BoardPulse, CreateCardModal, Kanban, orderedColumnCards } from '../features/board'
+import { CategoriesDrawer, ClientsDrawer, ProjectDrawer, RosterDrawer } from '../features/administration'
 import { Header } from '../features/header/Header'
 import { AccountModal } from '../features/account/AccountModal'
 import { resolveTheme } from '../features/account/theme'
 import { Sidebar } from '../features/sidebar/Sidebar'
 import { WorkspaceSelector } from '../features/sidebar/WorkspaceSelector/WorkspaceSelector'
 import { ProjectsSection } from '../features/sidebar/ProjectsSection/ProjectsSection'
+import { DeleteBoardModal } from '../features/sidebar/ProjectsSection/DeleteBoardModal'
+import { DeleteProjectModal } from '../features/sidebar/ProjectsSection/DeleteProjectModal'
 import { MainContent } from '../features/workspace/MainContent'
 export function Workspace() {
   const [profile, setProfile] = useState<Profile | null>(null)
@@ -46,9 +48,7 @@ export function Workspace() {
     }
   })
   const [projectToDelete, setProjectToDelete] = useState<Project | null>(null)
-  const [deleteProjectConfirmation, setDeleteProjectConfirmation] = useState('')
   const [boardToDelete, setBoardToDelete] = useState<{id: number; name: string} | null>(null)
-  const [deleteBoardConfirmation, setDeleteBoardConfirmation] = useState('')
 
 
   function toggleSideMini() {
@@ -236,7 +236,6 @@ export function Workspace() {
     })
 
     setBoardToDelete(null)
-    setDeleteBoardConfirmation('')
     await loadProfile(activeWorkspaceId)
     closeTab(boardId)
   }
@@ -338,7 +337,6 @@ export function Workspace() {
       body: JSON.stringify({ confirmation_name: confirmationName })
     })
     setProjectToDelete(null)
-    setDeleteProjectConfirmation('')
     
     const data = await loadProfile(activeWorkspaceId)
     const remainingTabs = tabs.filter((tab) => tab.projectId !== projectId)
@@ -409,84 +407,11 @@ export function Workspace() {
         <WorkspaceSelector profile={profile} activeWorkspaceId={activeWorkspaceId} mini={sideMini} onToggleMini={toggleSideMini} onWorkspaceChange={changeWorkspace} onProfileRefresh={loadProfile} />
         <nav className="nav">
           {view?.role !== 'cliente' && <button className="nav-item sub" type="button" title="Mis tareas" onClick={() => { setAssignee(String(profile.user.id)); setTeamId(''); setPersonal(null); setShowFilters(true) }}><NavIcon><rect width="7" height="7" x="3" y="3" rx="1" /><rect width="7" height="7" x="3" y="14" rx="1" /><path d="M14 4h7" /><path d="M14 9h7" /><path d="M14 15h7" /><path d="M14 20h7" /></NavIcon><span className="side-label-text">Mis tareas</span></button>}
-          <ProjectsSection profile={profile} activeBoardId={openId} mini={sideMini} onOpenBoard={openBoardTab} onManageProject={manageProject} onManageCategories={manageBoardCategories} onCreateProject={createProject} onCreateBoard={createBoard} onDeleteProject={(project) => { setProjectToDelete(project); setDeleteProjectConfirmation('') }} onDeleteBoard={(board) => { setBoardToDelete(board); setDeleteBoardConfirmation('') }} />
+        <ProjectsSection profile={profile} activeBoardId={openId} mini={sideMini} onOpenBoard={openBoardTab} onManageProject={manageProject} onManageCategories={manageBoardCategories} onCreateProject={createProject} onCreateBoard={createBoard} onDeleteProject={setProjectToDelete} onDeleteBoard={setBoardToDelete} />
         </nav>
       </Sidebar>
-      {projectToDelete && (
-        <div className="modal-back" onClick={() => {
-          setProjectToDelete(null)
-          setDeleteProjectConfirmation('')
-        }}>
-          <div className="modal" onClick={(event) => event.stopPropagation()}>
-            <h2>Eliminar proyecto</h2>
-
-            <p>
-              Ãƒâ€šÃ‚Â¿EstÃƒÆ’Ã‚Â¡s seguro de querer eliminar el proyecto{' '}
-              <strong>{projectToDelete.name}</strong>?
-            </p>
-
-            <p>
-              Se eliminarÃƒÆ’Ã‚Â¡n permanentemente todos los tableros, tarjetas y datos
-              contenidos en este proyecto.
-            </p>
-
-            <p>
-              Escribe <strong>{projectToDelete.name}</strong> para confirmar.
-            </p>
-
-            <input
-              type="text"
-              placeholder={projectToDelete.name}
-              value={deleteProjectConfirmation}
-              onChange={(event) => setDeleteProjectConfirmation(event.target.value)}
-              autoFocus
-            />
-
-            <div className="modal-actions">
-              <button
-                type="button"
-                className="ghost"
-                onClick={() => {
-                  setProjectToDelete(null)
-                  setDeleteProjectConfirmation('')
-                }}
-              >
-                Cancelar
-              </button>
-
-              <button
-                type="button"
-                className="ghost danger"
-                disabled={deleteProjectConfirmation !== projectToDelete.name}
-                onClick={() =>
-                  deleteProject(projectToDelete.id, deleteProjectConfirmation)
-                }
-              >
-                <TrashIcon /> Eliminar proyecto
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-      {boardToDelete && (
-        <div className="modal-back" onClick={() => {
-          setBoardToDelete(null)
-          setDeleteBoardConfirmation('')
-        }}>
-          <div className="modal" onClick={(event) => event.stopPropagation()}>
-            <h2>Eliminar tablero</h2>
-            <p>Ãƒâ€šÃ‚Â¿EstÃƒÆ’Ã‚Â¡s seguro de querer eliminar el tablero {''} <strong>{boardToDelete.name}</strong>?</p>
-            <p>Se eliminaran permanentemente todas las tarjetas y datos contenidos en este tablero.</p>
-            <p>Escribe <strong>{boardToDelete.name}</strong> para confirmar.</p>
-            <input type="text" placeholder={boardToDelete.name} value={deleteBoardConfirmation} onChange={(event) => setDeleteBoardConfirmation(event.target.value)} autoFocus />
-
-            <div className="modal-actions">
-              <button type="button" className="ghost" onClick={() => {setBoardToDelete(null); setDeleteBoardConfirmation('')}}>Cancelar</button>
-              <button type="button" className="ghost danger" disabled={deleteBoardConfirmation !== boardToDelete.name} onClick={() => deleteBoard(boardToDelete.id, deleteBoardConfirmation)}><TrashIcon />Eliminar tablero</button>
-            </div>
-          </div>
-        </div>
-      )}
+      {projectToDelete && <DeleteProjectModal project={projectToDelete} onClose={() => setProjectToDelete(null)} onConfirm={(name) => deleteProject(projectToDelete.id, name)} />}
+      {boardToDelete && <DeleteBoardModal board={boardToDelete} onClose={() => setBoardToDelete(null)} onConfirm={(name) => deleteBoard(boardToDelete.id, name)} />}
       <MainContent
         tabs={tabs}
         activeBoardId={openId}

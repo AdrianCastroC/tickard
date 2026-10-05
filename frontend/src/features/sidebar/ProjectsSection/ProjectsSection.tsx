@@ -1,7 +1,77 @@
-import { useState, type FormEvent } from 'react'
+﻿import { useState, type FormEvent } from 'react'
 import type { Profile, Project } from '../../../api'
 import { NavIcon, PlusIcon } from '../../../shared/ui'
 import { ProjectItem } from './ProjectItem'
+
 type Props = { profile: Profile; activeBoardId: number | null; mini: boolean; onOpenBoard: (project: Project, board: { id: number; name: string }) => void; onManageProject: (project: Project) => void; onManageCategories: (project: Project, board: { id: number; name: string }) => void; onCreateProject: (event: FormEvent<HTMLFormElement>) => void; onCreateBoard: (event: FormEvent<HTMLFormElement>, project: Project) => void; onDeleteProject: (project: Project) => void; onDeleteBoard: (board: { id: number; name: string }) => void }
-export function ProjectsSection({ profile, activeBoardId, mini, onOpenBoard, onManageProject, onManageCategories, onCreateProject, onCreateBoard, onDeleteProject, onDeleteBoard }: Props) { const [open, setOpen] = useState(true); const [projectMenu, setProjectMenu] = useState<number | null>(null); const [boardMenu, setBoardMenu] = useState<number | null>(null); const [namingBoard, setNamingBoard] = useState(false); const [boardName, setBoardName] = useState(''); const [newProject, setNewProject] = useState(false); function reset() { setProjectMenu(null); setBoardMenu(null); setNamingBoard(false); setBoardName('') } function createBoard(event: FormEvent<HTMLFormElement>, project: Project) { onCreateBoard(event, project); reset() } return <><button type="button" className="nav-item sub side-section-toggle" title="Proyectos" onClick={() => setOpen((current) => !current)}><NavIcon><path d="m6 14 1.45-2.9A2 2 0 0 1 9.24 10H20a2 2 0 0 1 1.94 2.5l-1.55 6a2 2 0 0 1-1.94 1.5H4a2 2 0 0 1-2-2V5c0-1.1.9-2 2-2h3.93a2 2 0 0 1 1.66.9l.82 1.2a2 2 0 0 0 1.66.9H18a2 2 0 0 1 2 2v2"/><circle cx="14" cy="15" r="1"/></NavIcon><span className="side-label-text">Proyectos</span><span className={`side-section-chevron${open ? ' open' : ''}`}>›</span></button>{open && <><div className="projects">{profile.projects.map((project) => <ProjectItem key={project.id} project={project} activeBoardId={activeBoardId} projectMenu={projectMenu === project.id} boardMenu={boardMenu} namingBoard={namingBoard} boardName={boardName} onOpen={(board) => onOpenBoard(project, board)} onToggleMenu={() => { setProjectMenu(projectMenu === project.id ? null : project.id); setBoardMenu(null); setNamingBoard(false); setBoardName('') }} onNewBoard={() => { setNamingBoard(true) }} onManage={() => onManageProject(project)} onDeleteProject={() => onDeleteProject(project)} onBoardMenu={(id) => { setBoardMenu(boardMenu === id ? null : id); setProjectMenu(null); setNamingBoard(false) }} onCategories={(board) => onManageCategories(project, board)} onDeleteBoard={onDeleteBoard} onBoardNameChange={setBoardName} onCreateBoard={(event) => createBoard(event, project)} />)}{profile.projects.length === 0 && <p className="muted side-label-text">Todavía no hay proyectos.</p>}{profile.user.is_admin && !newProject && <button className="add-project" type="button" title="Nuevo proyecto" onClick={() => setNewProject(true)}><PlusIcon /><span className="side-label-text">Nuevo proyecto</span></button>}</div>{profile.user.is_admin && newProject && !mini && <form onSubmit={onCreateProject} className="field" noValidate><input name="name" placeholder="Nombre del proyecto"/><input name="client_name" placeholder="Empresa cliente"/><div className="row"><button className="primary" type="submit">Crear</button><button className="ghost" type="button" onClick={() => setNewProject(false)}>Cancelar</button></div></form>}</>}</> }
+
+export function ProjectsSection({
+    profile,
+    activeBoardId,
+    mini,
+    onOpenBoard,
+    onManageProject,
+    onManageCategories,
+    onCreateProject,
+    onCreateBoard,
+    onDeleteProject,
+    onDeleteBoard
+}: Props) {
+
+    const [open, setOpen] = useState(true);
+    const [projectMenu, setProjectMenu] = useState<number | null>(null);
+    const [boardMenu, setBoardMenu] = useState<number | null>(null);
+    const [namingBoard, setNamingBoard] = useState(false);
+    const [boardName, setBoardName] = useState('');
+    const [newProject, setNewProject] = useState(false);
+
+    function reset() {
+        setProjectMenu(null); setBoardMenu(null); setNamingBoard(false); setBoardName('')
+    }
+
+    function createBoard(event: FormEvent<HTMLFormElement>, project: Project) {
+        onCreateBoard(event, project);
+        reset()
+    }
+
+    return <>
+        <button type="button" className="nav-item sub side-section-toggle" title="Proyectos" onClick={() => setOpen((current) => !current)}>
+            <NavIcon>
+                <path d="m6 14 1.45-2.9A2 2 0 0 1 9.24 10H20a2 2 0 0 1 1.94 2.5l-1.55 6a2 2 0 0 1-1.94 1.5H4a2 2 0 0 1-2-2V5c0-1.1.9-2 2-2h3.93a2 2 0 0 1 1.66.9l.82 1.2a2 2 0 0 0 1.66.9H18a2 2 0 0 1 2 2v2" />
+                <circle cx="14" cy="15" r="1" />
+            </NavIcon>
+            <span className="side-label-text">Proyectos</span>
+            <span className={`side-section-chevron${open ? ' open' : ''}`}>â€º</span>
+        </button>
+        {open && <>
+            <div className="projects">
+                {profile.projects.map((project) =>
+                    <ProjectItem key={project.id} project={project} activeBoardId={activeBoardId} projectMenu={projectMenu === project.id} boardMenu={boardMenu} namingBoard={namingBoard} boardName={boardName}
+                    onOpen={(board) => onOpenBoard(project, board)}
+                    onToggleMenu={() => {
+                        setProjectMenu(projectMenu === project.id ? null : project.id);
+                        setBoardMenu(null);
+                        setNamingBoard(false);
+                        setBoardName('')
+                    }}
+                    onNewBoard={() => {setNamingBoard(true)}}
+                    onManage={() => onManageProject(project)}
+                    onDeleteProject={() => onDeleteProject(project)}
+                    onBoardMenu={(id) => {
+                        setBoardMenu(boardMenu === id ? null : id);
+                        setProjectMenu(null);
+                        setNamingBoard(false)
+                    }}
+                    onCategories={(board) => onManageCategories(project, board)}
+                    onDeleteBoard={onDeleteBoard} onBoardNameChange={setBoardName}
+                    onCreateBoard={(event) => createBoard(event, project)}
+                    />)}
+
+                    {profile.projects.length === 0 && <p className="muted side-label-text">TodavÃ­a no hay proyectos.</p>}
+                    {profile.user.is_admin && !newProject &&
+                        <button className="add-project" type="button" title="Nuevo proyecto" onClick={() => setNewProject(true)}>
+                            <PlusIcon />
+                            <span className="side-label-text">Nuevo proyecto</span>
+                        </button>}
+                    </div>{profile.user.is_admin && newProject && !mini && <form onSubmit={onCreateProject} className="field" noValidate><input name="name" placeholder="Nombre del proyecto" /><input name="client_name" placeholder="Empresa cliente" /><div className="row"><button className="primary" type="submit">Crear</button><button className="ghost" type="button" onClick={() => setNewProject(false)}>Cancelar</button></div></form>}</>}</> }
 
