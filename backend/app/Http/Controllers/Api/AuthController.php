@@ -115,7 +115,12 @@ class AuthController extends ApiController
         }
         $user->update($payload);
 
-        return $this->profile($user->fresh());
+        $workspaceId = $request->integer('workspace_id') ?: null;
+
+        return $this->profile(
+            $user->fresh(),
+            $workspaceId
+        );
     }
 
     public function updateAvatar(Request $request)
@@ -132,7 +137,12 @@ class AuthController extends ApiController
         $path = $data['avatar']->store('avatars/'.$user->id, 'public');
         $user->update(['avatar_path' => $path]);
 
-        return $this->profile($user->fresh());
+        $workspaceId = $request->integer('workspace_id') ?: null;
+
+        return $this->profile(
+            $user->fresh(),
+            $workspaceId
+        );
     }
 
     public function notifications(Request $request)

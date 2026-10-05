@@ -370,7 +370,11 @@ export function Workspace() {
     if (!name || !clientName) return
     const created = await api<Project>('/projects', {
       method: 'POST',
-      body: JSON.stringify({ name, client_name: clientName }),
+      body: JSON.stringify({
+        workspace_id: activeWorkspaceId,
+        name,
+        client_name: clientName,
+      }),
     })
     const data = await loadProfile(activeWorkspaceId)
     setNewProject(false)
@@ -435,7 +439,11 @@ export function Workspace() {
   }
 
   async function changeAvatar(file: File) {
-    const next = await uploadFile<Profile>('/me/avatar', file, 'avatar')
+    const path = activeWorkspaceId
+      ? `/me/avatar?workspace_id=${activeWorkspaceId}`
+      : '/me/avatar'
+  
+    const next = await uploadFile<Profile>(path, file, 'avatar')
     setProfile(next)
   }
 
@@ -557,6 +565,7 @@ export function Workspace() {
           section={accountModal}
           profile={profile}
           notes={notes}
+          workspaceId={activeWorkspaceId}
           onSection={setAccountModal}
           onProfile={setProfile}
           onNotes={setNotes}
@@ -1228,25 +1237,52 @@ function resolveTheme(theme: UserTheme): 'light' | 'dark' {
   return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
 }
 
-async function setTheme(setProfile: (value: Profile) => void, theme: UserTheme) {
+async function setTheme(
+  setProfile: (value: Profile) => void,
+  theme: UserTheme,
+  workspaceId: number | null
+) {
   document.documentElement.dataset.theme = resolveTheme(theme)
-  const next = await api<Profile>('/me', { method: 'PATCH', body: JSON.stringify({ theme }) })
+
+  const path = workspaceId
+    ? `/me?workspace_id=${workspaceId}`
+    : '/me'
+
+  const next = await api<Profile>(path, {
+    method: 'PATCH',
+    body: JSON.stringify({ theme }),
+  })
+
   setProfile(next)
 }
 
-function AccountModal({ section, profile, notes, onSection, onProfile, onNotes, onClose, onAvatar }: {
+function AccountModal({
+  section,
+  profile,
+  notes,
+  workspaceId,
+  onSection,
+  onProfile,
+  onNotes,
+  onClose,
+  onAvatar,
+}: {
   section: 'profile' | 'settings' | 'notifications'
   profile: Profile
   notes: { id: number; body: string }[]
+  workspaceId: number | null
   onSection: (section: 'profile' | 'settings' | 'notifications') => void
   onProfile: (value: Profile) => void
   onNotes: (value: { id: number; body: string }[]) => void
   onClose: () => void
   onAvatar: (file: File) => Promise<void>
 }) {
-  void profile
-  void profile
+  const mePath = workspaceId
+    ? `/me?workspace_id=${workspaceId}`
+    : '/me'
+
   const avatarRef = useRef<HTMLInputElement>(null)
+
   const [name, setName] = useState(profile.user.name)
   const [currentPassword, setCurrentPassword] = useState('')
   const [newPassword, setNewPassword] = useState('')
@@ -1261,76 +1297,144 @@ function AccountModal({ section, profile, notes, onSection, onProfile, onNotes, 
 
   useEffect(() => {
     if (section !== 'notifications') return
+
     let cancelled = false
+
     void (async () => {
-      const items = await api<{ id: number; body: string }[]>('/notifications')
+      const items = await api<{ id: number; body: string }[]>(
+        '/notifications'
+      )
+
       if (cancelled) return
+
       onNotes(items)
+
       if (profile.unread > 0) {
-        await api('/notifications/read', { method: 'POST' })
-        if (!cancelled) onProfile({ ...profile, unread: 0 })
+        await api('/notifications/read', {
+          method: 'POST',
+        })
+
+        if (!cancelled) {
+          onProfile({
+            ...profile,
+            unread: 0,
+          })
+        }
       }
     })()
-    return () => { cancelled = true }
+
+    return () => {
+      cancelled = true
+    }
   }, [section])
 
   async function saveProfile(event: FormEvent) {
     event.preventDefault()
+
     setError('')
     setInfo('')
+
     const nextName = name.trim()
+
     if (!nextName) {
       setError('El nombre no puede estar vacío.')
       return
     }
+
     if (newPassword || confirmPassword || currentPassword) {
       if (!currentPassword) {
         setError('Indica tu contraseña actual.')
         return
       }
+
       if (newPassword.length < 8) {
-        setError('La nueva contraseña debe tener al menos 8 caracteres.')
+        setError(
+          'La nueva contraseña debe tener al menos 8 caracteres.'
+        )
         return
       }
+
       if (newPassword !== confirmPassword) {
         setError('Las contraseñas nuevas no coinciden.')
         return
       }
     }
+
     setSaving(true)
+
     try {
-      const body: Record<string, string> = { name: nextName }
+      const body: Record<string, string> = {
+        name: nextName,
+      }
+
       if (newPassword) {
         body.current_password = currentPassword
         body.password = newPassword
         body.password_confirmation = confirmPassword
       }
-      const next = await api<Profile>('/me', { method: 'PATCH', body: JSON.stringify(body) })
+
+      const next = await api<Profile>(mePath, {
+        method: 'PATCH',
+        body: JSON.stringify(body),
+      })
+
       onProfile(next)
+
       setCurrentPassword('')
       setNewPassword('')
       setConfirmPassword('')
-      setInfo(newPassword ? 'Perfil y contraseña actualizados.' : 'Perfil actualizado.')
+
+      setInfo(
+        newPassword
+          ? 'Perfil y contraseña actualizados.'
+          : 'Perfil actualizado.'
+      )
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'No se pudo guardar el perfil.')
+      setError(
+        err instanceof Error
+          ? err.message
+          : 'No se pudo guardar el perfil.'
+      )
     } finally {
       setSaving(false)
     }
   }
 
-  async function saveNotify(field: 'notify_in_app' | 'notify_email', value: boolean) {
+  async function saveNotify(
+    field: 'notify_in_app' | 'notify_email',
+    value: boolean
+  ) {
     setError('')
+
     try {
-      const next = await api<Profile>('/me', { method: 'PATCH', body: JSON.stringify({ [field]: value }) })
+      const next = await api<Profile>(mePath, {
+        method: 'PATCH',
+        body: JSON.stringify({
+          [field]: value,
+        }),
+      })
+
       onProfile(next)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'No se pudo guardar la configuración.')
+      setError(
+        err instanceof Error
+          ? err.message
+          : 'No se pudo guardar la configuración.'
+      )
     }
   }
 
-  const nameChanged = name.trim() !== profile.user.name
-  const passwordTouched = Boolean(currentPassword || newPassword || confirmPassword)
-  const hasChanges = nameChanged || passwordTouched
+  const nameChanged =
+    name.trim() !== profile.user.name
+
+  const passwordTouched = Boolean(
+    currentPassword ||
+    newPassword ||
+    confirmPassword
+  )
+
+  const hasChanges =
+    nameChanged || passwordTouched
 
   const titles = {
     profile: 'Mi perfil',
@@ -1339,161 +1443,414 @@ function AccountModal({ section, profile, notes, onSection, onProfile, onNotes, 
   } as const
 
   return (
-    <div className="modal-back" onClick={onClose}>
-      <div className="modal account-modal" onClick={(event) => event.stopPropagation()}>
+    <div
+      className="modal-back"
+      onClick={onClose}
+    >
+      <div
+        className="modal account-modal"
+        onClick={(event) => event.stopPropagation()}
+      >
         <div className="account-modal-nav">
-          <button type="button" className={section === 'profile' ? 'on' : undefined} onClick={() => onSection('profile')}>
-            <ProfileUserIcon /> Mi perfil
+          <button
+            type="button"
+            className={
+              section === 'profile'
+                ? 'on'
+                : undefined
+            }
+            onClick={() =>
+              onSection('profile')
+            }
+          >
+            <ProfileUserIcon />
+            Mi perfil
           </button>
-          <button type="button" className={section === 'settings' ? 'on' : undefined} onClick={() => onSection('settings')}>
-            <SettingsIcon /> Configuración
+
+          <button
+            type="button"
+            className={
+              section === 'settings'
+                ? 'on'
+                : undefined
+            }
+            onClick={() =>
+              onSection('settings')
+            }
+          >
+            <SettingsIcon />
+            Configuración
           </button>
-          <button type="button" className={section === 'notifications' ? 'on' : undefined} onClick={() => onSection('notifications')}>
-            <BellIcon /> Notificaciones
-            {profile.unread > 0 && <i className="account-badge">{profile.unread}</i>}
+
+          <button
+            type="button"
+            className={
+              section === 'notifications'
+                ? 'on'
+                : undefined
+            }
+            onClick={() =>
+              onSection('notifications')
+            }
+          >
+            <BellIcon />
+
+            Notificaciones
+
+            {profile.unread > 0 && (
+              <i className="account-badge">
+                {profile.unread}
+              </i>
+            )}
           </button>
         </div>
+
         <div className="account-modal-main">
           <div className="row account-modal-head">
             <h2>{titles[section]}</h2>
-            <button className="icon-close" type="button" aria-label="Cerrar" onClick={onClose}>
+
+            <button
+              className="icon-close"
+              type="button"
+              aria-label="Cerrar"
+              onClick={onClose}
+            >
               <CloseIcon />
             </button>
           </div>
 
           {section === 'profile' && (
-            <form className="account-modal-body" onSubmit={saveProfile}>
+            <form
+              className="account-modal-body"
+              onSubmit={saveProfile}
+            >
               <div className="account-modal-identity">
                 <button
                   type="button"
                   className="account-avatar account-avatar-lg"
                   aria-label="Cambiar foto de perfil"
                   title="Cambiar foto de perfil"
-                  onClick={() => avatarRef.current?.click()}
+                  onClick={() =>
+                    avatarRef.current?.click()
+                  }
                 >
-                  <Avatar id={profile.user.id} name={profile.user.name} size={72} className="avatar" src={profile.user.avatar_url} />
+                  <Avatar
+                    id={profile.user.id}
+                    name={profile.user.name}
+                    size={72}
+                    className="avatar"
+                    src={profile.user.avatar_url}
+                  />
+
                   <span className="account-avatar-edit">
                     <PencilIcon className="account-avatar-pencil" />
                   </span>
                 </button>
+
                 <input
                   ref={avatarRef}
                   type="file"
                   accept="image/*"
                   hidden
                   onChange={(event) => {
-                    const file = event.target.files?.[0]
+                    const file =
+                      event.target.files?.[0]
+
                     event.target.value = ''
-                    if (file) void onAvatar(file)
+
+                    if (file) {
+                      void onAvatar(file)
+                    }
                   }}
                 />
+
                 <div>
-                  <strong>{profile.user.name}</strong>
-                  <p className="muted">{profile.user.email}</p>
+                  <strong>
+                    {profile.user.name}
+                  </strong>
+
+                  <p className="muted">
+                    {profile.user.email}
+                  </p>
+
                   {profile.user.is_admin
-                    ? <em className="account-plan">Administrador</em>
+                    ? (
+                        <em className="account-plan">
+                          Administrador
+                        </em>
+                      )
                     : profile.user.client_company
-                      ? <em className="account-plan">Cliente</em>
-                      : <em className="account-plan">Miembro</em>}
+                      ? (
+                          <em className="account-plan">
+                            Cliente
+                          </em>
+                        )
+                      : (
+                          <em className="account-plan">
+                            Miembro
+                          </em>
+                        )}
                 </div>
               </div>
+
               <label className="field">
                 Nombre
-                <input value={name} onChange={(event) => setName(event.target.value)} autoComplete="name" />
+
+                <input
+                  value={name}
+                  onChange={(event) =>
+                    setName(event.target.value)
+                  }
+                  autoComplete="name"
+                />
               </label>
+
               <label className="field">
                 Correo
-                <input value={profile.user.email} disabled readOnly />
+
+                <input
+                  value={profile.user.email}
+                  disabled
+                  readOnly
+                />
               </label>
-              <p className="account-panel-kicker">Cambiar contraseña</p>
+
+              <p className="account-panel-kicker">
+                Cambiar contraseña
+              </p>
+
               <label className="field">
                 Contraseña actual
-                <input type="password" value={currentPassword} onChange={(event) => setCurrentPassword(event.target.value)} autoComplete="current-password" />
+
+                <input
+                  type="password"
+                  value={currentPassword}
+                  onChange={(event) =>
+                    setCurrentPassword(
+                      event.target.value
+                    )
+                  }
+                  autoComplete="current-password"
+                />
               </label>
+
               <label className="field">
                 Nueva contraseña
-                <input type="password" value={newPassword} onChange={(event) => setNewPassword(event.target.value)} autoComplete="new-password" />
+
+                <input
+                  type="password"
+                  value={newPassword}
+                  onChange={(event) =>
+                    setNewPassword(
+                      event.target.value
+                    )
+                  }
+                  autoComplete="new-password"
+                />
               </label>
+
               <label className="field">
                 Repetir contraseña
-                <input type="password" value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} autoComplete="new-password" />
+
+                <input
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(event) =>
+                    setConfirmPassword(
+                      event.target.value
+                    )
+                  }
+                  autoComplete="new-password"
+                />
               </label>
-              {error && <p className="error">{error}</p>}
-              {info && <p className="account-ok">{info}</p>}
-              <button className="primary account-save" type="submit" disabled={saving || !hasChanges}>
+
+              {error && (
+                <p className="error">
+                  {error}
+                </p>
+              )}
+
+              {info && (
+                <p className="account-ok">
+                  {info}
+                </p>
+              )}
+
+              <button
+                className="primary account-save"
+                type="submit"
+                disabled={
+                  saving ||
+                  !hasChanges
+                }
+              >
                 <FloppyIcon />
-                {saving ? 'Guardando…' : 'Guardar cambios'}
+
+                {saving
+                  ? 'Guardando…'
+                  : 'Guardar cambios'}
               </button>
             </form>
           )}
 
           {section === 'settings' && (
             <div className="account-modal-body">
-              <p className="account-panel-kicker">Tema</p>
-              <div className="account-theme-switch" role="group" aria-label="Tema">
+              <p className="account-panel-kicker">
+                Tema
+              </p>
+
+              <div
+                className="account-theme-switch"
+                role="group"
+                aria-label="Tema"
+              >
                 <button
                   type="button"
-                  className={profile.user.theme === 'system' ? 'on' : undefined}
+                  className={
+                    profile.user.theme === 'system'
+                      ? 'on'
+                      : undefined
+                  }
                   aria-label="Ordenador"
                   title="Ordenador"
-                  aria-pressed={profile.user.theme === 'system'}
-                  onClick={() => { void setTheme(onProfile, 'system') }}
+                  aria-pressed={
+                    profile.user.theme === 'system'
+                  }
+                  onClick={() => {
+                    void setTheme(
+                      onProfile,
+                      'system',
+                      workspaceId
+                    )
+                  }}
                 >
                   <ComputerIcon />
                 </button>
+
                 <button
                   type="button"
-                  className={profile.user.theme === 'light' ? 'on' : undefined}
+                  className={
+                    profile.user.theme === 'light'
+                      ? 'on'
+                      : undefined
+                  }
                   aria-label="Claro"
                   title="Claro"
-                  aria-pressed={profile.user.theme === 'light'}
-                  onClick={() => { void setTheme(onProfile, 'light') }}
+                  aria-pressed={
+                    profile.user.theme === 'light'
+                  }
+                  onClick={() => {
+                    void setTheme(
+                      onProfile,
+                      'light',
+                      workspaceId
+                    )
+                  }}
                 >
                   <SunIcon />
                 </button>
+
                 <button
                   type="button"
-                  className={profile.user.theme === 'dark' ? 'on' : undefined}
+                  className={
+                    profile.user.theme === 'dark'
+                      ? 'on'
+                      : undefined
+                  }
                   aria-label="Oscuro"
                   title="Oscuro"
-                  aria-pressed={profile.user.theme === 'dark'}
-                  onClick={() => { void setTheme(onProfile, 'dark') }}
+                  aria-pressed={
+                    profile.user.theme === 'dark'
+                  }
+                  onClick={() => {
+                    void setTheme(
+                      onProfile,
+                      'dark',
+                      workspaceId
+                    )
+                  }}
                 >
                   <MoonIcon />
                 </button>
               </div>
-              <p className="account-panel-kicker">Avisos</p>
+
+              <p className="account-panel-kicker">
+                Avisos
+              </p>
+
               <label className="account-toggle">
                 <span>
-                  <strong>Avisos en la app</strong>
-                  <small>Asignaciones y comentarios dentro de tickard</small>
+                  <strong>
+                    Avisos en la app
+                  </strong>
+
+                  <small>
+                    Asignaciones y comentarios dentro de
+                    tickard
+                  </small>
                 </span>
+
                 <input
                   type="checkbox"
-                  checked={profile.user.notify_in_app}
-                  onChange={(event) => { void saveNotify('notify_in_app', event.target.checked) }}
+                  checked={
+                    profile.user.notify_in_app
+                  }
+                  onChange={(event) => {
+                    void saveNotify(
+                      'notify_in_app',
+                      event.target.checked
+                    )
+                  }}
                 />
               </label>
+
               <label className="account-toggle">
                 <span>
-                  <strong>Avisos por correo</strong>
-                  <small>Asignaciones y comentarios de cliente</small>
+                  <strong>
+                    Avisos por correo
+                  </strong>
+
+                  <small>
+                    Asignaciones y comentarios de cliente
+                  </small>
                 </span>
+
                 <input
                   type="checkbox"
-                  checked={profile.user.notify_email}
-                  onChange={(event) => { void saveNotify('notify_email', event.target.checked) }}
+                  checked={
+                    profile.user.notify_email
+                  }
+                  onChange={(event) => {
+                    void saveNotify(
+                      'notify_email',
+                      event.target.checked
+                    )
+                  }}
                 />
               </label>
-              {error && <p className="error">{error}</p>}
+
+              {error && (
+                <p className="error">
+                  {error}
+                </p>
+              )}
             </div>
           )}
 
           {section === 'notifications' && (
             <div className="account-modal-body">
               <ul className="account-notes account-notes-modal">
-                {notes.length === 0 && <li className="muted">No hay avisos.</li>}
-                {notes.map((note) => <li key={note.id}>{note.body}</li>)}
+                {notes.length === 0 && (
+                  <li className="muted">
+                    No hay avisos.
+                  </li>
+                )}
+
+                {notes.map((note) => (
+                  <li key={note.id}>
+                    {note.body}
+                  </li>
+                ))}
               </ul>
             </div>
           )}

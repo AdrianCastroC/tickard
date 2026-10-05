@@ -20,6 +20,7 @@ use App\Models\Project;
 use App\Models\ProjectMember;
 use App\Models\Team;
 use App\Models\User;
+use App\Models\Workspace;
 use App\Support\CardPresenter;
 use App\Support\Notifier;
 use App\Support\ProjectAccess;
@@ -33,33 +34,56 @@ use Illuminate\Validation\ValidationException;
 
 class ProjectsController extends ApiController
 {
-public function storeProject(Request $request)
+    public function storeProject(Request $request)
     {
         abort_unless($request->user()->is_admin, 403);
-
+    
         $data = $request->validate([
+            'workspace_id' => ['required', 'integer'],
             'name' => ['required', 'string', 'max:120'],
             'client_name' => ['required', 'string', 'max:120'],
         ]);
-
-        $project = DB::transaction(function () use ($data) {
-            $client = ClientCompany::create(['name' => $data['client_name']]);
+    
+        $workspace = Workspace::whereKey($data['workspace_id'])
+            ->whereHas('members', fn ($query) =>
+                $query->where('users.id', $request->user()->id)
+            )
+            ->firstOrFail();
+    
+        $project = DB::transaction(function () use ($data, $workspace) {
+            $client = ClientCompany::create([
+                'workspace_id' => $workspace->id,
+                'name' => $data['client_name'],
+            ]);
+    
             $project = Project::create([
+                'workspace_id' => $workspace->id,
                 'name' => $data['name'],
                 'client_company_id' => $client->id,
             ]);
-            $board = $project->boards()->create(['name' => 'General', 'position' => 0]);
+    
+            $board = $project->boards()->create([
+                'name' => 'General',
+                'position' => 0,
+            ]);
+    
             foreach (Board::defaultColumnNames() as $position => $name) {
-                $board->columns()->create(['name' => $name, 'position' => $position]);
+                $board->columns()->create([
+                    'name' => $name,
+                    'position' => $position,
+                ]);
             }
-
+    
             return $project->load('clientCompany', 'boards');
         });
-
-        return response()->json($this->projectSummary($project, 'responsable'), 201);
+    
+        return response()->json(
+            $this->projectSummary($project, 'responsable'),
+            201
+        );
     }
 
-public function deleteProject(Request $request, Project $project)
+    public function deleteProject(Request $request, Project $project)
     {
         abort_unless(ProjectAccess::canManage($request->user(), $project), 403);
 
@@ -70,7 +94,7 @@ public function deleteProject(Request $request, Project $project)
         return response()->noContent();
     }
 
-public function storeBoard(Request $request, Project $project)
+    public function storeBoard(Request $request, Project $project)
     {
         abort_unless(ProjectAccess::canManage($request->user(), $project), 403);
         $data = $request->validate(['name' => ['required', 'string', 'max:120']]);
@@ -91,7 +115,7 @@ public function storeBoard(Request $request, Project $project)
         return response()->json(['id' => $board->id, 'name' => $board->name], 201);
     }
 
-public function deleteBoard(Request $request, Board $board)
+    public function deleteBoard(Request $request, Board $board)
     {
         abort_unless(ProjectAccess::canManage($request->user(), $board->project), 403);
 
@@ -105,7 +129,7 @@ public function deleteBoard(Request $request, Board $board)
         return response()->noContent();
     }
 
-public function updateProject(Request $request, Project $project)
+    public function updateProject(Request $request, Project $project)
     {
         abort_unless(ProjectAccess::canManage($request->user(), $project), 403);
 
@@ -123,7 +147,7 @@ public function updateProject(Request $request, Project $project)
         return $project->fresh();
     }
 
-public function storeLabel(Request $request, Project $project)
+    public function storeLabel(Request $request, Project $project)
     {
         abort_unless(ProjectAccess::canEditCards($request->user(), $project), 403);
 
@@ -137,7 +161,7 @@ public function storeLabel(Request $request, Project $project)
         return response()->json($label, 201);
     }
 
-public function invite(Request $request, Project $project)
+    public function invite(Request $request, Project $project)
     {
         abort_unless(ProjectAccess::canManage($request->user(), $project), 403);
 
@@ -167,7 +191,7 @@ public function invite(Request $request, Project $project)
         return response()->json(['link' => $link], 201);
     }
 
-public function showBoard(Request $request, Board $board)
+    public function showBoard(Request $request, Board $board)
     {
         $project = $board->project()->with('clientCompany', 'labels', 'members.user')->first();
         $role = ProjectAccess::role($request->user(), $project);
