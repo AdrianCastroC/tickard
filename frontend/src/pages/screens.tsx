@@ -1,6 +1,6 @@
 import { type FormEvent, useEffect, useRef, useState } from 'react'
 import { api, setToken, uploadFile, type BoardPayload, type Card, type Profile, type Project } from '../api'
-import { ConfigIcon, DotsIcon, NavIcon, PlusIcon, TrashIcon, formatDate, type OpenTab } from '../shared/ui'
+import { NavIcon, PlusIcon, TrashIcon, formatDate, type OpenTab } from '../shared/ui'
 import { CardDrawer, CloseIcon } from '../features/cards/CardDetail'
 import { BoardPulse, CreateCardModal, Filters, Kanban, orderedColumnCards } from '../features/board/Board'
 import { CategoriesDrawer, ClientsDrawer, ProjectDrawer, RosterDrawer } from '../features/administration/Drawers'
@@ -9,7 +9,7 @@ import { AccountModal } from '../features/account/AccountModal'
 import { resolveTheme } from '../features/account/theme'
 import { Sidebar } from '../features/sidebar/Sidebar'
 import { WorkspaceSelector } from '../features/sidebar/WorkspaceSelector/WorkspaceSelector'
-import { PersonalSection } from '../features/sidebar/PersonalSection/PersonalSection'
+import { ProjectsSection } from '../features/sidebar/ProjectsSection/ProjectsSection'
 export function Workspace() {
   const [profile, setProfile] = useState<Profile | null>(null)
   const [openId, setOpenId] = useState<number | null>(null)
@@ -20,12 +20,6 @@ export function Workspace() {
   const [notes, setNotes] = useState<{ id: number; body: string }[]>([])
   const [accountModal, setAccountModal] = useState<'profile' | 'settings' | 'notifications' | null>(null)
   const [createColumn, setCreateColumn] = useState<{ id: number; name: string } | null>(null)
-  const [newProject, setNewProject] = useState(false)
-  const [projectMenu, setProjectMenu] = useState<number | null>(null)
-  const [boardMenu, setBoardMenu] = useState<number | null>(null)
-  const [namingBoard, setNamingBoard] = useState(false)
-  const [boardName, setBoardName] = useState('')
-  const menuRef = useRef<HTMLDivElement>(null)
   const [query, setQuery] = useState('')
   const [assignee, setAssignee] = useState('')
   const [teamId, setTeamId] = useState('')
@@ -50,7 +44,6 @@ export function Workspace() {
       return null
     }
   })
-  const [projectsOpen, setProjectsOpen] = useState(true)
   const [projectToDelete, setProjectToDelete] = useState<Project | null>(null)
   const [deleteProjectConfirmation, setDeleteProjectConfirmation] = useState('')
   const [boardToDelete, setBoardToDelete] = useState<{id: number; name: string} | null>(null)
@@ -105,10 +98,6 @@ export function Workspace() {
     setLabel('')
     setPriority('')
   
-    setProjectMenu(null)
-    setBoardMenu(null)
-    setNamingBoard(false)
-    setNewProject(false)
   
     const data = await loadProfile(workspaceId)
   
@@ -187,19 +176,6 @@ export function Workspace() {
     return () => media.removeEventListener('change', sync)
   }, [profile?.user.theme])
 
-  useEffect(() => {
-    if (projectMenu === null && boardMenu === null) return
-    function close(event: MouseEvent) {
-      if (!menuRef.current?.contains(event.target as Node)) {
-        setProjectMenu(null)
-        setBoardMenu(null)
-        setNamingBoard(false)
-        setBoardName('')
-      }
-    }
-    document.addEventListener('mousedown', close)
-    return () => document.removeEventListener('mousedown', close)
-  }, [projectMenu, boardMenu])
 
   useEffect(() => {
     if (!openId) return
@@ -226,16 +202,7 @@ export function Workspace() {
     loadBoard(boardRef.id)
   }
 
-  function focusProject(item: Project) {
-    const boardRef = item.boards[0]
-    if (!boardRef) return
-    openBoardTab(item, boardRef)
-  }
-
   async function manageProject(item: Project) {
-    setProjectMenu(null)
-    setBoardMenu(null)
-    setNamingBoard(false)
     const boardRef = item.boards.find((entry) => entry.id === openId) ?? item.boards[0]
     if (!boardRef) return
     if (openId !== boardRef.id) openBoardTab(item, boardRef)
@@ -243,25 +210,21 @@ export function Workspace() {
   }
 
   async function manageBoardCategories(item: Project, boardRef: { id: number; name: string }) {
-    setProjectMenu(null)
-    setBoardMenu(null)
     if (openId !== boardRef.id) openBoardTab(item, boardRef)
     await loadBoard(boardRef.id)
     setShowCategories(true)
   }
 
-  async function createBoard(event: FormEvent, item: Project) {
+  async function createBoard(event: FormEvent<HTMLFormElement>, item: Project) {
     event.preventDefault()
-    const name = boardName.trim()
+    const form = new FormData(event.currentTarget)
+    const name = String(form.get('name') || '').trim()
     if (!name) return
     const created = await api<{ id: number; name: string }>(`/projects/${item.id}/boards`, {
       method: 'POST',
       body: JSON.stringify({ name }),
     })
     await loadProfile(activeWorkspaceId)
-    setProjectMenu(null)
-    setNamingBoard(false)
-    setBoardName('')
     openBoardTab(item, created)
   }
 
@@ -274,9 +237,6 @@ export function Workspace() {
     setBoardToDelete(null)
     setDeleteBoardConfirmation('')
     await loadProfile(activeWorkspaceId)
-    setBoardMenu(null)
-    setNamingBoard(false)
-    setBoardName('')
     closeTab(boardId)
   }
 
@@ -366,7 +326,6 @@ export function Workspace() {
       }),
     })
     const data = await loadProfile(activeWorkspaceId)
-    setNewProject(false)
     const owner = data.projects.find((item) => item.id === created.id) ?? created
     const boardRef = owner.boards[0]
     if (boardRef) openBoardTab(owner, boardRef)
@@ -393,10 +352,9 @@ export function Workspace() {
       else setBoard(null)
     }
 
-    setProjectMenu(null)
   }
 
-  if (!profile) return <main className="login"><p>Cargandoâ€¦</p></main>
+  if (!profile) return <main className="login"><p>CargandoÃ¢â‚¬Â¦</p></main>
 
   const filtersActive = Boolean(assignee || teamId || label || priority)
   const backlog = view?.columns.find((column) => column.name === 'Backlog') ?? view?.columns[0]
@@ -449,235 +407,8 @@ export function Workspace() {
       <Sidebar mini={sideMini} onToggleMini={toggleSideMini}>
         <WorkspaceSelector profile={profile} activeWorkspaceId={activeWorkspaceId} mini={sideMini} onToggleMini={toggleSideMini} onWorkspaceChange={changeWorkspace} onProfileRefresh={loadProfile} />
         <nav className="nav">
-          {view?.role !== 'cliente' && (
-            <button
-              className={assignee === String(profile.user.id) ? 'nav-item sub on' : 'nav-item sub'}
-              type="button"
-              title="Mis tareas"
-              onClick={() => { setAssignee(String(profile.user.id)); setTeamId(''); setPersonal(null); setShowFilters(true) }}
-            >
-              <NavIcon>
-                <rect width="7" height="7" x="3" y="3" rx="1" />
-                <rect width="7" height="7" x="3" y="14" rx="1" />
-                <path d="M14 4h7" />
-                <path d="M14 9h7" />
-                <path d="M14 15h7" />
-                <path d="M14 20h7" />
-              </NavIcon>
-              <span className="side-label-text">Mis tareas</span>
-            </button>
-          )}
-          {profile.user.is_admin && <PersonalSection onOpenSection={setPersonal} />}
-          <button
-            type="button"
-            className="nav-item sub side-section-toggle"
-            title="Proyectos"
-            onClick={() => setProjectsOpen((current) => !current)}
-          >
-            <NavIcon>
-              <path d="m6 14 1.45-2.9A2 2 0 0 1 9.24 10H20a2 2 0 0 1 1.94 2.5l-1.55 6a2 2 0 0 1-1.94 1.5H4a2 2 0 0 1-2-2V5c0-1.1.9-2 2-2h3.93a2 2 0 0 1 1.66.9l.82 1.2a2 2 0 0 0 1.66.9H18a2 2 0 0 1 2 2v2" />
-              <circle cx="14" cy="15" r="1" />
-            </NavIcon>
-
-            <span className="side-label-text">Proyectos</span>
-
-            <span className={`side-section-chevron${projectsOpen ? ' open' : ''}`}>
-              â€º
-            </span>
-          </button>
-
-          {projectsOpen && (
-            <>
-              <div className="projects">
-                {profile.projects.map((item) => (
-                  <div key={item.id} className="project">
-                    <div
-                      className="project-row"
-                      ref={projectMenu === item.id ? menuRef : undefined}
-                    >
-                      <button
-                        type="button"
-                        title={item.name}
-                        onClick={() => focusProject(item)}
-                      >
-                        <NavIcon>
-                          <path d="M2 6h4" />
-                          <path d="M2 10h4" />
-                          <path d="M2 14h4" />
-                          <path d="M2 18h4" />
-                          <rect width="16" height="20" x="4" y="2" rx="2" />
-                          <path d="M15 2v20" />
-                          <path d="M15 7h5" />
-                          <path d="M15 12h5" />
-                          <path d="M15 17h5" />
-                        </NavIcon>
-
-                        <span className="side-label-text">{item.name}</span>
-                      </button>
-
-                      {item.role === 'responsable' && (
-                        <button
-                          className={projectMenu === item.id ? 'more on' : 'more'}
-                          type="button"
-                          aria-label={`Opciones de ${item.name}`}
-                          onClick={() => {
-                            setProjectMenu(projectMenu === item.id ? null : item.id)
-                            setBoardMenu(null)
-                            setNamingBoard(false)
-                            setBoardName('')
-                          }}
-                        >
-                          <DotsIcon />
-                        </button>
-                      )}
-
-                      {projectMenu === item.id && (
-                        <div className="project-menu">
-                          {namingBoard ? (
-                            <form onSubmit={(event) => createBoard(event, item)}>
-                              <input
-                                value={boardName}
-                                placeholder="Nombre del tablero"
-                                onChange={(event) => setBoardName(event.target.value)}
-                                autoFocus
-                              />
-
-                              <button className="primary" type="submit">
-                                Crear tablero
-                              </button>
-                            </form>
-                          ) : (
-                            <>
-                              <button
-                                type="button"
-                                onClick={() => setNamingBoard(true)}
-                              >
-                                <PlusIcon /> Nuevo tablero
-                              </button>
-
-                              <button
-                                type="button"
-                                onClick={() => manageProject(item)}
-                              >
-                                <ConfigIcon /> Gestionar proyecto
-                              </button>
-
-                              <button
-                                type="button"
-                                className="danger"
-                                onClick={() => {
-                                  setProjectToDelete(item)
-                                  setDeleteProjectConfirmation('')
-                                }}
-                              >
-                                <TrashIcon /> Eliminar
-                              </button>
-                            </>
-                          )}
-                        </div>
-                      )}
-                    </div>
-
-                    {item.boards.map((boardItem) => (
-                      <div
-                        key={boardItem.id}
-                        className={boardItem.id === openId ? 'board-row on' : 'board-row'}
-                        ref={boardMenu === boardItem.id ? menuRef : undefined}
-                      >
-                        <button
-                          className="board-link"
-                          type="button"
-                          onClick={() => openBoardTab(item, boardItem)}
-                        >
-                          {boardItem.name}
-                        </button>
-
-                        {item.role === 'responsable' && (
-                          <button
-                            className={boardMenu === boardItem.id ? 'more on' : 'more'}
-                            type="button"
-                            aria-label={`Opciones de ${boardItem.name}`}
-                            onClick={() => {
-                              setBoardMenu(
-                                boardMenu === boardItem.id ? null : boardItem.id
-                              )
-                              setProjectMenu(null)
-                              setNamingBoard(false)
-                            }}
-                          >
-                            <DotsIcon />
-                          </button>
-                        )}
-
-                        {boardMenu === boardItem.id && (
-                          <div className="project-menu">
-                            <button
-                              type="button"
-                              onClick={() =>
-                                manageBoardCategories(item, boardItem)
-                              }
-                            >
-                              CategorÃ­as
-                            </button>
-
-                            <button
-                              type="button"
-                              className="danger"
-                              onClick={() => {
-                                setBoardToDelete(boardItem)
-                                setDeleteBoardConfirmation('')
-                              }}
-                            >
-                              <TrashIcon /> Eliminar
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                ))}
-
-                {profile.projects.length === 0 && (
-                  <p className="muted side-label-text">
-                    TodavÃ­a no hay proyectos.
-                  </p>
-                )}
-
-                {profile.user.is_admin && !newProject && (
-                  <button
-                    className="add-project"
-                    type="button"
-                    title="Nuevo proyecto"
-                    onClick={() => setNewProject(true)}
-                  >
-                    <PlusIcon />
-                    <span className="side-label-text">Nuevo proyecto</span>
-                  </button>
-                )}
-              </div>
-
-              {profile.user.is_admin && newProject && !sideMini && (
-                <form onSubmit={createProject} className="field" noValidate>
-                  <input name="name" placeholder="Nombre del proyecto" />
-                  <input name="client_name" placeholder="Empresa cliente" />
-
-                  <div className="row">
-                    <button className="primary" type="submit">
-                      Crear
-                    </button>
-
-                    <button
-                      className="ghost"
-                      type="button"
-                      onClick={() => setNewProject(false)}
-                    >
-                      Cancelar
-                    </button>
-                  </div>
-                </form>
-              )}
-            </>
-          )}
+          {view?.role !== 'cliente' && <button className="nav-item sub" type="button" title="Mis tareas" onClick={() => { setAssignee(String(profile.user.id)); setTeamId(''); setPersonal(null); setShowFilters(true) }}><NavIcon><rect width="7" height="7" x="3" y="3" rx="1" /><rect width="7" height="7" x="3" y="14" rx="1" /><path d="M14 4h7" /><path d="M14 9h7" /><path d="M14 15h7" /><path d="M14 20h7" /></NavIcon><span className="side-label-text">Mis tareas</span></button>}
+          <ProjectsSection profile={profile} activeBoardId={openId} mini={sideMini} onOpenBoard={openBoardTab} onManageProject={manageProject} onManageCategories={manageBoardCategories} onCreateProject={createProject} onCreateBoard={createBoard} onDeleteProject={(project) => { setProjectToDelete(project); setDeleteProjectConfirmation('') }} onDeleteBoard={(board) => { setBoardToDelete(board); setDeleteBoardConfirmation('') }} />
         </nav>
       </Sidebar>
       {projectToDelete && (
@@ -689,12 +420,12 @@ export function Workspace() {
             <h2>Eliminar proyecto</h2>
 
             <p>
-              Â¿EstÃ¡s seguro de querer eliminar el proyecto{' '}
+              Ã‚Â¿EstÃƒÂ¡s seguro de querer eliminar el proyecto{' '}
               <strong>{projectToDelete.name}</strong>?
             </p>
 
             <p>
-              Se eliminarÃ¡n permanentemente todos los tableros, tarjetas y datos
+              Se eliminarÃƒÂ¡n permanentemente todos los tableros, tarjetas y datos
               contenidos en este proyecto.
             </p>
 
@@ -743,7 +474,7 @@ export function Workspace() {
         }}>
           <div className="modal" onClick={(event) => event.stopPropagation()}>
             <h2>Eliminar tablero</h2>
-            <p>Â¿EstÃ¡s seguro de querer eliminar el tablero {''} <strong>{boardToDelete.name}</strong>?</p>
+            <p>Ã‚Â¿EstÃƒÂ¡s seguro de querer eliminar el tablero {''} <strong>{boardToDelete.name}</strong>?</p>
             <p>Se eliminaran permanentemente todas las tarjetas y datos contenidos en este tablero.</p>
             <p>Escribe <strong>{boardToDelete.name}</strong> para confirmar.</p>
             <input type="text" placeholder={boardToDelete.name} value={deleteBoardConfirmation} onChange={(event) => setDeleteBoardConfirmation(event.target.value)} autoFocus />
@@ -766,7 +497,7 @@ export function Workspace() {
                 onClick={() => { chooseBoard(tab.boardId); setAssignee(''); setTeamId(''); setSelected(null); loadBoard(tab.boardId) }}
               >
                 {tab.title}
-                <span className="tab-x" onClick={(event) => { event.stopPropagation(); closeTab(tab.boardId) }} aria-label="Cerrar pestaÃ±a" role="button">
+                <span className="tab-x" onClick={(event) => { event.stopPropagation(); closeTab(tab.boardId) }} aria-label="Cerrar pestaÃƒÂ±a" role="button">
                   <CloseIcon />
                 </span>
               </button>
@@ -780,7 +511,7 @@ export function Workspace() {
               <p className="muted">
                 {profile.user.is_admin
                   ? 'Crea el primer proyecto desde el lateral y abre su tablero.'
-                  : 'Cuando un responsable te aÃ±ada, el proyecto saldrÃ¡ en el lateral.'}
+                  : 'Cuando un responsable te aÃƒÂ±ada, el proyecto saldrÃƒÂ¡ en el lateral.'}
               </p>
             </div>
           </div>
@@ -838,7 +569,7 @@ export function Workspace() {
             )}
           </div>
         )}
-        {openId && !view && <div className="empty-board"><p className="muted">Cargando el tableroâ€¦</p></div>}
+        {openId && !view && <div className="empty-board"><p className="muted">Cargando el tableroÃ¢â‚¬Â¦</p></div>}
         {view && (
           <>
             {showFilters && (
@@ -923,7 +654,7 @@ export function Workspace() {
 }
 
 function formatDateLong(value?: string | null) {
-  if (!value) return 'â€”'
+  if (!value) return 'Ã¢â‚¬â€'
   return new Intl.DateTimeFormat('es', { day: 'numeric', month: 'short', year: 'numeric' }).format(new Date(value))
 }
 
