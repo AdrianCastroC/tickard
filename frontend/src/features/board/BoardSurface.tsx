@@ -32,7 +32,7 @@ export function BoardSurface({ state, filters, activeBoardId, project, profile, 
   const canEdit = view?.role === 'responsable' || view?.role === 'editor'
   const canManage = view?.role === 'responsable'
   const clientView = view?.role === 'cliente'
-  const backlog = view?.columns.find((column) => column.name === 'Backlog') ?? view?.columns[0]
+  const backlog = view?.columns.find((column) => column.is_backlog) ?? view?.columns[0]
   const filteredColumns = useMemo(() => view ? filteredBoardColumns(view, query, filters.assignee, filters.teamId, filters.label, filters.priority) : [], [view, query, filters.assignee, filters.teamId, filters.label, filters.priority])
   const storedView = activeBoardId ? localStorage.getItem(`tickard:board-view:${activeBoardId}`) : null
   const viewMode = activeBoardId ? viewModes[activeBoardId] ?? (storedView === 'list' || storedView === 'table' ? storedView : 'board') : 'board'

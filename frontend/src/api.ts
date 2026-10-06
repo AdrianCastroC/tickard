@@ -69,7 +69,9 @@ export type Card = {
   position: number
   is_internal?: boolean
   description?: string
+  start_date?: string | null
   due_date?: string | null
+  started_at?: string | null
   priority?: 'baja' | 'media' | 'alta' | 'urgente'
   color?: string | null
   creator: Person
@@ -85,7 +87,7 @@ export type Card = {
 
 export type BoardCategory = { id: number; name: string; position: number }
 
-export type Column = { id: number; name: string; color?: string | null; position: number; cards: Card[] }
+export type Column = { id: number; name: string; color?: string | null; position: number; is_backlog: boolean; cards: Card[] }
 
 export type BoardPayload = {
   revision: number

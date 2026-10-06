@@ -3,11 +3,11 @@
 .table th, .table td { padding: 11px 13px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: middle; }
 .table th { color: var(--muted); font-size: 12px; font-weight: 700; white-space: nowrap; }
 .row { cursor: pointer; }
-.row:hover { background: color-mix(in srgb, var(--accent-soft) 35%, transparent); }
+.row:hover { background: color-mix(in srgb, var(--soft) 35%, transparent); }
 .row:last-child td { border-bottom: 0; }
 .task { font-weight: 600; }
 .muted { color: var(--muted); }
 .people { display: flex; }
 .people > * + * { margin-left: -6px; }
 .labels { display: flex; gap: 4px; flex-wrap: wrap; }
-.label { padding: 3px 7px; border-radius: 999px; background: var(--surface-2); color: var(--muted); font-size: 11px; white-space: nowrap; }
+.label { padding: 3px 7px; border-radius: 999px; background: var(--canvas); color: var(--muted); font-size: 11px; white-space: nowrap; }

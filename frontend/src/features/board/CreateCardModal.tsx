@@ -1,16 +1,18 @@
 import { type FormEvent, useState } from 'react'
 import { api, type BoardPayload } from '../../api'
 import { priorityLabel } from '../../shared/ui'
+import { DateRangePicker } from './DateRangePicker'
 
 export function CreateCardModal({ board, column, onClose, onCreated }: {
   board: BoardPayload
-  column: { id: number; name: string }
+  column: { id: number; name: string; is_backlog?: boolean }
   onClose: () => void
   onCreated: () => Promise<void>
 }) {
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
-  const [due, setDue] = useState('')
+  const [start, setStart] = useState<string | null>(null)
+  const [due, setDue] = useState<string | null>(null)
   const [priority, setPriority] = useState('media')
   const [assignees, setAssignees] = useState<string[]>([])
   const [teams, setTeams] = useState<string[]>([])
@@ -33,7 +35,8 @@ export function CreateCardModal({ board, column, onClose, onCreated }: {
           category_id: categoryId ? Number(categoryId) : null,
           title: title.trim(),
           description,
-          due_date: due || null,
+          start_date: start,
+          due_date: due,
           priority,
           assignee_ids: assignees.map(Number),
           team_ids: teams.map(Number),
@@ -60,7 +63,7 @@ export function CreateCardModal({ board, column, onClose, onCreated }: {
             </select>
           </label>
         )}
-        <label className="field">Fecha límite<input type="date" value={due} onChange={(event) => setDue(event.target.value)} /></label>
+        <label className="field">Fechas<DateRangePicker start={start} end={due} onChange={(nextStart, nextDue) => { setStart(nextStart); setDue(nextDue) }} /></label>
         <label className="field">Prioridad
           <select value={priority} onChange={(event) => setPriority(event.target.value)}>
             {Object.entries(priorityLabel).map(([value, text]) => <option key={value} value={value}>{text}</option>)}

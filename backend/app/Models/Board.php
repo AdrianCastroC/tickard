@@ -8,7 +8,12 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Board extends Model
 {
-    protected $fillable = ['project_id', 'name', 'position', 'revision'];
+    protected $fillable = [
+        'project_id',
+        'name',
+        'position',
+        'revision',
+    ];
 
     public function project(): BelongsTo
     {
@@ -25,18 +30,50 @@ class Board extends Model
         return $this->hasMany(BoardCategory::class)->orderBy('position');
     }
 
+    public function cards(): HasMany
+    {
+        return $this->hasMany(Card::class);
+    }
+
     public function touchRevision(): void
     {
         $this->increment('revision');
     }
 
-    public static function defaultColumnNames(): array
+    public static function defaultColumns(): array
     {
-        return ['Backlog', 'Por hacer', 'En progreso', 'En revisión', 'Completado'];
+        return [
+            [
+                'name' => 'Backlog',
+                'is_backlog' => true,
+            ],
+            [
+                'name' => 'Por hacer',
+                'is_backlog' => false,
+            ],
+            [
+                'name' => 'En progreso',
+                'is_backlog' => false,
+            ],
+            [
+                'name' => 'En revisión',
+                'is_backlog' => false,
+            ],
+            [
+                'name' => 'Completado',
+                'is_backlog' => false,
+            ],
+        ];
     }
 
-    public function cards(): HasMany
+    public function createDefaultColumns(): void
     {
-        return $this->hasMany(Card::class);
+        foreach (self::defaultColumns() as $position => $column) {
+            $this->columns()->create([
+                'name' => $column['name'],
+                'position' => $position,
+                'is_backlog' => $column['is_backlog'],
+            ]);
+        }
     }
 }

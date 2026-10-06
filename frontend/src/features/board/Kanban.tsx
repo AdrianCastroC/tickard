@@ -381,7 +381,7 @@ export function ColumnView({ column, categories, canEdit, canManage, pinned, onT
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: columnSortId(column.id),
-    disabled: !canManage,
+    disabled: !canManage || column.is_backlog,
   })
   const [menuOpen, setMenuOpen] = useState(false)
   const [collapsed, setCollapsed] = useState(false)
@@ -522,9 +522,9 @@ export function ColumnView({ column, categories, canEdit, canManage, pinned, onT
                   </button>
                   {menuOpen && (
                     <div className="pop-menu">
-                      <button type="button" onClick={() => { setRenaming(true); setMenuOpen(false) }}>
+                      {!column.is_backlog && <button type="button" onClick={() => { setRenaming(true); setMenuOpen(false) }}>
                         <EditIcon /> Cambiar nombre
-                      </button>
+                      </button>}
                       <button
                         type="button"
                         onClick={() => {
@@ -552,7 +552,7 @@ export function ColumnView({ column, categories, canEdit, canManage, pinned, onT
                           <PlusIcon className="menu-icon" /> Añadir tarea
                         </button>
                       )}
-                      <span
+                      {!column.is_backlog && <span
                         className="pop-menu-tip"
                         title={hasCards ? 'No se puede eliminar una columna con tarjetas. Muévelas o elimínalas antes.' : undefined}
                       >
@@ -567,7 +567,7 @@ export function ColumnView({ column, categories, canEdit, canManage, pinned, onT
                         >
                           <TrashIcon /> Eliminar
                         </button>
-                      </span>
+                      </span>}
                       {error && <p className="muted">{error}</p>}
                     </div>
                   )}
@@ -940,7 +940,7 @@ export function SortableCard({ card, disabled, canEdit, onOpen, onEdit }: {
         <div className="card-foot-top">
           <span className="card-status">
             <PriorityMark priority={card.priority} />
-            <time className="muted">{formatDate(card.due_date)}</time>
+                          <time className="muted">{card.start_date && card.due_date && card.start_date !== card.due_date ? `${formatDate(card.start_date)} — ${formatDate(card.due_date)}` : formatDate(card.start_date || card.due_date)}</time>
           </span>
           <span className="faces">{card.assignees?.map((person) => <Avatar key={person.id} id={person.id} name={person.name} className="face" src={person.avatar_url} />)}</span>
         </div>

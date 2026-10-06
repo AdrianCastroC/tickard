@@ -21,7 +21,7 @@ export function Workspace() {
   if (!workspace.profile) return <main className="login"><p>Cargando…</p></main>
 
   return <div className={`frame${sidebar.mini ? ' is-side-mini' : ''}`}>
-    <AccountHeader key={workspace.activeWorkspaceId} profile={workspace.profile}
+    <AccountHeader profile={workspace.profile}
       workspaceId={workspace.activeWorkspaceId} onProfile={workspace.updateProfile}
       query={query} onQueryChange={setQuery} />
     <WorkspaceContent key={workspace.activeWorkspaceId} workspace={workspace}

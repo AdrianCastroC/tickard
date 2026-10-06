@@ -34,13 +34,13 @@
 }
 
 .card:last-child { border-bottom: 0; }
-.card:hover { background: color-mix(in srgb, var(--accent-soft) 35%, transparent); }
+.card:hover { background: color-mix(in srgb, var(--soft) 35%, transparent); }
 .title { min-width: 0; font-weight: 600; }
 .meta { display: flex; gap: 8px; align-items: center; color: var(--muted); font-size: 12px; white-space: nowrap; }
 .people { display: flex; }
 .people > * + * { margin-left: -6px; }
 .labels { display: flex; gap: 4px; flex-wrap: wrap; justify-content: flex-end; }
-.label { padding: 3px 7px; border-radius: 999px; background: var(--surface-2); color: var(--muted); font-size: 11px; }
+.label { padding: 3px 7px; border-radius: 999px; background: var(--canvas); color: var(--muted); font-size: 11px; }
 
 @media (max-width: 760px) {
   .card { grid-template-columns: minmax(0, 1fr) auto; }

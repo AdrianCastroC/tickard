@@ -54,6 +54,7 @@ public function storeColumn(Request $request, Board $board)
 public function updateColumn(Request $request, Column $column)
     {
         abort_unless(ProjectAccess::canManage($request->user(), $column->board->project), 403);
+        abort_unless(! $column->is_backlog, 422, 'Backlog no se puede renombrar.');
         $data = $request->validate([
             'name' => ['sometimes', 'string', 'max:80'],
             'color' => ['sometimes', 'nullable', 'string', 'regex:/^#[0-9A-Fa-f]{6}$/'],
@@ -73,12 +74,13 @@ public function updateColumn(Request $request, Column $column)
 public function moveColumn(Request $request, Column $column)
     {
         abort_unless(ProjectAccess::canManage($request->user(), $column->board->project), 403);
+        abort_unless(! $column->is_backlog, 422, 'Backlog no se puede mover.');
         $data = $request->validate(['position' => ['required', 'integer', 'min:0']]);
         $board = $column->board;
 
         DB::transaction(function () use ($board, $column, $data) {
             $columns = $board->columns()->where('id', '!=', $column->id)->orderBy('position')->get();
-            $position = min($data['position'], $columns->count());
+            $position = max(1, min($data['position'], $columns->count() + 1));
             $columns->splice($position, 0, [$column]);
             foreach ($columns as $index => $item) {
                 $item->position = $index;
@@ -93,6 +95,7 @@ public function moveColumn(Request $request, Column $column)
 public function destroyColumn(Request $request, Column $column)
     {
         abort_unless(ProjectAccess::canManage($request->user(), $column->board->project), 403);
+        abort_unless(! $column->is_backlog, 422, 'Backlog no se puede borrar.');
 
         if ($column->cards()->whereNull('archived_at')->exists()) {
             throw ValidationException::withMessages([
@@ -159,6 +162,7 @@ public function storeCard(Request $request, Board $board)
             'category_id' => ['nullable', 'integer'],
             'title' => ['required', 'string', 'max:180'],
             'description' => ['nullable', 'string'],
+            'start_date' => ['nullable', 'date'],
             'due_date' => ['nullable', 'date'],
             'priority' => ['sometimes', Rule::in(['baja', 'media', 'alta', 'urgente'])],
             'color' => ['sometimes', 'nullable', 'string', 'regex:/^#[0-9A-Fa-f]{6}$/'],
@@ -177,6 +181,7 @@ public function storeCard(Request $request, Board $board)
             abort_unless($categoryId, 422);
         }
         $position = Card::where('column_id', $column->id)->whereNull('archived_at')->count();
+        $this->validatePlannedDates($data['start_date'] ?? null, $data['due_date'] ?? null);
 
         $card = Card::create([
             'board_id' => $board->id,
@@ -184,7 +189,9 @@ public function storeCard(Request $request, Board $board)
             'category_id' => $categoryId,
             'title' => $data['title'],
             'description' => $data['description'] ?? null,
+            'start_date' => $data['start_date'] ?? null,
             'due_date' => $data['due_date'] ?? null,
+            'started_at' => $column->is_backlog ? null : now(),
             'position' => $position,
             'is_internal' => true,
             'priority' => $data['priority'] ?? 'media',
@@ -220,7 +227,9 @@ public function updateCard(Request $request, Card $card)
         $data = $request->validate([
             'title' => ['sometimes', 'string', 'max:180'],
             'description' => ['nullable', 'string'],
+            'start_date' => ['sometimes', 'nullable', 'date'],
             'due_date' => ['nullable', 'date'],
+            'started_at' => ['sometimes', 'nullable', 'date'],
             'priority' => ['sometimes', Rule::in(['baja', 'media', 'alta', 'urgente'])],
             'is_internal' => ['sometimes', 'boolean'],
             'category_id' => ['sometimes', 'nullable', 'integer'],
@@ -234,6 +243,10 @@ public function updateCard(Request $request, Card $card)
         ]);
 
         $previous = $card->assignees()->pluck('users.id');
+        $this->validatePlannedDates(
+            array_key_exists('start_date', $data) ? $data['start_date'] : $card->start_date?->toDateString(),
+            array_key_exists('due_date', $data) ? $data['due_date'] : $card->due_date?->toDateString()
+        );
         $fields = collect($data)->except(['assignee_ids', 'team_ids', 'label_ids', 'category_id'])->all();
         if (array_key_exists('category_id', $data)) {
             if ($data['category_id'] === null) {
@@ -295,7 +308,11 @@ public function moveCard(Request $request, Card $card)
         $from = $card->column_id;
 
         DB::transaction(function () use ($card, $column, $data, $request, $from) {
+            $wasBacklog = $card->column->is_backlog;
             $card->column_id = $column->id;
+            if ($wasBacklog && ! $column->is_backlog && $card->started_at === null) {
+                $card->started_at = now();
+            }
             $card->save();
             $this->resequence($column->id, $card, $data['position']);
             if ($from !== $column->id) {
@@ -310,6 +327,16 @@ public function moveCard(Request $request, Card $card)
         });
 
         return response()->noContent();
+    }
+
+    private function validatePlannedDates(?string $start, ?string $due): void
+    {
+        if ($due !== null && $start === null) {
+            throw ValidationException::withMessages(['start_date' => 'La fecha de inicio es obligatoria si existe fecha de vencimiento.']);
+        }
+        if ($start !== null && $due !== null && $start > $due) {
+            throw ValidationException::withMessages(['start_date' => 'La fecha de inicio no puede ser posterior a la fecha de vencimiento.']);
+        }
     }
 
 public function archiveCard(Request $request, Card $card)

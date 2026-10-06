@@ -15,7 +15,9 @@ class Card extends Model
         'category_id',
         'title',
         'description',
+        'start_date',
         'due_date',
+        'started_at',
         'priority',
         'color',
         'is_internal',
@@ -27,7 +29,9 @@ class Card extends Model
     protected function casts(): array
     {
         return [
+            'start_date' => 'date',
             'due_date' => 'date',
+            'started_at' => 'datetime',
             'is_internal' => 'boolean',
             'archived_at' => 'datetime',
         ];

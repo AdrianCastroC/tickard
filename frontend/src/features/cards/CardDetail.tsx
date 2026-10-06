@@ -4,7 +4,7 @@ import { DndContext, PointerSensor, closestCorners, useSensor, useSensors, type 
 import { SortableContext, arrayMove, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { api, type BoardPayload, type Card, type CardModule, type CardModuleType, type Comment, type Profile } from '../../api'
 import { ArchiveIcon, Avatar, CloseIcon, DescriptionEditor, EditIcon, MinusIcon, PaletteIcon, PlusIcon, SaveIcon, TrashIcon, UserPlusIcon, VisibilityIcon,  formatDateLong, cardStripeStyle, DEFAULT_CARD_STRIPE, descriptionToEditorHtml, priorityLabel, sanitizeDescriptionHtml } from '../../shared/ui'
-import { PriorityMark, PriorityPicker, SideDatePicker, SideSelect } from '../board'
+import { DateRangePicker, PriorityMark, PriorityPicker, SideSelect, formatDateRange } from '../board'
 import { CalendarIcon, SectionToggle } from './cardSectionUi'
 import { FilesPanel } from './files/FilesPanel'
 import { CommentsPanel } from './comments/CommentsPanel'
@@ -540,14 +540,20 @@ export function CardDrawer({ card, mode, board, currentUser, canEdit, onClose, o
             </div>
 
             <div className="side-field">
-              <span className="side-label"><CalendarIcon /> Fecha de vencimiento</span>
+              <span className="side-label"><CalendarIcon /> Fechas</span>
               {editing ? (
-                <SideDatePicker
-                  value={card.due_date}
-                  onChange={(next) => save({ due_date: next })}
-                />
+                <DateRangePicker start={card.start_date} end={card.due_date} onChange={(start, due) => save({ start_date: start, due_date: due })} />
               ) : (
-                <div className="side-value"><strong>{formatDateLong(card.due_date)}</strong></div>
+                <div className="side-value"><strong>{formatDateRange(card.start_date, card.due_date)}</strong></div>
+              )}
+            </div>
+
+            <div className="side-field">
+              <span className="side-label"><CalendarIcon /> Inicio real</span>
+              {editing ? (
+                <input className="side-input" type="datetime-local" value={card.started_at ? card.started_at.slice(0, 16) : ''} onChange={(event) => save({ started_at: event.target.value ? new Date(event.target.value).toISOString() : null })} />
+              ) : (
+                <div className="side-value"><strong>{card.started_at ? new Date(card.started_at).toLocaleString('es-ES') : '—'}</strong></div>
               )}
             </div>
 

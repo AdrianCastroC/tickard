@@ -8,7 +8,20 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Column extends Model
 {
-    protected $fillable = ['board_id', 'name', 'color', 'position'];
+    protected $fillable = [
+        'board_id',
+        'name',
+        'color',
+        'position',
+        'is_backlog',
+    ];
+
+    protected function casts(): array
+    {
+        return [
+            'is_backlog' => 'boolean',
+        ];
+    }
 
     public function board(): BelongsTo
     {

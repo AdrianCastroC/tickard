@@ -53,7 +53,9 @@ class CardPresenter
             $payload['is_internal'] = $card->is_internal;
             $payload['priority'] = $card->priority;
             $payload['description'] = $card->description;
+            $payload['start_date'] = $card->start_date?->toDateString();
             $payload['due_date'] = $card->due_date?->toDateString();
+            $payload['started_at'] = $card->started_at?->toIso8601String();
             $payload['assignees'] = $card->assignees->map(fn (User $assignee) => [
                 'id' => $assignee->id,
                 'name' => $assignee->name,
@@ -87,6 +89,7 @@ class CardPresenter
             $payload['description'] = $card->description;
         }
         if ($project->show_due_date) {
+            $payload['start_date'] = $card->start_date?->toDateString();
             $payload['due_date'] = $card->due_date?->toDateString();
         }
         if ($project->show_priority) {
