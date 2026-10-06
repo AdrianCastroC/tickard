@@ -14,6 +14,9 @@ class DatabaseSeeder extends Seeder
             ProjectSeeder::class,
             TeamSeeder::class,
             CardSeeder::class,
+
+            // Proyecto completo para pruebas de Gantt y KPIs.
+            GanttDemoSeeder::class,
         ]);
     }
 }

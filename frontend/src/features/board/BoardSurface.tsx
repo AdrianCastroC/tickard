@@ -26,9 +26,10 @@ type Props = {
   profile: Profile
   query: string
   onBoardDeleted?: (boardId: number) => Promise<void>
+  embedded?: boolean
 }
 
-export function BoardSurface({ state, filters, activeBoardId, project, profile, query, onBoardDeleted }: Props) {
+export function BoardSurface({ state, filters, activeBoardId, project, profile, query, onBoardDeleted, embedded = false }: Props) {
   const { board: view, selected, setSelected, openCard, refresh, move, moveColumn } = state
   const [createColumn, setCreateColumn] = useState<{ id: number; name: string } | null>(null)
   const [showCategories, setShowCategories] = useState(false)
@@ -63,7 +64,7 @@ export function BoardSurface({ state, filters, activeBoardId, project, profile, 
       onLabel={filters.setLabel} onPriority={filters.setPriority} />
     {!view && !activeBoardId && <div className="empty-board"><div><h2>{profile.user.is_admin ? 'Inicia un proyecto' : 'Espera a que te asignen un proyecto'}</h2><p className="muted">{profile.user.is_admin ? 'Crea el primer proyecto desde el lateral y abre su tablero.' : 'Cuando un responsable te añada, el proyecto saldrá en el lateral.'}</p></div></div>}
     {activeBoardId && !view && <div className="empty-board"><p className="muted">Cargando el tablero…</p></div>}
-    {view && <div className="workspace">
+    {view && <div className={`workspace${embedded ? ' board-embedded' : ''}`}>
       {viewMode === 'summary' && <BoardSummary board={view} projectName={project?.name} onConfigure={() => setShowConfig(true)} />}
       {viewMode === 'list' && <ListView board={view} cards={filteredColumns} onOpen={(card) => setSelected({ card, mode: 'view' })} />}
       {viewMode === 'table' && <TableView board={view} cards={filteredColumns} onOpen={(card) => setSelected({ card, mode: 'view' })} />}

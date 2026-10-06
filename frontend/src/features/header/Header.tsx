@@ -20,7 +20,7 @@ export function Header({
 }: HeaderProps) {
   return (
     <header className={styles.topbar}>
-      <aside className={`${styles.headerBrand}${mini ? ` ${styles.headerBrandMini}` : ''}`}><Brand /></aside>
+      <aside className={`${styles.headerBrand}${mini ? ` ${styles.headerBrandMini}` : ''}`}><Brand mini={mini} /></aside>
       <div className={styles.headerBody}>
         <div className={styles.breadcrumb}>{breadcrumb.map((item, index) => <span key={`${item}-${index}`}>{index > 0 && <b>›</b>}{item}</span>)}</div>
         <div className={styles.topMain}>

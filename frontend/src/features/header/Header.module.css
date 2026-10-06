@@ -2,11 +2,9 @@
 .headerBrand { width: var(--rail); flex: 0 0 var(--rail); display: flex; align-items: center; padding: 0 16px; box-sizing: border-box; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); }
 .headerBrandMini { width: 64px; flex-basis: 64px; padding: 0 10px; }
 .headerBrand :global(.brand) { width: 145px; height: 44px; padding: 4px 0; }
-.headerBrandMini :global(.brand) { width: 42px; overflow: hidden; }
-.headerBrandMini :global(.brand img) { width: 150px; max-width: none; object-position: left center; }
+.headerBrandMini :global(.brand) { width: 42px; }
 :global(.frame.is-side-mini) .headerBrand { width: 64px; flex-basis: 64px; padding: 0 10px; }
-:global(.frame.is-side-mini) .headerBrand :global(.brand) { width: 42px; overflow: hidden; }
-:global(.frame.is-side-mini) .headerBrand :global(.brand img) { width: 150px; max-width: none; object-position: left center; }
+:global(.frame.is-side-mini) .headerBrand :global(.brand) { width: 42px; }
 .headerBody { flex: 1; min-width: 0; display: flex; align-items: stretch; }
 .breadcrumb { flex: 1 1 auto; min-width: 0; display: flex; align-items: center; gap: 8px; padding: 0 20px; color: var(--muted); font-size: 14px; font-weight: 500; border-bottom: 1px solid var(--line); overflow: hidden; white-space: nowrap; }
 .breadcrumb span { overflow: hidden; text-overflow: ellipsis; }
