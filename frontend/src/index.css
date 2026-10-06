@@ -2512,6 +2512,10 @@ h1, h2, h3, p { margin: 0; }
 .context-create { display: flex; align-items: center; gap: 6px; flex: 0 0 auto; }
 .context-create input { width: 150px; border: 1px solid var(--line); border-radius: 8px; padding: 7px 9px; background: var(--surface); color: var(--ink); }
 .project-surface { gap: 18px; }
+.project-layout { gap: 18px; }
+.project-view { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.project-boards-view { min-height: 180px; }
+.project-placeholder { min-height: 220px; display: flex; flex-direction: column; justify-content: center; }
 .project-hero { display: flex; align-items: center; justify-content: space-between; gap: 20px; }
 .project-hero-identity { display: flex; align-items: center; gap: 14px; }
 .project-hero-icon { width: 58px; height: 58px; display: grid; place-items: center; border-radius: 12px; background: color-mix(in srgb, var(--accent) 18%, var(--surface)); color: var(--accent); }

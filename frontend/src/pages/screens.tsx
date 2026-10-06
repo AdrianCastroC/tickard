@@ -14,7 +14,7 @@ import { PersonalSection } from '../features/sidebar/PersonalSection/PersonalSec
 import { ProjectsSection } from '../features/sidebar/ProjectsSection/ProjectsSection'
 import { MainContent } from '../features/workspace/MainContent'
 import { ProjectContextBar } from '../features/workspace/ProjectContextBar'
-import { ProjectSurface } from '../features/workspace/ProjectSurface'
+import { ProjectLayout as ProjectSurface } from '../features/workspace/ProjectLayout'
 import { useWorkspace } from '../features/workspace/useWorkspace'
 import { useProjectTabs, type ProjectContext } from '../features/workspace/useProjectTabs'
 
