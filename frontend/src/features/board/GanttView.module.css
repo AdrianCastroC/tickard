@@ -17,7 +17,7 @@
 .tableHeader { display: grid; align-items: center; min-height: 36px; column-gap: 12px; box-sizing: border-box; padding: 0 10px; color: var(--muted); font-size: 11px; text-transform: none; }
 .tableHeader strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .tableHeader strong:not(:first-child) { text-align: right; }
-.timelineHeader, .timelineRow, .summaryTimeline { position: relative; background-image: linear-gradient(to right, color-mix(in srgb, var(--line) 60%, transparent) 1px, transparent 1px); background-size: 36px 100%; }
+.timelineHeader, .timelineRow, .summaryTimeline { position: relative; }
 .months { display: none; }
 .days { position: relative; z-index: 2; display: flex; width: max-content; }
 .months span { padding: 7px 10px; border-right: 1px solid var(--line); color: var(--muted); font-size: 11px; font-weight: 700; text-transform: uppercase; }
@@ -51,13 +51,5 @@
 .periodBandTimeline span { box-sizing: border-box; overflow: hidden; padding: 7px 10px; border-right: 1px solid var(--line); color: var(--muted); font-size: 11px; font-weight: 700; text-align: center; text-overflow: ellipsis; text-transform: uppercase; white-space: nowrap; }
 .monthTrack { position: relative; width: 100%; height: 30px; }
 .monthSegment { position: absolute; top: 0; height: 30px; box-sizing: border-box; overflow: hidden; padding: 7px 10px; border-right: 1px solid var(--line); color: var(--muted); font-size: 11px; font-weight: 700; text-align: center; text-overflow: ellipsis; text-transform: uppercase; white-space: nowrap; }
-.gantt[data-zoom='week'] .timelineRow, .gantt[data-zoom='week'] .timelineHeader { background-image: repeating-linear-gradient(to right, transparent 0 83px, color-mix(in srgb, var(--line) 72%, transparent) 83px 84px); background-size: 84px 100% !important; }
-.gantt[data-zoom='day'] .summaryTimeline { background-image: repeating-linear-gradient(to right, transparent 0 31px, color-mix(in srgb, var(--line) 60%, transparent) 31px 32px); background-size: 32px 100%; }
-.gantt[data-zoom='week'] .summaryTimeline { background-image: repeating-linear-gradient(to right, transparent 0 83px, color-mix(in srgb, var(--line) 72%, transparent) 83px 84px); background-size: 84px 100% !important; }
-.gantt[data-zoom='month'] .summaryTimeline { background-image: repeating-linear-gradient(to right, transparent 0 107px, color-mix(in srgb, var(--line) 60%, transparent) 107px 108px); background-size: 108px 100%; }
-.gantt[data-zoom='quarter'] .summaryTimeline { background-image: repeating-linear-gradient(to right, transparent 0 139px, color-mix(in srgb, var(--line) 60%, transparent) 139px 140px); background-size: 140px 100%; }
-.gantt[data-zoom='week'] .timelineRow::before { position: absolute; inset: 0; z-index: 0; pointer-events: none; content: ''; background: repeating-linear-gradient(to right, transparent 0 84px, color-mix(in srgb, var(--canvas) 94%, transparent) 84px 168px); }
-.gantt[data-zoom='week'] .days { position: relative; z-index: 2; }
-.gantt[data-zoom='week'] .days span { box-sizing: border-box; border-right: 1px solid color-mix(in srgb, var(--line) 70%, transparent); }
 .masterGrid > .periodBand, .masterGrid > .header, .masterGrid > .row, .masterGrid > .categoryRow { grid-template-columns: subgrid; }
 .masterGrid .periodBandTimeline, .masterGrid .timelineHeader, .masterGrid .timelineRow, .masterGrid .summaryTimeline { grid-column: 2 / -1; }
