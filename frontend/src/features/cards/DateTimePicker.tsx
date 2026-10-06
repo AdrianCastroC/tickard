@@ -33,8 +33,8 @@ export function DateTimePicker({ value, onChange }: { value?: string | null; onC
   const dateKey = parts?.dateKey ?? null
   const time = parts?.time ?? '09:00'
   return <div className="date-time-picker">
-    <DateRangePicker single start={dateKey} end={dateKey} onChange={(date) => { if (date) onChange(localIso(date, time)) }} />
-    <input className="side-select-trigger date-time-picker-time" type="time" value={time} onChange={(event) => { if (dateKey && event.target.value) onChange(localIso(dateKey, event.target.value)) }} aria-label="Hora de inicio real" />
+    <DateRangePicker single triggerAriaLabel="Fecha de inicio" start={dateKey} end={dateKey} onChange={(date) => { if (date) onChange(localIso(date, time)) }} />
+    <input className="side-select-trigger date-time-picker-time" type="time" value={time} onChange={(event) => { if (dateKey && event.target.value) onChange(localIso(dateKey, event.target.value)) }} aria-label="Hora de inicio" />
     {value && <button
       className="icon-button"
       type="button"

@@ -14,6 +14,9 @@ import type { useBoard } from './useBoard'
 import type { useBoardFilters } from './useBoardFilters'
 import { ListView } from './ListView'
 import { TableView } from './TableView'
+import { GanttView } from './GanttView'
+import { BoardSummary } from './BoardSummary'
+import { BoardConfigPanel } from './BoardConfigPanel'
 
 type Props = {
   state: ReturnType<typeof useBoard>
@@ -22,12 +25,14 @@ type Props = {
   project?: Project
   profile: Profile
   query: string
+  onBoardDeleted?: (boardId: number) => Promise<void>
 }
 
-export function BoardSurface({ state, filters, activeBoardId, project, profile, query }: Props) {
+export function BoardSurface({ state, filters, activeBoardId, project, profile, query, onBoardDeleted }: Props) {
   const { board: view, selected, setSelected, openCard, refresh, move, moveColumn } = state
   const [createColumn, setCreateColumn] = useState<{ id: number; name: string } | null>(null)
   const [showCategories, setShowCategories] = useState(false)
+  const [showConfig, setShowConfig] = useState(false)
   const [viewModes, setViewModes] = useState<Record<number, BoardViewMode>>({})
   const canEdit = view?.role === 'responsable' || view?.role === 'editor'
   const canManage = view?.role === 'responsable'
@@ -35,7 +40,7 @@ export function BoardSurface({ state, filters, activeBoardId, project, profile, 
   const backlog = view?.columns.find((column) => column.is_backlog) ?? view?.columns[0]
   const filteredColumns = useMemo(() => view ? filteredBoardColumns(view, query, filters.assignee, filters.teamId, filters.label, filters.priority) : [], [view, query, filters.assignee, filters.teamId, filters.label, filters.priority])
   const storedView = activeBoardId ? localStorage.getItem(`tickard:board-view:${activeBoardId}`) : null
-  const viewMode = activeBoardId ? viewModes[activeBoardId] ?? (storedView === 'list' || storedView === 'table' ? storedView : 'board') : 'board'
+  const viewMode = activeBoardId ? viewModes[activeBoardId] ?? (storedView === 'summary' || storedView === 'list' || storedView === 'table' || storedView === 'gantt' ? storedView : 'summary') : 'summary'
 
   function changeViewMode(value: BoardViewMode) {
     if (!activeBoardId) return
@@ -59,8 +64,10 @@ export function BoardSurface({ state, filters, activeBoardId, project, profile, 
     {!view && !activeBoardId && <div className="empty-board"><div><h2>{profile.user.is_admin ? 'Inicia un proyecto' : 'Espera a que te asignen un proyecto'}</h2><p className="muted">{profile.user.is_admin ? 'Crea el primer proyecto desde el lateral y abre su tablero.' : 'Cuando un responsable te añada, el proyecto saldrá en el lateral.'}</p></div></div>}
     {activeBoardId && !view && <div className="empty-board"><p className="muted">Cargando el tablero…</p></div>}
     {view && <div className="workspace">
+      {viewMode === 'summary' && <BoardSummary board={view} projectName={project?.name} onConfigure={() => setShowConfig(true)} />}
       {viewMode === 'list' && <ListView board={view} cards={filteredColumns} onOpen={(card) => setSelected({ card, mode: 'view' })} />}
       {viewMode === 'table' && <TableView board={view} cards={filteredColumns} onOpen={(card) => setSelected({ card, mode: 'view' })} />}
+      {viewMode === 'gantt' && <GanttView key={view.board.id} board={view} cards={filteredColumns} onOpen={(card) => setSelected({ card, mode: 'view' })} />}
       {viewMode === 'board' && <Kanban board={view} canEdit={canEdit} canManage={canManage} query={query}
         assignee={filters.assignee} teamId={filters.teamId} label={filters.label} priority={filters.priority}
         onOpen={(card) => setSelected({ card, mode: 'view' })}
@@ -80,6 +87,7 @@ export function BoardSurface({ state, filters, activeBoardId, project, profile, 
         onChange={refresh} />}
       {showCategories && view && <CategoriesDrawer board={view}
         onClose={() => setShowCategories(false)} onChange={refresh} />}
+      {showConfig && view && <BoardConfigPanel board={view} onClose={() => setShowConfig(false)} onChange={refresh} onDeleted={async () => { setShowConfig(false); if (onBoardDeleted) await onBoardDeleted(view.board.id); else await refresh() }} />}
       {createColumn && view && <CreateCardModal board={view} column={createColumn}
         onClose={() => setCreateColumn(null)}
         onCreated={async () => { setCreateColumn(null); await refresh() }} />}

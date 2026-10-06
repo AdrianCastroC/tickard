@@ -1,17 +1,5 @@
 import type { ReactNode } from 'react'
-import type { OpenTab } from '../../shared/ui'
+import type { OpenProjectTab } from './useProjectTabs'
 import { TabsBar } from './TabsBar'
-
-type Props = {
-  tabs: OpenTab[]
-  activeBoardId: number | null
-  onSelectTab: (id: number) => void
-  onCloseTab: (id: number) => void
-  children: ReactNode
-}
-export function MainContent({ tabs, activeBoardId, onSelectTab, onCloseTab, children }: Props) {
-  return <section className="main">
-    <TabsBar tabs={tabs} activeBoardId={activeBoardId} onSelect={onSelectTab} onClose={onCloseTab} />
-    {children}
-  </section>
-}
+type Props = { tabs: OpenProjectTab[]; activeProjectId: number | null; onSelectTab: (id: number) => void; onCloseTab: (id: number) => void; showWorkspaceNavigation?: boolean; contextBar?: ReactNode; children: ReactNode }
+export function MainContent({ tabs, activeProjectId, onSelectTab, onCloseTab, showWorkspaceNavigation = true, contextBar, children }: Props) { return <section className="main">{showWorkspaceNavigation && contextBar && <><TabsBar tabs={tabs} activeProjectId={activeProjectId} onSelect={onSelectTab} onClose={onCloseTab} />{contextBar}</>}{children}</section> }

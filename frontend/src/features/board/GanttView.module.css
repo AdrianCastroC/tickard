@@ -1,0 +1,31 @@
+.gantt { flex: 1; min-height: 0; min-width: 0; overflow: hidden; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
+.toolbar { position: relative; display: flex; justify-content: flex-end; align-items: center; gap: 8px; min-height: 42px; padding: 6px 10px; border-bottom: 1px solid var(--line); color: var(--muted); font-size: 12px; }
+.toolbar > span { display: none; }
+.columnsButton { border: 1px solid var(--line); border-radius: 8px; padding: 6px 9px; background: var(--canvas); color: var(--ink); font-size: 12px; }
+.columnsMenu { position: absolute; top: calc(100% - 2px); right: 10px; z-index: 20; display: flex; flex-direction: column; gap: 7px; min-width: 135px; padding: 9px; border: 1px solid var(--line); border-radius: 9px; background: var(--surface); box-shadow: 0 8px 20px rgb(18 49 43 / 14%); }
+.columnsMenu label { display: flex; align-items: center; gap: 7px; color: var(--ink); }
+.scroll { min-width: 100%; width: max-content; height: calc(100% - 42px); overflow: auto; padding-bottom: 16px; }
+.header, .row, .categoryRow { display: grid; grid-template-columns: var(--left-width) max-content; min-width: max-content; }
+.header { position: sticky; top: 0; z-index: 8; background: var(--surface); border-bottom: 1px solid var(--line); }
+.tableHeader, .task, .categoryLabel { position: sticky; left: 0; z-index: 7; width: var(--left-width); background: var(--surface); border-right: 1px solid var(--line); }
+.tableHeader { display: grid; align-items: center; min-height: 46px; padding: 0 10px; color: var(--muted); font-size: 11px; text-transform: uppercase; }
+.tableHeader strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.timelineHeader, .timelineRow, .summaryTimeline { position: relative; background-image: linear-gradient(to right, color-mix(in srgb, var(--line) 60%, transparent) 1px, transparent 1px); background-size: 36px 100%; }
+.months, .days { display: flex; width: max-content; }
+.months span { padding: 7px 10px; border-right: 1px solid var(--line); color: var(--muted); font-size: 11px; font-weight: 700; text-transform: uppercase; }
+.days span { width: 36px; padding: 7px 0; color: var(--muted); font-size: 12px; text-align: center; }
+.days span.today { color: var(--accent); font-weight: 700; background: color-mix(in srgb, var(--accent) 12%, transparent); }
+.categoryRow { min-height: 34px; background: var(--canvas); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.categoryLabel { display: flex; align-items: center; gap: 5px; padding: 7px 10px; color: var(--ink); font-size: 12px; font-weight: 700; }
+.categoryLabel small { color: var(--muted); font-weight: 500; }
+.summaryTimeline { min-height: 34px; }
+.task { display: grid; align-items: center; min-height: 52px; padding: 7px 10px; border: 0; border-bottom: 1px solid var(--line); color: var(--ink); text-align: left; }
+.task strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.task span { color: var(--muted); font-size: 11px; }
+.timelineRow { min-height: 52px; border-bottom: 1px solid var(--line); }
+.bar, .summaryBar { position: absolute; z-index: 3; pointer-events: auto; }
+.bar { top: 13px; height: 26px; overflow: hidden; border: 0; border-radius: 7px; padding: 0 9px; color: var(--accent-ink); text-align: left; text-overflow: ellipsis; white-space: nowrap; font-size: 11px; font-weight: 700; cursor: pointer; }
+.bar:hover { filter: brightness(1.08); }
+.summaryBar { top: 13px; height: 8px; border-radius: 5px; background: color-mix(in srgb, var(--accent) 58%, var(--surface)); }
+.weekendShade { position: absolute; top: 0; bottom: 0; z-index: 1; width: 36px; pointer-events: none; background: repeating-linear-gradient(45deg, color-mix(in srgb, var(--canvas) 92%, var(--ink)) 0 8px, color-mix(in srgb, var(--canvas) 84%, var(--ink)) 8px 16px); }
+.todayLine { position: absolute; top: 0; bottom: 0; z-index: 2; width: 2px; pointer-events: none; background: color-mix(in srgb, var(--accent) 70%, transparent); }

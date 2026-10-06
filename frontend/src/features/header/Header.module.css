@@ -1,11 +1,26 @@
-.topbar { height: 100px; flex: 0 0 auto; display: flex; align-items: stretch; position: relative; z-index: 4; background: var(--surface); }
-.topbar :global(.side) { display: flex; align-items: center; justify-content: center; padding: 0; }
-.topMain { flex: 1; min-width: 0; display: flex; align-items: center; padding: 0 20px; border-bottom: 1px solid var(--line); }
+.topbar { height: 64px; flex: 0 0 auto; display: flex; align-items: stretch; position: relative; z-index: 4; background: var(--surface); }
+.headerBrand { width: var(--rail); flex: 0 0 var(--rail); display: flex; align-items: center; padding: 0 16px; box-sizing: border-box; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.headerBrandMini { width: 64px; flex-basis: 64px; padding: 0 10px; }
+.headerBrand :global(.brand) { width: 145px; height: 44px; padding: 4px 0; }
+.headerBrandMini :global(.brand) { width: 42px; overflow: hidden; }
+.headerBrandMini :global(.brand img) { width: 150px; max-width: none; object-position: left center; }
+:global(.frame.is-side-mini) .headerBrand { width: 64px; flex-basis: 64px; padding: 0 10px; }
+:global(.frame.is-side-mini) .headerBrand :global(.brand) { width: 42px; overflow: hidden; }
+:global(.frame.is-side-mini) .headerBrand :global(.brand img) { width: 150px; max-width: none; object-position: left center; }
+.headerBody { flex: 1; min-width: 0; display: flex; align-items: stretch; }
+.breadcrumb { flex: 1 1 auto; min-width: 0; display: flex; align-items: center; gap: 8px; padding: 0 20px; color: var(--muted); font-size: 14px; font-weight: 500; border-bottom: 1px solid var(--line); overflow: hidden; white-space: nowrap; }
+.breadcrumb span { overflow: hidden; text-overflow: ellipsis; }
+.breadcrumb span:last-child { color: var(--ink); font-weight: 650; }
+.breadcrumb b { color: var(--muted); margin-right: 8px; }
+.topAction { border: 0; background: transparent; color: var(--muted); font-size: 18px; cursor: pointer; padding: 8px; }
+.topAction :global(.account-ico) { width: 20px; height: 20px; }
+.topAction:hover { background: var(--canvas); border-radius: 9px; color: var(--ink); }
+.topMain { flex: 0 0 auto; min-width: 0; display: flex; align-items: center; gap: 8px; padding: 0 12px; border-bottom: 1px solid var(--line); }
 .topHalf { flex: 1 1 50%; min-width: 0; display: flex; align-items: center; }
 .profile { justify-content: flex-end; }
 .brand { width: 100%; height: 100%; margin: 0; padding: 9px; box-sizing: border-box; display: flex; align-items: center; }
 .brand img { display: block; width: 100%; height: 100%; object-fit: contain; }
-.search { flex: 1; width: 100%; display: flex; align-items: center; gap: 8px; background: var(--canvas); border: 1px solid var(--line); border-radius: 999px; padding: 8px 14px; color: var(--muted); }
+.search { flex: 0 1 400px; width: 400px; height: 38px; box-sizing: border-box; display: flex; align-items: center; gap: 8px; background: var(--surface); border: 1px solid var(--line); border-radius: 9px; padding: 8px 12px; color: var(--muted); }
 .search input { border: 0; background: transparent; width: 100%; outline: none; color: var(--ink); }
 .account { position: relative; flex: 0 0 auto; }
 .avatarButton { position: relative; width: 80px; height: 80px; border: 0; background: transparent; padding: 0; border-radius: 50%; cursor: pointer; }
@@ -28,4 +43,4 @@
 .danger { color: #8a2b2b; }
 .danger:hover:not(:disabled) { background: color-mix(in srgb, #f8e4e4 70%, var(--surface)); }
 .danger :global(.account-ico) { color: #8a2b2b; }
-@media (max-width: 900px) { .topbar { height: auto; flex-wrap: wrap; padding: 12px; gap: 10px; } .topbar :global(.side) { width: auto; flex: 1 1 auto; border-right: 0; } .topMain { flex: 1 1 100%; padding-right: 0; border-bottom: 0; } .search { flex: 1 1 100%; } }
+@media (max-width: 900px) { .topbar { height: auto; flex-wrap: wrap; padding: 12px; gap: 10px; } .headerBrand { width: auto; flex: 1 1 auto; border-right: 0; } .headerBody { flex: 1 1 100%; } .topMain { flex: 1 1 100%; padding-right: 0; border-bottom: 0; } .search { flex: 1 1 100%; width: auto; } }
