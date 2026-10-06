@@ -8,8 +8,10 @@
 .columnsButton, .columnsMenu { display: none; }
 .columnsMenu { position: absolute; top: calc(100% - 2px); right: 10px; z-index: 20; display: flex; flex-direction: column; gap: 7px; min-width: 135px; padding: 9px; border: 1px solid var(--line); border-radius: 9px; background: var(--surface); box-shadow: 0 8px 20px rgb(18 49 43 / 14%); }
 .columnsMenu label { display: flex; align-items: center; gap: 7px; color: var(--ink); }
-.scroll { min-width: 100%; width: max-content; height: 100%; overflow: auto; padding-bottom: 16px; }
-.header, .row, .categoryRow { display: grid; grid-template-columns: var(--left-width) max-content; min-width: max-content; }
+.scroll { width: 100%; min-width: 0; height: 100%; overflow: auto; padding-bottom: 16px; }
+.masterGrid { display: grid; grid-template-columns: var(--left-width) repeat(var(--total-days), minmax(var(--min-day-size), 1fr)); width: max(100%, calc(var(--left-width) + var(--total-days) * var(--min-day-size))); min-width: 0; }
+.group { display: contents; }
+.periodBand, .header, .row, .categoryRow { grid-column: 1 / -1; display: grid; grid-template-columns: subgrid; width: auto; min-width: 0; }
 .header { position: sticky; top: 0; z-index: 8; background: var(--surface); border-bottom: 1px solid var(--line); }
 .tableHeader, .task, .categoryLabel { position: sticky; left: 0; z-index: 7; width: var(--left-width); box-sizing: border-box; background: var(--surface); border-right: 1px solid var(--line); }
 .tableHeader { display: grid; align-items: center; min-height: 36px; column-gap: 12px; box-sizing: border-box; padding: 0 10px; color: var(--muted); font-size: 11px; text-transform: none; }
@@ -28,9 +30,12 @@
 .task { display: grid; align-items: center; min-height: 30px; column-gap: 12px; box-sizing: border-box; padding: 0 10px; border: 0; color: var(--ink); text-align: left; }
 .task strong { overflow: hidden; padding-left: 8px; font-size: 12px; font-weight: 500; text-overflow: ellipsis; white-space: nowrap; }
 .task span { min-width: max-content; padding-inline: 2px; color: var(--muted); font-size: 11px; text-align: right; white-space: nowrap; }
-.timelineRow { min-height: 30px; }
-.bar, .summaryBar { position: absolute; z-index: 3; pointer-events: auto; }
-.bar { isolation: isolate; top: 2px; height: 26px; overflow: hidden; border: 0; border-radius: 7px; padding: 0 9px; color: var(--accent-ink); text-align: left; text-overflow: ellipsis; white-space: nowrap; font-size: 11px; font-weight: 700; cursor: pointer; }
+.timelineHeader, .timelineRow, .summaryTimeline { grid-column: 2 / -1; width: auto !important; min-width: 0; }
+.timelineRow, .summaryTimeline { display: grid; grid-template-columns: subgrid !important; min-height: 30px; }
+.task, .tableHeader, .categoryLabel, .periodBandSpacer { grid-column: 1; }
+.periodBandTimeline, .timelineHeader { grid-column: 2 / -1; }
+.bar, .summaryBar { position: relative; z-index: 3; pointer-events: auto; }
+.bar { isolation: isolate; align-self: center; height: 26px; overflow: hidden; border: 0; border-radius: 7px; padding: 0 9px; color: var(--accent-ink); text-align: left; text-overflow: ellipsis; white-space: nowrap; font-size: 11px; font-weight: 700; cursor: pointer; }
 .bar:hover { filter: brightness(1.08); }
 .barProgress { position: absolute; inset: 0 auto 0 0; z-index: 0; border-radius: inherit; background: color-mix(in srgb, #fff 28%, transparent); }
 .summaryBar { top: 13px; height: 8px; border-radius: 5px; background: color-mix(in srgb, var(--accent) 58%, var(--surface)); }
@@ -40,9 +45,19 @@
 .temporalSpacer { position: sticky; left: 0; z-index: 7; width: var(--left-width); background: var(--surface); border-right: 1px solid var(--line); }
 .temporalUpper { display: flex; width: max-content; overflow: hidden; }
 .temporalUpper span { overflow: hidden; padding: 7px 10px; border-right: 1px solid var(--line); color: var(--muted); font-size: 11px; font-weight: 700; text-overflow: ellipsis; text-transform: uppercase; white-space: nowrap; }
-.periodBand { display: grid; grid-template-columns: var(--left-width) max-content; min-width: max-content; min-height: 30px; background: var(--surface); border-bottom: 1px solid var(--line); }
+.periodBand { display: grid; grid-template-columns: var(--left-width) minmax(0, 1fr); width: max(100%, calc(var(--left-width) + var(--total-days) * var(--min-day-size))); min-width: 0; min-height: 30px; background: var(--surface); border-bottom: 1px solid var(--line); }
 .periodBandSpacer { position: sticky; left: 0; z-index: 7; display: flex; align-items: center; width: var(--left-width); min-height: 30px; background: var(--surface); border-right: 1px solid var(--line); }
-.periodBandTimeline { display: flex; width: max-content; }
+.periodBandTimeline { position: relative; display: flex; width: 100%; min-width: 0; }
 .periodBandTimeline span { box-sizing: border-box; overflow: hidden; padding: 7px 10px; border-right: 1px solid var(--line); color: var(--muted); font-size: 11px; font-weight: 700; text-align: center; text-overflow: ellipsis; text-transform: uppercase; white-space: nowrap; }
 .monthTrack { position: relative; width: 100%; height: 30px; }
 .monthSegment { position: absolute; top: 0; height: 30px; box-sizing: border-box; overflow: hidden; padding: 7px 10px; border-right: 1px solid var(--line); color: var(--muted); font-size: 11px; font-weight: 700; text-align: center; text-overflow: ellipsis; text-transform: uppercase; white-space: nowrap; }
+.gantt[data-zoom='week'] .timelineRow, .gantt[data-zoom='week'] .timelineHeader { background-image: repeating-linear-gradient(to right, transparent 0 83px, color-mix(in srgb, var(--line) 72%, transparent) 83px 84px); background-size: 84px 100% !important; }
+.gantt[data-zoom='day'] .summaryTimeline { background-image: repeating-linear-gradient(to right, transparent 0 31px, color-mix(in srgb, var(--line) 60%, transparent) 31px 32px); background-size: 32px 100%; }
+.gantt[data-zoom='week'] .summaryTimeline { background-image: repeating-linear-gradient(to right, transparent 0 83px, color-mix(in srgb, var(--line) 72%, transparent) 83px 84px); background-size: 84px 100% !important; }
+.gantt[data-zoom='month'] .summaryTimeline { background-image: repeating-linear-gradient(to right, transparent 0 107px, color-mix(in srgb, var(--line) 60%, transparent) 107px 108px); background-size: 108px 100%; }
+.gantt[data-zoom='quarter'] .summaryTimeline { background-image: repeating-linear-gradient(to right, transparent 0 139px, color-mix(in srgb, var(--line) 60%, transparent) 139px 140px); background-size: 140px 100%; }
+.gantt[data-zoom='week'] .timelineRow::before { position: absolute; inset: 0; z-index: 0; pointer-events: none; content: ''; background: repeating-linear-gradient(to right, transparent 0 84px, color-mix(in srgb, var(--canvas) 94%, transparent) 84px 168px); }
+.gantt[data-zoom='week'] .days { position: relative; z-index: 2; }
+.gantt[data-zoom='week'] .days span { box-sizing: border-box; border-right: 1px solid color-mix(in srgb, var(--line) 70%, transparent); }
+.masterGrid > .periodBand, .masterGrid > .header, .masterGrid > .row, .masterGrid > .categoryRow { grid-template-columns: subgrid; }
+.masterGrid .periodBandTimeline, .masterGrid .timelineHeader, .masterGrid .timelineRow, .masterGrid .summaryTimeline { grid-column: 2 / -1; }
