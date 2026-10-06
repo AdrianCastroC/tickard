@@ -2763,3 +2763,40 @@ h1, h2, h3, p { margin: 0; }
   .pulse { grid-template-columns: 1fr 1fr; }
   .me { margin-top: 8px; }
 }
+.side-date-day.range {
+  background: color-mix(in srgb, var(--accent) 16%, var(--canvas));
+}
+.side-date-day.range:hover {
+  background: color-mix(in srgb, var(--accent) 24%, var(--canvas));
+}
+.side-date-day.range.on {
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+.date-time-picker {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.date-time-picker .side-date {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin-left: 0;
+}
+.date-time-picker-time {
+  flex: 0 0 92px;
+  width: 92px;
+  min-height: 38px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  color: var(--ink);
+  background: var(--surface);
+}
+.date-time-picker-clear {
+  width: 100%;
+  justify-content: flex-start;
+  padding: 4px 0;
+  color: var(--accent);
+}

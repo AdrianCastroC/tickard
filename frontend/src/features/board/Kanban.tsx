@@ -522,9 +522,9 @@ export function ColumnView({ column, categories, canEdit, canManage, pinned, onT
                   </button>
                   {menuOpen && (
                     <div className="pop-menu">
-                      {!column.is_backlog && <button type="button" onClick={() => { setRenaming(true); setMenuOpen(false) }}>
+                      <button type="button" onClick={() => { setRenaming(true); setMenuOpen(false) }}>
                         <EditIcon /> Cambiar nombre
-                      </button>}
+                      </button>
                       <button
                         type="button"
                         onClick={() => {

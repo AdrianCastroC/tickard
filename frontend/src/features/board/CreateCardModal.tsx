@@ -63,7 +63,7 @@ export function CreateCardModal({ board, column, onClose, onCreated }: {
             </select>
           </label>
         )}
-        <label className="field">Fechas<DateRangePicker start={start} end={due} onChange={(nextStart, nextDue) => { setStart(nextStart); setDue(nextDue) }} /></label>
+        <label className="field">Periodo<DateRangePicker start={start} end={due} onChange={(nextStart, nextDue) => { setStart(nextStart); setDue(nextDue) }} /></label>
         <label className="field">Prioridad
           <select value={priority} onChange={(event) => setPriority(event.target.value)}>
             {Object.entries(priorityLabel).map(([value, text]) => <option key={value} value={value}>{text}</option>)}

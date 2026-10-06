@@ -54,7 +54,6 @@ public function storeColumn(Request $request, Board $board)
 public function updateColumn(Request $request, Column $column)
     {
         abort_unless(ProjectAccess::canManage($request->user(), $column->board->project), 403);
-        abort_unless(! $column->is_backlog, 422, 'Backlog no se puede renombrar.');
         $data = $request->validate([
             'name' => ['sometimes', 'string', 'max:80'],
             'color' => ['sometimes', 'nullable', 'string', 'regex:/^#[0-9A-Fa-f]{6}$/'],

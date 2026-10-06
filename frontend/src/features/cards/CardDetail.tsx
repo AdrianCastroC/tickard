@@ -10,6 +10,7 @@ import { FilesPanel } from './files/FilesPanel'
 import { CommentsPanel } from './comments/CommentsPanel'
 import { ChecklistPanel } from './checklist/ChecklistPanel'
 import { SortableModuleShell } from './modules/SortableModuleShell'
+import { DateTimePicker, formatStartedAt } from './DateTimePicker'
 
 function DescriptionIcon() {
   return (
@@ -540,20 +541,20 @@ export function CardDrawer({ card, mode, board, currentUser, canEdit, onClose, o
             </div>
 
             <div className="side-field">
-              <span className="side-label"><CalendarIcon /> Fechas</span>
+              <span className="side-label"><CalendarIcon /> Inicio</span>
               {editing ? (
-                <DateRangePicker start={card.start_date} end={card.due_date} onChange={(start, due) => save({ start_date: start, due_date: due })} />
+                <DateTimePicker value={card.started_at} onChange={(value) => save({ started_at: value })} />
               ) : (
-                <div className="side-value"><strong>{formatDateRange(card.start_date, card.due_date)}</strong></div>
+                <div className="side-value"><strong>{formatStartedAt(card.started_at)}</strong></div>
               )}
             </div>
 
             <div className="side-field">
-              <span className="side-label"><CalendarIcon /> Inicio real</span>
+              <span className="side-label"><CalendarIcon /> Periodo</span>
               {editing ? (
-                <input className="side-input" type="datetime-local" value={card.started_at ? card.started_at.slice(0, 16) : ''} onChange={(event) => save({ started_at: event.target.value ? new Date(event.target.value).toISOString() : null })} />
+                <DateRangePicker start={card.start_date} end={card.due_date} onChange={(start, due) => save({ start_date: start, due_date: due })} />
               ) : (
-                <div className="side-value"><strong>{card.started_at ? new Date(card.started_at).toLocaleString('es-ES') : '—'}</strong></div>
+                <div className="side-value"><strong>{formatDateRange(card.start_date, card.due_date)}</strong></div>
               )}
             </div>
 
