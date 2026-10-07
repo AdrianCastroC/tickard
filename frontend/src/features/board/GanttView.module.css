@@ -106,6 +106,14 @@
   cursor: pointer;
 }
 
+.leftCardAlternate {
+  background: color-mix(in srgb, #ffffff 50%, color-mix(in srgb, var(--canvas) 82%, var(--surface)));
+}
+
+.ganttLeft > .leftCard:nth-of-type(even) {
+  background: color-mix(in srgb, #ffffff 50%, color-mix(in srgb, var(--canvas) 82%, var(--surface)));
+}
+
 .leftCard:hover {
   background: var(--canvas);
 }
@@ -167,6 +175,7 @@
 }
 
 .day {
+  z-index: 3;
   border-bottom: 1px solid var(--line);
   font-size: 12px;
   text-transform: none;
@@ -177,13 +186,37 @@
 }
 
 .weekend {
-  z-index: 0;
+  z-index: 1;
   background: repeating-linear-gradient(45deg, color-mix(in srgb, var(--canvas) 97%, var(--ink)) 0 8px, color-mix(in srgb, var(--canvas) 94%, var(--ink)) 8px 16px);
   pointer-events: none;
 }
 
+.categoryRowBackground,
+.taskRowBackground {
+  z-index: 0;
+  pointer-events: none;
+}
+
+.categoryRowBackground {
+  background: color-mix(in srgb, var(--canvas) 82%, var(--surface));
+}
+
+.taskRowBackground {
+  background: #ffffff;
+}
+
+.taskRowAlternate {
+  background: color-mix(in srgb, #ffffff 50%, color-mix(in srgb, var(--canvas) 82%, var(--surface)));
+}
+
+.timeSeparator {
+  z-index: 2;
+  border-right: 1px solid var(--line);
+  pointer-events: none;
+}
+
 .categorySummary {
-  z-index: 1;
+  z-index: 4;
   align-self: center;
   height: 8px;
   border-radius: 4px;
@@ -191,7 +224,7 @@
 }
 
 .cardBar {
-  z-index: 2;
+  z-index: 4;
   align-self: center;
   display: flex;
   align-items: center;
@@ -219,7 +252,7 @@
 }
 
 .todayLine {
-  z-index: 3;
+  z-index: 5;
   width: 2px;
   justify-self: start;
   background: color-mix(in srgb, var(--accent) 70%, transparent);

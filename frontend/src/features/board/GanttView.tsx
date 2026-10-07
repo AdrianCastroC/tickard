@@ -83,8 +83,17 @@ function categoryGroups(board: BoardPayload, columns: BoardPayload['columns']): 
 
 function weekNumber(days: Day[], index: number) {
   const weekStart = monday(days[index].key)
-  const firstOfMonth = dateKey(new Date(Date.UTC(parseDay(weekStart).getUTCFullYear(), parseDay(weekStart).getUTCMonth(), 1)))
-  return Math.floor(daysBetween(monday(firstOfMonth), weekStart) / 7) + 1
+  const weekEnd = shift(weekStart, 6)
+  const weekStartDate = parseDay(weekStart)
+  const monthStart = dateKey(new Date(Date.UTC(weekStartDate.getUTCFullYear(), weekStartDate.getUTCMonth(), 1)))
+  const nextMonthStart = dateKey(new Date(Date.UTC(weekStartDate.getUTCFullYear(), weekStartDate.getUTCMonth() + 1, 1)))
+  const labelMonthStart = monthStart >= weekStart && monthStart <= weekEnd ? monthStart : nextMonthStart > weekStart && nextMonthStart <= weekEnd ? nextMonthStart : monthStart
+
+  if (labelMonthStart === nextMonthStart) {
+    return 1
+  }
+
+  return Math.floor(daysBetween(monday(labelMonthStart), weekStart) / 7) + 1
 }
 
 function gridColumn(start: string, value: string) {
@@ -142,7 +151,14 @@ export function GanttView({ board, cards, onOpen }: GanttProps) {
   const groups = useMemo(() => categoryGroups(board, cards), [board, cards])
   const [zoom, setZoom] = useState<Zoom>(() => (localStorage.getItem(`tickard:gantt-zoom:${board.board.id}`) as Zoom) || 'week')
   const [visibility, setVisibility] = useState<Visibility>(DEFAULT_COLUMNS)
-  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({})
+  const collapsedStorageKey = `tickard:gantt-collapsed:${board.board.id}`
+  const [collapsed, setCollapsed] = useState<Record<string, boolean>>(() => {
+    try {
+      return JSON.parse(localStorage.getItem(collapsedStorageKey) ?? '{}') as Record<string, boolean>
+    } catch {
+      return {}
+    }
+  })
   const range = timelineRange(allCards)
   const days = buildDays(range.start, range.end)
   const entries: TimelineEntry[] = []
@@ -159,6 +175,10 @@ export function GanttView({ board, cards, onOpen }: GanttProps) {
   useEffect(() => {
     localStorage.setItem(`tickard:gantt-zoom:${board.board.id}`, zoom)
   }, [board.board.id, zoom])
+
+  useEffect(() => {
+    localStorage.setItem(collapsedStorageKey, JSON.stringify(collapsed))
+  }, [collapsedStorageKey, collapsed])
 
   const monthRows = monthSpans(days)
   const weekRows = weekSpans(days)
@@ -178,10 +198,22 @@ export function GanttView({ board, cards, onOpen }: GanttProps) {
         <div className={styles.timelineGrid} style={gridStyle}>
           {monthRows.map((month) => <span key={month.label} className={styles.month} style={{ gridRow: 1, gridColumn: `${month.start} / ${month.end}` }}>{month.label}</span>)}
           {(showWeeks ? weekRows : days.map((day, index) => ({ label: formatDay(day.date), start: index + 1, end: index + 2 }))).map((item) => <span key={`${item.label}-${item.start}`} className={styles.day} style={{ gridRow: 2, gridColumn: `${item.start} / ${item.end}` }}>{item.label}</span>)}
-          {days.map((day, index) => isWeekend(day) && <span key={`weekend-${day.key}`} className={styles.weekend} style={{ gridRow: '1 / -1', gridColumn: index + 1 }} aria-hidden="true" />)}
-          {entries.map(({ group, row: groupRow }) => { const rangeValue = categoryRange(group, range.start); return <span key={`summary-${group.id}`} className={styles.categorySummary} style={{ gridRow: groupRow, gridColumn: rangeValue ?? '1 / 2' }} aria-hidden="true" /> })}
+          {entries.map(({ group, row: groupRow }) => <span key={`category-background-${group.id}`} className={styles.categoryRowBackground} style={{ gridRow: groupRow, gridColumn: '1 / -1' }} aria-hidden="true" />)}
+          {entries.flatMap(({ group, row: groupRow, collapsed: isCollapsed }) => isCollapsed ? [] : group.cards.map((item, index) => <span key={`task-background-${item.card.id}`} className={`${styles.taskRowBackground} ${index % 2 === 1 ? styles.taskRowAlternate : ''}`} style={{ gridRow: groupRow + index + 1, gridColumn: '1 / -1' }} aria-hidden="true" />))}
+          {zoom === 'day' && days.map((day, index) => isWeekend(day) && <span key={`weekend-${day.key}`} className={styles.weekend} style={{ gridRow: '2 / -1', gridColumn: index + 1 }} aria-hidden="true" />)}
+          {zoom === 'day' && days.slice(0, -1).map((day, index) => <span key={`day-line-${day.key}`} className={styles.timeSeparator} style={{ gridRow: '2 / -1', gridColumn: `${index + 1} / span 1` }} aria-hidden="true" />)}
+          {zoom === 'week' && weekRows.slice(0, -1).map((week) => <span key={`week-line-${week.start}`} className={styles.timeSeparator} style={{ gridRow: '2 / -1', gridColumn: `${week.end - 1} / span 1` }} aria-hidden="true" />)}
+          {entries.map(({ group, row: groupRow }) => {
+            const rangeValue = categoryRange(group, range.start)
+
+            if (!rangeValue) {
+              return null
+            }
+
+            return <span key={`summary-${group.id}`} className={styles.categorySummary} style={{ gridRow: groupRow, gridColumn: rangeValue }} aria-hidden="true" />
+          })}
           {entries.flatMap(({ group, row: groupRow, collapsed: isCollapsed }) => isCollapsed ? [] : group.cards.map((item, index) => planned(item.card) && <button key={item.card.id} className={styles.cardBar} data-card-id={item.card.id} type="button" onClick={() => onOpen(item.card)} style={{ gridRow: groupRow + index + 1, gridColumn: `${gridColumn(range.start, item.card.start_date!)} / ${dateEndColumn(range.start, item.card.due_date!)}`, background: item.card.color || item.column.color || 'var(--accent)' }} title={item.card.title}><span>{item.card.title}</span></button>))}
-          {dateKey(new Date()) >= range.start && dateKey(new Date()) <= range.end && <span className={styles.todayLine} style={{ gridRow: '1 / -1', gridColumn: `${gridColumn(range.start, dateKey(new Date()))} / span 1` }} aria-hidden="true" />}
+          {dateKey(new Date()) >= range.start && dateKey(new Date()) <= range.end && <span className={styles.todayLine} style={{ gridRow: '2 / -1', gridColumn: `${gridColumn(range.start, dateKey(new Date()))} / span 1` }} aria-hidden="true" />}
         </div>
       </div>
     </div>
