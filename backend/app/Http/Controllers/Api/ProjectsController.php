@@ -2,35 +2,24 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Http\Controllers\Api\ApiController;
-use App\Models\AppNotification;
 use App\Models\Board;
 use App\Models\BoardCategory;
 use App\Models\Card;
-use App\Models\CardAttachment;
-use App\Models\CardChecklistItem;
-use App\Models\CardModule;
 use App\Models\ClientCompany;
 use App\Models\Column;
-use App\Models\Comment;
-use App\Models\Department;
 use App\Models\Invitation;
 use App\Models\Label;
 use App\Models\Project;
 use App\Models\ProjectMember;
 use App\Models\Team;
-use App\Models\User;
 use App\Models\Workspace;
 use App\Support\CardPresenter;
-use App\Support\Notifier;
 use App\Support\ProjectAccess;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
-use Illuminate\Validation\ValidationException;
 
 class ProjectsController extends ApiController
 {
@@ -45,8 +34,7 @@ class ProjectsController extends ApiController
         ]);
 
         $workspace = Workspace::whereKey($data['workspace_id'])
-            ->whereHas('members', fn ($query) =>
-                $query->where('users.id', $request->user()->id)
+            ->whereHas('members', fn ($query) => $query->where('users.id', $request->user()->id)
             )
             ->firstOrFail();
 
@@ -233,7 +221,7 @@ class ProjectsController extends ApiController
             '/'
         ).'/invitar/'.$invitation->token;
 
-        \Illuminate\Support\Facades\Mail::raw(
+        Mail::raw(
             'Te han invitado a '.$project->name.'. Abre '.$link,
             function ($message) use ($data) {
                 $message
@@ -267,39 +255,36 @@ class ProjectsController extends ApiController
 
         $board->load([
             'categories',
-            'columns.cards' => fn ($query) =>
-                $query
-                    ->whereNull('archived_at')
-                    ->with([
-                        'creator',
-                        'assignees',
-                        'teams.members',
-                        'labels',
-                        'comments.user',
-                        'comments.reactions',
-                        'activities.user',
-                        'checklistItems.assignees',
-                        'modules.checklistItems.assignees',
-                        'attachments',
-                    ])
-                    ->orderBy('position'),
+            'columns.cards' => fn ($query) => $query
+                ->whereNull('archived_at')
+                ->with([
+                    'creator',
+                    'assignees',
+                    'teams.members',
+                    'labels',
+                    'comments.user',
+                    'comments.reactions',
+                    'activities.user',
+                    'checklistItems.assignees',
+                    'modules.checklistItems.assignees',
+                    'attachments',
+                ])
+                ->orderBy('position'),
         ]);
 
         $columns = $board->columns->map(
             function (Column $column) use ($request, $project, $role) {
                 $cards = $column->cards
                     ->filter(
-                        fn (Card $card) =>
-                            $role !== 'cliente' || ! $card->is_internal
+                        fn (Card $card) => $role !== 'cliente' || ! $card->is_internal
                     )
                     ->map(
-                        fn (Card $card) =>
-                            CardPresenter::make(
-                                $card,
-                                $request->user(),
-                                $project,
-                                $role
-                            )
+                        fn (Card $card) => CardPresenter::make(
+                            $card,
+                            $request->user(),
+                            $project,
+                            $role
+                        )
                     )
                     ->values();
 
@@ -308,7 +293,7 @@ class ProjectsController extends ApiController
                     'name' => $column->name,
                     'color' => $column->color,
                     'position' => $column->position,
-                    'is_backlog' => $column->is_backlog,
+                    'workflow_state' => $column->workflow_state,
                     'cards' => $cards,
                 ];
             }

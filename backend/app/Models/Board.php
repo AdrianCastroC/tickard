@@ -45,23 +45,23 @@ class Board extends Model
         return [
             [
                 'name' => 'Backlog',
-                'is_backlog' => true,
+                'workflow_state' => 'backlog',
             ],
             [
                 'name' => 'Por hacer',
-                'is_backlog' => false,
+                'workflow_state' => 'pending',
             ],
             [
                 'name' => 'En progreso',
-                'is_backlog' => false,
+                'workflow_state' => 'in_progress',
             ],
             [
                 'name' => 'En revisión',
-                'is_backlog' => false,
+                'workflow_state' => 'review',
             ],
             [
                 'name' => 'Completado',
-                'is_backlog' => false,
+                'workflow_state' => 'done',
             ],
         ];
     }
@@ -72,7 +72,7 @@ class Board extends Model
             $this->columns()->create([
                 'name' => $column['name'],
                 'position' => $position,
-                'is_backlog' => $column['is_backlog'],
+                'workflow_state' => $column['workflow_state'],
             ]);
         }
     }

@@ -56,6 +56,7 @@ class CardPresenter
             $payload['start_date'] = $card->start_date?->toDateString();
             $payload['due_date'] = $card->due_date?->toDateString();
             $payload['started_at'] = $card->started_at?->toIso8601String();
+            $payload['completed_at'] = $card->completed_at?->toIso8601String();
             $payload['assignees'] = $card->assignees->map(fn (User $assignee) => [
                 'id' => $assignee->id,
                 'name' => $assignee->name,

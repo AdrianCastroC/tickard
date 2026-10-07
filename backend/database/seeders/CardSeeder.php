@@ -19,7 +19,7 @@ class CardSeeder extends Seeder
         $board = $ana->workspaces()->where('name', 'Tickard Demo')->firstOrFail()->projects()->where('name', 'Portal de clientes')->firstOrFail()->boards()->where('name', 'Entrega marzo')->firstOrFail();
         $columns = $board->columns()->get()->keyBy('name');
         $labels = Label::where('project_id', $board->project_id)->get()->keyBy('name');
-        $this->card($columns->firstWhere('is_backlog', true), 'Revisar textos legales', 'media', false, '2026-10-18', [$marta], [$labels['Diseño']]);
+        $this->card($columns->firstWhere('workflow_state', 'backlog'), 'Revisar textos legales', 'media', false, '2026-10-18', [$marta], [$labels['Diseño']]);
         $this->card($columns['Por hacer'], 'Formulario de alta de usuarios', 'alta', true, '2026-10-02', [$ana], [$labels['Frontend']]);
         $this->card($columns['En progreso'], 'Tablero de pedidos del portal', 'alta', false, '2026-10-04', [$ana, $luis], [$labels['Frontend']], 'Lista de pedidos del portal con estado, importe y acceso al detalle.');
         $this->card($columns['En progreso'], 'Maquetar el correo de invitación', 'media', true, '2026-10-03', [$marta], [$labels['Diseño']]);
@@ -31,7 +31,7 @@ class CardSeeder extends Seeder
 
     private function card(Column $column, string $title, string $priority, bool $internal, string $due, array $people, array $labels, ?string $description = null): void
     {
-        $card = $column->cards()->create(['board_id' => $column->board_id, 'title' => $title, 'description' => $description, 'priority' => $priority, 'is_internal' => $internal, 'start_date' => $due, 'due_date' => $due, 'started_at' => $column->is_backlog ? null : now(), 'position' => $column->cards()->count(), 'created_by' => $people[0]->id]);
+        $card = $column->cards()->create(['board_id' => $column->board_id, 'title' => $title, 'description' => $description, 'priority' => $priority, 'is_internal' => $internal, 'start_date' => $due, 'due_date' => $due, 'started_at' => in_array($column->workflow_state, ['in_progress', 'review', 'done'], true) ? now() : null, 'completed_at' => in_array($column->workflow_state, ['review', 'done'], true) ? now() : null, 'position' => $column->cards()->count(), 'created_by' => $people[0]->id]);
         $card->assignees()->sync(collect($people)->pluck('id'));
         $card->labels()->sync(collect($labels)->pluck('id'));
         $card->activities()->create(['user_id' => $card->created_by, 'type' => 'created', 'meta' => ['title' => $title]]);

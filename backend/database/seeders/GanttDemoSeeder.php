@@ -697,7 +697,7 @@ class GanttDemoSeeder extends Seeder
             'start_date' => $data['start'],
             'due_date' => $data['end'],
 
-            'started_at' => $column->is_backlog
+            'started_at' => $column->workflow_state === 'backlog'
                 ? null
                 : ($data['start']
                     ? $data['start'].' 09:00:00'

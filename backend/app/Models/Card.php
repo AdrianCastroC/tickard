@@ -18,6 +18,7 @@ class Card extends Model
         'start_date',
         'due_date',
         'started_at',
+        'completed_at',
         'priority',
         'color',
         'is_internal',
@@ -32,6 +33,7 @@ class Card extends Model
             'start_date' => 'date',
             'due_date' => 'date',
             'started_at' => 'datetime',
+            'completed_at' => 'datetime',
             'is_internal' => 'boolean',
             'archived_at' => 'datetime',
         ];

@@ -13,13 +13,12 @@ class Column extends Model
         'name',
         'color',
         'position',
-        'is_backlog',
+        'workflow_state',
     ];
 
     protected function casts(): array
     {
         return [
-            'is_backlog' => 'boolean',
         ];
     }
 

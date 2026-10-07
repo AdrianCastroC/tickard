@@ -5,7 +5,7 @@ import { DateRangePicker } from './DateRangePicker'
 
 export function CreateCardModal({ board, column, onClose, onCreated }: {
   board: BoardPayload
-  column: { id: number; name: string; is_backlog?: boolean }
+  column: { id: number; name: string }
   onClose: () => void
   onCreated: () => Promise<void>
 }) {

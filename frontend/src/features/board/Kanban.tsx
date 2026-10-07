@@ -371,7 +371,7 @@ export function ColumnView({ column, categories, canEdit, canManage, pinned, onT
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: columnSortId(column.id),
-    disabled: !canManage || column.is_backlog,
+    disabled: !canManage,
   })
   const [menuOpen, setMenuOpen] = useState(false)
   const [collapsed, setCollapsed] = useState(false)
@@ -542,7 +542,7 @@ export function ColumnView({ column, categories, canEdit, canManage, pinned, onT
                           <PlusIcon className="menu-icon" /> Añadir tarea
                         </button>
                       )}
-                      {!column.is_backlog && <span
+                      <span
                         className="pop-menu-tip"
                         title={hasCards ? 'No se puede eliminar una columna con tarjetas. Muévelas o elimínalas antes.' : undefined}
                       >
@@ -557,7 +557,7 @@ export function ColumnView({ column, categories, canEdit, canManage, pinned, onT
                         >
                           <TrashIcon /> Eliminar
                         </button>
-                      </span>}
+                      </span>
                       {error && <p className="muted">{error}</p>}
                     </div>
                   )}

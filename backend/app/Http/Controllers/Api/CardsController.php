@@ -2,38 +2,22 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Http\Controllers\Api\ApiController;
-use App\Models\AppNotification;
 use App\Models\Board;
 use App\Models\BoardCategory;
 use App\Models\Card;
-use App\Models\CardAttachment;
-use App\Models\CardChecklistItem;
-use App\Models\CardModule;
-use App\Models\ClientCompany;
 use App\Models\Column;
-use App\Models\Comment;
-use App\Models\Department;
-use App\Models\Invitation;
 use App\Models\Label;
-use App\Models\Project;
-use App\Models\ProjectMember;
-use App\Models\Team;
 use App\Models\User;
-use App\Support\CardPresenter;
 use App\Support\Notifier;
 use App\Support\ProjectAccess;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
 class CardsController extends ApiController
 {
-public function storeColumn(Request $request, Board $board)
+    public function storeColumn(Request $request, Board $board)
     {
         abort_unless(ProjectAccess::canManage($request->user(), $board->project), 403);
         $data = $request->validate(['name' => ['required', 'string', 'max:80']]);
@@ -41,6 +25,7 @@ public function storeColumn(Request $request, Board $board)
         $column = $board->columns()->create([
             'name' => $data['name'],
             'position' => $position,
+            'workflow_state' => 'pending',
         ]);
         $board->touchRevision();
 
@@ -48,15 +33,17 @@ public function storeColumn(Request $request, Board $board)
             'id' => $column->id,
             'name' => $column->name,
             'position' => $column->position,
+            'workflow_state' => $column->workflow_state,
         ], 201);
     }
 
-public function updateColumn(Request $request, Column $column)
+    public function updateColumn(Request $request, Column $column)
     {
         abort_unless(ProjectAccess::canManage($request->user(), $column->board->project), 403);
         $data = $request->validate([
             'name' => ['sometimes', 'string', 'max:80'],
             'color' => ['sometimes', 'nullable', 'string', 'regex:/^#[0-9A-Fa-f]{6}$/'],
+            'workflow_state' => ['sometimes', Rule::in(['backlog', 'pending', 'in_progress', 'review', 'done'])],
         ]);
         abort_unless($data !== [], 422);
         $column->update($data);
@@ -67,13 +54,13 @@ public function updateColumn(Request $request, Column $column)
             'name' => $column->name,
             'color' => $column->color,
             'position' => $column->position,
+            'workflow_state' => $column->workflow_state,
         ]);
     }
 
-public function moveColumn(Request $request, Column $column)
+    public function moveColumn(Request $request, Column $column)
     {
         abort_unless(ProjectAccess::canManage($request->user(), $column->board->project), 403);
-        abort_unless(! $column->is_backlog, 422, 'Backlog no se puede mover.');
         $data = $request->validate(['position' => ['required', 'integer', 'min:0']]);
         $board = $column->board;
 
@@ -91,10 +78,9 @@ public function moveColumn(Request $request, Column $column)
         return response()->noContent();
     }
 
-public function destroyColumn(Request $request, Column $column)
+    public function destroyColumn(Request $request, Column $column)
     {
         abort_unless(ProjectAccess::canManage($request->user(), $column->board->project), 403);
-        abort_unless(! $column->is_backlog, 422, 'Backlog no se puede borrar.');
 
         if ($column->cards()->whereNull('archived_at')->exists()) {
             throw ValidationException::withMessages([
@@ -109,7 +95,7 @@ public function destroyColumn(Request $request, Column $column)
         return response()->noContent();
     }
 
-public function storeCategory(Request $request, Board $board)
+    public function storeCategory(Request $request, Board $board)
     {
         abort_unless(ProjectAccess::canManage($request->user(), $board->project), 403);
         $data = $request->validate(['name' => ['required', 'string', 'max:80']]);
@@ -127,7 +113,7 @@ public function storeCategory(Request $request, Board $board)
         ], 201);
     }
 
-public function updateCategory(Request $request, BoardCategory $category)
+    public function updateCategory(Request $request, BoardCategory $category)
     {
         abort_unless(ProjectAccess::canManage($request->user(), $category->board->project), 403);
         $data = $request->validate(['name' => ['required', 'string', 'max:80']]);
@@ -141,7 +127,7 @@ public function updateCategory(Request $request, BoardCategory $category)
         ]);
     }
 
-public function destroyCategory(Request $request, BoardCategory $category)
+    public function destroyCategory(Request $request, BoardCategory $category)
     {
         abort_unless(ProjectAccess::canManage($request->user(), $category->board->project), 403);
         $board = $category->board;
@@ -151,7 +137,7 @@ public function destroyCategory(Request $request, BoardCategory $category)
         return response()->noContent();
     }
 
-public function storeCard(Request $request, Board $board)
+    public function storeCard(Request $request, Board $board)
     {
         $project = $board->project;
         abort_unless(ProjectAccess::canEditCards($request->user(), $project), 403);
@@ -190,7 +176,8 @@ public function storeCard(Request $request, Board $board)
             'description' => $data['description'] ?? null,
             'start_date' => $data['start_date'] ?? null,
             'due_date' => $data['due_date'] ?? null,
-            'started_at' => $column->is_backlog ? null : now(),
+            'started_at' => in_array($column->workflow_state, ['in_progress', 'review', 'done'], true) ? now() : null,
+            'completed_at' => in_array($column->workflow_state, ['review', 'done'], true) ? now() : null,
             'position' => $position,
             'is_internal' => true,
             'priority' => $data['priority'] ?? 'media',
@@ -218,7 +205,7 @@ public function storeCard(Request $request, Board $board)
         return response()->json(['id' => $card->id], 201);
     }
 
-public function updateCard(Request $request, Card $card)
+    public function updateCard(Request $request, Card $card)
     {
         $project = $card->board->project;
         abort_unless(ProjectAccess::canEditCards($request->user(), $project), 403);
@@ -229,6 +216,7 @@ public function updateCard(Request $request, Card $card)
             'start_date' => ['sometimes', 'nullable', 'date'],
             'due_date' => ['nullable', 'date'],
             'started_at' => ['sometimes', 'nullable', 'date'],
+            'completed_at' => ['sometimes', 'nullable', 'date'],
             'priority' => ['sometimes', Rule::in(['baja', 'media', 'alta', 'urgente'])],
             'is_internal' => ['sometimes', 'boolean'],
             'category_id' => ['sometimes', 'nullable', 'integer'],
@@ -293,7 +281,7 @@ public function updateCard(Request $request, Card $card)
         return response()->noContent();
     }
 
-public function moveCard(Request $request, Card $card)
+    public function moveCard(Request $request, Card $card)
     {
         $project = $card->board->project;
         abort_unless(ProjectAccess::canEditCards($request->user(), $project), 403);
@@ -307,10 +295,15 @@ public function moveCard(Request $request, Card $card)
         $from = $card->column_id;
 
         DB::transaction(function () use ($card, $column, $data, $request, $from) {
-            $wasBacklog = $card->column->is_backlog;
+            $toState = $column->workflow_state;
             $card->column_id = $column->id;
-            if ($wasBacklog && ! $column->is_backlog && $card->started_at === null) {
+            if (in_array($toState, ['in_progress', 'review', 'done'], true) && $card->started_at === null) {
                 $card->started_at = now();
+            }
+            if (in_array($toState, ['backlog', 'pending', 'in_progress'], true)) {
+                $card->completed_at = null;
+            } elseif (in_array($toState, ['review', 'done'], true) && $card->completed_at === null) {
+                $card->completed_at = now();
             }
             $card->save();
             $this->resequence($column->id, $card, $data['position']);
@@ -338,7 +331,7 @@ public function moveCard(Request $request, Card $card)
         }
     }
 
-public function archiveCard(Request $request, Card $card)
+    public function archiveCard(Request $request, Card $card)
     {
         abort_unless(ProjectAccess::canEditCards($request->user(), $card->board->project), 403);
         $card->update(['archived_at' => now()]);
@@ -347,7 +340,7 @@ public function archiveCard(Request $request, Card $card)
         return response()->noContent();
     }
 
-public function destroyCard(Request $request, Card $card)
+    public function destroyCard(Request $request, Card $card)
     {
         abort_unless(ProjectAccess::canEditCards($request->user(), $card->board->project), 403);
         $board = $card->board;
