@@ -352,6 +352,18 @@
   filter: brightness(1.08);
 }
 
+.pendingBar {
+  border-width: 2px;
+  border-style: dashed;
+}
+
+.cardBar svg {
+  width: 14px;
+  height: 14px;
+  flex: 0 0 auto;
+  color: currentColor;
+}
+
 .todayLine {
   z-index: 5;
   width: 2px;

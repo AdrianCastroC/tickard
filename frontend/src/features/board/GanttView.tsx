@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import type { BoardPayload, Card, Column } from '../../api'
-import { CollapseColumnIcon, ExpandColumnIcon, EyeLowVisionIcon } from '../../shared/icons'
+import { CollapseColumnIcon, ExpandColumnIcon, EyeIcon, EyeLowVisionIcon } from '../../shared/icons'
 import styles from './GanttView.module.css'
 
 const DAY_MS = 86_400_000
@@ -22,6 +22,20 @@ type CardBarStyle = CSSProperties & {
 type GanttGridStyle = CSSProperties & {
   '--left-columns': string
   '--left-width': string
+}
+
+function cardVisualProgress(item: GanttCard) {
+  const checklistPercent = Math.min(100, Math.max(0, item.card.progress?.percent ?? 0))
+
+  if (item.column.workflow_state === 'in_progress') {
+    return Math.max(10, checklistPercent)
+  }
+
+  if (item.column.workflow_state === 'review' || item.column.workflow_state === 'done') {
+    return 100
+  }
+
+  return 0
 }
 
 function parseDay(value: string) {
@@ -216,7 +230,7 @@ function categoryRange(group: CategoryGroup, timelineStart: string) {
 function categoryStats(group: CategoryGroup): CategoryStats {
   const startDates = group.cards.map(({ card }) => card.start_date).filter((value): value is string => Boolean(value))
   const endDates = group.cards.map(({ card }) => card.due_date).filter((value): value is string => Boolean(value))
-  const progressTotal = group.cards.reduce((total, { card }) => total + Math.min(100, Math.max(0, card.progress?.percent ?? 0)), 0)
+  const progressTotal = group.cards.reduce((total, item) => total + cardVisualProgress(item), 0)
 
   return {
     start: startDates.length > 0 ? startDates.reduce((value, date) => date < value ? date : value, startDates[0]) : null,
@@ -412,7 +426,7 @@ export function GanttView({ board, cards, onOpen }: GanttProps) {
             </div>
           )
             })}
-            {entries.flatMap(({ group, row: groupRow, collapsed: isCollapsed }) => isCollapsed ? [] : group.cards.map((item, index) => <button key={item.card.id} className={`${styles.leftCard} ${index % 2 === 1 ? styles.leftCardAlternate : ''}`} style={{ gridRow: groupRow + index + 1 }} type="button" onClick={() => onOpen(item.card)}><strong>{item.card.title}</strong>{visibility.start && <span>{compactDate(item.card.start_date)}</span>}{visibility.end && <span>{compactDate(item.card.due_date)}</span>}{visibility.progress && <span>{item.card.progress ? `${item.card.progress.percent}%` : '—'}</span>}</button>))}
+            {entries.flatMap(({ group, row: groupRow, collapsed: isCollapsed }) => isCollapsed ? [] : group.cards.map((item, index) => <button key={item.card.id} className={`${styles.leftCard} ${index % 2 === 1 ? styles.leftCardAlternate : ''}`} style={{ gridRow: groupRow + index + 1 }} type="button" onClick={() => onOpen(item.card)}><strong>{item.card.title}</strong>{visibility.start && <span>{compactDate(item.card.start_date)}</span>}{visibility.end && <span>{compactDate(item.card.due_date)}</span>}{visibility.progress && <span>{`${cardVisualProgress(item)}%`}</span>}</button>))}
           </>
         </div>
       )}
@@ -452,7 +466,7 @@ export function GanttView({ board, cards, onOpen }: GanttProps) {
             }
 
             const cardColor = item.card.color || item.column.color || 'var(--accent)'
-            const progress = Math.min(100, Math.max(0, item.card.progress?.percent ?? 0))
+            const progress = cardVisualProgress(item)
             const cardStyle = {
               gridRow: groupRow + index + 1,
               gridColumn: `${gridColumn(range.start, item.card.start_date!)} / ${dateEndColumn(range.start, item.card.due_date!)}`,
@@ -460,7 +474,28 @@ export function GanttView({ board, cards, onOpen }: GanttProps) {
               '--card-progress': `${progress}%`,
             } as CardBarStyle
 
-            return <button key={item.card.id} className={styles.cardBar} data-card-id={item.card.id} type="button" onClick={() => onOpen(item.card)} style={cardStyle} title={item.card.title} aria-label={item.card.title} />
+            const cardClassName = [
+              styles.cardBar,
+              item.column.workflow_state === 'pending' ? styles.pendingBar : '',
+            ].filter(Boolean).join(' ')
+
+            const inReview = item.column.workflow_state === 'review'
+            const cardLabel = inReview ? `${item.card.title}, En revisión` : item.card.title
+
+            return (
+              <button
+                key={item.card.id}
+                className={cardClassName}
+                data-card-id={item.card.id}
+                type="button"
+                onClick={() => onOpen(item.card)}
+                style={cardStyle}
+                title={cardLabel}
+                aria-label={cardLabel}
+              >
+                {inReview && <EyeIcon />}
+              </button>
+            )
           }))}
           {todayVisible && <>
             <span className={styles.todayLabel} style={{ gridRow: 2, gridColumn: `${todayColumn} / span 1` }}>Hoy</span>
