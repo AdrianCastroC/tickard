@@ -110,10 +110,6 @@
   background: color-mix(in srgb, #ffffff 50%, color-mix(in srgb, var(--canvas) 82%, var(--surface)));
 }
 
-.ganttLeft > .leftCard:nth-of-type(even) {
-  background: color-mix(in srgb, #ffffff 50%, color-mix(in srgb, var(--canvas) 82%, var(--surface)));
-}
-
 .leftCard:hover {
   background: var(--canvas);
 }
@@ -146,7 +142,16 @@
   min-width: 100%;
 }
 
+.gantt[data-zoom='month'] {
+  --min-day-size: 16px;
+}
+
+.gantt[data-zoom='quarter'] {
+  --min-day-size: 12px;
+}
+
 .month,
+.quarter,
 .day,
 .categorySummary,
 .cardBar,
@@ -156,6 +161,7 @@
 }
 
 .month,
+.quarter,
 .day {
   display: flex;
   align-items: center;
@@ -170,6 +176,11 @@
 }
 
 .month {
+  border-bottom: 1px solid var(--line);
+  font-weight: 700;
+}
+
+.quarter {
   border-bottom: 1px solid var(--line);
   font-weight: 700;
 }

@@ -44,7 +44,7 @@ function timelineRange(cards: Card[]) {
 
   const start = plannedCards.reduce((value, card) => card.start_date! < value ? card.start_date! : value, plannedCards[0].start_date!)
   const end = plannedCards.reduce((value, card) => card.due_date! > value ? card.due_date! : value, plannedCards[0].due_date!)
-  return { start: shift(start, -4), end: shift(end, 4) }
+  return { start: shift(start, -2), end: shift(end, 2) }
 }
 
 function buildDays(start: string, endInclusive: string): Day[] {
@@ -119,6 +119,43 @@ function monthSpans(days: Day[]) {
   return spans
 }
 
+function yearSpans(days: Day[]) {
+  const spans: { label: string; start: number; end: number }[] = []
+
+  days.forEach((day, index) => {
+    const label = String(day.date.getUTCFullYear())
+    const last = spans.at(-1)
+
+    if (last?.label === label) {
+      last.end = index + 2
+    } else {
+      spans.push({ label, start: index + 1, end: index + 2 })
+    }
+  })
+
+  return spans
+}
+
+function quarterSpans(days: Day[], includeYear: boolean) {
+  const spans: { label: string; start: number; end: number }[] = []
+
+  days.forEach((day, index) => {
+    const quarter = Math.floor(day.date.getUTCMonth() / 3) + 1
+    const label = includeYear
+      ? `T${quarter} ${day.date.getUTCFullYear()}`
+      : `T${quarter}`
+    const last = spans.at(-1)
+
+    if (last?.label === label) {
+      last.end = index + 2
+    } else {
+      spans.push({ label, start: index + 1, end: index + 2 })
+    }
+  })
+
+  return spans
+}
+
 function categoryRange(group: CategoryGroup, timelineStart: string) {
   const cards = group.cards.filter(({ card }) => planned(card)).map(({ card }) => card)
   if (cards.length === 0) return null
@@ -181,8 +218,13 @@ export function GanttView({ board, cards, onOpen }: GanttProps) {
   }, [collapsedStorageKey, collapsed])
 
   const monthRows = monthSpans(days)
+  const yearRows = yearSpans(days)
+  const quarterRows = quarterSpans(days, false)
+  const monthQuarterRows = quarterSpans(days, true)
   const weekRows = weekSpans(days)
   const showWeeks = zoom === 'week'
+  const showMonths = zoom === 'month'
+  const showQuarters = zoom === 'quarter'
 
   return (
     <div className={styles.gantt} data-zoom={zoom}>
@@ -192,17 +234,21 @@ export function GanttView({ board, cards, onOpen }: GanttProps) {
         </div>
         <div className={styles.leftHeader}><span>Tarea</span>{visibility.start && <span>Inicio</span>}{visibility.end && <span>Fin</span>}{visibility.progress && <span>Progreso</span>}</div>
         {entries.map(({ group, row: groupRow, collapsed: isCollapsed }) => <div key={group.id} className={styles.leftCategory} style={{ gridRow: groupRow }}><button type="button" onClick={() => setCollapsed((current) => ({ ...current, [group.id]: !current[group.id] }))}>{isCollapsed ? '▸' : '▾'} {group.name}</button><small>{group.cards.length}</small></div>)}
-        {entries.flatMap(({ group, row: groupRow, collapsed: isCollapsed }) => isCollapsed ? [] : group.cards.map((item, index) => <button key={item.card.id} className={styles.leftCard} style={{ gridRow: groupRow + index + 1 }} type="button" onClick={() => onOpen(item.card)}><strong>{item.card.title}</strong>{visibility.start && <span>{compactDate(item.card.start_date)}</span>}{visibility.end && <span>{compactDate(item.card.due_date)}</span>}{visibility.progress && <span>{item.card.progress ? `${item.card.progress.percent}%` : '—'}</span>}</button>))}
+        {entries.flatMap(({ group, row: groupRow, collapsed: isCollapsed }) => isCollapsed ? [] : group.cards.map((item, index) => <button key={item.card.id} className={`${styles.leftCard} ${index % 2 === 1 ? styles.leftCardAlternate : ''}`} style={{ gridRow: groupRow + index + 1 }} type="button" onClick={() => onOpen(item.card)}><strong>{item.card.title}</strong>{visibility.start && <span>{compactDate(item.card.start_date)}</span>}{visibility.end && <span>{compactDate(item.card.due_date)}</span>}{visibility.progress && <span>{item.card.progress ? `${item.card.progress.percent}%` : '—'}</span>}</button>))}
       </div>
       <div className={styles.timelineViewport}>
         <div className={styles.timelineGrid} style={gridStyle}>
-          {monthRows.map((month) => <span key={month.label} className={styles.month} style={{ gridRow: 1, gridColumn: `${month.start} / ${month.end}` }}>{month.label}</span>)}
-          {(showWeeks ? weekRows : days.map((day, index) => ({ label: formatDay(day.date), start: index + 1, end: index + 2 }))).map((item) => <span key={`${item.label}-${item.start}`} className={styles.day} style={{ gridRow: 2, gridColumn: `${item.start} / ${item.end}` }}>{item.label}</span>)}
+          {(showMonths ? monthQuarterRows : showQuarters ? yearRows : monthRows).map((item) => <span key={item.label} className={showMonths || showQuarters ? styles.quarter : styles.month} style={{ gridRow: 1, gridColumn: `${item.start} / ${item.end}` }}>{item.label}</span>)}
+          {showMonths && monthRows.map((month) => <span key={`month-${month.label}`} className={styles.month} style={{ gridRow: 2, gridColumn: `${month.start} / ${month.end}` }}>{month.label}</span>)}
+          {showQuarters && quarterRows.map((quarter) => <span key={`quarter-${quarter.start}`} className={styles.quarter} style={{ gridRow: 2, gridColumn: `${quarter.start} / ${quarter.end}` }}>{quarter.label}</span>)}
+          {!showMonths && !showQuarters && (showWeeks ? weekRows : days.map((day, index) => ({ label: formatDay(day.date), start: index + 1, end: index + 2 }))).map((item) => <span key={`${item.label}-${item.start}`} className={styles.day} style={{ gridRow: 2, gridColumn: `${item.start} / ${item.end}` }}>{item.label}</span>)}
           {entries.map(({ group, row: groupRow }) => <span key={`category-background-${group.id}`} className={styles.categoryRowBackground} style={{ gridRow: groupRow, gridColumn: '1 / -1' }} aria-hidden="true" />)}
           {entries.flatMap(({ group, row: groupRow, collapsed: isCollapsed }) => isCollapsed ? [] : group.cards.map((item, index) => <span key={`task-background-${item.card.id}`} className={`${styles.taskRowBackground} ${index % 2 === 1 ? styles.taskRowAlternate : ''}`} style={{ gridRow: groupRow + index + 1, gridColumn: '1 / -1' }} aria-hidden="true" />))}
           {zoom === 'day' && days.map((day, index) => isWeekend(day) && <span key={`weekend-${day.key}`} className={styles.weekend} style={{ gridRow: '2 / -1', gridColumn: index + 1 }} aria-hidden="true" />)}
           {zoom === 'day' && days.slice(0, -1).map((day, index) => <span key={`day-line-${day.key}`} className={styles.timeSeparator} style={{ gridRow: '2 / -1', gridColumn: `${index + 1} / span 1` }} aria-hidden="true" />)}
           {zoom === 'week' && weekRows.slice(0, -1).map((week) => <span key={`week-line-${week.start}`} className={styles.timeSeparator} style={{ gridRow: '2 / -1', gridColumn: `${week.end - 1} / span 1` }} aria-hidden="true" />)}
+          {showMonths && monthRows.slice(0, -1).map((month) => <span key={`month-line-${month.end}`} className={styles.timeSeparator} style={{ gridRow: '2 / -1', gridColumn: `${month.end - 1} / span 1` }} aria-hidden="true" />)}
+          {showQuarters && quarterRows.slice(0, -1).map((quarter) => <span key={`quarter-line-${quarter.end}`} className={styles.timeSeparator} style={{ gridRow: '2 / -1', gridColumn: `${quarter.end - 1} / span 1` }} aria-hidden="true" />)}
           {entries.map(({ group, row: groupRow }) => {
             const rangeValue = categoryRange(group, range.start)
 
