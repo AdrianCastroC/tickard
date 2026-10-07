@@ -379,6 +379,9 @@ h1, h2, h3, p { margin: 0; }
 .column-state-option:hover:not(:disabled) { background: var(--canvas); }
 .column-state-option:disabled { cursor: wait; opacity: .6; }
 .column-state-option span { width: 14px; color: var(--accent); font-size: 13px; }
+.workflow-state-modal { width: min(100%, 460px); }
+.workflow-state-change { display: flex; align-items: center; gap: 10px; margin: 18px 0; font-size: 17px; }
+.workflow-state-change span { color: var(--muted); }
 .menu-icon {
   width: 16px;
   height: 16px;

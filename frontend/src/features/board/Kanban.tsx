@@ -46,6 +46,10 @@ const WORKFLOW_STATE_OPTIONS: Array<{ value: WorkflowState; label: string }> = [
   { value: 'done', label: 'Completado' },
 ]
 
+function workflowStateLabel(value: WorkflowState) {
+  return WORKFLOW_STATE_OPTIONS.find((option) => option.value === value)?.label ?? value
+}
+
 function readPinnedColumns(boardId: number) {
   try {
     const raw = localStorage.getItem(pinnedColumnsKey(boardId))
@@ -385,6 +389,7 @@ export function ColumnView({ column, categories, canEdit, canManage, pinned, onT
   const [collapsed, setCollapsed] = useState(false)
   const [renaming, setRenaming] = useState(false)
   const [savingState, setSavingState] = useState(false)
+  const [pendingWorkflowState, setPendingWorkflowState] = useState<WorkflowState | null>(null)
   const [name, setName] = useState(column.name)
   const [error, setError] = useState('')
   const menuRef = useRef<HTMLDivElement>(null)
@@ -423,8 +428,8 @@ export function ColumnView({ column, categories, canEdit, canManage, pinned, onT
     await onRefresh()
   }
 
-  async function saveWorkflowState(workflowState: WorkflowState) {
-    if (workflowState === column.workflow_state || savingState) return
+  async function saveWorkflowState(workflowState: WorkflowState): Promise<boolean> {
+    if (workflowState === column.workflow_state || savingState) return false
 
     setSavingState(true)
     setError('')
@@ -435,8 +440,10 @@ export function ColumnView({ column, categories, canEdit, canManage, pinned, onT
         body: JSON.stringify({ workflow_state: workflowState }),
       })
       await onRefresh()
+      return true
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudo actualizar el estado.')
+      return false
     } finally {
       setSavingState(false)
     }
@@ -470,7 +477,8 @@ export function ColumnView({ column, categories, canEdit, canManage, pinned, onT
   }
 
   return (
-    <section
+    <>
+      <section
       className={`column${isDragging ? ' dragging' : ''}${collapsed ? ' is-collapsed' : ''}${column.color ? ' has-color' : ''}${pinned ? ' is-pinned' : ''}`}
       ref={setNodeRef}
       style={{
@@ -554,7 +562,11 @@ export function ColumnView({ column, categories, canEdit, canManage, pinned, onT
                               role="radio"
                               aria-checked={column.workflow_state === option.value}
                               disabled={savingState}
-                              onClick={() => { void saveWorkflowState(option.value) }}
+                              onClick={() => {
+                                if (option.value !== column.workflow_state) {
+                                  setPendingWorkflowState(option.value)
+                                }
+                              }}
                             >
                               <span aria-hidden="true">{column.workflow_state === option.value ? '●' : '○'}</span>
                               {option.label}
@@ -653,7 +665,51 @@ export function ColumnView({ column, categories, canEdit, canManage, pinned, onT
             : column.cards.length === 0 && <p className="muted">Sin tarjetas</p>}
         </>
       )}
-    </section>
+      </section>
+      {pendingWorkflowState && (
+      <div className="modal-back" onClick={() => setPendingWorkflowState(null)}>
+        <div className="modal workflow-state-modal" onClick={(event) => event.stopPropagation()}>
+          <h2>Cambiar estado de columna</h2>
+          <p>
+            La columna <strong>“{column.name}”</strong> cambiará de:
+          </p>
+          <p className="workflow-state-change">
+            <strong>{workflowStateLabel(column.workflow_state)}</strong>
+            <span aria-hidden="true">→</span>
+            <strong>{workflowStateLabel(pendingWorkflowState)}</strong>
+          </p>
+          <p className="muted">
+            Este cambio puede afectar al estado y ciclo de vida de las tareas de esta columna.
+          </p>
+          <div className="modal-actions">
+            <button
+              className="ghost"
+              type="button"
+              onClick={() => setPendingWorkflowState(null)}
+              disabled={savingState}
+            >
+              Cancelar
+            </button>
+            <button
+              className="primary"
+              type="button"
+              onClick={() => {
+                void saveWorkflowState(pendingWorkflowState).then((saved) => {
+                  if (saved) {
+                    setPendingWorkflowState(null)
+                    setMenuOpen(false)
+                  }
+                })
+              }}
+              disabled={savingState}
+            >
+              Cambiar estado
+            </button>
+          </div>
+        </div>
+      </div>
+      )}
+    </>
   )
 }
 
