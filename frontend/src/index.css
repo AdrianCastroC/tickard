@@ -373,6 +373,12 @@ h1, h2, h3, p { margin: 0; }
   width: 100%;
 }
 .pop-menu .muted { padding: 4px 10px; font-size: 12px; }
+.column-state-menu { padding: 6px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.column-state-label { padding: 2px 10px 5px; color: var(--muted); font-size: 12px; font-weight: 700; }
+.column-state-option { width: 100%; display: flex; align-items: center; gap: 8px; padding: 6px 10px; border: 0; background: transparent; color: var(--ink); text-align: left; }
+.column-state-option:hover:not(:disabled) { background: var(--canvas); }
+.column-state-option:disabled { cursor: wait; opacity: .6; }
+.column-state-option span { width: 14px; color: var(--accent); font-size: 13px; }
 .menu-icon {
   width: 16px;
   height: 16px;

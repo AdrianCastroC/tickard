@@ -3,7 +3,7 @@ import { type FormEvent, type ReactNode, useEffect, useMemo, useRef, useState } 
 import { DndContext, DragOverlay, PointerSensor, closestCorners, useDroppable, useSensor, useSensors, type CollisionDetection, type DragEndEvent } from '@dnd-kit/core'
 import { SortableContext, arrayMove, useSortable, horizontalListSortingStrategy, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { api, type BoardCategory, type BoardPayload, type Card } from '../../api'
+import { api, type BoardCategory, type BoardPayload, type Card, type WorkflowState } from '../../api'
 import { Avatar, cardStripeStyle, DEFAULT_CARD_STRIPE, formatDate, formatDateLong, priorityLabel } from '../../shared/ui'
 import { ChevronIcon, DotsIcon, EditIcon, ExpandColumnIcon, CollapseColumnIcon, KanbanCategoryIcon, PaletteIcon, PinIcon, PlusIcon, PriorityBarsIcon, TrashIcon, UnpinIcon, VisibilityIcon, CalendarPickIcon } from '../../shared/icons'
 import { filteredBoardColumns, orderedColumnCards } from './boardUtils'
@@ -37,6 +37,14 @@ function parseGroupDropId(value: string) {
 function pinnedColumnsKey(boardId: number) {
   return `gestor:pinned-columns:${boardId}`
 }
+
+const WORKFLOW_STATE_OPTIONS: Array<{ value: WorkflowState; label: string }> = [
+  { value: 'backlog', label: 'Backlog' },
+  { value: 'pending', label: 'Por hacer' },
+  { value: 'in_progress', label: 'En progreso' },
+  { value: 'review', label: 'En revisión' },
+  { value: 'done', label: 'Completado' },
+]
 
 function readPinnedColumns(boardId: number) {
   try {
@@ -376,6 +384,7 @@ export function ColumnView({ column, categories, canEdit, canManage, pinned, onT
   const [menuOpen, setMenuOpen] = useState(false)
   const [collapsed, setCollapsed] = useState(false)
   const [renaming, setRenaming] = useState(false)
+  const [savingState, setSavingState] = useState(false)
   const [name, setName] = useState(column.name)
   const [error, setError] = useState('')
   const menuRef = useRef<HTMLDivElement>(null)
@@ -412,6 +421,25 @@ export function ColumnView({ column, categories, canEdit, canManage, pinned, onT
   async function saveColor(next: string) {
     await api(`/columns/${column.id}`, { method: 'PATCH', body: JSON.stringify({ color: next }) })
     await onRefresh()
+  }
+
+  async function saveWorkflowState(workflowState: WorkflowState) {
+    if (workflowState === column.workflow_state || savingState) return
+
+    setSavingState(true)
+    setError('')
+
+    try {
+      await api(`/columns/${column.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ workflow_state: workflowState }),
+      })
+      await onRefresh()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No se pudo actualizar el estado.')
+    } finally {
+      setSavingState(false)
+    }
   }
 
   async function removeColumn() {
@@ -515,6 +543,25 @@ export function ColumnView({ column, categories, canEdit, canManage, pinned, onT
                       <button type="button" onClick={() => { setRenaming(true); setMenuOpen(false) }}>
                         <EditIcon /> Cambiar nombre
                       </button>
+                      <div className="column-state-menu">
+                        <div className="column-state-label">Estado</div>
+                        <div role="radiogroup" aria-label={`Estado de ${column.name}`}>
+                          {WORKFLOW_STATE_OPTIONS.map((option) => (
+                            <button
+                              key={option.value}
+                              className="column-state-option"
+                              type="button"
+                              role="radio"
+                              aria-checked={column.workflow_state === option.value}
+                              disabled={savingState}
+                              onClick={() => { void saveWorkflowState(option.value) }}
+                            >
+                              <span aria-hidden="true">{column.workflow_state === option.value ? '●' : '○'}</span>
+                              {option.label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
                       <button
                         type="button"
                         onClick={() => {
