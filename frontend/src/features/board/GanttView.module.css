@@ -1,57 +1,237 @@
-.gantt { --panel-columns: minmax(0, 1fr) 40px 40px 64.67px; box-sizing: border-box; flex: 1; min-height: 0; min-width: 0; overflow: hidden; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
-.toolbar { display: none; }
-.zoom { display: flex; align-items: center; gap: 3px; }
-.zoom span { display: none; }
-.zoom button { border: 0; border-radius: 6px; padding: 5px 7px; background: transparent; color: var(--muted); font-size: 12px; }
-.zoom button:hover, .zoom button.selected { background: var(--canvas); color: var(--ink); font-weight: 600; }
-.toolbar > span { display: none; }
-.columnsButton, .columnsMenu { display: none; }
-.columnsMenu { position: absolute; top: calc(100% - 2px); right: 10px; z-index: 20; display: flex; flex-direction: column; gap: 7px; min-width: 135px; padding: 9px; border: 1px solid var(--line); border-radius: 9px; background: var(--surface); box-shadow: 0 8px 20px rgb(18 49 43 / 14%); }
-.columnsMenu label { display: flex; align-items: center; gap: 7px; color: var(--ink); }
-.scroll { width: 100%; min-width: 0; height: 100%; overflow: auto; padding-bottom: 16px; }
-.masterGrid { display: grid; grid-template-columns: var(--left-width) repeat(var(--total-days), minmax(var(--min-day-size), 1fr)); width: max(100%, calc(var(--left-width) + var(--total-days) * var(--min-day-size))); min-width: 0; }
-.group { display: contents; }
-.periodBand, .header, .row, .categoryRow { grid-column: 1 / -1; display: grid; grid-template-columns: subgrid; width: auto; min-width: 0; }
-.header { position: sticky; top: 0; z-index: 8; background: var(--surface); border-bottom: 1px solid var(--line); }
-.tableHeader, .task, .categoryLabel { position: sticky; left: 0; z-index: 7; width: var(--left-width); box-sizing: border-box; background: var(--surface); border-right: 1px solid var(--line); }
-.tableHeader { display: grid; align-items: center; min-height: 36px; column-gap: 12px; box-sizing: border-box; padding: 0 10px; color: var(--muted); font-size: 11px; text-transform: none; }
-.tableHeader strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.tableHeader strong:not(:first-child) { text-align: right; }
-.timelineHeader, .timelineRow, .summaryTimeline { position: relative; }
-.months { display: none; }
-.days { position: relative; z-index: 2; display: flex; width: max-content; }
-.months span { padding: 7px 10px; border-right: 1px solid var(--line); color: var(--muted); font-size: 11px; font-weight: 700; text-transform: uppercase; }
-.days span { width: 36px; padding: 7px 0; color: var(--muted); font-size: 12px; text-align: center; }
-.timelineSegment { box-sizing: border-box; border-right: 1px solid color-mix(in srgb, var(--line) 70%, transparent); }
-.days span.today { color: var(--accent); font-weight: 700; background: color-mix(in srgb, var(--accent) 12%, transparent); }
-.categoryRow { min-height: 30px; background: color-mix(in srgb, var(--canvas) 82%, var(--surface)); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
-.categoryLabel { display: flex; align-items: center; gap: 5px; width: var(--left-width); padding: 0 10px; border: 0; color: var(--ink); font-size: 12px; font-weight: 700; letter-spacing: .02em; text-align: left; text-transform: none; }
-.categoryLabel small { color: var(--muted); font-weight: 500; }
-.summaryTimeline { min-height: 30px; }
-.task { display: grid; align-items: center; min-height: 30px; column-gap: 12px; box-sizing: border-box; padding: 0 10px; border: 0; color: var(--ink); text-align: left; }
-.task strong { overflow: hidden; padding-left: 8px; font-size: 12px; font-weight: 500; text-overflow: ellipsis; white-space: nowrap; }
-.task span { min-width: max-content; padding-inline: 2px; color: var(--muted); font-size: 11px; text-align: right; white-space: nowrap; }
-.timelineHeader, .timelineRow, .summaryTimeline { grid-column: 2 / -1; width: auto !important; min-width: 0; }
-.timelineRow, .summaryTimeline { display: grid; grid-template-columns: subgrid !important; min-height: 30px; }
-.task, .tableHeader, .categoryLabel, .periodBandSpacer { grid-column: 1; }
-.periodBandTimeline, .timelineHeader { grid-column: 2 / -1; }
-.bar, .summaryBar { position: relative; z-index: 3; pointer-events: auto; }
-.bar { isolation: isolate; align-self: center; height: 26px; overflow: hidden; border: 0; border-radius: 7px; padding: 0 9px; color: var(--accent-ink); text-align: left; text-overflow: ellipsis; white-space: nowrap; font-size: 11px; font-weight: 700; cursor: pointer; }
-.bar:hover { filter: brightness(1.08); }
-.barProgress { position: absolute; inset: 0 auto 0 0; z-index: 0; border-radius: inherit; background: color-mix(in srgb, #fff 28%, transparent); }
-.summaryBar { top: 13px; height: 8px; border-radius: 5px; background: color-mix(in srgb, var(--accent) 58%, var(--surface)); }
-.timelineSeparator { grid-row: 1 / -1; z-index: 2; pointer-events: none; border-right: 1px solid color-mix(in srgb, var(--line) 70%, transparent); }
-.weekendShade { position: absolute; top: 0; bottom: 0; z-index: 1; pointer-events: none; background: repeating-linear-gradient(45deg, color-mix(in srgb, var(--canvas) 97%, var(--ink)) 0 8px, color-mix(in srgb, var(--canvas) 94%, var(--ink)) 8px 16px); }
-.todayLine { position: absolute; top: 0; bottom: 0; z-index: 4; width: 2px; pointer-events: none; background: color-mix(in srgb, var(--accent) 70%, transparent); }
-.temporalBand { display: grid; grid-template-columns: var(--left-width) max-content; min-width: max-content; min-height: 30px; border-bottom: 1px solid var(--line); background: var(--surface); }
-.temporalSpacer { position: sticky; left: 0; z-index: 7; width: var(--left-width); background: var(--surface); border-right: 1px solid var(--line); }
-.temporalUpper { display: flex; width: max-content; overflow: hidden; }
-.temporalUpper span { overflow: hidden; padding: 7px 10px; border-right: 1px solid var(--line); color: var(--muted); font-size: 11px; font-weight: 700; text-overflow: ellipsis; text-transform: uppercase; white-space: nowrap; }
-.periodBand { display: grid; grid-template-columns: var(--left-width) minmax(0, 1fr); width: max(100%, calc(var(--left-width) + var(--total-days) * var(--min-day-size))); min-width: 0; min-height: 30px; background: var(--surface); border-bottom: 1px solid var(--line); }
-.periodBandSpacer { position: sticky; left: 0; z-index: 7; display: flex; align-items: center; width: var(--left-width); min-height: 30px; background: var(--surface); border-right: 1px solid var(--line); }
-.periodBandTimeline { position: relative; display: flex; width: 100%; min-width: 0; }
-.periodBandTimeline span { box-sizing: border-box; overflow: hidden; padding: 7px 10px; border-right: 1px solid var(--line); color: var(--muted); font-size: 11px; font-weight: 700; text-align: center; text-overflow: ellipsis; text-transform: uppercase; white-space: nowrap; }
-.monthTrack { position: relative; width: 100%; height: 30px; }
-.monthSegment { position: absolute; top: 0; height: 30px; box-sizing: border-box; overflow: hidden; padding: 7px 10px; border-right: 1px solid var(--line); color: var(--muted); font-size: 11px; font-weight: 700; text-align: center; text-overflow: ellipsis; text-transform: uppercase; white-space: nowrap; }
-.masterGrid > .periodBand, .masterGrid > .header, .masterGrid > .row, .masterGrid > .categoryRow { grid-template-columns: subgrid; }
-.masterGrid .periodBandTimeline, .masterGrid .timelineHeader, .masterGrid .timelineRow, .masterGrid .summaryTimeline { grid-column: 2 / -1; }
+.gantt {
+  --left-width: 380px;
+  --min-day-size: 24px;
+  box-sizing: border-box;
+  display: grid;
+  grid-template-columns: var(--left-width) minmax(0, 1fr);
+  width: 100%;
+  min-width: 0;
+  height: 100%;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+}
+
+.ganttLeft,
+.timelineGrid {
+  display: grid;
+  grid-template-rows: 30px 36px repeat(var(--data-rows), 30px);
+}
+
+.ganttLeft {
+  grid-template-columns: minmax(0, 1fr) 55px 55px 70px;
+  min-width: 0;
+  border-right: 1px solid var(--line);
+}
+
+.leftToolbar,
+.leftHeader,
+.leftCategory,
+.leftCard {
+  grid-column: 1 / -1;
+}
+
+.leftToolbar {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  padding: 0 10px;
+  border-bottom: 1px solid var(--line);
+}
+
+.leftToolbar button {
+  border: 0;
+  border-radius: 6px;
+  padding: 5px 7px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.leftToolbar button:hover,
+.leftToolbar button.selected {
+  background: var(--canvas);
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.leftHeader,
+.leftCard {
+  display: grid;
+  grid-template-columns: subgrid;
+  align-items: center;
+  column-gap: 12px;
+  padding: 0 10px;
+}
+
+.leftHeader {
+  border-bottom: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.leftHeader span:not(:first-child),
+.leftCard span {
+  text-align: right;
+}
+
+.leftCategory {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  border-bottom: 1px solid var(--line);
+  background: color-mix(in srgb, var(--canvas) 82%, var(--surface));
+}
+
+.leftCategory button {
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 700;
+  text-align: left;
+}
+
+.leftCategory small {
+  color: var(--muted);
+}
+
+.leftCard {
+  width: 100%;
+  border: 0;
+  background: var(--surface);
+  color: var(--ink);
+  text-align: left;
+  cursor: pointer;
+}
+
+.leftCard:hover {
+  background: var(--canvas);
+}
+
+.leftCard strong,
+.leftCard span {
+  overflow: hidden;
+  font-size: 12px;
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.leftCard span {
+  min-width: max-content;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.timelineViewport {
+  min-width: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+.timelineGrid {
+  position: relative;
+  grid-template-columns: repeat(var(--total-days), minmax(var(--min-day-size), 1fr));
+  width: max(100%, calc(var(--total-days) * var(--min-day-size)));
+  min-width: 100%;
+}
+
+.month,
+.day,
+.categorySummary,
+.cardBar,
+.weekend,
+.todayLine {
+  min-width: 0;
+}
+
+.month,
+.day {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border-right: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 11px;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.month {
+  border-bottom: 1px solid var(--line);
+  font-weight: 700;
+}
+
+.day {
+  border-bottom: 1px solid var(--line);
+  font-size: 12px;
+  text-transform: none;
+}
+
+.gantt[data-zoom='week'] .day {
+  border-right-color: transparent;
+}
+
+.weekend {
+  z-index: 0;
+  background: repeating-linear-gradient(45deg, color-mix(in srgb, var(--canvas) 97%, var(--ink)) 0 8px, color-mix(in srgb, var(--canvas) 94%, var(--ink)) 8px 16px);
+  pointer-events: none;
+}
+
+.categorySummary {
+  z-index: 1;
+  align-self: center;
+  height: 8px;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--accent) 58%, var(--surface));
+}
+
+.cardBar {
+  z-index: 2;
+  align-self: center;
+  display: flex;
+  align-items: center;
+  height: 26px;
+  overflow: hidden;
+  border: 0;
+  border-radius: 7px;
+  padding: 0 9px;
+  color: var(--accent-ink);
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.cardBar:hover {
+  filter: brightness(1.08);
+}
+
+.cardBar span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.todayLine {
+  z-index: 3;
+  width: 2px;
+  justify-self: start;
+  background: color-mix(in srgb, var(--accent) 70%, transparent);
+  pointer-events: none;
+}
+
+@media (max-width: 900px) {
+  .gantt {
+    --left-width: 300px;
+  }
+
+  .ganttLeft {
+    grid-template-columns: minmax(0, 1fr) 45px 45px 55px;
+  }
+}
