@@ -1,4 +1,4 @@
-import { NavIcon } from '../../shared/ui'
+import { NavIcon } from '../../shared/icons'
 export type BoardViewMode = 'summary' | 'board' | 'list' | 'table' | 'gantt'
 type Props = { value: BoardViewMode; onChange: (value: BoardViewMode) => void }
 

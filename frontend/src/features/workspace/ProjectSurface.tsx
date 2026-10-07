@@ -1,6 +1,6 @@
 import type { BoardPayload, Project } from '../../api'
 
-export function ProjectSurface({ project, board }: { project: Project; board: BoardPayload | null }) {
+export function ProjectSurface(_props: { project: Project; board: BoardPayload | null }) {
   return <><section className="project-kpis" aria-label="Indicadores del proyecto"><Kpi label="Progreso general" value="—" /><Kpi label="Tareas" value="—" /><Kpi label="Fechas" value="Sin definir" /><Kpi label="Equipo" value="—" /></section><section className="project-middle-grid"><Panel title="Tareas por categoría" text="No hay datos agregados del proyecto todavía." /><Panel title="Estado de tareas" text="No hay estados agregados del proyecto todavía." /><Panel title="Próximos hitos" text="Aún no hay hitos definidos." /></section><section className="project-bottom-grid"><section className="project-panel"><h2>Cronograma del proyecto</h2><div className="project-large-empty"><strong>Planifica el cronograma global del proyecto</strong><p className="muted">El Gantt del proyecto estará disponible cuando exista planificación agregada.</p><button className="ghost" type="button" disabled>Ver Gantt del proyecto</button></div></section><Panel title="Actividad reciente" text="No hay actividad agregada del proyecto todavía." /></section></>
 }
 function Kpi({ label, value }: { label: string; value: string }) { return <article className="project-kpi"><span>{label}</span><strong>{value}</strong></article> }

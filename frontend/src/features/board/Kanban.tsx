@@ -4,19 +4,9 @@ import { DndContext, DragOverlay, PointerSensor, closestCorners, useDroppable, u
 import { SortableContext, arrayMove, useSortable, horizontalListSortingStrategy, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { api, type BoardCategory, type BoardPayload, type Card } from '../../api'
-import { Avatar, ChevronIcon, DotsIcon, EditIcon, ExpandColumnIcon, CollapseColumnIcon, PaletteIcon, PinIcon, PlusIcon, TrashIcon, UnpinIcon, VisibilityIcon, cardStripeStyle, DEFAULT_CARD_STRIPE, formatDate, formatDateLong, priorityLabel } from '../../shared/ui'
+import { Avatar, cardStripeStyle, DEFAULT_CARD_STRIPE, formatDate, formatDateLong, priorityLabel } from '../../shared/ui'
+import { ChevronIcon, DotsIcon, EditIcon, ExpandColumnIcon, CollapseColumnIcon, KanbanCategoryIcon, PaletteIcon, PinIcon, PlusIcon, PriorityBarsIcon, TrashIcon, UnpinIcon, VisibilityIcon, CalendarPickIcon } from '../../shared/icons'
 import { filteredBoardColumns, orderedColumnCards } from './boardUtils'
-function CalendarPickIcon() {
-  return (
-    <svg className="side-ico date-pick-ico" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" aria-hidden="true">
-      <path fill="currentColor" d="M224 64C241.7 64 256 78.3 256 96L256 128L384 128L384 96C384 78.3 398.3 64 416 64C433.7 64 448 78.3 448 96L448 128L480 128C515.3 128 544 156.7 544 192L544 480C544 515.3 515.3 544 480 544L160 544C124.7 544 96 515.3 96 480L96 192C96 156.7 124.7 128 160 128L192 128L192 96C192 78.3 206.3 64 224 64zM224 320C206.3 320 192 334.3 192 352L192 416C192 433.7 206.3 448 224 448L288 448C305.7 448 320 433.7 320 416L320 352C320 334.3 305.7 320 288 320L224 320z" />
-    </svg>
-  )
-}
-function CategoryIcon({ className = 'side-ico' }: { className?: string }) {
-  return <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" aria-hidden="true"><path fill="currentColor" d="M64 112C64 85.5 85.5 64 112 64L208 64C234.5 64 256 85.5 256 112L256 480C256 533 213 576 160 576C107 576 64 533 64 480L64 112zM304 473.6L304 202.1L352.1 154C370.8 135.3 401.2 135.3 420 154L487.9 221.9C506.6 240.6 506.6 271 487.9 289.8L304 473.6zM269.5 576L461.5 384L528.1 384C554.6 384 576.1 405.5 576.1 432L576.1 528C576.1 554.5 554.6 576 528.1 576L269.6 576z" /></svg>
-}
-
 function columnSortId(id: number) {
   return `column-${id}`
 }
@@ -535,7 +525,7 @@ export function ColumnView({ column, categories, canEdit, canManage, pinned, onT
                         <PaletteIcon /> Cambiar color
                       </button>
                       <button type="button" onClick={() => { setMenuOpen(false); onManageCategories() }}>
-                        <CategoryIcon className="menu-icon" /> Gestionar categoría
+                        <KanbanCategoryIcon className="menu-icon" /> Gestionar categoría
                       </button>
                       <button
                         type="button"
@@ -653,12 +643,7 @@ export function PriorityMark({ priority }: { priority?: Card['priority'] }) {
   const level = { baja: 1, media: 2, alta: 3, urgente: 4 }[priority]
   return (
     <span className={`prio-signal prio-${priority}`} title={`Prioridad ${priorityLabel[priority]}`} aria-label={`Prioridad ${priorityLabel[priority]}`}>
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 28 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-        <path className={level >= 1 ? 'on' : undefined} d="M3 20h.01" />
-        <path className={level >= 2 ? 'on' : undefined} d="M9 20v-4" />
-        <path className={level >= 3 ? 'on' : undefined} d="M15 20v-8" />
-        <path className={level >= 4 ? 'on' : undefined} d="M21 20V8" />
-      </svg>
+      <PriorityBarsIcon level={level} />
     </span>
   )
 }

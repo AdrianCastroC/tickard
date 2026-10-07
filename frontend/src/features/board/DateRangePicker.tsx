@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
-import { ChevronIcon, formatDateLong } from '../../shared/ui'
+import { ChevronIcon } from '../../shared/icons'
+import { formatDateLong } from '../../shared/ui'
 import { parseDateKey, toDateKey } from './Kanban'
 
 export function formatDateRange(start?: string | null, end?: string | null) {

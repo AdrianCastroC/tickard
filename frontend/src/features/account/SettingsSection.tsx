@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { api, type Profile } from '../../api'
-import { ComputerIcon, MoonIcon, SunIcon } from '../../shared/ui'
+import { ComputerIcon, MoonIcon, SunIcon } from '../../shared/icons'
 import styles from './AccountModal.module.css'
 import { setTheme, type UserTheme } from './theme'
 

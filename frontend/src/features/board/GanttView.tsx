@@ -191,7 +191,7 @@ export function GanttView({ board, cards, onOpen }: GanttProps) {
   const allCards = cards.flatMap((column) => column.cards)
   const groups = useMemo(() => categoryGroups(board, cards), [board, cards])
   const [zoom, setZoom] = useState<Zoom>(() => (localStorage.getItem(`tickard:gantt-zoom:${board.board.id}`) as Zoom) || 'week')
-  const [visibility, setVisibility] = useState<Visibility>(DEFAULT_COLUMNS)
+  const [visibility] = useState<Visibility>(DEFAULT_COLUMNS)
   const collapsedStorageKey = `tickard:gantt-collapsed:${board.board.id}`
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>(() => {
     try {

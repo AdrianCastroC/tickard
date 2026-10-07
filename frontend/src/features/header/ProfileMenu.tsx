@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { api, setToken, type Profile } from '../../api'
-import { Avatar, BellIcon, GlobeIcon, HelpCircleIcon, LogoutIcon, PencilIcon, ProfileUserIcon, SettingsIcon, SparklesIcon } from '../../shared/ui'
+import { Avatar } from '../../shared/ui'
+import { BellIcon, GlobeIcon, HelpCircleIcon, LogoutIcon, PencilIcon, ProfileUserIcon, SettingsIcon, SparklesIcon } from '../../shared/icons'
 import styles from './Header.module.css'
 
 type ProfileMenuProps = {

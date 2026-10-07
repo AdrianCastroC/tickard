@@ -1,4 +1,4 @@
-import { NavIcon } from '../../shared/ui'
+import { NavIcon } from '../../shared/icons'
 import styles from './Header.module.css'
 
 type SearchBarProps = {

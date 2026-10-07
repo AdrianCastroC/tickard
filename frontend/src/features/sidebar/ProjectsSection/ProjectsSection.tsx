@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { api, type Profile, type Project } from '../../../api'
-import { NavIcon, PlusIcon } from '../../../shared/ui'
+import { NavIcon, PlusIcon } from '../../../shared/icons'
 import { ProjectItem } from './ProjectItem'
 
 type Props = { profile: Profile; workspaceId: number | null; mini: boolean; onOpenProject: (project: Project) => void; onProjectsChanged: () => Promise<Profile> }

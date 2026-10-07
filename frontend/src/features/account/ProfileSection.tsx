@@ -1,6 +1,7 @@
 import { type FormEvent, useEffect, useRef, useState } from 'react'
 import { api, type Profile } from '../../api'
-import { Avatar, FloppyIcon, PencilIcon } from '../../shared/ui'
+import { Avatar } from '../../shared/ui'
+import { FloppyIcon, PencilIcon } from '../../shared/icons'
 import styles from './AccountModal.module.css'
 
 type Props = { profile: Profile; workspaceId: number | null; onProfile: (value: Profile) => void; onAvatar: (file: File) => Promise<void> }

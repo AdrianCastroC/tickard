@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { TrashIcon } from '../../../shared/ui'
+import { TrashIcon } from '../../../shared/icons'
 
 export function DeleteBoardModal({ board, onClose, onConfirm }: {
   board: { id: number; name: string }

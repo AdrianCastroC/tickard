@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
 import { createPortal } from 'react-dom'
 import { api, type Project } from '../../api'
-import { PlusIcon } from '../../shared/ui'
+import { PlusIcon } from '../../shared/icons'
 import { PROJECT_VIEWS, type ProjectView } from './ProjectNavigation'
 import type { ProjectContext } from './useProjectTabs'
 

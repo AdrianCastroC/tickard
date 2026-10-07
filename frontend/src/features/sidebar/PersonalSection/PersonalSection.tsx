@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { createPortal } from 'react-dom'
 import { ClientsDrawer, RosterDrawer } from '../../administration'
-import { NavIcon } from '../../../shared/ui'
+import { NavIcon } from '../../../shared/icons'
 
 type Section = 'departments' | 'teams' | 'clients'
 type Props = { workspaceId: number | null; closeRequest: number; onDataChanged: () => Promise<void> }

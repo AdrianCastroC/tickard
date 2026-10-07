@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { TrashIcon } from '../../../shared/ui'
+import { TrashIcon } from '../../../shared/icons'
 import type { Project } from '../../../api'
 
 export function DeleteProjectModal({ project, onClose, onConfirm }: {

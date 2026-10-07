@@ -1,6 +1,6 @@
 import styles from './Header.module.css'
 import { SearchBar } from './SearchBar'
-import { BellIcon, HelpCircleIcon } from '../../shared/ui'
+import { BellIcon, HelpCircleIcon } from '../../shared/icons'
 import { Brand } from './Brand'
 
 type HeaderProps = {
