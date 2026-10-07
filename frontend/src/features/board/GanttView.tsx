@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import type { BoardPayload, Card, Column } from '../../api'
 import { CollapseColumnIcon, ExpandColumnIcon, EyeLowVisionIcon } from '../../shared/icons'
 import styles from './GanttView.module.css'
@@ -315,21 +315,28 @@ export function GanttView({ board, cards, onOpen }: GanttProps) {
     return () => document.removeEventListener('mousedown', closeOnOutsideClick)
   }, [columnsOpen])
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (leftCollapsed || !leftToolbarRef.current) {
       return
     }
 
     const toolbar = leftToolbarRef.current
     const updateToolbarWidth = () => {
-      const measuredWidth = toolbar.scrollWidth
+      const controls = Array.from(toolbar.children).filter((element): element is HTMLButtonElement => element instanceof HTMLButtonElement)
+      const toolbarStyles = getComputedStyle(toolbar)
+      const horizontalPadding = parseFloat(toolbarStyles.paddingLeft) + parseFloat(toolbarStyles.paddingRight)
+      const gap = parseFloat(toolbarStyles.columnGap || toolbarStyles.gap) || 0
+      const controlsWidth = controls.reduce((total, control) => total + control.getBoundingClientRect().width, 0)
+      const measuredWidth = Math.ceil(horizontalPadding + controlsWidth + gap * Math.max(0, controls.length - 1))
 
       setToolbarMinWidth((currentWidth) => currentWidth === measuredWidth ? currentWidth : measuredWidth)
     }
     const observer = new ResizeObserver(updateToolbarWidth)
 
     updateToolbarWidth()
-    observer.observe(toolbar)
+    Array.from(toolbar.children)
+      .filter((element): element is HTMLButtonElement => element instanceof HTMLButtonElement)
+      .forEach((control) => observer.observe(control))
 
     return () => observer.disconnect()
   }, [leftCollapsed])

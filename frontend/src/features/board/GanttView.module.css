@@ -46,12 +46,14 @@
 }
 
 .leftToolbar button {
+  flex: 0 0 auto;
   border: 0;
   border-radius: 6px;
   padding: 5px 7px;
   background: transparent;
   color: var(--muted);
   font-size: 12px;
+  white-space: nowrap;
 }
 
 .leftToolbar button:hover,
