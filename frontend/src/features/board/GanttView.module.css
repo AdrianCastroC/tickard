@@ -22,6 +22,7 @@
 .days { position: relative; z-index: 2; display: flex; width: max-content; }
 .months span { padding: 7px 10px; border-right: 1px solid var(--line); color: var(--muted); font-size: 11px; font-weight: 700; text-transform: uppercase; }
 .days span { width: 36px; padding: 7px 0; color: var(--muted); font-size: 12px; text-align: center; }
+.timelineSegment { box-sizing: border-box; border-right: 1px solid color-mix(in srgb, var(--line) 70%, transparent); }
 .days span.today { color: var(--accent); font-weight: 700; background: color-mix(in srgb, var(--accent) 12%, transparent); }
 .categoryRow { min-height: 30px; background: color-mix(in srgb, var(--canvas) 82%, var(--surface)); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
 .categoryLabel { display: flex; align-items: center; gap: 5px; width: var(--left-width); padding: 0 10px; border: 0; color: var(--ink); font-size: 12px; font-weight: 700; letter-spacing: .02em; text-align: left; text-transform: none; }
@@ -39,6 +40,7 @@
 .bar:hover { filter: brightness(1.08); }
 .barProgress { position: absolute; inset: 0 auto 0 0; z-index: 0; border-radius: inherit; background: color-mix(in srgb, #fff 28%, transparent); }
 .summaryBar { top: 13px; height: 8px; border-radius: 5px; background: color-mix(in srgb, var(--accent) 58%, var(--surface)); }
+.timelineSeparator { grid-row: 1 / -1; z-index: 2; pointer-events: none; border-right: 1px solid color-mix(in srgb, var(--line) 70%, transparent); }
 .weekendShade { position: absolute; top: 0; bottom: 0; z-index: 1; pointer-events: none; background: repeating-linear-gradient(45deg, color-mix(in srgb, var(--canvas) 97%, var(--ink)) 0 8px, color-mix(in srgb, var(--canvas) 94%, var(--ink)) 8px 16px); }
 .todayLine { position: absolute; top: 0; bottom: 0; z-index: 4; width: 2px; pointer-events: none; background: color-mix(in srgb, var(--accent) 70%, transparent); }
 .temporalBand { display: grid; grid-template-columns: var(--left-width) max-content; min-width: max-content; min-height: 30px; border-bottom: 1px solid var(--line); background: var(--surface); }
