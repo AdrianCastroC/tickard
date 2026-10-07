@@ -1,5 +1,5 @@
 .gantt {
-  --left-width: 380px;
+  --left-collapsed-width: 34px;
   --min-day-size: 24px;
   box-sizing: border-box;
   display: grid;
@@ -13,14 +13,18 @@
   background: var(--surface);
 }
 
+.gantt[data-left-collapsed='true'] {
+  grid-template-columns: var(--left-collapsed-width) minmax(0, 1fr);
+}
+
 .ganttLeft,
 .timelineGrid {
   display: grid;
-  grid-template-rows: 30px 36px repeat(var(--data-rows), 30px);
+  grid-template-rows: 30px 26px repeat(var(--data-rows), 30px);
 }
 
 .ganttLeft {
-  grid-template-columns: minmax(0, 1fr) 55px 55px 70px;
+  grid-template-columns: var(--left-columns);
   min-width: 0;
   border-right: 1px solid var(--line);
 }
@@ -33,6 +37,7 @@
 }
 
 .leftToolbar {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 3px;
@@ -56,6 +61,60 @@
   font-weight: 600;
 }
 
+.gantt[data-left-collapsed='true'] .leftToolbar {
+  justify-content: center;
+  padding: 0;
+}
+
+.gantt[data-left-collapsed='true'] .leftToolbar button {
+  padding: 5px;
+}
+
+.collapsedRail {
+  align-items: flex-start;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  padding: 5px 0;
+  border: 0;
+  border-right: 1px solid var(--line);
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.collapsedRail:hover {
+  background: var(--canvas);
+  color: var(--ink);
+}
+
+.visibilityButton {
+  margin-left: auto;
+}
+
+.columnsPopover {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 10px;
+  z-index: 6;
+  display: grid;
+  gap: 8px;
+  min-width: 150px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  box-shadow: 0 8px 24px color-mix(in srgb, var(--ink) 14%, transparent);
+}
+
+.columnOption {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--ink);
+  font-size: 12px;
+}
+
 .leftHeader,
 .leftCard {
   display: grid;
@@ -77,11 +136,20 @@
 }
 
 .leftCategory {
+  display: grid;
+  grid-template-columns: subgrid;
+  align-items: center;
+  column-gap: 12px;
+  padding: 0 10px;
+  border-bottom: 1px solid var(--line);
+  background: color-mix(in srgb, var(--canvas) 82%, var(--surface));
+}
+
+.categoryInfo {
   display: flex;
   align-items: center;
   gap: 5px;
-  border-bottom: 1px solid var(--line);
-  background: color-mix(in srgb, var(--canvas) 82%, var(--surface));
+  min-width: 0;
 }
 
 .leftCategory button {
@@ -95,6 +163,16 @@
 
 .leftCategory small {
   color: var(--muted);
+}
+
+.leftCategory > span {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 500;
+  text-align: right;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .leftCard {
@@ -229,21 +307,29 @@
 .categorySummary {
   z-index: 4;
   align-self: center;
-  height: 8px;
+  height: 10px;
   border-radius: 4px;
-  background: color-mix(in srgb, var(--accent) 58%, var(--surface));
+  border: 1px solid var(--accent);
+  background: linear-gradient(
+    to right,
+    var(--accent) 0%,
+    var(--accent) var(--category-progress),
+    color-mix(in srgb, var(--accent) 15%, #ffffff) var(--category-progress),
+    color-mix(in srgb, var(--accent) 15%, #ffffff) 100%
+  );
 }
 
 .cardBar {
   z-index: 4;
   align-self: center;
+  box-sizing: border-box;
   display: flex;
   align-items: center;
-  height: 26px;
+  height: 20px;
   overflow: hidden;
   border: 1px solid var(--card-color);
   border-radius: 7px;
-  padding: 0 9px;
+  padding: 2px 9px;
   background: linear-gradient(
     to right,
     var(--card-color) 0%,
@@ -267,17 +353,27 @@
 .todayLine {
   z-index: 5;
   width: 2px;
-  justify-self: start;
-  background: color-mix(in srgb, var(--accent) 70%, transparent);
+  justify-self: center;
+  background: repeating-linear-gradient(
+    to bottom,
+    color-mix(in srgb, var(--accent) 75%, transparent) 0 5px,
+    transparent 5px 9px
+  );
   pointer-events: none;
 }
 
-@media (max-width: 900px) {
-  .gantt {
-    --left-width: 300px;
-  }
-
-  .ganttLeft {
-    grid-template-columns: minmax(0, 1fr) 45px 45px 55px;
-  }
+.todayLabel {
+  z-index: 6;
+  align-self: end;
+  justify-self: center;
+  transform: translateY(50%);
+  padding: 2px 5px;
+  border-radius: 4px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1.1;
+  white-space: nowrap;
+  pointer-events: none;
 }

@@ -1,8 +1,10 @@
-import { useEffect, useMemo, useState, type CSSProperties } from 'react'
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import type { BoardPayload, Card, Column } from '../../api'
+import { CollapseColumnIcon, ExpandColumnIcon, EyeLowVisionIcon } from '../../shared/icons'
 import styles from './GanttView.module.css'
 
 const DAY_MS = 86_400_000
+const TASK_WIDTH = 200
 const DEFAULT_COLUMNS = { start: true, end: true, progress: true }
 const ZOOMS = ['day', 'week', 'month', 'quarter'] as const
 type Zoom = (typeof ZOOMS)[number]
@@ -11,9 +13,15 @@ type Day = { key: string; date: Date }
 type GanttCard = { card: Card; column: Column }
 type CategoryGroup = { id: string; name: string; cards: GanttCard[] }
 type TimelineEntry = { group: CategoryGroup; row: number; collapsed: boolean }
+type CategoryStats = { start: string | null; end: string | null; progress: number | null }
 type CardBarStyle = CSSProperties & {
   '--card-color': string
   '--card-progress': string
+}
+
+type GanttGridStyle = CSSProperties & {
+  '--left-columns': string
+  '--left-width': string
 }
 
 function parseDay(value: string) {
@@ -112,6 +120,45 @@ function isWeekend(day: Day) {
   return day.date.getUTCDay() === 0 || day.date.getUTCDay() === 6
 }
 
+function readVisibility(storageKey: string): Visibility {
+  try {
+    const value = JSON.parse(localStorage.getItem(storageKey) ?? 'null') as Partial<Visibility> | null
+
+    if (
+      value
+      && typeof value.start === 'boolean'
+      && typeof value.end === 'boolean'
+      && typeof value.progress === 'boolean'
+    ) {
+      return value as Visibility
+    }
+  } catch {
+    return DEFAULT_COLUMNS
+  }
+
+  return DEFAULT_COLUMNS
+}
+
+function readCollapsed(storageKey: string) {
+  return localStorage.getItem(storageKey) === 'true'
+}
+
+function visibleColumnTemplate(visibility: Visibility) {
+  return [
+    'minmax(200px, 1fr)',
+    visibility.start ? '55px' : null,
+    visibility.end ? '55px' : null,
+    visibility.progress ? '70px' : null,
+  ].filter(Boolean).join(' ')
+}
+
+function leftWidth(visibility: Visibility) {
+  return TASK_WIDTH
+    + (visibility.start ? 55 : 0)
+    + (visibility.end ? 55 : 0)
+    + (visibility.progress ? 70 : 0)
+}
+
 function monthSpans(days: Day[]) {
   const spans: { label: string; start: number; end: number }[] = []
   days.forEach((day, index) => {
@@ -161,11 +208,21 @@ function quarterSpans(days: Day[], includeYear: boolean) {
 }
 
 function categoryRange(group: CategoryGroup, timelineStart: string) {
-  const cards = group.cards.filter(({ card }) => planned(card)).map(({ card }) => card)
-  if (cards.length === 0) return null
-  const start = cards.reduce((value, card) => card.start_date! < value ? card.start_date! : value, cards[0].start_date!)
-  const end = cards.reduce((value, card) => card.due_date! > value ? card.due_date! : value, cards[0].due_date!)
-  return `${gridColumn(timelineStart, start)} / ${dateEndColumn(timelineStart, end)}`
+  const stats = categoryStats(group)
+  if (!stats.start || !stats.end) return null
+  return `${gridColumn(timelineStart, stats.start)} / ${dateEndColumn(timelineStart, stats.end)}`
+}
+
+function categoryStats(group: CategoryGroup): CategoryStats {
+  const startDates = group.cards.map(({ card }) => card.start_date).filter((value): value is string => Boolean(value))
+  const endDates = group.cards.map(({ card }) => card.due_date).filter((value): value is string => Boolean(value))
+  const progressTotal = group.cards.reduce((total, { card }) => total + Math.min(100, Math.max(0, card.progress?.percent ?? 0)), 0)
+
+  return {
+    start: startDates.length > 0 ? startDates.reduce((value, date) => date < value ? date : value, startDates[0]) : null,
+    end: endDates.length > 0 ? endDates.reduce((value, date) => date > value ? date : value, endDates[0]) : null,
+    progress: group.cards.length > 0 ? Math.round(progressTotal / group.cards.length) : null,
+  }
 }
 
 function weekSpans(days: Day[]) {
@@ -191,7 +248,14 @@ export function GanttView({ board, cards, onOpen }: GanttProps) {
   const allCards = cards.flatMap((column) => column.cards)
   const groups = useMemo(() => categoryGroups(board, cards), [board, cards])
   const [zoom, setZoom] = useState<Zoom>(() => (localStorage.getItem(`tickard:gantt-zoom:${board.board.id}`) as Zoom) || 'week')
-  const [visibility] = useState<Visibility>(DEFAULT_COLUMNS)
+  const visibilityStorageKey = `tickard:gantt-columns:${board.board.id}`
+  const [visibility, setVisibility] = useState<Visibility>(() => readVisibility(visibilityStorageKey))
+  const leftCollapsedStorageKey = `tickard:gantt-left-collapsed:${board.board.id}`
+  const [leftCollapsed, setLeftCollapsed] = useState(() => readCollapsed(leftCollapsedStorageKey))
+  const [columnsOpen, setColumnsOpen] = useState(false)
+  const toolbarRef = useRef<HTMLDivElement>(null)
+  const leftToolbarRef = useRef<HTMLDivElement>(null)
+  const [toolbarMinWidth, setToolbarMinWidth] = useState(0)
   const collapsedStorageKey = `tickard:gantt-collapsed:${board.board.id}`
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>(() => {
     try {
@@ -211,7 +275,13 @@ export function GanttView({ board, cards, onOpen }: GanttProps) {
   })
 
   const totalDays = days.length
-  const gridStyle = { '--total-days': totalDays, '--data-rows': row - 3 } as CSSProperties
+  const totalLeftWidth = leftWidth(visibility)
+  const gridStyle = {
+    '--total-days': totalDays,
+    '--data-rows': row - 3,
+    '--left-columns': visibleColumnTemplate(visibility),
+    '--left-width': `${totalLeftWidth}px`,
+  } as GanttGridStyle
 
   useEffect(() => {
     localStorage.setItem(`tickard:gantt-zoom:${board.board.id}`, zoom)
@@ -221,6 +291,49 @@ export function GanttView({ board, cards, onOpen }: GanttProps) {
     localStorage.setItem(collapsedStorageKey, JSON.stringify(collapsed))
   }, [collapsedStorageKey, collapsed])
 
+  useEffect(() => {
+    localStorage.setItem(visibilityStorageKey, JSON.stringify(visibility))
+  }, [visibility, visibilityStorageKey])
+
+  useEffect(() => {
+    localStorage.setItem(leftCollapsedStorageKey, String(leftCollapsed))
+  }, [leftCollapsedStorageKey, leftCollapsed])
+
+  useEffect(() => {
+    if (!columnsOpen) {
+      return
+    }
+
+    function closeOnOutsideClick(event: MouseEvent) {
+      if (toolbarRef.current && !toolbarRef.current.contains(event.target as Node)) {
+        setColumnsOpen(false)
+      }
+    }
+
+    document.addEventListener('mousedown', closeOnOutsideClick)
+
+    return () => document.removeEventListener('mousedown', closeOnOutsideClick)
+  }, [columnsOpen])
+
+  useEffect(() => {
+    if (leftCollapsed || !leftToolbarRef.current) {
+      return
+    }
+
+    const toolbar = leftToolbarRef.current
+    const updateToolbarWidth = () => {
+      const measuredWidth = toolbar.scrollWidth
+
+      setToolbarMinWidth((currentWidth) => currentWidth === measuredWidth ? currentWidth : measuredWidth)
+    }
+    const observer = new ResizeObserver(updateToolbarWidth)
+
+    updateToolbarWidth()
+    observer.observe(toolbar)
+
+    return () => observer.disconnect()
+  }, [leftCollapsed])
+
   const monthRows = monthSpans(days)
   const yearRows = yearSpans(days)
   const quarterRows = quarterSpans(days, false)
@@ -229,18 +342,74 @@ export function GanttView({ board, cards, onOpen }: GanttProps) {
   const showWeeks = zoom === 'week'
   const showMonths = zoom === 'month'
   const showQuarters = zoom === 'quarter'
+  const today = dateKey(new Date())
+  const todayColumn = gridColumn(range.start, today)
+  const todayVisible = today >= range.start && today <= range.end
+  const effectiveLeftWidth = Math.max(totalLeftWidth, toolbarMinWidth)
 
   return (
-    <div className={styles.gantt} data-zoom={zoom}>
-      <div className={styles.ganttLeft} style={gridStyle}>
-        <div className={styles.leftToolbar}>
-          {ZOOMS.map((value) => <button key={value} type="button" className={zoom === value ? styles.selected : ''} onClick={() => setZoom(value)}>{value === 'day' ? 'Día' : value === 'week' ? 'Semana' : value === 'month' ? 'Mes' : 'Trimestre'}</button>)}
+    <div className={styles.gantt} data-zoom={zoom} data-left-collapsed={leftCollapsed} style={{ '--left-width': `${effectiveLeftWidth}px` } as CSSProperties}>
+      {leftCollapsed ? (
+        <button
+          className={`${styles.ganttLeft} ${styles.collapsedRail}`}
+          type="button"
+          title="Expandir panel"
+          aria-label="Expandir panel"
+          onClick={() => setLeftCollapsed(false)}
+        >
+          <ExpandColumnIcon />
+        </button>
+      ) : (
+        <div className={styles.ganttLeft} style={gridStyle}>
+          <>
+            <div ref={(element) => {
+              toolbarRef.current = element
+              leftToolbarRef.current = element
+            }} className={styles.leftToolbar}>
+              <button type="button" title="Colapsar panel" aria-label="Colapsar panel" onClick={() => setLeftCollapsed(true)}>
+                <CollapseColumnIcon />
+              </button>
+              {ZOOMS.map((value) => <button key={value} type="button" className={zoom === value ? styles.selected : ''} onClick={() => setZoom(value)}>{value === 'day' ? 'Día' : value === 'week' ? 'Semana' : value === 'month' ? 'Mes' : 'Trimestre'}</button>)}
+              <button className={styles.visibilityButton} type="button" title="Columnas" aria-label="Configurar columnas" onClick={() => setColumnsOpen((open) => !open)}>
+                <EyeLowVisionIcon />
+              </button>
+              {columnsOpen && (
+                <div className={styles.columnsPopover} role="dialog" aria-label="Columnas">
+                  <strong>Columnas</strong>
+                  {(['start', 'end', 'progress'] as const).map((column) => (
+                    <label key={column} className={styles.columnOption}>
+                      <input
+                        type="checkbox"
+                        checked={visibility[column]}
+                        onChange={() => setVisibility((current) => ({ ...current, [column]: !current[column] }))}
+                      />
+                      {column === 'start' ? 'Inicio' : column === 'end' ? 'Fin' : 'Progreso'}
+                    </label>
+                  ))}
+                </div>
+              )}
+            </div>
+            <div className={styles.leftHeader}><span>Tarea</span>{visibility.start && <span>Inicio</span>}{visibility.end && <span>Fin</span>}{visibility.progress && <span>Progreso</span>}</div>
+            {entries.map(({ group, row: groupRow, collapsed: isCollapsed }) => {
+          const stats = categoryStats(group)
+
+          return (
+            <div key={group.id} className={styles.leftCategory} style={{ gridRow: groupRow }}>
+              <div className={styles.categoryInfo}>
+                <button type="button" onClick={() => setCollapsed((current) => ({ ...current, [group.id]: !current[group.id] }))}>{isCollapsed ? '▸' : '▾'} {group.name}</button>
+                <small>{group.cards.length}</small>
+              </div>
+              {visibility.start && <span>{compactDate(stats.start)}</span>}
+              {visibility.end && <span>{compactDate(stats.end)}</span>}
+              {visibility.progress && <span>{stats.progress === null ? '—' : `${stats.progress}%`}</span>}
+            </div>
+          )
+            })}
+            {entries.flatMap(({ group, row: groupRow, collapsed: isCollapsed }) => isCollapsed ? [] : group.cards.map((item, index) => <button key={item.card.id} className={`${styles.leftCard} ${index % 2 === 1 ? styles.leftCardAlternate : ''}`} style={{ gridRow: groupRow + index + 1 }} type="button" onClick={() => onOpen(item.card)}><strong>{item.card.title}</strong>{visibility.start && <span>{compactDate(item.card.start_date)}</span>}{visibility.end && <span>{compactDate(item.card.due_date)}</span>}{visibility.progress && <span>{item.card.progress ? `${item.card.progress.percent}%` : '—'}</span>}</button>))}
+          </>
         </div>
-        <div className={styles.leftHeader}><span>Tarea</span>{visibility.start && <span>Inicio</span>}{visibility.end && <span>Fin</span>}{visibility.progress && <span>Progreso</span>}</div>
-        {entries.map(({ group, row: groupRow, collapsed: isCollapsed }) => <div key={group.id} className={styles.leftCategory} style={{ gridRow: groupRow }}><button type="button" onClick={() => setCollapsed((current) => ({ ...current, [group.id]: !current[group.id] }))}>{isCollapsed ? '▸' : '▾'} {group.name}</button><small>{group.cards.length}</small></div>)}
-        {entries.flatMap(({ group, row: groupRow, collapsed: isCollapsed }) => isCollapsed ? [] : group.cards.map((item, index) => <button key={item.card.id} className={`${styles.leftCard} ${index % 2 === 1 ? styles.leftCardAlternate : ''}`} style={{ gridRow: groupRow + index + 1 }} type="button" onClick={() => onOpen(item.card)}><strong>{item.card.title}</strong>{visibility.start && <span>{compactDate(item.card.start_date)}</span>}{visibility.end && <span>{compactDate(item.card.due_date)}</span>}{visibility.progress && <span>{item.card.progress ? `${item.card.progress.percent}%` : '—'}</span>}</button>))}
-      </div>
-      <div className={styles.timelineViewport}>
+      )}
+        <div className={styles.timelineViewport}>
         <div className={styles.timelineGrid} style={gridStyle}>
           {(showMonths ? monthQuarterRows : showQuarters ? yearRows : monthRows).map((item) => <span key={item.label} className={showMonths || showQuarters ? styles.quarter : styles.month} style={{ gridRow: 1, gridColumn: `${item.start} / ${item.end}` }}>{item.label}</span>)}
           {showMonths && monthRows.map((month) => <span key={`month-${month.label}`} className={styles.month} style={{ gridRow: 2, gridColumn: `${month.start} / ${month.end}` }}>{month.label}</span>)}
@@ -260,7 +429,15 @@ export function GanttView({ board, cards, onOpen }: GanttProps) {
               return null
             }
 
-            return <span key={`summary-${group.id}`} className={styles.categorySummary} style={{ gridRow: groupRow, gridColumn: rangeValue }} aria-hidden="true" />
+            const stats = categoryStats(group)
+            const progress = stats.progress ?? 0
+            const summaryStyle = {
+              gridRow: groupRow,
+              gridColumn: rangeValue,
+              '--category-progress': `${progress}%`,
+            } as CSSProperties
+
+            return <span key={`summary-${group.id}`} className={styles.categorySummary} style={summaryStyle} aria-hidden="true" />
           })}
           {entries.flatMap(({ group, row: groupRow, collapsed: isCollapsed }) => isCollapsed ? [] : group.cards.map((item, index) => {
             if (!planned(item.card)) {
@@ -278,7 +455,10 @@ export function GanttView({ board, cards, onOpen }: GanttProps) {
 
             return <button key={item.card.id} className={styles.cardBar} data-card-id={item.card.id} type="button" onClick={() => onOpen(item.card)} style={cardStyle} title={item.card.title} aria-label={item.card.title} />
           }))}
-          {dateKey(new Date()) >= range.start && dateKey(new Date()) <= range.end && <span className={styles.todayLine} style={{ gridRow: '2 / -1', gridColumn: `${gridColumn(range.start, dateKey(new Date()))} / span 1` }} aria-hidden="true" />}
+          {todayVisible && <>
+            <span className={styles.todayLabel} style={{ gridRow: 2, gridColumn: `${todayColumn} / span 1` }}>Hoy</span>
+            <span className={styles.todayLine} style={{ gridRow: '3 / -1', gridColumn: `${todayColumn} / span 1` }} aria-hidden="true" />
+          </>}
         </div>
       </div>
     </div>
