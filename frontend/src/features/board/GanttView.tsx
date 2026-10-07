@@ -11,6 +11,10 @@ type Day = { key: string; date: Date }
 type GanttCard = { card: Card; column: Column }
 type CategoryGroup = { id: string; name: string; cards: GanttCard[] }
 type TimelineEntry = { group: CategoryGroup; row: number; collapsed: boolean }
+type CardBarStyle = CSSProperties & {
+  '--card-color': string
+  '--card-progress': string
+}
 
 function parseDay(value: string) {
   const [year, month, day] = value.split('-').map(Number)
@@ -258,7 +262,22 @@ export function GanttView({ board, cards, onOpen }: GanttProps) {
 
             return <span key={`summary-${group.id}`} className={styles.categorySummary} style={{ gridRow: groupRow, gridColumn: rangeValue }} aria-hidden="true" />
           })}
-          {entries.flatMap(({ group, row: groupRow, collapsed: isCollapsed }) => isCollapsed ? [] : group.cards.map((item, index) => planned(item.card) && <button key={item.card.id} className={styles.cardBar} data-card-id={item.card.id} type="button" onClick={() => onOpen(item.card)} style={{ gridRow: groupRow + index + 1, gridColumn: `${gridColumn(range.start, item.card.start_date!)} / ${dateEndColumn(range.start, item.card.due_date!)}`, background: item.card.color || item.column.color || 'var(--accent)' }} title={item.card.title}><span>{item.card.title}</span></button>))}
+          {entries.flatMap(({ group, row: groupRow, collapsed: isCollapsed }) => isCollapsed ? [] : group.cards.map((item, index) => {
+            if (!planned(item.card)) {
+              return false
+            }
+
+            const cardColor = item.card.color || item.column.color || 'var(--accent)'
+            const progress = Math.min(100, Math.max(0, item.card.progress?.percent ?? 0))
+            const cardStyle = {
+              gridRow: groupRow + index + 1,
+              gridColumn: `${gridColumn(range.start, item.card.start_date!)} / ${dateEndColumn(range.start, item.card.due_date!)}`,
+              '--card-color': cardColor,
+              '--card-progress': `${progress}%`,
+            } as CardBarStyle
+
+            return <button key={item.card.id} className={styles.cardBar} data-card-id={item.card.id} type="button" onClick={() => onOpen(item.card)} style={cardStyle} title={item.card.title} aria-label={item.card.title} />
+          }))}
           {dateKey(new Date()) >= range.start && dateKey(new Date()) <= range.end && <span className={styles.todayLine} style={{ gridRow: '2 / -1', gridColumn: `${gridColumn(range.start, dateKey(new Date()))} / span 1` }} aria-hidden="true" />}
         </div>
       </div>

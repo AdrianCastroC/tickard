@@ -241,9 +241,16 @@
   align-items: center;
   height: 26px;
   overflow: hidden;
-  border: 0;
+  border: 1px solid var(--card-color);
   border-radius: 7px;
   padding: 0 9px;
+  background: linear-gradient(
+    to right,
+    var(--card-color) 0%,
+    var(--card-color) var(--card-progress),
+    color-mix(in srgb, var(--card-color) 15%, #ffffff) var(--card-progress),
+    color-mix(in srgb, var(--card-color) 15%, #ffffff) 100%
+  );
   color: var(--accent-ink);
   text-align: left;
   text-overflow: ellipsis;
@@ -255,11 +262,6 @@
 
 .cardBar:hover {
   filter: brightness(1.08);
-}
-
-.cardBar span {
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 .todayLine {
