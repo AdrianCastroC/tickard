@@ -481,7 +481,11 @@ export function GanttView({ board, cards, onOpen }: GanttProps) {
 
             const inReview = item.column.workflow_state === 'review'
             const isDone = item.column.workflow_state === 'done'
-            const cardLabel = inReview ? `${item.card.title}, En revisión` : item.card.title
+            const cardLabel = inReview
+              ? `${item.card.title}, En revisión`
+              : isDone
+                ? `${item.card.title}, Completado`
+                : item.card.title
 
             return (
               <button
