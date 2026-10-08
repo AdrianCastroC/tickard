@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import type { BoardPayload, Card, Column } from '../../api'
-import { CollapseColumnIcon, ExpandColumnIcon, EyeIcon, EyeLowVisionIcon } from '../../shared/icons'
+import { CollapseColumnIcon, DoneIcon, ExpandColumnIcon, EyeIcon, EyeLowVisionIcon } from '../../shared/icons'
 import styles from './GanttView.module.css'
 
 const DAY_MS = 86_400_000
@@ -480,6 +480,7 @@ export function GanttView({ board, cards, onOpen }: GanttProps) {
             ].filter(Boolean).join(' ')
 
             const inReview = item.column.workflow_state === 'review'
+            const isDone = item.column.workflow_state === 'done'
             const cardLabel = inReview ? `${item.card.title}, En revisión` : item.card.title
 
             return (
@@ -494,6 +495,7 @@ export function GanttView({ board, cards, onOpen }: GanttProps) {
                 aria-label={cardLabel}
               >
                 {inReview && <EyeIcon />}
+                {isDone && <DoneIcon />}
               </button>
             )
           }))}

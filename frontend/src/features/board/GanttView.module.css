@@ -327,11 +327,12 @@
   box-sizing: border-box;
   display: flex;
   align-items: center;
+  justify-content: flex-end;
   height: 20px;
   overflow: hidden;
   border: 1px solid var(--card-color);
   border-radius: 7px;
-  padding: 2px 9px;
+  padding: 2px 4px 2px 9px;
   background: linear-gradient(
     to right,
     var(--card-color) 0%,
@@ -353,8 +354,7 @@
 }
 
 .pendingBar {
-  border-width: 2px;
-  border-style: dashed;
+  border: 0;
 }
 
 .cardBar svg {
