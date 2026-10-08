@@ -440,7 +440,7 @@
   place-items: center;
   transform: translateY(-50%);
   border-radius: 50%;
-  background: var(--surface);
+  background: transparent;
   color: var(--card-color);
   cursor: crosshair;
   opacity: 0;
@@ -457,15 +457,15 @@
 }
 
 .dependencyConnectorStart {
-  left: -14px;
+  left: -25px;
 }
 
 .dependencyConnectorEnd {
-  right: -14px;
+  right: -25px;
 }
 
 .dependencyConnector[data-target='true'] {
-  background: var(--card-color);
+  background: transparent;
   color: var(--surface);
   opacity: 1;
 }
