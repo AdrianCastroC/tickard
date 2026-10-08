@@ -5,7 +5,7 @@ import { SortableContext, arrayMove, useSortable, horizontalListSortingStrategy,
 import { CSS } from '@dnd-kit/utilities'
 import { api, type BoardCategory, type BoardPayload, type Card, type WorkflowState } from '../../api'
 import { Avatar, cardStripeStyle, DEFAULT_CARD_STRIPE, formatDate, formatDateLong, priorityLabel } from '../../shared/ui'
-import { ChevronIcon, DotsIcon, EditIcon, ExpandColumnIcon, CollapseColumnIcon, KanbanCategoryIcon, PaletteIcon, PinIcon, PlusIcon, PriorityBarsIcon, TrashIcon, UnpinIcon, VisibilityIcon, CalendarPickIcon } from '../../shared/icons'
+import { AttachmentIcon, ChevronIcon, DotsIcon, EditIcon, ExpandColumnIcon, CollapseColumnIcon, KanbanCategoryIcon, PaletteIcon, PinIcon, PlusIcon, PriorityBarsIcon, TrashIcon, UnpinIcon, VisibilityIcon, CalendarPickIcon } from '../../shared/icons'
 import { filteredBoardColumns, orderedColumnCards } from './boardUtils'
 function columnSortId(id: number) {
   return `column-${id}`
@@ -962,6 +962,16 @@ export function CardProgressBar({ progress }: { progress?: Card['progress'] }) {
   )
 }
 
+function CardAttachmentsIndicator({ card }: { card: Card }) {
+  if (!card.attachments?.length) return null
+
+  return (
+    <span className="card-attachments-indicator" title="Tiene archivos adjuntos" aria-label="Tiene archivos adjuntos">
+      <AttachmentIcon />
+    </span>
+  )
+}
+
 export function CardFace({ card }: { card: Card }) {
   return (
     <article className="card overlay" style={cardStripeStyle(card.color)}>
@@ -974,7 +984,10 @@ export function CardFace({ card }: { card: Card }) {
         <div className="card-foot-top">
           <span className="faces">{card.assignees?.map((person) => <Avatar key={person.id} id={person.id} name={person.name} className="face" src={person.avatar_url} />)}</span>
         </div>
-        <CardProgressBar progress={card.progress} />
+        <div className="card-footer-indicators">
+          <CardProgressBar progress={card.progress} />
+          <CardAttachmentsIndicator card={card} />
+        </div>
       </footer>
     </article>
   )
@@ -1032,7 +1045,10 @@ export function SortableCard({ card, disabled, canEdit, onOpen, onEdit }: {
           </span>
           <span className="faces">{card.assignees?.map((person) => <Avatar key={person.id} id={person.id} name={person.name} className="face" src={person.avatar_url} />)}</span>
         </div>
-        <CardProgressBar progress={card.progress} />
+        <div className="card-footer-indicators">
+          <CardProgressBar progress={card.progress} />
+          <CardAttachmentsIndicator card={card} />
+        </div>
       </footer>
     </article>
   )

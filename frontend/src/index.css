@@ -799,6 +799,29 @@ h1, h2, h3, p { margin: 0; }
   width: 100%;
   min-width: 0;
 }
+.card-footer-indicators {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  width: 100%;
+}
+.card-footer-indicators .card-progress {
+  width: auto;
+  flex: 1;
+}
+.card-attachments-indicator {
+  display: grid;
+  flex: 0 0 auto;
+  width: 16px;
+  height: 16px;
+  place-items: center;
+  color: var(--muted);
+}
+.card-attachments-indicator .section-ico {
+  width: 14px;
+  height: 14px;
+}
 .card-progress-track {
   flex: 1;
   height: 4px;
