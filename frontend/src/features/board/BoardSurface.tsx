@@ -68,7 +68,7 @@ export function BoardSurface({ state, filters, activeBoardId, project, profile, 
       {viewMode === 'summary' && <BoardSummary board={view} projectName={project?.name} onConfigure={() => setShowConfig(true)} />}
       {viewMode === 'list' && <ListView board={view} cards={filteredColumns} onOpen={(card) => setSelected({ card, mode: 'view' })} />}
       {viewMode === 'table' && <TableView board={view} cards={filteredColumns} onOpen={(card) => setSelected({ card, mode: 'view' })} />}
-      {viewMode === 'gantt' && <GanttView key={view.board.id} board={view} cards={filteredColumns} onOpen={(card) => setSelected({ card, mode: 'view' })} />}
+      {viewMode === 'gantt' && <GanttView key={view.board.id} board={view} cards={filteredColumns} canEdit={canEdit} onOpen={(card) => setSelected({ card, mode: 'view' })} onChange={refresh} />}
       {viewMode === 'board' && <Kanban board={view} canEdit={canEdit} canManage={canManage} query={query}
         assignee={filters.assignee} teamId={filters.teamId} label={filters.label} priority={filters.priority}
         onOpen={(card) => setSelected({ card, mode: 'view' })}

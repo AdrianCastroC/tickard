@@ -1,5 +1,5 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
-import type { BoardPayload, Card, Column } from '../../api'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from 'react'
+import { api, type BoardPayload, type Card, type Column } from '../../api'
 import { CollapseColumnIcon, DoneIcon, ExpandColumnIcon, EyeIcon, EyeLowVisionIcon } from '../../shared/icons'
 import styles from './GanttView.module.css'
 
@@ -18,6 +18,16 @@ type CardBarStyle = CSSProperties & {
   '--card-color': string
   '--card-progress': string
 }
+type DragMode = 'move' | 'resize-start' | 'resize-end'
+type DragState = {
+  card: Card
+  mode: DragMode
+  pointerStartX: number
+  dayWidth: number
+  draftStart: string
+  draftDue: string
+}
+type DragPreview = { cardId: number; start: string; due: string }
 
 type GanttGridStyle = CSSProperties & {
   '--left-columns': string
@@ -162,6 +172,30 @@ function dateEndColumn(start: string, value: string) {
   return gridColumn(start, shift(value, 1))
 }
 
+function datesForDrag(card: Card, mode: DragMode, dayDelta: number) {
+  const start = card.start_date!
+  const due = card.due_date!
+
+  if (mode === 'move') {
+    return {
+      start: shift(start, dayDelta),
+      due: shift(due, dayDelta),
+    }
+  }
+
+  if (mode === 'resize-start') {
+    return {
+      start: dateKey(new Date(Math.min(parseDay(shift(start, dayDelta)).getTime(), parseDay(due).getTime()))),
+      due,
+    }
+  }
+
+  return {
+    start,
+    due: dateKey(new Date(Math.max(parseDay(shift(due, dayDelta)).getTime(), parseDay(start).getTime()))),
+  }
+}
+
 function isWeekend(day: Day) {
   return day.date.getUTCDay() === 0 || day.date.getUTCDay() === 6
 }
@@ -288,9 +322,15 @@ function weekSpans(days: Day[]) {
   return spans
 }
 
-type GanttProps = { board: BoardPayload; cards: BoardPayload['columns']; onOpen: (card: Card) => void }
+type GanttProps = {
+  board: BoardPayload
+  cards: BoardPayload['columns']
+  canEdit: boolean
+  onOpen: (card: Card) => void
+  onChange: () => Promise<void>
+}
 
-export function GanttView({ board, cards, onOpen }: GanttProps) {
+export function GanttView({ board, cards, canEdit, onOpen, onChange }: GanttProps) {
   const allCards = cards.flatMap((column) => column.cards)
   const groups = useMemo(() => categoryGroups(board, cards), [board, cards])
   const [zoom, setZoom] = useState<Zoom>(() => (localStorage.getItem(`tickard:gantt-zoom:${board.board.id}`) as Zoom) || 'week')
@@ -299,6 +339,11 @@ export function GanttView({ board, cards, onOpen }: GanttProps) {
   const leftCollapsedStorageKey = `tickard:gantt-left-collapsed:${board.board.id}`
   const [leftCollapsed, setLeftCollapsed] = useState(() => readCollapsed(leftCollapsedStorageKey))
   const [columnsOpen, setColumnsOpen] = useState(false)
+  const [dragState, setDragState] = useState<DragState | null>(null)
+  const [dragPreview, setDragPreview] = useState<DragPreview | null>(null)
+  const [dragError, setDragError] = useState<string | null>(null)
+  const suppressClickRef = useRef<number | null>(null)
+  const timelineGridRef = useRef<HTMLDivElement>(null)
   const toolbarRef = useRef<HTMLDivElement>(null)
   const leftToolbarRef = useRef<HTMLDivElement>(null)
   const [toolbarMinWidth, setToolbarMinWidth] = useState(0)
@@ -387,6 +432,28 @@ export function GanttView({ board, cards, onOpen }: GanttProps) {
     return () => observer.disconnect()
   }, [leftCollapsed])
 
+  function beginDrag(event: ReactPointerEvent, item: GanttCard, mode: DragMode) {
+    if (!canEdit || !item.card.start_date || !item.card.due_date || !timelineGridRef.current) {
+      return
+    }
+
+    event.preventDefault()
+    event.stopPropagation()
+    setDragError(null)
+
+    const timelineWidth = timelineGridRef.current.getBoundingClientRect().width
+    const dayWidth = timelineWidth / days.length
+    setDragState({
+      card: item.card,
+      mode,
+      pointerStartX: event.clientX,
+      dayWidth,
+      draftStart: item.card.start_date,
+      draftDue: item.card.due_date,
+    })
+    setDragPreview({ cardId: item.card.id, start: item.card.start_date, due: item.card.due_date })
+  }
+
   const monthRows = monthSpans(days)
   const yearRows = yearSpans(days)
   const quarterRows = quarterSpans(days, false)
@@ -400,8 +467,57 @@ export function GanttView({ board, cards, onOpen }: GanttProps) {
   const todayVisible = today >= range.start && today <= range.end
   const effectiveLeftWidth = Math.max(totalLeftWidth, toolbarMinWidth)
 
+  useEffect(() => {
+    if (!dragState) {
+      return
+    }
+
+    const activeDrag = dragState
+
+    function handlePointerMove(event: PointerEvent) {
+      const dayDelta = Math.round((event.clientX - activeDrag.pointerStartX) / activeDrag.dayWidth)
+      const dates = datesForDrag(activeDrag.card, activeDrag.mode, dayDelta)
+
+      setDragPreview({ cardId: activeDrag.card.id, ...dates })
+    }
+
+    function handlePointerUp() {
+      const preview = dragPreview
+      setDragState(null)
+
+      if (!preview || preview.cardId !== activeDrag.card.id) {
+        return
+      }
+
+      const changed = preview.start !== activeDrag.card.start_date || preview.due !== activeDrag.card.due_date
+      if (!changed) {
+        setDragPreview(null)
+        return
+      }
+
+      suppressClickRef.current = preview.cardId
+      void api(`/cards/${preview.cardId}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ start_date: preview.start, due_date: preview.due }),
+      }).then(onChange).catch((error: unknown) => {
+        setDragError(error instanceof Error ? error.message : 'No se pudieron guardar las fechas.')
+      }).finally(() => {
+        setDragPreview(null)
+      })
+    }
+
+    window.addEventListener('pointermove', handlePointerMove)
+    window.addEventListener('pointerup', handlePointerUp)
+
+    return () => {
+      window.removeEventListener('pointermove', handlePointerMove)
+      window.removeEventListener('pointerup', handlePointerUp)
+    }
+  }, [dragPreview, dragState, onChange])
+
   return (
     <div className={styles.gantt} data-zoom={zoom} data-left-collapsed={leftCollapsed} style={{ '--left-width': `${effectiveLeftWidth}px` } as CSSProperties}>
+      {dragError && <p className={styles.dragError} role="alert">{dragError}</p>}
       {leftCollapsed ? (
         <button
           className={`${styles.ganttLeft} ${styles.collapsedRail}`}
@@ -463,7 +579,7 @@ export function GanttView({ board, cards, onOpen }: GanttProps) {
         </div>
       )}
         <div className={styles.timelineViewport}>
-        <div className={styles.timelineGrid} style={gridStyle}>
+        <div ref={timelineGridRef} className={styles.timelineGrid} style={gridStyle}>
           {(showMonths ? monthQuarterRows : showQuarters ? yearRows : monthRows).map((item) => <span key={item.label} className={showMonths || showQuarters ? styles.quarter : styles.month} style={{ gridRow: 1, gridColumn: `${item.start} / ${item.end}` }}>{item.label}</span>)}
           {showMonths && monthRows.map((month) => <span key={`month-${month.label}`} className={styles.month} style={{ gridRow: 2, gridColumn: `${month.start} / ${month.end}` }}>{month.label}</span>)}
           {showQuarters && quarterRows.map((quarter) => <span key={`quarter-${quarter.start}`} className={styles.quarter} style={{ gridRow: 2, gridColumn: `${quarter.start} / ${quarter.end}` }}>{quarter.label}</span>)}
@@ -499,9 +615,12 @@ export function GanttView({ board, cards, onOpen }: GanttProps) {
 
             const cardColor = item.card.color || item.column.color || 'var(--accent)'
             const progress = cardVisualProgress(item)
+            const preview = dragPreview?.cardId === item.card.id ? dragPreview : null
+            const startDate = preview?.start ?? item.card.start_date!
+            const dueDate = preview?.due ?? item.card.due_date!
             const cardStyle = {
               gridRow: groupRow + index + 1,
-              gridColumn: `${gridColumn(range.start, item.card.start_date!)} / ${dateEndColumn(range.start, item.card.due_date!)}`,
+              gridColumn: `${gridColumn(range.start, startDate)} / ${dateEndColumn(range.start, dueDate)}`,
               '--card-color': cardColor,
               '--card-progress': `${progress}%`,
             } as CardBarStyle
@@ -509,6 +628,7 @@ export function GanttView({ board, cards, onOpen }: GanttProps) {
             const cardClassName = [
               styles.cardBar,
               item.column.workflow_state === 'pending' ? styles.pendingBar : '',
+              preview ? styles.dragging : '',
             ].filter(Boolean).join(' ')
 
             const inReview = item.column.workflow_state === 'review'
@@ -519,19 +639,32 @@ export function GanttView({ board, cards, onOpen }: GanttProps) {
                 ? `${item.card.title}, Completado`
                 : item.card.title
 
+            const dateLabel = `${compactDate(startDate)} — ${compactDate(dueDate)}`
+
             return (
               <button
                 key={item.card.id}
                 className={cardClassName}
                 data-card-id={item.card.id}
                 type="button"
-                onClick={() => onOpen(item.card)}
+                onClick={() => {
+                  if (suppressClickRef.current === item.card.id) {
+                    suppressClickRef.current = null
+                    return
+                  }
+
+                  onOpen(item.card)
+                }}
+                onPointerDown={(event) => beginDrag(event, item, 'move')}
                 style={cardStyle}
                 title={cardLabel}
                 aria-label={cardLabel}
               >
+                {canEdit && <span className={`${styles.resizeHandle} ${styles.resizeHandleStart}`} onPointerDown={(event) => beginDrag(event, item, 'resize-start')} aria-hidden="true" />}
+                {preview && <span className={styles.dragDates} aria-hidden="true">{dateLabel}</span>}
                 {inReview && <EyeIcon />}
                 {isDone && <DoneIcon />}
+                {canEdit && <span className={`${styles.resizeHandle} ${styles.resizeHandleEnd}`} onPointerDown={(event) => beginDrag(event, item, 'resize-end')} aria-hidden="true" />}
               </button>
             )
           }))}

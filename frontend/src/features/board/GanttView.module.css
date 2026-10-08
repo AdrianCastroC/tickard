@@ -2,6 +2,7 @@
   --left-collapsed-width: 34px;
   --min-day-size: 24px;
   box-sizing: border-box;
+  position: relative;
   display: grid;
   grid-template-columns: var(--left-width) minmax(0, 1fr);
   width: 100%;
@@ -11,6 +12,19 @@
   border: 1px solid var(--line);
   border-radius: 12px;
   background: var(--surface);
+}
+
+.dragError {
+  position: absolute;
+  z-index: 8;
+  top: 8px;
+  right: 8px;
+  margin: 0;
+  padding: 6px 8px;
+  border-radius: 6px;
+  background: #fff1f1;
+  color: #8a2b2b;
+  font-size: 12px;
 }
 
 .gantt[data-left-collapsed='true'] {
@@ -322,6 +336,7 @@
 }
 
 .cardBar {
+  position: relative;
   z-index: 4;
   align-self: center;
   box-sizing: border-box;
@@ -351,6 +366,48 @@
 
 .cardBar:hover {
   filter: brightness(1.08);
+}
+
+.dragging {
+  overflow: visible;
+}
+
+.resizeHandle {
+  position: absolute;
+  top: 0;
+  z-index: 1;
+  width: 8px;
+  height: 100%;
+  cursor: ew-resize;
+  opacity: 0;
+}
+
+.resizeHandle:hover,
+.cardBar:focus-visible .resizeHandle {
+  opacity: 1;
+}
+
+.resizeHandleStart {
+  left: 0;
+}
+
+.resizeHandleEnd {
+  right: 0;
+}
+
+.dragDates {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 50%;
+  z-index: 7;
+  transform: translateX(-50%);
+  padding: 3px 6px;
+  border-radius: 4px;
+  background: var(--ink);
+  color: #fff;
+  font-size: 10px;
+  white-space: nowrap;
+  pointer-events: none;
 }
 
 .pendingBar {
