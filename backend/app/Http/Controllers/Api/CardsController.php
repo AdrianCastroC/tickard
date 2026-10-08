@@ -10,6 +10,7 @@ use App\Models\Label;
 use App\Models\User;
 use App\Support\Notifier;
 use App\Support\CardDependencyService;
+use App\Support\CardBacklogService;
 use App\Support\ProjectAccess;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -48,6 +49,15 @@ class CardsController extends ApiController
         ]);
         abort_unless($data !== [], 422);
         $board = $column->board;
+
+        if (($data['workflow_state'] ?? null) === 'backlog' && $column->workflow_state !== 'backlog') {
+            $hasDependencies = $column->cards()->whereNull('archived_at')->where(function ($query) {
+                $query->whereHas('predecessorDependencies')->orWhereHas('successorDependencies');
+            })->exists();
+            if ($hasDependencies) {
+                throw ValidationException::withMessages(['workflow_state' => 'La columna contiene Cards con dependencias. Resuélvelas antes de convertirla en Backlog.']);
+            }
+        }
 
         if (
             $column->workflow_state === 'backlog'
@@ -344,7 +354,7 @@ class CardsController extends ApiController
         return response()->noContent();
     }
 
-    public function moveCard(Request $request, Card $card, CardDependencyService $dependencies)
+    public function moveCard(Request $request, Card $card, CardDependencyService $dependencies, CardBacklogService $backlog)
     {
         $project = $card->board->project;
         abort_unless(ProjectAccess::canEditCards($request->user(), $project), 403);
@@ -352,9 +362,25 @@ class CardsController extends ApiController
         $data = $request->validate([
             'column_id' => ['required', 'integer'],
             'position' => ['required', 'integer', 'min:0'],
+            'backlog_resolution' => ['sometimes', 'array'],
         ]);
 
         $column = Column::where('board_id', $card->board_id)->findOrFail($data['column_id']);
+        if ($column->workflow_state === 'backlog') {
+            if ($backlog->hasDependencies($card) && ! array_key_exists('backlog_resolution', $data)) {
+                return response()->json([
+                    'code' => 'backlog_dependencies',
+                    'message' => 'La Card tiene dependencias que deben resolverse antes de moverla a Backlog.',
+                    'resolution' => $backlog->preview($card, $column),
+                ], 409);
+            }
+
+            if (array_key_exists('backlog_resolution', $data)) {
+                $backlog->execute($card, $column, $request->input('backlog_resolution', []), $request->user()->id, $data['position']);
+
+                return response()->noContent();
+            }
+        }
         $from = $card->column_id;
 
         $affectedBoardIds = [$card->board_id];
