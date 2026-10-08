@@ -3,6 +3,7 @@
 namespace App\Support;
 
 use App\Models\Card;
+use App\Models\CardChecklistItem;
 use App\Models\CardDependency;
 use Illuminate\Validation\ValidationException;
 
@@ -47,6 +48,7 @@ class CardDependencyService
         if (! $predecessor->start_date || ! $predecessor->due_date || ! $successor->start_date || ! $successor->due_date) {
             return;
         }
+        $previousStart = $successor->start_date->copy();
         $duration = $successor->start_date->diffInDays($successor->due_date);
         if ($dependency->type === 'ff') {
             $successor->due_date = $predecessor->due_date;
@@ -58,7 +60,19 @@ class CardDependencyService
             $successor->start_date = $dependency->type === 'ss' ? $predecessor->start_date : $predecessor->due_date;
             $successor->due_date = $successor->start_date->copy()->addDays($duration);
         }
+        $startDelta = $previousStart->diffInDays($successor->start_date, false);
         $successor->save();
+
+        if ($startDelta !== 0) {
+            $successor->checklistItems()
+                ->whereNotNull('due_date')
+                ->get()
+                ->each(function (CardChecklistItem $item) use ($startDelta): void {
+                    $item->update([
+                        'due_date' => $item->due_date->addDays($startDelta),
+                    ]);
+                });
+        }
     }
 
     public function propagate(Card $card): void
