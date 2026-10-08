@@ -43,23 +43,49 @@ class CardDependencyService
 
     public function apply(CardDependency $dependency): void
     {
-        $predecessor = $dependency->predecessor;
         $successor = $dependency->successor;
-        if (! $predecessor->start_date || ! $predecessor->due_date || ! $successor->start_date || ! $successor->due_date) {
+
+        if (! $successor) {
             return;
         }
+        $this->recalculate($successor);
+    }
+
+    public function recalculate(Card $successor): void
+    {
+        $successor->refresh();
+
+        if (! $successor->start_date || ! $successor->due_date) {
+            return;
+        }
+
+        $dependencies = $successor->successorDependencies()
+            ->with('predecessor')
+            ->get();
+        $constraints = $dependencies
+            ->filter(fn (CardDependency $dependency) =>
+                $dependency->predecessor?->start_date && $dependency->predecessor?->due_date
+            )
+            ->map(function (CardDependency $dependency) use ($successor) {
+                $predecessor = $dependency->predecessor;
+                $duration = $successor->start_date->diffInDays($successor->due_date);
+
+                return match ($dependency->type) {
+                    'ss' => $predecessor->start_date,
+                    'ff' => $predecessor->due_date->copy()->subDays($duration),
+                    'sf' => $predecessor->start_date->copy()->subDays($duration),
+                    default => $predecessor->due_date,
+                };
+            });
+
+        if ($constraints->isEmpty()) {
+            return;
+        }
+
         $previousStart = $successor->start_date->copy();
         $duration = $successor->start_date->diffInDays($successor->due_date);
-        if ($dependency->type === 'ff') {
-            $successor->due_date = $predecessor->due_date;
-            $successor->start_date = $successor->due_date->copy()->subDays($duration);
-        } elseif ($dependency->type === 'sf') {
-            $successor->due_date = $predecessor->start_date;
-            $successor->start_date = $successor->due_date->copy()->subDays($duration);
-        } else {
-            $successor->start_date = $dependency->type === 'ss' ? $predecessor->start_date : $predecessor->due_date;
-            $successor->due_date = $successor->start_date->copy()->addDays($duration);
-        }
+        $successor->start_date = $constraints->sort()->last();
+        $successor->due_date = $successor->start_date->copy()->addDays($duration);
         $startDelta = $previousStart->diffInDays($successor->start_date, false);
         $successor->save();
 
@@ -82,9 +108,9 @@ class CardDependencyService
         while ($current = array_shift($queue)) {
             if (isset($visited[$current->id])) continue;
             $visited[$current->id] = true;
-            foreach ($current->predecessorDependencies()->with(['predecessor', 'successor'])->get() as $dependency) {
-                $this->apply($dependency);
-                $queue[] = $dependency->successor;
+            foreach ($current->predecessorDependencies()->with('successor')->get() as $dependency) {
+                $this->recalculate($dependency->successor);
+                $queue[] = $dependency->successor->fresh();
             }
         }
     }
