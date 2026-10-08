@@ -8,7 +8,7 @@
   width: 100%;
   min-width: 0;
   height: 100%;
-  overflow: hidden;
+  overflow: visible;
   border: 1px solid var(--line);
   border-radius: 12px;
   background: var(--surface);
@@ -344,7 +344,7 @@
   align-items: center;
   justify-content: flex-end;
   height: 20px;
-  overflow: hidden;
+  overflow: visible;
   border: 1px solid var(--card-color);
   border-radius: 7px;
   padding: 2px 4px 2px 9px;
@@ -435,20 +435,20 @@
   top: 50%;
   z-index: 3;
   display: grid;
-  width: 18px;
-  height: 18px;
+  width: 22px;
+  height: 22px;
   place-items: center;
   transform: translateY(-50%);
   border-radius: 50%;
   background: var(--surface);
-  color: var(--accent);
+  color: var(--card-color);
   cursor: crosshair;
   opacity: 0;
 }
 
 .dependencyConnector svg {
-  width: 16px;
-  height: 16px;
+  width: 11px;
+  height: 11px;
 }
 
 .cardBar:hover .dependencyConnector,
@@ -457,15 +457,15 @@
 }
 
 .dependencyConnectorStart {
-  left: 7px;
+  left: -14px;
 }
 
 .dependencyConnectorEnd {
-  right: 7px;
+  right: -14px;
 }
 
 .dependencyConnector[data-target='true'] {
-  background: var(--accent);
+  background: var(--card-color);
   color: var(--surface);
   opacity: 1;
 }
