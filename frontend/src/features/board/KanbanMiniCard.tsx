@@ -1,5 +1,5 @@
 import { type Card } from '../../api'
-import { AttachmentIcon } from '../../shared/icons'
+import { AttachmentIcon, VisibilityIcon } from '../../shared/icons'
 import { Avatar, cardStripeStyle } from '../../shared/ui'
 
 export type KanbanMiniCardProps = {
@@ -33,10 +33,26 @@ export function CardAttachmentsIndicator({ card }: { card: Card }) {
   )
 }
 
+function CardVisibilityIndicator() {
+  return (
+    <span className="card-public" title="No interna" aria-label="Tarjeta no interna">
+      <VisibilityIcon />
+    </span>
+  )
+}
+
 export function KanbanMiniCard({ card, workflowLabel, dateLabel, progressLabel, className = '' }: KanbanMiniCardProps) {
+  const hasAttachments = Boolean(card.attachments?.length)
+  const isVisibleToExternalUsers = card.is_internal === false
+
   return (
     <article className={`card overlay ${className}`.trim()} style={cardStripeStyle(card.color)}>
-      {Boolean(card.attachments?.length) && <div className="card-tools"><CardAttachmentsIndicator card={card} /></div>}
+      {(hasAttachments || isVisibleToExternalUsers) && (
+        <div className={`card-tools ${hasAttachments ? 'has-attachments' : 'no-attachments'}`}>
+          {isVisibleToExternalUsers && <CardVisibilityIndicator />}
+          {hasAttachments && <CardAttachmentsIndicator card={card} />}
+        </div>
+      )}
       <strong>{card.title}</strong>
       <div className="meta">
         {card.teams?.map((team) => <span key={team.id} className="chip equipo">{team.name}</span>)}
