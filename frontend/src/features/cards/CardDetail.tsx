@@ -81,6 +81,7 @@ export function CardDrawer({ card, mode, board, currentUser, canEdit, onClose, o
   const editing = mode === 'edit' && canEdit
   const team = board.members.filter((member) => member.role !== 'cliente')
   const columnName = board.columns.find((column) => column.id === card.column_id)?.name ?? '—'
+  const isBacklog = board.columns.find((column) => column.id === card.column_id)?.workflow_state === 'backlog'
   const categoryName = board.categories?.find((category) => category.id === card.category_id)?.name
   const attachments = card.attachments ?? []
   void attachments
@@ -479,9 +480,9 @@ export function CardDrawer({ card, mode, board, currentUser, canEdit, onClose, o
             <div className="side-field">
               <span className="side-label"><CalendarIcon /> Periodo</span>
               {editing ? (
-                <DateRangePicker start={card.start_date} end={card.due_date} onChange={(start, due) => save({ start_date: start, due_date: due })} />
+                isBacklog ? <span className="muted">Disponible cuando la tarea salga de backlog.</span> : <DateRangePicker start={card.start_date} end={card.due_date} onChange={(start, due) => save({ start_date: start, due_date: due })} />
               ) : (
-                <div className="side-value"><strong>{formatDateRange(card.start_date, card.due_date)}</strong></div>
+                <div className="side-value"><strong>{isBacklog ? 'Disponible al salir de backlog' : formatDateRange(card.start_date, card.due_date)}</strong></div>
               )}
             </div>
 

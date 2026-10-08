@@ -69,6 +69,10 @@ function planned(card: Card) {
   return Boolean(card.start_date && card.due_date)
 }
 
+function hasTemporalPlanning(item: GanttCard) {
+  return item.column.workflow_state !== 'backlog' && planned(item.card)
+}
+
 function timelineRange(cards: Card[]) {
   const plannedCards = cards.filter(planned)
   if (plannedCards.length === 0) {
@@ -292,8 +296,9 @@ function categoryRange(group: CategoryGroup, timelineStart: string) {
 }
 
 function categoryStats(group: CategoryGroup): CategoryStats {
-  const startDates = group.cards.map(({ card }) => card.start_date).filter((value): value is string => Boolean(value))
-  const endDates = group.cards.map(({ card }) => card.due_date).filter((value): value is string => Boolean(value))
+  const plannedCards = group.cards.filter(hasTemporalPlanning)
+  const startDates = plannedCards.map(({ card }) => card.start_date).filter((value): value is string => Boolean(value))
+  const endDates = plannedCards.map(({ card }) => card.due_date).filter((value): value is string => Boolean(value))
   const progressTotal = group.cards.reduce((total, item) => total + cardVisualProgress(item), 0)
 
   return {
@@ -329,7 +334,7 @@ type GanttProps = {
 }
 
 export function GanttView({ board, cards, canEdit, onOpen, onChange }: GanttProps) {
-  const allCards = cards.flatMap((column) => column.cards)
+  const allCards = cards.flatMap((column) => column.workflow_state === 'backlog' ? [] : column.cards)
   const groups = useMemo(() => categoryGroups(board, cards), [board, cards])
   const [zoom, setZoom] = useState<Zoom>(() => (localStorage.getItem(`tickard:gantt-zoom:${board.board.id}`) as Zoom) || 'week')
   const visibilityStorageKey = `tickard:gantt-columns:${board.board.id}`
@@ -605,7 +610,7 @@ export function GanttView({ board, cards, canEdit, onOpen, onChange }: GanttProp
             return <span key={`summary-${group.id}`} className={styles.categorySummary} style={summaryStyle} aria-hidden="true" />
           })}
           {entries.flatMap(({ group, row: groupRow, collapsed: isCollapsed }) => isCollapsed ? [] : group.cards.map((item, index) => {
-            if (!planned(item.card)) {
+            if (!hasTemporalPlanning(item)) {
               return false
             }
 

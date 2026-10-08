@@ -175,13 +175,20 @@ class CardsController extends ApiController
         ]);
 
         $column = Column::where('board_id', $board->id)->findOrFail($data['column_id']);
+        if ($column->workflow_state === 'backlog' && $this->hasPlannedDates($data)) {
+            throw ValidationException::withMessages([
+                'start_date' => 'Las tarjetas en backlog no pueden tener fechas planificadas.',
+            ]);
+        }
         $categoryId = null;
         if (! empty($data['category_id'])) {
             $categoryId = BoardCategory::where('board_id', $board->id)->whereKey($data['category_id'])->value('id');
             abort_unless($categoryId, 422);
         }
         $position = Card::where('column_id', $column->id)->whereNull('archived_at')->count();
-        $this->validatePlannedDates($data['start_date'] ?? null, $data['due_date'] ?? null);
+        if ($column->workflow_state !== 'backlog') {
+            $this->validatePlannedDates($data['start_date'] ?? null, $data['due_date'] ?? null);
+        }
 
         $card = Card::create([
             'board_id' => $board->id,
@@ -189,8 +196,8 @@ class CardsController extends ApiController
             'category_id' => $categoryId,
             'title' => $data['title'],
             'description' => $data['description'] ?? null,
-            'start_date' => $data['start_date'] ?? null,
-            'due_date' => $data['due_date'] ?? null,
+            'start_date' => $column->workflow_state === 'backlog' ? null : ($data['start_date'] ?? null),
+            'due_date' => $column->workflow_state === 'backlog' ? null : ($data['due_date'] ?? null),
             'started_at' => in_array($column->workflow_state, ['in_progress', 'review', 'done'], true) ? now() : null,
             'completed_at' => in_array($column->workflow_state, ['review', 'done'], true) ? now() : null,
             'position' => $position,
@@ -244,12 +251,22 @@ class CardsController extends ApiController
             'label_ids.*' => ['integer'],
         ]);
 
+        if ($card->column->workflow_state === 'backlog' && $this->hasPlannedDates($data)) {
+            throw ValidationException::withMessages([
+                'start_date' => 'Las tarjetas en backlog no pueden tener fechas planificadas.',
+            ]);
+        }
+
         $previous = $card->assignees()->pluck('users.id');
         $this->validatePlannedDates(
             array_key_exists('start_date', $data) ? $data['start_date'] : $card->start_date?->toDateString(),
             array_key_exists('due_date', $data) ? $data['due_date'] : $card->due_date?->toDateString()
         );
         $fields = collect($data)->except(['assignee_ids', 'team_ids', 'label_ids', 'category_id'])->all();
+        if ($card->column->workflow_state === 'backlog') {
+            $fields['start_date'] = null;
+            $fields['due_date'] = null;
+        }
         if (array_key_exists('category_id', $data)) {
             if ($data['category_id'] === null) {
                 $fields['category_id'] = null;
@@ -330,6 +347,15 @@ class CardsController extends ApiController
 
     private function applyWorkflowState(Card $card, string $workflowState): void
     {
+        if ($workflowState === 'backlog') {
+            $card->start_date = null;
+            $card->due_date = null;
+            $card->completed_at = null;
+            $card->save();
+
+            return;
+        }
+
         if (in_array($workflowState, ['in_progress', 'review', 'done'], true) && $card->started_at === null) {
             $card->started_at = now();
         }
@@ -341,6 +367,12 @@ class CardsController extends ApiController
         }
 
         $card->save();
+    }
+
+    private function hasPlannedDates(array $data): bool
+    {
+        return (array_key_exists('start_date', $data) && $data['start_date'] !== null)
+            || (array_key_exists('due_date', $data) && $data['due_date'] !== null);
     }
 
     private function validatePlannedDates(?string $start, ?string $due): void

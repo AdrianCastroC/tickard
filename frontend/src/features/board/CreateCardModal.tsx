@@ -20,6 +20,7 @@ export function CreateCardModal({ board, column, onClose, onCreated }: {
   const [error, setError] = useState('')
   const team = board.members.filter((member) => member.role !== 'cliente')
   const categories = board.categories ?? []
+  const isBacklog = board.columns.find((item) => item.id === column.id)?.workflow_state === 'backlog'
 
   async function submit(event: FormEvent) {
     event.preventDefault()
@@ -63,7 +64,9 @@ export function CreateCardModal({ board, column, onClose, onCreated }: {
             </select>
           </label>
         )}
-        <label className="field">Periodo<DateRangePicker start={start} end={due} onChange={(nextStart, nextDue) => { setStart(nextStart); setDue(nextDue) }} /></label>
+        <label className="field">Periodo
+          {isBacklog ? <span className="muted">Disponible cuando la tarea salga de backlog.</span> : <DateRangePicker start={start} end={due} onChange={(nextStart, nextDue) => { setStart(nextStart); setDue(nextDue) }} />}
+        </label>
         <label className="field">Prioridad
           <select value={priority} onChange={(event) => setPriority(event.target.value)}>
             {Object.entries(priorityLabel).map(([value, text]) => <option key={value} value={value}>{text}</option>)}
