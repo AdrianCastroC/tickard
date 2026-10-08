@@ -41,8 +41,8 @@ class CardDependencyService
         }
         $dependency->update(['type' => $type]);
         $dependency = $dependency->fresh(['predecessor', 'successor']);
-        $affectedBoardIds = $this->apply($dependency);
-        return array_values(array_unique(array_merge($affectedBoardIds, $this->propagate($dependency->successor))));
+
+        return $this->apply($dependency);
     }
 
     public function apply(CardDependency $dependency): array

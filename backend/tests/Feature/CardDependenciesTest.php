@@ -103,6 +103,80 @@ class CardDependenciesTest extends TestCase
         $service->create($thirdCard, $firstCard);
     }
 
+    public function test_update_card_propagates_revisions_once_across_a_board_chain(): void
+    {
+        [$user, $firstCard, $secondCard] = $this->createProjectCards();
+        $thirdBoard = Board::create(['project_id' => $firstCard->board->project_id, 'name' => 'Board 3']);
+        $thirdColumn = Column::create(['board_id' => $thirdBoard->id, 'name' => 'Por hacer', 'workflow_state' => 'pending']);
+        $thirdCard = Card::create([
+            'board_id' => $thirdBoard->id,
+            'column_id' => $thirdColumn->id,
+            'title' => 'C',
+            'start_date' => '2026-10-20',
+            'due_date' => '2026-10-30',
+        ]);
+        $service = app(CardDependencyService::class);
+        $service->create($firstCard, $secondCard);
+        $service->create($secondCard, $thirdCard);
+        $revisions = [
+            $firstCard->board_id => $firstCard->board->fresh()->revision,
+            $secondCard->board_id => $secondCard->board->fresh()->revision,
+            $thirdCard->board_id => $thirdCard->board->fresh()->revision,
+        ];
+
+        $this->actingAs($user)->patchJson("/api/cards/{$firstCard->id}", [
+            'start_date' => '2026-10-05',
+            'due_date' => '2026-10-15',
+        ])->assertNoContent();
+
+        $this->assertSame('2026-10-15', $secondCard->fresh()->start_date->toDateString());
+        $this->assertSame('2026-10-25', $thirdCard->fresh()->start_date->toDateString());
+        $this->assertSame($revisions[$firstCard->board_id] + 1, $firstCard->board->fresh()->revision);
+        $this->assertSame($revisions[$secondCard->board_id] + 1, $secondCard->board->fresh()->revision);
+        $this->assertSame($revisions[$thirdCard->board_id] + 1, $thirdCard->board->fresh()->revision);
+    }
+
+    public function test_update_card_deduplicates_revision_when_two_cards_on_one_board_change(): void
+    {
+        [$user, $firstCard, $secondCard] = $this->createProjectCards();
+        $secondBoardRevision = $secondCard->board->fresh()->revision;
+        $thirdCard = Card::create([
+            'board_id' => $secondCard->board_id,
+            'column_id' => $secondCard->column_id,
+            'title' => 'C',
+            'start_date' => '2026-10-10',
+            'due_date' => '2026-10-20',
+        ]);
+        $service = app(CardDependencyService::class);
+        $service->create($firstCard, $secondCard);
+        $service->create($firstCard, $thirdCard);
+
+        $this->actingAs($user)->patchJson("/api/cards/{$firstCard->id}", [
+            'start_date' => '2026-10-05',
+            'due_date' => '2026-10-15',
+        ])->assertNoContent();
+
+        $this->assertSame('2026-10-15', $secondCard->fresh()->start_date->toDateString());
+        $this->assertSame('2026-10-15', $thirdCard->fresh()->start_date->toDateString());
+        $this->assertSame($secondBoardRevision + 1, $secondCard->board->fresh()->revision);
+    }
+
+    public function test_update_card_does_not_touch_descendant_board_when_planning_does_not_change(): void
+    {
+        [$user, $firstCard, $secondCard] = $this->createProjectCards();
+        app(CardDependencyService::class)->create($firstCard, $secondCard);
+        $firstBoardRevision = $firstCard->board->fresh()->revision;
+        $secondBoardRevision = $secondCard->board->fresh()->revision;
+
+        $this->actingAs($user)->patchJson("/api/cards/{$firstCard->id}", [
+            'start_date' => '2026-10-01',
+            'due_date' => '2026-10-10',
+        ])->assertNoContent();
+
+        $this->assertSame($firstBoardRevision + 1, $firstCard->board->fresh()->revision);
+        $this->assertSame($secondBoardRevision, $secondCard->board->fresh()->revision);
+    }
+
     /** @return array{0: User, 1: Card, 2: Card} */
     private function createProjectCards(string $projectName = 'Project'): array
     {
