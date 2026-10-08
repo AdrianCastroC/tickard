@@ -568,7 +568,6 @@ class NebulaMobileDemoSeeder extends Seeder
         int $phaseTaskIndex,
         string $title,
     ): array {
-        $state = $this->stateFor($phaseIndex, $phaseTaskIndex, $title);
         $durationPattern = [1, 3, 5, 8, 13, 21, 34, 55];
         $duration = $durationPattern[($this->globalCardIndex + $phaseTaskIndex + $categoryIndex) % count($durationPattern)];
 
@@ -577,6 +576,8 @@ class NebulaMobileDemoSeeder extends Seeder
             ->addDays($groupOffsets[$categoryIndex] ?? ($categoryIndex * 21))
             ->addDays($taskIndex * 8);
         $plannedEnd = $plannedStart->addDays($duration - 1);
+
+        $state = $this->stateFor($phaseIndex, $phaseTaskIndex, $title, $plannedStart);
 
         if ($state === 'backlog') {
             $plannedStart = null;
@@ -598,15 +599,20 @@ class NebulaMobileDemoSeeder extends Seeder
         ];
     }
 
-    private function stateFor(int $phaseIndex, int $phaseTaskIndex, string $title): string
+    private function stateFor(
+        int $phaseIndex,
+        int $phaseTaskIndex,
+        string $title,
+        ?CarbonImmutable $plannedStart,
+    ): string
     {
         if (in_array($title, self::BACKLOG_TITLES, true)) {
             return 'backlog';
         }
 
         $archivedStates = [
-            'Explorar autenticación por SMS' => 'done',
-            'Prototipo de navegación radial' => 'done',
+            'Explorar autenticación por SMS' => 'pending',
+            'Prototipo de navegación radial' => 'pending',
             'Spike de base de datos local alternativa' => 'pending',
             'Piloto de CDN alternativo' => 'pending',
             'Prueba de programa de referidos legacy' => 'pending',
@@ -615,6 +621,18 @@ class NebulaMobileDemoSeeder extends Seeder
 
         if (isset($archivedStates[$title])) {
             return $archivedStates[$title];
+        }
+
+        $exceptionalEarly = [
+            'Revisar accesibilidad móvil',
+            'Ejecutar auditoría de seguridad',
+        ];
+
+        if (
+            $plannedStart?->greaterThan(CarbonImmutable::parse(self::DEMO_DATE))
+            && ! in_array($title, $exceptionalEarly, true)
+        ) {
+            return 'pending';
         }
 
         return match ($phaseIndex) {
@@ -1353,6 +1371,7 @@ class NebulaMobileDemoSeeder extends Seeder
         }
 
         $projectMemberIds = $project->members()->pluck('user_id')->all();
+        $demoDate = CarbonImmutable::parse(self::DEMO_DATE)->endOfDay();
 
         foreach ($cards as $card) {
             $state = $card->column->workflow_state;
@@ -1385,6 +1404,22 @@ class NebulaMobileDemoSeeder extends Seeder
 
             if (in_array($state, ['review', 'done'], true) && (! $card->started_at || ! $card->completed_at)) {
                 throw new RuntimeException("Card {$state} sin fechas reales de ejecución: {$card->title}");
+            }
+
+            if ($card->started_at && CarbonImmutable::parse($card->started_at)->greaterThan($demoDate)) {
+                throw new RuntimeException("Card con started_at posterior a DEMO_DATE: {$card->title}");
+            }
+
+            if ($card->completed_at && CarbonImmutable::parse($card->completed_at)->greaterThan($demoDate)) {
+                throw new RuntimeException("Card con completed_at posterior a DEMO_DATE: {$card->title}");
+            }
+
+            if (
+                $card->started_at
+                && $card->completed_at
+                && CarbonImmutable::parse($card->completed_at)->lessThan(CarbonImmutable::parse($card->started_at))
+            ) {
+                throw new RuntimeException("Card con completed_at anterior a started_at: {$card->title}");
             }
 
             if ($card->category_id && $card->category?->board_id !== $card->board_id) {
