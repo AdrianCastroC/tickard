@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Models\Card;
 use App\Models\CardDependency;
+use App\Models\Board;
 use App\Support\CardDependencyService;
 use App\Support\ProjectAccess;
 use Illuminate\Http\Request;
@@ -20,10 +21,14 @@ class CardDependenciesController extends ApiController
             $query->where('project_id', $card->board->project_id);
         })->findOrFail($data['successor_card_id']);
         $dependency = DB::transaction(fn () => $service->create($card, $successor));
+        $affectedBoardIds = [$card->board_id, $successor->board_id];
         if (isset($data['type']) && $data['type'] !== $dependency->type) {
-            DB::transaction(fn () => $service->updateType($dependency, $data['type']));
+            $affectedBoardIds = array_merge(
+                $affectedBoardIds,
+                DB::transaction(fn () => $service->updateType($dependency, $data['type']))
+            );
         }
-        $card->board->touchRevision();
+        $this->touchBoards($affectedBoardIds);
         return response()->json($this->payload($dependency->fresh(['predecessor', 'successor'])), 201);
     }
 
@@ -31,17 +36,27 @@ class CardDependenciesController extends ApiController
     {
         abort_unless(ProjectAccess::canEditCards($request->user(), $dependency->predecessor->board->project), 403);
         $data = $request->validate(['type' => ['required', Rule::in(CardDependencyService::TYPES)]]);
-        DB::transaction(fn () => $service->updateType($dependency, $data['type']));
-        $dependency->predecessor->board->touchRevision();
+        $affectedBoardIds = [
+            $dependency->predecessor->board_id,
+            $dependency->successor->board_id,
+        ];
+        $affectedBoardIds = array_merge(
+            $affectedBoardIds,
+            DB::transaction(fn () => $service->updateType($dependency, $data['type']))
+        );
+        $this->touchBoards($affectedBoardIds);
         return response()->json($this->payload($dependency->fresh(['predecessor', 'successor'])));
     }
 
     public function destroy(Request $request, CardDependency $dependency)
     {
         abort_unless(ProjectAccess::canEditCards($request->user(), $dependency->predecessor->board->project), 403);
-        $board = $dependency->predecessor->board;
+        $boardIds = [
+            $dependency->predecessor->board_id,
+            $dependency->successor->board_id,
+        ];
         $dependency->delete();
-        $board->touchRevision();
+        $this->touchBoards($boardIds);
         return response()->noContent();
     }
 
@@ -53,5 +68,12 @@ class CardDependenciesController extends ApiController
             'successor_card_id' => $dependency->successor_card_id,
             'type' => $dependency->type,
         ];
+    }
+
+    private function touchBoards(array $boardIds): void
+    {
+        Board::whereIn('id', array_values(array_unique($boardIds)))
+            ->get()
+            ->each(fn (Board $board) => $board->touchRevision());
     }
 }

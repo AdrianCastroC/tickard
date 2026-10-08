@@ -34,32 +34,37 @@ class CardDependencyService
         ]);
     }
 
-    public function updateType(CardDependency $dependency, string $type): void
+    public function updateType(CardDependency $dependency, string $type): array
     {
         if (! in_array($type, self::TYPES, true)) {
             throw ValidationException::withMessages(['type' => 'Tipo de dependencia no válido.']);
         }
         $dependency->update(['type' => $type]);
-        $this->apply($dependency->fresh(['predecessor', 'successor']));
-        $this->propagate($dependency->successor);
+        $dependency = $dependency->fresh(['predecessor', 'successor']);
+        $affectedBoardIds = $this->apply($dependency);
+        return array_values(array_unique(array_merge($affectedBoardIds, $this->propagate($dependency->successor))));
     }
 
-    public function apply(CardDependency $dependency): void
+    public function apply(CardDependency $dependency): array
     {
         $successor = $dependency->successor;
 
         if (! $successor) {
-            return;
+            return [];
         }
-        $this->recalculate($successor);
+        $affectedBoardIds = $this->recalculate($successor)
+            ? [$successor->board_id]
+            : [];
+
+        return array_values(array_unique(array_merge($affectedBoardIds, $this->propagate($successor))));
     }
 
-    public function recalculate(Card $successor): void
+    public function recalculate(Card $successor): bool
     {
         $successor->refresh();
 
         if (! $successor->start_date || ! $successor->due_date) {
-            return;
+            return false;
         }
 
         $dependencies = $successor->successorDependencies()
@@ -82,13 +87,17 @@ class CardDependencyService
             });
 
         if ($constraints->isEmpty()) {
-            return;
+            return false;
         }
 
         $previousStart = $successor->start_date->copy();
+        $previousDue = $successor->due_date->copy();
         $duration = $successor->start_date->diffInDays($successor->due_date);
         $successor->start_date = $constraints->sort()->last();
         $successor->due_date = $successor->start_date->copy()->addDays($duration);
+        if ($successor->start_date->equalTo($previousStart) && $successor->due_date->equalTo($previousDue)) {
+            return false;
+        }
         $startDelta = $previousStart->diffInDays($successor->start_date, false);
         $successor->save();
 
@@ -102,10 +111,13 @@ class CardDependencyService
                     ]);
                 });
         }
+
+        return true;
     }
 
-    public function propagate(Card $card): void
+    public function propagate(Card $card): array
     {
+        $affectedBoardIds = [];
         $edges = [];
         $pending = [$card->id];
         $descendantIds = [];
@@ -127,7 +139,7 @@ class CardDependencyService
         }
 
         if ($descendantIds === []) {
-            return;
+            return [];
         }
 
         $indegree = array_fill_keys(array_keys($descendantIds), 0);
@@ -150,7 +162,9 @@ class CardDependencyService
                 continue;
             }
 
-            $this->recalculate($current);
+            if ($this->recalculate($current)) {
+                $affectedBoardIds[] = $current->board_id;
+            }
 
             foreach ($edges[$currentId] ?? [] as $successorId) {
                 $indegree[$successorId]--;
@@ -161,6 +175,8 @@ class CardDependencyService
                 }
             }
         }
+
+        return array_values(array_unique($affectedBoardIds));
     }
 
     private function inferType(Card $predecessor, Card $successor): string

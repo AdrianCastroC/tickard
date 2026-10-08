@@ -49,7 +49,9 @@ class CardsController extends ApiController
         abort_unless($data !== [], 422);
         $board = $column->board;
 
-        DB::transaction(function () use ($column, $data, $board, $dependencies) {
+        $affectedBoardIds = [$board->id];
+
+        DB::transaction(function () use ($column, $data, $board, $dependencies, &$affectedBoardIds) {
             $workflowStateChanged = array_key_exists('workflow_state', $data)
                 && $data['workflow_state'] !== $column->workflow_state;
 
@@ -59,11 +61,15 @@ class CardsController extends ApiController
                 $column->cards()
                     ->whereNull('archived_at')
                     ->get()
-                    ->each(fn (Card $card) => $this->applyWorkflowState($card, $column->workflow_state, $dependencies));
+                    ->each(function (Card $card) use ($column, $dependencies, &$affectedBoardIds): void {
+                        $affectedBoardIds = array_merge(
+                            $affectedBoardIds,
+                            $this->applyWorkflowState($card, $column->workflow_state, $dependencies)
+                        );
+                    });
             }
-
-            $board->touchRevision();
         });
+        $this->touchBoards($affectedBoardIds);
 
         return response()->json([
             'id' => $column->id,
@@ -278,8 +284,9 @@ class CardsController extends ApiController
             }
         }
         $card->update($fields);
+        $affectedBoardIds = [$card->board_id];
         if (array_key_exists('start_date', $data) || array_key_exists('due_date', $data)) {
-            $dependencies->propagate($card->fresh());
+            $affectedBoardIds = array_merge($affectedBoardIds, $dependencies->propagate($card->fresh()));
         }
 
         if (array_key_exists('is_internal', $data) && $data['is_internal'] === true) {
@@ -312,7 +319,7 @@ class CardsController extends ApiController
             $card->labels()->sync($ids);
         }
 
-        $card->board->touchRevision();
+        $this->touchBoards($affectedBoardIds);
 
         return response()->noContent();
     }
@@ -330,10 +337,15 @@ class CardsController extends ApiController
         $column = Column::where('board_id', $card->board_id)->findOrFail($data['column_id']);
         $from = $card->column_id;
 
-        DB::transaction(function () use ($card, $column, $data, $request, $from, $dependencies) {
+        $affectedBoardIds = [$card->board_id];
+
+        DB::transaction(function () use ($card, $column, $data, $request, $from, $dependencies, &$affectedBoardIds) {
             $toState = $column->workflow_state;
             $card->column_id = $column->id;
-            $this->applyWorkflowState($card, $toState, $dependencies);
+            $affectedBoardIds = array_merge(
+                $affectedBoardIds,
+                $this->applyWorkflowState($card, $toState, $dependencies)
+            );
             $this->resequence($column->id, $card, $data['position']);
             if ($from !== $column->id) {
                 $this->resequence($from, null, 0);
@@ -343,22 +355,20 @@ class CardsController extends ApiController
                     'meta' => ['column' => $column->name],
                 ]);
             }
-            $card->board->touchRevision();
         });
+        $this->touchBoards($affectedBoardIds);
 
         return response()->noContent();
     }
 
-    private function applyWorkflowState(Card $card, string $workflowState, CardDependencyService $dependencies): void
+    private function applyWorkflowState(Card $card, string $workflowState, CardDependencyService $dependencies): array
     {
         if ($workflowState === 'backlog') {
             $card->start_date = null;
             $card->due_date = null;
             $card->completed_at = null;
             $card->save();
-            $dependencies->propagate($card->fresh());
-
-            return;
+            return $dependencies->propagate($card->fresh());
         }
 
         if (in_array($workflowState, ['in_progress', 'review', 'done'], true) && $card->started_at === null) {
@@ -372,6 +382,15 @@ class CardsController extends ApiController
         }
 
         $card->save();
+
+        return [];
+    }
+
+    private function touchBoards(array $boardIds): void
+    {
+        Board::whereIn('id', array_values(array_unique($boardIds)))
+            ->get()
+            ->each(fn (Board $board) => $board->touchRevision());
     }
 
     private function hasPlannedDates(array $data): bool
