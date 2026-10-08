@@ -978,12 +978,16 @@ class NebulaMobileDemoSeeder extends Seeder
             ]);
 
             foreach ($definition['items'] as $itemPosition => $body) {
+                $isDone = $current < $done;
                 $item = $module->checklistItems()->create([
                     'card_id' => $card->id,
                     'body' => $body,
                     'position' => $itemPosition,
-                    'is_done' => $current < $done,
-                    'due_date' => $card->due_date,
+                    'is_done' => $isDone,
+                    'due_date' => $this->checklistDueDate($card, $current),
+                    'completed_at' => $isDone
+                        ? $this->checklistCompletedAt($card, $current)->toDateTimeString()
+                        : null,
                 ]);
 
                 if ($assigneeKeys !== []) {
@@ -1008,6 +1012,35 @@ class NebulaMobileDemoSeeder extends Seeder
                 'position' => count($selected) + 1,
             ]);
         }
+    }
+
+    private function checklistDueDate(Card $card, int $itemIndex): ?string
+    {
+        if (! $card->start_date || ! $card->due_date || $itemIndex % 4 === 1) {
+            return null;
+        }
+
+        $plannedDays = $card->start_date->diffInDays($card->due_date);
+        $offset = ($this->globalCardIndex * 3 + $itemIndex * 2) % ($plannedDays + 1);
+
+        return $card->start_date->addDays($offset)->toDateString();
+    }
+
+    private function checklistCompletedAt(Card $card, int $itemIndex): CarbonImmutable
+    {
+        $startedAt = CarbonImmutable::parse($card->started_at);
+        $finishedAt = $card->completed_at
+            ? CarbonImmutable::parse($card->completed_at)
+            : CarbonImmutable::parse(self::DEMO_DATE)->endOfDay();
+        $spanSeconds = max(0, $startedAt->diffInSeconds($finishedAt));
+
+        if ($spanSeconds === 0) {
+            return $startedAt;
+        }
+
+        $percentage = 10 + (($this->globalCardIndex * 11 + $itemIndex * 17) % 81);
+
+        return $startedAt->addSeconds((int) floor($spanSeconds * $percentage / 100));
     }
 
     private function checklistBlueprints(string $team): array
@@ -1422,6 +1455,53 @@ class NebulaMobileDemoSeeder extends Seeder
                 throw new RuntimeException("Card con completed_at anterior a started_at: {$card->title}");
             }
 
+            foreach ($card->checklistItems as $item) {
+                if ($item->is_done && ! $item->completed_at) {
+                    throw new RuntimeException("Checklist completado sin completed_at: {$card->title}");
+                }
+
+                if (! $item->is_done && $item->completed_at) {
+                    throw new RuntimeException("Checklist pendiente con completed_at: {$card->title}");
+                }
+
+                if ($item->completed_at) {
+                    if (CarbonImmutable::parse($item->completed_at)->greaterThan($demoDate)) {
+                        throw new RuntimeException("Checklist con completed_at posterior a DEMO_DATE: {$card->title}");
+                    }
+
+                    if (
+                        $card->started_at
+                        && CarbonImmutable::parse($item->completed_at)->lessThan(CarbonImmutable::parse($card->started_at))
+                    ) {
+                        throw new RuntimeException("Checklist completado antes de la Card: {$card->title}");
+                    }
+
+                    if (
+                        $card->completed_at
+                        && CarbonImmutable::parse($item->completed_at)->greaterThan(CarbonImmutable::parse($card->completed_at))
+                    ) {
+                        throw new RuntimeException("Checklist completado después de la Card: {$card->title}");
+                    }
+                }
+
+                if ($state === 'backlog' && $item->due_date) {
+                    throw new RuntimeException("Checklist de backlog con planificación: {$card->title}");
+                }
+
+                if ($item->due_date) {
+                    if (! $card->start_date || ! $card->due_date) {
+                        throw new RuntimeException("Checklist planificado en Card sin planificación: {$card->title}");
+                    }
+
+                    if (
+                        $item->due_date->lessThan($card->start_date)
+                        || $item->due_date->greaterThan($card->due_date)
+                    ) {
+                        throw new RuntimeException("Checklist fuera de la planificación de la Card: {$card->title}");
+                    }
+                }
+            }
+
             if ($card->category_id && $card->category?->board_id !== $card->board_id) {
                 throw new RuntimeException("Categoría de otro Board en Card: {$card->title}");
             }
@@ -1519,6 +1599,19 @@ class NebulaMobileDemoSeeder extends Seeder
         $crossBoard = $dependencies->filter(
             fn (CardDependency $dependency) => $dependency->predecessor->board_id !== $dependency->successor->board_id
         )->count();
+        $items = $cards->load('checklistItems')->flatMap->checklistItems;
+        $withDueDate = $items->filter(fn ($item) => $item->due_date !== null);
+        $completed = $items->filter(fn ($item) => $item->is_done);
+        $demoDate = CarbonImmutable::parse(self::DEMO_DATE)->endOfDay();
+        $completedBeforeDue = $completed->filter(
+            fn ($item) => $item->due_date && $item->completed_at && $item->completed_at->toDateString() < $item->due_date->toDateString()
+        )->count();
+        $completedSameDayDue = $completed->filter(
+            fn ($item) => $item->due_date && $item->completed_at && $item->completed_at->toDateString() === $item->due_date->toDateString()
+        )->count();
+        $completedAfterDue = $completed->filter(
+            fn ($item) => $item->due_date && $item->completed_at && $item->completed_at->toDateString() > $item->due_date->toDateString()
+        )->count();
 
         $this->command?->info('Nébula Mobile creada y validada:');
         $this->command?->line('- Boards: '.$project->boards()->count());
@@ -1529,5 +1622,14 @@ class NebulaMobileDemoSeeder extends Seeder
         $this->command?->line('- Cards con adjuntos: '.CardAttachment::query()->whereIn('card_id', $cardIds)->distinct()->count('card_id'));
         $this->command?->line('- Dependencias: '.$dependencies->count());
         $this->command?->line('- Dependencias cross-board: '.$crossBoard);
+        $this->command?->line('- Checklist items: '.$items->count());
+        $this->command?->line('- Checklist con due_date: '.$withDueDate->count());
+        $this->command?->line('- Checklist sin due_date: '.($items->count() - $withDueDate->count()));
+        $this->command?->line('- Checklist completados: '.$completed->count());
+        $this->command?->line('- Checklist con completed_at: '.$items->filter(fn ($item) => $item->completed_at !== null)->count());
+        $this->command?->line('- Completados antes de due_date: '.$completedBeforeDue);
+        $this->command?->line('- Completados el mismo día: '.$completedSameDayDue);
+        $this->command?->line('- Completados después de due_date: '.$completedAfterDue);
+        $this->command?->line('- Incoherencias checklist: 0');
     }
 }
