@@ -1011,6 +1011,43 @@ h1, h2, h3, p { margin: 0; }
   pointer-events: none;
 }
 .modal-back.nested { z-index: 30; }
+
+.backlog-resolution-modal {
+  width: min(760px, 100%);
+  max-height: min(720px, calc(100vh - 32px));
+  overflow: auto;
+}
+.backlog-resolution-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.backlog-resolution-flow,
+.backlog-resolution-dependencies,
+.backlog-resolution-destinations {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+.backlog-resolution-card {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 8px;
+  padding: 8px;
+  border-radius: 8px;
+  background: var(--surface-soft);
+}
+.backlog-resolution-card span { display: flex; flex-direction: column; gap: 2px; }
+.backlog-resolution-card small,
+.backlog-resolution-reference { color: var(--muted); font-size: 0.82rem; }
+.backlog-resolution-dependencies > div { font-size: 0.9rem; }
+.backlog-resolution-dependencies small { margin-left: 6px; color: var(--warning, var(--muted)); }
+.backlog-resolution-destinations label { display: flex; align-items: center; gap: 8px; justify-content: space-between; }
+
+@media (max-width: 640px) {
+  .backlog-resolution-modal { max-height: calc(100vh - 16px); padding: 16px; }
+  .backlog-resolution-destinations label { align-items: stretch; flex-direction: column; }
+}
 .visibility-modal {
   width: min(420px, 100%);
   gap: 16px;

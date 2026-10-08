@@ -100,6 +100,47 @@ export type Card = {
   dependencies?: CardDependencies
 }
 
+export type BacklogResolutionCard = {
+  id: number
+  title: string
+  board_id: number
+  board_name: string
+  column_id: number
+  column_name: string
+  is_root: boolean
+}
+
+export type BacklogResolutionEndpoint = Pick<BacklogResolutionCard, 'id' | 'title' | 'board_id' | 'board_name'>
+export type BacklogResolutionDependency = {
+  id: number
+  type: 'fs' | 'ss' | 'ff' | 'sf'
+  scope: 'flow' | 'external'
+  predecessor: BacklogResolutionEndpoint
+  successor: BacklogResolutionEndpoint
+}
+export type BacklogResolution = {
+  root_card_id: number
+  target_backlog: { id: number; board_id: number; name: string }
+  cards: BacklogResolutionCard[]
+  dependencies: BacklogResolutionDependency[]
+  boards: { id: number; name: string; default_backlog_id: number; backlogs: { id: number; name: string; position: number }[] }[]
+  summary: { cards: number; flow_dependencies: number; external_dependencies: number; boards: number }
+}
+
+export class ApiError extends Error {
+  status: number
+  code?: string
+  data: unknown
+
+  constructor(message: string, status: number, data: unknown) {
+    super(message)
+    this.name = 'ApiError'
+    this.status = status
+    this.code = typeof data === 'object' && data !== null && 'code' in data && typeof data.code === 'string' ? data.code : undefined
+    this.data = data
+  }
+}
+
 export type BoardCategory = { id: number; name: string; position: number }
 
 export type WorkflowState = 'backlog' | 'pending' | 'in_progress' | 'review' | 'done'
@@ -185,7 +226,7 @@ export async function api<T>(path: string, options: RequestInit = {}): Promise<T
       ? (Object.values(data.errors).flat().find((item) => typeof item === 'string') as string | undefined)
       : undefined
     const message = fromErrors || data?.message || 'No se pudo completar la acción.'
-    throw new Error(message)
+    throw new ApiError(message, response.status, data)
   }
   return data as T
 }

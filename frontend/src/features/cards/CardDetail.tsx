@@ -54,7 +54,7 @@ function ColumnStatusIcon({ name, color = '#3b82f6' }: { name?: string; color?: 
 
 
 
-export function CardDrawer({ card, mode, board, currentUser, canEdit, onClose, onEdit, onView, onChange }: {
+export function CardDrawer({ card, mode, board, currentUser, canEdit, onClose, onEdit, onView, onChange, onMove }: {
   card: Card
   mode: 'view' | 'edit'
   board: BoardPayload
@@ -64,6 +64,7 @@ export function CardDrawer({ card, mode, board, currentUser, canEdit, onClose, o
   onEdit: () => void
   onView: () => void
   onChange: () => Promise<void>
+  onMove: (cardId: number, columnId: number, position: number) => Promise<void>
 }) {
   const [title, setTitle] = useState(card.title)
   const [description, setDescription] = useState(card.description ?? '')
@@ -173,11 +174,7 @@ export function CardDrawer({ card, mode, board, currentUser, canEdit, onClose, o
     if (columnId === card.column_id) return
     const target = board.columns.find((column) => column.id === columnId)
     const position = target?.cards.length ?? 0
-    await api(`/cards/${card.id}/move`, {
-      method: 'POST',
-      body: JSON.stringify({ column_id: columnId, position }),
-    })
-    await onChange()
+    await onMove(card.id, columnId, position)
   }
 
   function toggleAssignee(id: number) {

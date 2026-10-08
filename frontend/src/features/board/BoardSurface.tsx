@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
 import type { Profile, Project } from '../../api'
 import { CategoriesDrawer } from '../administration'
@@ -17,6 +17,7 @@ import { TableView } from './TableView'
 import { GanttView } from './GanttView'
 import { BoardSummary } from './BoardSummary'
 import { BoardConfigPanel } from './BoardConfigPanel'
+import { BacklogResolutionModal } from './BacklogResolutionModal'
 
 type Props = {
   state: ReturnType<typeof useBoard>
@@ -30,7 +31,7 @@ type Props = {
 }
 
 export function BoardSurface({ state, filters, activeBoardId, project, profile, query, onBoardDeleted, embedded = false }: Props) {
-  const { board: view, selected, setSelected, openCard, refresh, move, moveColumn } = state
+  const { board: view, selected, setSelected, openCard, refresh, move, moveColumn, pendingMove, setPendingMove, confirmPendingMove } = state
   const [createColumn, setCreateColumn] = useState<{ id: number; name: string } | null>(null)
   const [showCategories, setShowCategories] = useState(false)
   const [showConfig, setShowConfig] = useState(false)
@@ -42,6 +43,12 @@ export function BoardSurface({ state, filters, activeBoardId, project, profile, 
   const filteredColumns = useMemo(() => view ? filteredBoardColumns(view, query, filters.assignee, filters.teamId, filters.label, filters.priority) : [], [view, query, filters.assignee, filters.teamId, filters.label, filters.priority])
   const storedView = activeBoardId ? localStorage.getItem(`tickard:board-view:${activeBoardId}`) : null
   const viewMode = activeBoardId ? viewModes[activeBoardId] ?? (storedView === 'summary' || storedView === 'list' || storedView === 'table' || storedView === 'gantt' ? storedView : 'summary') : 'summary'
+
+  useEffect(() => {
+    if (pendingMove && activeBoardId !== null && !pendingMove.resolution.boards.some((board) => board.id === activeBoardId)) {
+      setPendingMove(null)
+    }
+  }, [activeBoardId, pendingMove, setPendingMove])
 
   function changeViewMode(value: BoardViewMode) {
     if (!activeBoardId) return
@@ -85,7 +92,11 @@ export function BoardSurface({ state, filters, activeBoardId, project, profile, 
         onClose={() => setSelected(null)}
         onEdit={() => setSelected({ card: openCard, mode: 'edit' })}
         onView={() => setSelected({ card: openCard, mode: 'view' })}
+        onMove={move}
         onChange={refresh} />}
+      {pendingMove && <BacklogResolutionModal resolution={pendingMove.resolution}
+        onCancel={() => setPendingMove(null)}
+        onConfirm={confirmPendingMove} />}
       {showCategories && view && <CategoriesDrawer board={view}
         onClose={() => setShowCategories(false)} onChange={refresh} />}
       {showConfig && view && <BoardConfigPanel board={view} onClose={() => setShowConfig(false)} onChange={refresh} onDeleted={async () => { setShowConfig(false); if (onBoardDeleted) await onBoardDeleted(view.board.id); else await refresh() }} />}

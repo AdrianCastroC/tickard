@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { api, type BoardPayload, type Card } from '../../api'
+import { api, ApiError, type BacklogResolution, type BoardPayload, type Card } from '../../api'
 import { orderedColumnCards } from './boardUtils'
 
 export function useBoard(activeId: number | null, selection: number) {
   const [data, setData] = useState<BoardPayload | null>(null)
   const [selected, setSelected] = useState<{ card: Card; mode: 'view' | 'edit' } | null>(null)
+  const [pendingMove, setPendingMove] = useState<{ cardId: number; columnId: number; position: number; resolution: BacklogResolution } | null>(null)
   const scope = useRef<{ id: number; selection: number; disposed: boolean } | null>(null)
 
   const refresh = useCallback(async () => {
@@ -40,6 +41,9 @@ export function useBoard(activeId: number | null, selection: number) {
     : null
 
   async function move(cardId: number, columnId: number, position: number) {
+    const targetColumn = data?.columns.find((column) => column.id === columnId)
+    const isBacklog = targetColumn?.workflow_state === 'backlog'
+    if (!isBacklog) {
     setData((current) => {
       if (!current || current.board.id !== activeId) return current
       const card = current.columns.flatMap((column) => column.cards).find((item) => item.id === cardId)
@@ -61,12 +65,27 @@ export function useBoard(activeId: number | null, selection: number) {
           : column),
       }
     })
+    }
     try {
       await api(`/cards/${cardId}/move`, { method: 'POST', body: JSON.stringify({ column_id: columnId, position }) })
       await refresh()
-    } catch {
+    } catch (error) {
       await refresh()
+      if (error instanceof ApiError && error.status === 409 && error.code === 'backlog_dependencies') {
+        const data = error.data as { resolution?: BacklogResolution }
+        if (data.resolution) setPendingMove({ cardId, columnId, position, resolution: data.resolution })
+      }
     }
+  }
+
+  async function confirmPendingMove(selectedCardIds: number[], destinations: { board_id: number; column_id: number }[]) {
+    if (!pendingMove) return
+    await api(`/cards/${pendingMove.cardId}/move`, {
+      method: 'POST',
+      body: JSON.stringify({ column_id: pendingMove.columnId, position: pendingMove.position, backlog_resolution: { selected_card_ids: selectedCardIds, destinations } }),
+    })
+    setPendingMove(null)
+    await refresh()
   }
 
   async function moveColumn(columnId: number, position: number) {
@@ -90,5 +109,5 @@ export function useBoard(activeId: number | null, selection: number) {
     }
   }
 
-  return { board, selected, setSelected, openCard, refresh, move, moveColumn }
+  return { board, selected, setSelected, openCard, refresh, move, moveColumn, pendingMove, setPendingMove, confirmPendingMove }
 }
