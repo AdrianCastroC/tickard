@@ -46,8 +46,23 @@ class CardsController extends ApiController
             'workflow_state' => ['sometimes', Rule::in(['backlog', 'pending', 'in_progress', 'review', 'done'])],
         ]);
         abort_unless($data !== [], 422);
-        $column->update($data);
-        $column->board->touchRevision();
+        $board = $column->board;
+
+        DB::transaction(function () use ($column, $data, $board) {
+            $workflowStateChanged = array_key_exists('workflow_state', $data)
+                && $data['workflow_state'] !== $column->workflow_state;
+
+            $column->update($data);
+
+            if ($workflowStateChanged) {
+                $column->cards()
+                    ->whereNull('archived_at')
+                    ->get()
+                    ->each(fn (Card $card) => $this->applyWorkflowState($card, $column->workflow_state));
+            }
+
+            $board->touchRevision();
+        });
 
         return response()->json([
             'id' => $column->id,
@@ -297,15 +312,7 @@ class CardsController extends ApiController
         DB::transaction(function () use ($card, $column, $data, $request, $from) {
             $toState = $column->workflow_state;
             $card->column_id = $column->id;
-            if (in_array($toState, ['in_progress', 'review', 'done'], true) && $card->started_at === null) {
-                $card->started_at = now();
-            }
-            if (in_array($toState, ['backlog', 'pending', 'in_progress'], true)) {
-                $card->completed_at = null;
-            } elseif (in_array($toState, ['review', 'done'], true) && $card->completed_at === null) {
-                $card->completed_at = now();
-            }
-            $card->save();
+            $this->applyWorkflowState($card, $toState);
             $this->resequence($column->id, $card, $data['position']);
             if ($from !== $column->id) {
                 $this->resequence($from, null, 0);
@@ -319,6 +326,21 @@ class CardsController extends ApiController
         });
 
         return response()->noContent();
+    }
+
+    private function applyWorkflowState(Card $card, string $workflowState): void
+    {
+        if (in_array($workflowState, ['in_progress', 'review', 'done'], true) && $card->started_at === null) {
+            $card->started_at = now();
+        }
+
+        if (in_array($workflowState, ['backlog', 'pending', 'in_progress'], true)) {
+            $card->completed_at = null;
+        } elseif (in_array($workflowState, ['review', 'done'], true) && $card->completed_at === null) {
+            $card->completed_at = now();
+        }
+
+        $card->save();
     }
 
     private function validatePlannedDates(?string $start, ?string $due): void
