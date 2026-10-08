@@ -99,10 +99,42 @@ function compactDate(value?: string | null) {
   return value ? new Intl.DateTimeFormat('es-ES', { day: 'numeric', month: 'short', timeZone: 'UTC' }).format(parseDay(value)).replace('.', '') : '—'
 }
 
+function compareGanttCards(first: GanttCard, second: GanttCard) {
+  const startComparison = compareOptionalDates(first.card.start_date, second.card.start_date)
+  if (startComparison !== 0) {
+    return startComparison
+  }
+
+  const dueComparison = compareOptionalDates(first.card.due_date, second.card.due_date)
+  if (dueComparison !== 0) {
+    return dueComparison
+  }
+
+  return first.card.position - second.card.position
+}
+
+function compareOptionalDates(first?: string | null, second?: string | null) {
+  if (first === null || first === undefined) {
+    return second === null || second === undefined ? 0 : 1
+  }
+
+  if (second === null || second === undefined) {
+    return -1
+  }
+
+  return first.localeCompare(second)
+}
+
 function categoryGroups(board: BoardPayload, columns: BoardPayload['columns']): CategoryGroup[] {
   const items = columns.flatMap((column) => column.cards.map((card) => ({ card, column })))
-  const groups = board.categories.map((category) => ({ id: String(category.id), name: category.name, cards: items.filter(({ card }) => card.category_id === category.id) }))
-  const uncategorized = items.filter(({ card }) => card.category_id == null)
+  const groups = board.categories.map((category) => ({
+    id: String(category.id),
+    name: category.name,
+    cards: items
+      .filter(({ card }) => card.category_id === category.id)
+      .sort(compareGanttCards),
+  }))
+  const uncategorized = items.filter(({ card }) => card.category_id == null).sort(compareGanttCards)
   if (uncategorized.length > 0) groups.push({ id: 'uncategorized', name: 'Sin categoría', cards: uncategorized })
   return groups.filter((group) => group.cards.length > 0)
 }
