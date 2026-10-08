@@ -38,7 +38,7 @@ class CardsController extends ApiController
         ], 201);
     }
 
-    public function updateColumn(Request $request, Column $column)
+    public function updateColumn(Request $request, Column $column, CardDependencyService $dependencies)
     {
         abort_unless(ProjectAccess::canManage($request->user(), $column->board->project), 403);
         $data = $request->validate([
@@ -49,7 +49,7 @@ class CardsController extends ApiController
         abort_unless($data !== [], 422);
         $board = $column->board;
 
-        DB::transaction(function () use ($column, $data, $board) {
+        DB::transaction(function () use ($column, $data, $board, $dependencies) {
             $workflowStateChanged = array_key_exists('workflow_state', $data)
                 && $data['workflow_state'] !== $column->workflow_state;
 
@@ -59,7 +59,7 @@ class CardsController extends ApiController
                 $column->cards()
                     ->whereNull('archived_at')
                     ->get()
-                    ->each(fn (Card $card) => $this->applyWorkflowState($card, $column->workflow_state));
+                    ->each(fn (Card $card) => $this->applyWorkflowState($card, $column->workflow_state, $dependencies));
             }
 
             $board->touchRevision();
@@ -330,10 +330,10 @@ class CardsController extends ApiController
         $column = Column::where('board_id', $card->board_id)->findOrFail($data['column_id']);
         $from = $card->column_id;
 
-        DB::transaction(function () use ($card, $column, $data, $request, $from) {
+        DB::transaction(function () use ($card, $column, $data, $request, $from, $dependencies) {
             $toState = $column->workflow_state;
             $card->column_id = $column->id;
-            $this->applyWorkflowState($card, $toState);
+            $this->applyWorkflowState($card, $toState, $dependencies);
             $this->resequence($column->id, $card, $data['position']);
             if ($from !== $column->id) {
                 $this->resequence($from, null, 0);
@@ -349,7 +349,7 @@ class CardsController extends ApiController
         return response()->noContent();
     }
 
-    private function applyWorkflowState(Card $card, string $workflowState): void
+    private function applyWorkflowState(Card $card, string $workflowState, CardDependencyService $dependencies): void
     {
         if ($workflowState === 'backlog') {
             $card->start_date = null;

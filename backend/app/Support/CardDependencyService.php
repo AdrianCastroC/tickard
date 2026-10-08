@@ -8,7 +8,7 @@ use Illuminate\Validation\ValidationException;
 
 class CardDependencyService
 {
-    public const TYPES = ['fs', 'ss', 'ff'];
+    public const TYPES = ['fs', 'ss', 'ff', 'sf'];
 
     public function create(Card $predecessor, Card $successor): CardDependency
     {
@@ -44,9 +44,15 @@ class CardDependencyService
     {
         $predecessor = $dependency->predecessor;
         $successor = $dependency->successor;
+        if (! $predecessor->start_date || ! $predecessor->due_date || ! $successor->start_date || ! $successor->due_date) {
+            return;
+        }
         $duration = $successor->start_date->diffInDays($successor->due_date);
         if ($dependency->type === 'ff') {
             $successor->due_date = $predecessor->due_date;
+            $successor->start_date = $successor->due_date->copy()->subDays($duration);
+        } elseif ($dependency->type === 'sf') {
+            $successor->due_date = $predecessor->start_date;
             $successor->start_date = $successor->due_date->copy()->subDays($duration);
         } else {
             $successor->start_date = $dependency->type === 'ss' ? $predecessor->start_date : $predecessor->due_date;
