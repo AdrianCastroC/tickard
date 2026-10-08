@@ -214,6 +214,7 @@ class CardPresenter
             'body' => $item->body,
             'is_done' => (bool) $item->is_done,
             'due_date' => $item->due_date?->toDateString(),
+            'completed_at' => $item->completed_at?->toIso8601String(),
             'position' => (int) $item->position,
             'assignees' => $assignees->map(fn (User $assignee) => [
                 'id' => $assignee->id,

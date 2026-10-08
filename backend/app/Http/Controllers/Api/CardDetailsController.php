@@ -149,7 +149,23 @@ public function updateChecklistItem(Request $request, CardChecklistItem $item)
             }
         }
 
-        $fields = collect($data)->except(['assignee_ids'])->all();
+        $wasDone = (bool) $item->is_done;
+        $fields = collect($data)->except(['assignee_ids', 'is_done'])->all();
+
+        if (array_key_exists('is_done', $data)) {
+            $isDone = (bool) $data['is_done'];
+
+            if (! $wasDone && $isDone) {
+                $fields['is_done'] = true;
+                $fields['completed_at'] = now();
+            } elseif ($wasDone && ! $isDone) {
+                $fields['is_done'] = false;
+                $fields['completed_at'] = null;
+            } else {
+                $fields['is_done'] = $isDone;
+            }
+        }
+
         if ($fields !== []) {
             $item->update($fields);
         }

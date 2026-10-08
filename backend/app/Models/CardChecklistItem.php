@@ -8,13 +8,14 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 class CardChecklistItem extends Model
 {
-    protected $fillable = ['card_id', 'card_module_id', 'body', 'is_done', 'due_date', 'position'];
+    protected $fillable = ['card_id', 'card_module_id', 'body', 'is_done', 'due_date', 'completed_at', 'position'];
 
     protected function casts(): array
     {
         return [
             'is_done' => 'boolean',
             'due_date' => 'date',
+            'completed_at' => 'datetime',
         ];
     }
 

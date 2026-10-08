@@ -31,6 +31,7 @@ export type ChecklistItem = {
   body: string
   is_done: boolean
   due_date?: string | null
+  completed_at?: string | null
   position: number
   assignees?: Person[]
 }
