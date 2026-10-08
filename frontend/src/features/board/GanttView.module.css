@@ -395,6 +395,81 @@
   right: 0;
 }
 
+.cardMinicard {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  z-index: 12;
+  display: grid;
+  gap: 3px;
+  min-width: 170px;
+  padding: 8px 10px;
+  transform: translateX(-50%);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  box-shadow: 0 8px 20px color-mix(in srgb, var(--ink) 18%, transparent);
+  color: var(--ink);
+  font-size: 11px;
+  font-weight: 500;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 120ms ease;
+}
+
+.cardMinicard strong {
+  font-size: 12px;
+}
+
+.cardBar:hover .cardMinicard {
+  opacity: 1;
+}
+
+.dragging .cardMinicard,
+.dependencyCreating .cardMinicard {
+  opacity: 0;
+}
+
+.dependencyConnector {
+  position: absolute;
+  top: 50%;
+  z-index: 3;
+  display: grid;
+  width: 18px;
+  height: 18px;
+  place-items: center;
+  transform: translateY(-50%);
+  border-radius: 50%;
+  background: var(--surface);
+  color: var(--accent);
+  cursor: crosshair;
+  opacity: 0;
+}
+
+.dependencyConnector svg {
+  width: 16px;
+  height: 16px;
+}
+
+.cardBar:hover .dependencyConnector,
+.dependencyConnector:focus-visible {
+  opacity: 1;
+}
+
+.dependencyConnectorStart {
+  left: 7px;
+}
+
+.dependencyConnectorEnd {
+  right: 7px;
+}
+
+.dependencyConnector[data-target='true'] {
+  background: var(--accent);
+  color: var(--surface);
+  opacity: 1;
+}
+
 .dragDates {
   position: absolute;
   top: calc(100% + 4px);
@@ -468,6 +543,14 @@
 
 .dependencyLine {
   stroke-width: 1.5;
+}
+
+.dependencyPreview {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 2;
+  stroke-dasharray: 5 4;
+  vector-effect: non-scaling-stroke;
 }
 
 .dependencyHitArea {

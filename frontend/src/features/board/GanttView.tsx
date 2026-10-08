@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from 'react'
 import { api, type BoardPayload, type Card, type CardDependency, type Column } from '../../api'
-import { CollapseColumnIcon, DoneIcon, ExpandColumnIcon, EyeIcon, EyeLowVisionIcon } from '../../shared/icons'
+import { CollapseColumnIcon, DependencyConnectorIcon, DoneIcon, ExpandColumnIcon, EyeIcon, EyeLowVisionIcon } from '../../shared/icons'
 import styles from './GanttView.module.css'
 
 const DAY_MS = 86_400_000
@@ -28,6 +28,7 @@ type DragState = {
 type DragPreview = { cardId: number; start: string; due: string }
 type GanttDependency = CardDependency & { predecessorId: number; successorId: number }
 type DependencyPopover = { dependency: GanttDependency; x: number; y: number }
+type DependencyCreation = { cardId: number; endpoint: 'start' | 'finish'; cursorX: number; cursorY: number; targetId: number | null; targetEndpoint: 'start' | 'finish' | null }
 
 type GanttGridStyle = CSSProperties & {
   '--left-columns': string
@@ -348,6 +349,7 @@ export function GanttView({ board, cards, canEdit, onOpen, onChange }: GanttProp
   const [dragPreview, setDragPreview] = useState<DragPreview | null>(null)
   const [dragError, setDragError] = useState<string | null>(null)
   const [dependencyPopover, setDependencyPopover] = useState<DependencyPopover | null>(null)
+  const [dependencyCreation, setDependencyCreation] = useState<DependencyCreation | null>(null)
   const suppressClickRef = useRef<number | null>(null)
   const timelineGridRef = useRef<HTMLDivElement>(null)
   const toolbarRef = useRef<HTMLDivElement>(null)
@@ -507,6 +509,64 @@ export function GanttView({ board, cards, canEdit, onOpen, onChange }: GanttProp
     setDependencyPopover(null)
     await onChange()
   }
+
+  function beginDependencyCreation(event: ReactPointerEvent, cardId: number, endpoint: 'start' | 'finish') {
+    if (!canEdit) return
+    event.preventDefault()
+    event.stopPropagation()
+    setDependencyPopover(null)
+    setDragError(null)
+    setDependencyCreation({ cardId, endpoint, cursorX: event.clientX, cursorY: event.clientY, targetId: null, targetEndpoint: null })
+  }
+
+  useEffect(() => {
+    if (!dependencyCreation) return
+
+    function handlePointerMove(event: PointerEvent) {
+      const target = document.elementFromPoint(event.clientX, event.clientY)?.closest<HTMLElement>('[data-dependency-connector]')
+      const targetId = target ? Number(target.dataset.cardId) : null
+      const targetEndpoint = target?.dataset.endpoint as 'start' | 'finish' | undefined
+      setDependencyCreation((current) => current ? {
+        ...current,
+        cursorX: event.clientX,
+        cursorY: event.clientY,
+        targetId: targetId && targetId !== current.cardId ? targetId : null,
+        targetEndpoint: targetId && targetId !== current.cardId ? targetEndpoint ?? null : null,
+      } : null)
+    }
+
+    function handlePointerUp() {
+      const creation = dependencyCreation
+      setDependencyCreation(null)
+      if (!creation?.targetId || !creation.targetEndpoint) return
+      const type = creation.endpoint === 'start' && creation.targetEndpoint === 'start'
+        ? 'ss'
+        : creation.endpoint === 'finish' && creation.targetEndpoint === 'start'
+          ? 'fs'
+          : creation.endpoint === 'finish' && creation.targetEndpoint === 'finish'
+            ? 'ff'
+            : 'sf'
+      void api(`/cards/${creation.cardId}/dependencies`, {
+        method: 'POST',
+        body: JSON.stringify({ successor_card_id: creation.targetId, type }),
+      }).then(onChange).catch((error: unknown) => {
+        setDragError(error instanceof Error ? error.message : 'No se pudo crear la dependencia.')
+      })
+    }
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === 'Escape') setDependencyCreation(null)
+    }
+
+    window.addEventListener('pointermove', handlePointerMove)
+    window.addEventListener('pointerup', handlePointerUp)
+    window.addEventListener('keydown', handleKeyDown)
+    return () => {
+      window.removeEventListener('pointermove', handlePointerMove)
+      window.removeEventListener('pointerup', handlePointerUp)
+      window.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [dependencyCreation, onChange])
 
   useEffect(() => {
     if (!dragState) {
@@ -670,6 +730,7 @@ export function GanttView({ board, cards, canEdit, onOpen, onChange }: GanttProp
               styles.cardBar,
               item.column.workflow_state === 'pending' ? styles.pendingBar : '',
               preview ? styles.dragging : '',
+              dependencyCreation ? styles.dependencyCreating : '',
             ].filter(Boolean).join(' ')
 
             const inReview = item.column.workflow_state === 'review'
@@ -681,6 +742,15 @@ export function GanttView({ board, cards, canEdit, onOpen, onChange }: GanttProp
                 : item.card.title
 
             const dateLabel = `${compactDate(startDate)} — ${compactDate(dueDate)}`
+            const workflowLabel = item.column.workflow_state === 'in_progress'
+              ? 'En progreso'
+              : item.column.workflow_state === 'review'
+                ? 'En revisión'
+                : item.column.workflow_state === 'done'
+                  ? 'Completado'
+                  : item.column.workflow_state === 'pending'
+                    ? 'Pendiente'
+                    : 'Backlog'
 
             return (
               <button
@@ -701,11 +771,19 @@ export function GanttView({ board, cards, canEdit, onOpen, onChange }: GanttProp
                 title={cardLabel}
                 aria-label={cardLabel}
               >
+                {canEdit && <span className={`${styles.dependencyConnector} ${styles.dependencyConnectorStart}`} data-dependency-connector="true" data-card-id={item.card.id} data-endpoint="start" data-target={dependencyCreation?.targetId === item.card.id && dependencyCreation.targetEndpoint === 'start' ? 'true' : undefined} onPointerDown={(event) => beginDependencyCreation(event, item.card.id, 'start')} role="button" aria-label={`Crear dependencia desde inicio de ${item.card.title}`} tabIndex={0}><DependencyConnectorIcon /></span>}
+                <span className={styles.cardMinicard} aria-hidden="true">
+                  <strong>{item.card.title}</strong>
+                  <span>{workflowLabel}</span>
+                  <span>{dateLabel}</span>
+                  <span>Progreso: {cardVisualProgress(item)}%</span>
+                </span>
                 {canEdit && <span className={`${styles.resizeHandle} ${styles.resizeHandleStart}`} onPointerDown={(event) => beginDrag(event, item, 'resize-start')} aria-hidden="true" />}
                 {preview && <span className={styles.dragDates} aria-hidden="true">{dateLabel}</span>}
                 {inReview && <EyeIcon />}
                 {isDone && <DoneIcon />}
                 {canEdit && <span className={`${styles.resizeHandle} ${styles.resizeHandleEnd}`} onPointerDown={(event) => beginDrag(event, item, 'resize-end')} aria-hidden="true" />}
+                {canEdit && <span className={`${styles.dependencyConnector} ${styles.dependencyConnectorEnd}`} data-dependency-connector="true" data-card-id={item.card.id} data-endpoint="finish" data-target={dependencyCreation?.targetId === item.card.id && dependencyCreation.targetEndpoint === 'finish' ? 'true' : undefined} onPointerDown={(event) => beginDependencyCreation(event, item.card.id, 'finish')} role="button" aria-label={`Crear dependencia desde fin de ${item.card.title}`} tabIndex={0}><DependencyConnectorIcon /></span>}
               </button>
             )
           }))}
@@ -715,6 +793,18 @@ export function GanttView({ board, cards, canEdit, onOpen, onChange }: GanttProp
                 <path d="M0 0L7 3.5L0 7Z" />
               </marker>
             </defs>
+            {dependencyCreation && (() => {
+              const source = cardRows.get(dependencyCreation.cardId)
+              const grid = timelineGridRef.current?.getBoundingClientRect()
+              if (!source || !grid) return null
+              const date = dependencyCreation.endpoint === 'start' ? source.item.card.start_date! : source.item.card.due_date!
+              const sourceColumn = dependencyCreation.endpoint === 'start' ? gridColumn(range.start, date) : dateEndColumn(range.start, date)
+              const x1 = ((sourceColumn - 1) / days.length) * 1000
+              const y1 = 56 + (source.row - 3) * 30 + 15
+              const x2 = ((dependencyCreation.cursorX - grid.left) / grid.width) * 1000
+              const y2 = dependencyCreation.cursorY - grid.top
+              return <path className={styles.dependencyPreview} d={`M ${x1} ${y1} L ${x2} ${y2}`} />
+            })()}
             {ganttDependencies.map((dependency) => {
               const predecessor = cardRows.get(dependency.predecessorId)
               const successor = cardRows.get(dependency.successorId)
