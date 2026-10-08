@@ -82,6 +82,20 @@ class CardPresenter
                 'meta' => $activity->meta,
                 'author' => $activity->user?->name,
             ])->values();
+            $payload['dependencies'] = [
+                'predecessors' => $card->predecessorDependencies->map(fn ($dependency) => [
+                    'id' => $dependency->id,
+                    'card_id' => $dependency->predecessor_card_id,
+                    'title' => $dependency->predecessor->title,
+                    'type' => $dependency->type,
+                ])->values(),
+                'successors' => $card->successorDependencies->map(fn ($dependency) => [
+                    'id' => $dependency->id,
+                    'card_id' => $dependency->successor_card_id,
+                    'title' => $dependency->successor->title,
+                    'type' => $dependency->type,
+                ])->values(),
+            ];
 
             return $payload;
         }

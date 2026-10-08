@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\AdministrationController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\CardsController;
+use App\Http\Controllers\Api\CardDependenciesController;
 use App\Http\Controllers\Api\CardDetailsController;
 use App\Http\Controllers\Api\InvitationsController;
 use App\Http\Controllers\Api\ProjectsController;
@@ -59,6 +60,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::delete('/categories/{category}', [CardsController::class, 'destroyCategory']);
     Route::post('/boards/{board}/cards', [CardsController::class, 'storeCard']);
     Route::patch('/cards/{card}', [CardsController::class, 'updateCard']);
+    Route::post('/cards/{card}/dependencies', [CardDependenciesController::class, 'store']);
+    Route::patch('/card-dependencies/{dependency}', [CardDependenciesController::class, 'update']);
+    Route::delete('/card-dependencies/{dependency}', [CardDependenciesController::class, 'destroy']);
     Route::post('/cards/{card}/move', [CardsController::class, 'moveCard']);
     Route::post('/cards/{card}/archive', [CardsController::class, 'archiveCard']);
     Route::delete('/cards/{card}', [CardsController::class, 'destroyCard']);

@@ -84,6 +84,16 @@ class Card extends Model
         return $this->hasMany(Activity::class);
     }
 
+    public function predecessorDependencies(): HasMany
+    {
+        return $this->hasMany(CardDependency::class, 'predecessor_card_id');
+    }
+
+    public function successorDependencies(): HasMany
+    {
+        return $this->hasMany(CardDependency::class, 'successor_card_id');
+    }
+
     public function checklistItems(): HasMany
     {
         return $this->hasMany(CardChecklistItem::class)->orderBy('position');

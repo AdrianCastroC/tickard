@@ -268,6 +268,8 @@ class ProjectsController extends ApiController
                     'checklistItems.assignees',
                     'modules.checklistItems.assignees',
                     'attachments',
+                    'predecessorDependencies.predecessor',
+                    'successorDependencies.successor',
                 ])
                 ->orderBy('position'),
         ]);

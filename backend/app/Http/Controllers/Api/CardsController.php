@@ -9,6 +9,7 @@ use App\Models\Column;
 use App\Models\Label;
 use App\Models\User;
 use App\Support\Notifier;
+use App\Support\CardDependencyService;
 use App\Support\ProjectAccess;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -227,7 +228,7 @@ class CardsController extends ApiController
         return response()->json(['id' => $card->id], 201);
     }
 
-    public function updateCard(Request $request, Card $card)
+    public function updateCard(Request $request, Card $card, CardDependencyService $dependencies)
     {
         $project = $card->board->project;
         abort_unless(ProjectAccess::canEditCards($request->user(), $project), 403);
@@ -277,6 +278,9 @@ class CardsController extends ApiController
             }
         }
         $card->update($fields);
+        if (array_key_exists('start_date', $data) || array_key_exists('due_date', $data)) {
+            $dependencies->propagate($card->fresh());
+        }
 
         if (array_key_exists('is_internal', $data) && $data['is_internal'] === true) {
             $card->comments()->where('is_internal', false)->update(['is_internal' => true]);
@@ -313,7 +317,7 @@ class CardsController extends ApiController
         return response()->noContent();
     }
 
-    public function moveCard(Request $request, Card $card)
+    public function moveCard(Request $request, Card $card, CardDependencyService $dependencies)
     {
         $project = $card->board->project;
         abort_unless(ProjectAccess::canEditCards($request->user(), $project), 403);
@@ -352,6 +356,7 @@ class CardsController extends ApiController
             $card->due_date = null;
             $card->completed_at = null;
             $card->save();
+            $dependencies->propagate($card->fresh());
 
             return;
         }
