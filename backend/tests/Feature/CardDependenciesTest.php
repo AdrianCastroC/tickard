@@ -22,6 +22,8 @@ class CardDependenciesTest extends TestCase
     public function test_cross_board_dependency_can_be_created_updated_and_deleted(): void
     {
         [$user, $firstCard, $secondCard] = $this->createProjectCards();
+        $firstBoardRevision = $firstCard->board->revision;
+        $secondBoardRevision = $secondCard->board->revision;
 
         $response = $this->actingAs($user)->postJson("/api/cards/{$firstCard->id}/dependencies", [
             'successor_card_id' => $secondCard->id,
@@ -35,17 +37,27 @@ class CardDependenciesTest extends TestCase
 
         $dependency = CardDependency::firstOrFail();
         $this->assertNotSame($firstCard->board_id, $secondCard->board_id);
+        $this->assertSame($firstBoardRevision + 1, $firstCard->board->fresh()->revision);
+        $this->assertSame($secondBoardRevision + 1, $secondCard->board->fresh()->revision);
 
+        $firstBoardRevision = $firstCard->board->fresh()->revision;
+        $secondBoardRevision = $secondCard->board->fresh()->revision;
         $this->actingAs($user)
             ->patchJson("/api/card-dependencies/{$dependency->id}", ['type' => 'ss'])
             ->assertOk()
             ->assertJsonPath('type', 'ss');
+        $this->assertSame($firstBoardRevision + 1, $firstCard->board->fresh()->revision);
+        $this->assertSame($secondBoardRevision + 1, $secondCard->board->fresh()->revision);
 
+        $firstBoardRevision = $firstCard->board->fresh()->revision;
+        $secondBoardRevision = $secondCard->board->fresh()->revision;
         $this->actingAs($user)
             ->deleteJson("/api/card-dependencies/{$dependency->id}")
             ->assertNoContent();
 
         $this->assertDatabaseMissing('card_dependencies', ['id' => $dependency->id]);
+        $this->assertSame($firstBoardRevision + 1, $firstCard->board->fresh()->revision);
+        $this->assertSame($secondBoardRevision + 1, $secondCard->board->fresh()->revision);
     }
 
     public function test_api_rejects_a_successor_from_another_project(): void
