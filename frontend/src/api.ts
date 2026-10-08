@@ -50,6 +50,18 @@ export type CardProgress = {
   percent: number
 }
 
+export type CardDependency = {
+  id: number
+  card_id: number
+  title: string
+  type: 'fs' | 'ss' | 'ff' | 'sf'
+}
+
+export type CardDependencies = {
+  predecessors: CardDependency[]
+  successors: CardDependency[]
+}
+
 export type CardModuleType = 'checklist' | 'files' | 'comments'
 
 export type CardModule = {
@@ -84,6 +96,7 @@ export type Card = {
   modules?: CardModule[]
   attachments?: Attachment[]
   progress?: CardProgress
+  dependencies?: CardDependencies
 }
 
 export type BoardCategory = { id: number; name: string; position: number }

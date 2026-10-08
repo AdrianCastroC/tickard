@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from 'react'
-import { api, type BoardPayload, type Card, type Column } from '../../api'
+import { api, type BoardPayload, type Card, type CardDependency, type Column } from '../../api'
 import { CollapseColumnIcon, DoneIcon, ExpandColumnIcon, EyeIcon, EyeLowVisionIcon } from '../../shared/icons'
 import styles from './GanttView.module.css'
 
@@ -26,6 +26,8 @@ type DragState = {
   dayWidth: number
 }
 type DragPreview = { cardId: number; start: string; due: string }
+type GanttDependency = CardDependency & { predecessorId: number; successorId: number }
+type DependencyPopover = { dependency: GanttDependency; x: number; y: number }
 
 type GanttGridStyle = CSSProperties & {
   '--left-columns': string
@@ -345,6 +347,7 @@ export function GanttView({ board, cards, canEdit, onOpen, onChange }: GanttProp
   const [dragState, setDragState] = useState<DragState | null>(null)
   const [dragPreview, setDragPreview] = useState<DragPreview | null>(null)
   const [dragError, setDragError] = useState<string | null>(null)
+  const [dependencyPopover, setDependencyPopover] = useState<DependencyPopover | null>(null)
   const suppressClickRef = useRef<number | null>(null)
   const timelineGridRef = useRef<HTMLDivElement>(null)
   const toolbarRef = useRef<HTMLDivElement>(null)
@@ -358,6 +361,25 @@ export function GanttView({ board, cards, canEdit, onOpen, onChange }: GanttProp
       return {}
     }
   })
+  const ganttDependencies = useMemo(() => {
+    const cardsById = new Map(groups.flatMap((group) => group.cards).map((item) => [item.card.id, item.card]))
+    const dependencies = new Map<number, GanttDependency>()
+
+    groups.flatMap((group) => group.cards).forEach(({ card }) => {
+      card.dependencies?.predecessors.forEach((dependency) => {
+        if (cardsById.has(dependency.card_id) && cardsById.has(card.id)) {
+          dependencies.set(dependency.id, { ...dependency, predecessorId: dependency.card_id, successorId: card.id })
+        }
+      })
+      card.dependencies?.successors.forEach((dependency) => {
+        if (cardsById.has(dependency.card_id) && cardsById.has(card.id)) {
+          dependencies.set(dependency.id, { ...dependency, predecessorId: card.id, successorId: dependency.card_id })
+        }
+      })
+    })
+
+    return [...dependencies.values()]
+  }, [groups])
   const range = timelineRange(allCards)
   const days = buildDays(range.start, range.end)
   const entries: TimelineEntry[] = []
@@ -467,6 +489,24 @@ export function GanttView({ board, cards, canEdit, onOpen, onChange }: GanttProp
   const todayColumn = gridColumn(range.start, today)
   const todayVisible = today >= range.start && today <= range.end
   const effectiveLeftWidth = Math.max(totalLeftWidth, toolbarMinWidth)
+  const cardRows = new Map<number, { item: GanttCard; row: number }>()
+  entries.forEach(({ group, row: groupRow, collapsed: isCollapsed }) => {
+    if (!isCollapsed) {
+      group.cards.forEach((item, index) => cardRows.set(item.card.id, { item, row: groupRow + index + 1 }))
+    }
+  })
+
+  async function changeDependency(dependency: GanttDependency, type: GanttDependency['type']) {
+    await api(`/card-dependencies/${dependency.id}`, { method: 'PATCH', body: JSON.stringify({ type }) })
+    setDependencyPopover(null)
+    await onChange()
+  }
+
+  async function deleteDependency(dependency: GanttDependency) {
+    await api(`/card-dependencies/${dependency.id}`, { method: 'DELETE' })
+    setDependencyPopover(null)
+    await onChange()
+  }
 
   useEffect(() => {
     if (!dragState) {
@@ -669,12 +709,54 @@ export function GanttView({ board, cards, canEdit, onOpen, onChange }: GanttProp
               </button>
             )
           }))}
+          <svg className={styles.dependencyLayer} viewBox={`0 0 1000 ${row * 30 + 56}`} preserveAspectRatio="none" aria-label="Dependencias de tareas">
+            <defs>
+              <marker id="gantt-dependency-arrow" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto">
+                <path d="M0 0L7 3.5L0 7Z" />
+              </marker>
+            </defs>
+            {ganttDependencies.map((dependency) => {
+              const predecessor = cardRows.get(dependency.predecessorId)
+              const successor = cardRows.get(dependency.successorId)
+              if (!predecessor || !successor || !hasTemporalPlanning(predecessor.item) || !hasTemporalPlanning(successor.item)) return null
+              const predecessorStart = gridColumn(range.start, predecessor.item.card.start_date!)
+              const predecessorEnd = dateEndColumn(range.start, predecessor.item.card.due_date!)
+              const successorStart = gridColumn(range.start, successor.item.card.start_date!)
+              const successorEnd = dateEndColumn(range.start, successor.item.card.due_date!)
+              const from = dependency.type === 'ss' || dependency.type === 'sf' ? predecessorStart : predecessorEnd
+              const to = dependency.type === 'ff' || dependency.type === 'sf' ? successorEnd : successorStart
+              const x1 = ((from - 1) / days.length) * 1000
+              const x2 = ((to - 1) / days.length) * 1000
+              const y1 = 56 + (predecessor.row - 3) * 30 + 15
+              const y2 = 56 + (successor.row - 3) * 30 + 15
+              const midX = (x1 + x2) / 2
+              const path = `M ${x1} ${y1} H ${midX} V ${y2} H ${x2}`
+              return (
+                <g key={dependency.id} className={dependencyPopover?.dependency.id === dependency.id ? styles.dependencySelected : ''}>
+                  <path className={styles.dependencyHitArea} d={path} onClick={(event) => setDependencyPopover({ dependency, x: event.clientX, y: event.clientY })} aria-label={`Dependencia ${dependency.type.toUpperCase()}: ${predecessor.item.card.title} → ${successor.item.card.title}`} />
+                  <path className={styles.dependencyLine} d={path} markerEnd="url(#gantt-dependency-arrow)" aria-hidden="true" />
+                </g>
+              )
+            })}
+          </svg>
           {todayVisible && <>
             <span className={styles.todayLabel} style={{ gridRow: 2, gridColumn: `${todayColumn} / span 1` }}>Hoy</span>
             <span className={styles.todayLine} style={{ gridRow: '3 / -1', gridColumn: `${todayColumn} / span 1` }} aria-hidden="true" />
           </>}
         </div>
       </div>
+      {dependencyPopover && (
+        <div className={styles.dependencyPopover} role="dialog" aria-label="Tipo de dependencia" style={{ left: dependencyPopover.x, top: dependencyPopover.y }}>
+          <strong>Tipo de dependencia</strong>
+          {(['fs', 'ss', 'ff', 'sf'] as const).map((type) => (
+            <label key={type}>
+              <input type="radio" checked={dependencyPopover.dependency.type === type} disabled={!canEdit} onChange={() => void changeDependency(dependencyPopover.dependency, type)} />
+              {type === 'fs' ? 'Fin → Inicio (FS)' : type === 'ss' ? 'Inicio → Inicio (SS)' : type === 'ff' ? 'Fin → Fin (FF)' : 'Inicio → Fin (SF)'}
+            </label>
+          ))}
+          {canEdit && <button type="button" className="ghost" onClick={() => void deleteDependency(dependencyPopover.dependency)}>Eliminar dependencia</button>}
+        </div>
+      )}
     </div>
   )
 }
