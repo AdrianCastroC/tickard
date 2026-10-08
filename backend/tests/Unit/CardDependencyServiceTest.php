@@ -198,6 +198,55 @@ class CardDependencyServiceTest extends TestCase
         $this->assertSame('2026-10-21', $successor->due_date->toDateString());
     }
 
+    public function test_create_allows_cards_on_different_boards_in_the_same_project(): void
+    {
+        [$predecessor, $successor] = $this->createCards('2026-10-01', '2026-10-10', '2026-10-10', '2026-10-20');
+        $board = Board::create([
+            'project_id' => $successor->board->project_id,
+            'name' => 'Otro Board',
+        ]);
+        $column = Column::create([
+            'board_id' => $board->id,
+            'name' => 'Por hacer',
+            'workflow_state' => 'pending',
+        ]);
+        $successor->update([
+            'board_id' => $board->id,
+            'column_id' => $column->id,
+        ]);
+
+        $dependency = app(CardDependencyService::class)->create($predecessor, $successor->fresh('board'));
+
+        $this->assertSame($predecessor->id, $dependency->predecessor_card_id);
+        $this->assertSame($successor->id, $dependency->successor_card_id);
+    }
+
+    public function test_create_rejects_cards_from_different_projects(): void
+    {
+        [$predecessor, $successor] = $this->createCards('2026-10-01', '2026-10-10', '2026-10-10', '2026-10-20');
+        $otherProject = Project::create([
+            'workspace_id' => $predecessor->board->project->workspace_id,
+            'client_company_id' => $predecessor->board->project->client_company_id,
+            'name' => 'Otro Project',
+        ]);
+        $board = Board::create(['project_id' => $otherProject->id, 'name' => 'Otro Board']);
+        $column = Column::create([
+            'board_id' => $board->id,
+            'name' => 'Por hacer',
+            'workflow_state' => 'pending',
+        ]);
+        $externalCard = Card::create([
+            'board_id' => $board->id,
+            'column_id' => $column->id,
+            'title' => 'Externa',
+            'start_date' => '2026-10-10',
+            'due_date' => '2026-10-20',
+        ]);
+
+        $this->expectException(\Illuminate\Validation\ValidationException::class);
+        app(CardDependencyService::class)->create($predecessor, $externalCard);
+    }
+
     public function test_propagate_recalculates_reconverging_branches_in_topological_order(): void
     {
         [$origin, $branchB] = $this->createCards('2026-10-01', '2026-10-10', '2026-10-10', '2026-10-20');

@@ -16,7 +16,9 @@ class CardDependenciesController extends ApiController
     {
         abort_unless(ProjectAccess::canEditCards($request->user(), $card->board->project), 403);
         $data = $request->validate(['successor_card_id' => ['required', 'integer'], 'type' => ['sometimes', Rule::in(CardDependencyService::TYPES)]]);
-        $successor = Card::where('board_id', $card->board_id)->findOrFail($data['successor_card_id']);
+        $successor = Card::whereHas('board', function ($query) use ($card): void {
+            $query->where('project_id', $card->board->project_id);
+        })->findOrFail($data['successor_card_id']);
         $dependency = DB::transaction(fn () => $service->create($card, $successor));
         if (isset($data['type']) && $data['type'] !== $dependency->type) {
             DB::transaction(fn () => $service->updateType($dependency, $data['type']));

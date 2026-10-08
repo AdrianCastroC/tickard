@@ -16,6 +16,9 @@ class CardDependencyService
         if ($predecessor->is($successor)) {
             throw ValidationException::withMessages(['successor_card_id' => 'Una tarjeta no puede depender de sí misma.']);
         }
+        if ($predecessor->board->project_id !== $successor->board->project_id) {
+            throw ValidationException::withMessages(['successor_card_id' => 'Las dependencias solo pueden crearse entre Cards del mismo Project.']);
+        }
         $this->validatePlanned($predecessor, $successor);
         if (CardDependency::where('predecessor_card_id', $predecessor->id)->where('successor_card_id', $successor->id)->exists()) {
             throw ValidationException::withMessages(['successor_card_id' => 'La dependencia ya existe.']);
