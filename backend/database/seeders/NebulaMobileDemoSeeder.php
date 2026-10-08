@@ -607,7 +607,7 @@ class NebulaMobileDemoSeeder extends Seeder
         $archivedStates = [
             'Explorar autenticación por SMS' => 'done',
             'Prototipo de navegación radial' => 'done',
-            'Spike de base de datos local alternativa' => 'in_progress',
+            'Spike de base de datos local alternativa' => 'pending',
             'Piloto de CDN alternativo' => 'pending',
             'Prueba de programa de referidos legacy' => 'pending',
             'POC de recomendaciones por reglas' => 'pending',
@@ -630,8 +630,11 @@ class NebulaMobileDemoSeeder extends Seeder
                 $phaseTaskIndex <= 11 => 'in_progress',
                 default => 'pending',
             },
-            2 => $phaseTaskIndex <= 4 ? 'in_progress' : 'pending',
-            3 => in_array($phaseTaskIndex, [4, 9], true) ? 'in_progress' : 'pending',
+            2 => $phaseTaskIndex === 0 ? 'in_progress' : 'pending',
+            3 => in_array($title, [
+                'Revisar accesibilidad móvil',
+                'Ejecutar auditoría de seguridad',
+            ], true) ? 'in_progress' : 'pending',
             default => 'pending',
         };
     }
@@ -660,10 +663,6 @@ class NebulaMobileDemoSeeder extends Seeder
             $started = $plannedStart
                 ->addDays($offsets[$phaseTaskIndex % count($offsets)])
                 ->setTime(9, 0);
-        }
-
-        if ($started->greaterThan($demoDate)) {
-            $started = $demoDate->subDays(($phaseTaskIndex % 5) + 1)->setTime(9, 0);
         }
 
         if ($state === 'in_progress') {
