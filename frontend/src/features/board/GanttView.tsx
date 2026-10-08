@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from 'react'
 import { api, type BoardPayload, type Card, type CardDependency, type Column } from '../../api'
 import { CollapseColumnIcon, DependencyConnectorIcon, DoneIcon, ExpandColumnIcon, EyeIcon, EyeLowVisionIcon } from '../../shared/icons'
+import { KanbanMiniCard } from './KanbanMiniCard'
 import styles from './GanttView.module.css'
 
 const DAY_MS = 86_400_000
@@ -772,12 +773,13 @@ export function GanttView({ board, cards, canEdit, onOpen, onChange }: GanttProp
                 aria-label={cardLabel}
               >
                 {canEdit && <span className={`${styles.dependencyConnector} ${styles.dependencyConnectorStart}`} data-dependency-connector="true" data-card-id={item.card.id} data-endpoint="start" data-target={dependencyCreation?.targetId === item.card.id && dependencyCreation.targetEndpoint === 'start' ? 'true' : undefined} onPointerDown={(event) => beginDependencyCreation(event, item.card.id, 'start')} role="button" aria-label={`Crear dependencia desde inicio de ${item.card.title}`} tabIndex={0}><DependencyConnectorIcon /></span>}
-                <span className={styles.cardMinicard} aria-hidden="true">
-                  <strong>{item.card.title}</strong>
-                  <span>{workflowLabel}</span>
-                  <span>{dateLabel}</span>
-                  <span>Progreso: {cardVisualProgress(item)}%</span>
-                </span>
+                <KanbanMiniCard
+                  card={item.card}
+                  workflowLabel={workflowLabel}
+                  dateLabel={dateLabel}
+                  progressLabel={`Progreso: ${cardVisualProgress(item)}%`}
+                  className={styles.cardMinicard}
+                />
                 {canEdit && <span className={`${styles.resizeHandle} ${styles.resizeHandleStart}`} onPointerDown={(event) => beginDrag(event, item, 'resize-start')} aria-hidden="true" />}
                 {preview && <span className={styles.dragDates} aria-hidden="true">{dateLabel}</span>}
                 {inReview && <EyeIcon />}
