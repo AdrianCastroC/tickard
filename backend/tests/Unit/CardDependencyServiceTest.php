@@ -198,6 +198,69 @@ class CardDependencyServiceTest extends TestCase
         $this->assertSame('2026-10-21', $successor->due_date->toDateString());
     }
 
+    public function test_propagate_recalculates_reconverging_branches_in_topological_order(): void
+    {
+        [$origin, $branchB] = $this->createCards('2026-10-01', '2026-10-10', '2026-10-10', '2026-10-20');
+        $branchC = $this->createCard($branchB, 'C', '2026-10-10', '2026-10-20');
+        $branchD = $this->createCard($branchB, 'D', '2026-10-30', '2026-11-09');
+        $branchE = $this->createCard($branchB, 'E', '2026-10-20', '2026-10-30');
+        $leafF = $this->createCard($branchB, 'F', '2026-11-09', '2026-11-19');
+        $completedAt = '2026-10-31 12:00:00';
+        $item = CardChecklistItem::create([
+            'card_id' => $branchD->id,
+            'body' => 'Fecha de D',
+            'is_done' => true,
+            'due_date' => '2026-11-02',
+            'completed_at' => $completedAt,
+            'position' => 1,
+        ]);
+        $branchD->update([
+            'started_at' => '2026-10-29 09:00:00',
+            'completed_at' => '2026-11-08 17:00:00',
+        ]);
+
+        $dependencies = [
+            [$origin, $branchB],
+            [$origin, $branchC],
+            [$branchB, $branchD],
+            [$branchC, $branchE],
+            [$branchE, $branchD],
+            [$branchD, $leafF],
+        ];
+
+        foreach (array_reverse($dependencies) as [$predecessor, $successor]) {
+            CardDependency::create([
+                'predecessor_card_id' => $predecessor->id,
+                'successor_card_id' => $successor->id,
+                'type' => 'fs',
+            ]);
+        }
+
+        $origin->update([
+            'start_date' => '2026-10-05',
+            'due_date' => '2026-10-15',
+        ]);
+
+        app(CardDependencyService::class)->propagate($origin->fresh());
+
+        $branchB->refresh();
+        $branchC->refresh();
+        $branchD->refresh();
+        $branchE->refresh();
+        $leafF->refresh();
+        $item->refresh();
+
+        $this->assertSame('2026-10-15', $branchB->start_date->toDateString());
+        $this->assertSame('2026-10-15', $branchC->start_date->toDateString());
+        $this->assertSame('2026-10-25', $branchE->start_date->toDateString());
+        $this->assertSame('2026-11-04', $branchD->start_date->toDateString());
+        $this->assertSame('2026-11-14', $leafF->start_date->toDateString());
+        $this->assertSame('2026-11-07', $item->due_date->toDateString());
+        $this->assertSame($completedAt, $item->completed_at->format('Y-m-d H:i:s'));
+        $this->assertSame('2026-10-29 09:00:00', $branchD->started_at->format('Y-m-d H:i:s'));
+        $this->assertSame('2026-11-08 17:00:00', $branchD->completed_at->format('Y-m-d H:i:s'));
+    }
+
     /** @return array{0: Card, 1: Card} */
     private function createCards(
         string $predecessorStart,

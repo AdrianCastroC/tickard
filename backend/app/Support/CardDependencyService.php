@@ -103,14 +103,59 @@ class CardDependencyService
 
     public function propagate(Card $card): void
     {
-        $queue = [$card];
-        $visited = [];
-        while ($current = array_shift($queue)) {
-            if (isset($visited[$current->id])) continue;
-            $visited[$current->id] = true;
-            foreach ($current->predecessorDependencies()->with('successor')->get() as $dependency) {
-                $this->recalculate($dependency->successor);
-                $queue[] = $dependency->successor->fresh();
+        $edges = [];
+        $pending = [$card->id];
+        $descendantIds = [];
+
+        while ($pending !== []) {
+            $predecessorIds = array_splice($pending, 0);
+            $dependencies = CardDependency::query()
+                ->whereIn('predecessor_card_id', $predecessorIds)
+                ->get(['predecessor_card_id', 'successor_card_id']);
+
+            foreach ($dependencies as $dependency) {
+                $edges[$dependency->predecessor_card_id][] = $dependency->successor_card_id;
+
+                if (! isset($descendantIds[$dependency->successor_card_id])) {
+                    $descendantIds[$dependency->successor_card_id] = true;
+                    $pending[] = $dependency->successor_card_id;
+                }
+            }
+        }
+
+        if ($descendantIds === []) {
+            return;
+        }
+
+        $indegree = array_fill_keys(array_keys($descendantIds), 0);
+        foreach ($edges as $predecessorId => $successorIds) {
+            foreach ($successorIds as $successorId) {
+                if (isset($indegree[$successorId]) && isset($descendantIds[$predecessorId])) {
+                    $indegree[$successorId]++;
+                }
+            }
+        }
+
+        $ready = array_keys(array_filter($indegree, fn (int $degree): bool => $degree === 0));
+        sort($ready);
+
+        while ($ready !== []) {
+            $currentId = array_shift($ready);
+            $current = Card::find($currentId);
+
+            if (! $current) {
+                continue;
+            }
+
+            $this->recalculate($current);
+
+            foreach ($edges[$currentId] ?? [] as $successorId) {
+                $indegree[$successorId]--;
+
+                if ($indegree[$successorId] === 0) {
+                    $ready[] = $successorId;
+                    sort($ready);
+                }
             }
         }
     }
