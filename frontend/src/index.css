@@ -758,6 +758,19 @@ h1, h2, h3, p { margin: 0; }
   width: 14px;
   height: 14px;
 }
+.card .card-tools.has-attachments .card-public {
+  position: absolute;
+  top: 0;
+  right: 24px;
+}
+.card .card-tools.no-attachments .card-public {
+  position: absolute;
+  top: 0;
+  right: 0;
+}
+.card:hover .card-tools.no-attachments .card-public {
+  right: 24px;
+}
 .card .card-tools .more {
   width: 24px;
   height: 24px;
@@ -769,6 +782,16 @@ h1, h2, h3, p { margin: 0; }
   color: var(--muted);
   display: grid;
   place-items: center;
+}
+.card .card-tools .card-attachments-indicator {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 24px;
+  height: 24px;
+}
+.card:hover .card-tools.can-edit .card-attachments-indicator {
+  opacity: 0;
 }
 .card:hover .card-tools .more,
 .card .card-tools .more.on,

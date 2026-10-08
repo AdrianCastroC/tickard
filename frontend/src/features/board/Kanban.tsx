@@ -975,6 +975,7 @@ function CardAttachmentsIndicator({ card }: { card: Card }) {
 export function CardFace({ card }: { card: Card }) {
   return (
     <article className="card overlay" style={cardStripeStyle(card.color)}>
+      {Boolean(card.attachments?.length) && <div className="card-tools"><CardAttachmentsIndicator card={card} /></div>}
       <strong>{card.title}</strong>
       <div className="meta">
         {card.teams?.map((team) => <span key={team.id} className="chip equipo">{team.name}</span>)}
@@ -984,10 +985,7 @@ export function CardFace({ card }: { card: Card }) {
         <div className="card-foot-top">
           <span className="faces">{card.assignees?.map((person) => <Avatar key={person.id} id={person.id} name={person.name} className="face" src={person.avatar_url} />)}</span>
         </div>
-        <div className="card-footer-indicators">
-          <CardProgressBar progress={card.progress} />
-          <CardAttachmentsIndicator card={card} />
-        </div>
+        <CardProgressBar progress={card.progress} />
       </footer>
     </article>
   )
@@ -1010,13 +1008,14 @@ export function SortableCard({ card, disabled, canEdit, onOpen, onEdit }: {
       onClick={() => onOpen()}
       {...(disabled ? {} : { ...attributes, ...listeners })}
     >
-      {(canEdit || card.is_internal === false) && (
-        <div className="card-tools" onPointerDown={(event) => event.stopPropagation()}>
+      {(canEdit || card.is_internal === false || card.attachments?.length) && (
+        <div className={`card-tools${canEdit ? ' can-edit' : ''}${card.attachments?.length ? ' has-attachments' : ' no-attachments'}`} onPointerDown={(event) => event.stopPropagation()}>
           {card.is_internal === false && (
             <span className="card-public" title="No interna" aria-label="Tarjeta no interna">
               <VisibilityIcon />
             </span>
           )}
+          {card.attachments?.length ? <CardAttachmentsIndicator card={card} /> : null}
           {canEdit && (
             <button
               className="more"
@@ -1045,10 +1044,7 @@ export function SortableCard({ card, disabled, canEdit, onOpen, onEdit }: {
           </span>
           <span className="faces">{card.assignees?.map((person) => <Avatar key={person.id} id={person.id} name={person.name} className="face" src={person.avatar_url} />)}</span>
         </div>
-        <div className="card-footer-indicators">
-          <CardProgressBar progress={card.progress} />
-          <CardAttachmentsIndicator card={card} />
-        </div>
+        <CardProgressBar progress={card.progress} />
       </footer>
     </article>
   )
