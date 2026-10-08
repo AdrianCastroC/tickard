@@ -24,8 +24,6 @@ type DragState = {
   mode: DragMode
   pointerStartX: number
   dayWidth: number
-  draftStart: string
-  draftDue: string
 }
 type DragPreview = { cardId: number; start: string; due: string }
 
@@ -448,8 +446,6 @@ export function GanttView({ board, cards, canEdit, onOpen, onChange }: GanttProp
       mode,
       pointerStartX: event.clientX,
       dayWidth,
-      draftStart: item.card.start_date,
-      draftDue: item.card.due_date,
     })
     setDragPreview({ cardId: item.card.id, start: item.card.start_date, due: item.card.due_date })
   }
