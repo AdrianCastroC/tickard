@@ -76,20 +76,22 @@ class CardBacklogService
         DB::transaction(function () use ($root, $target, $resolution, $userId, $position): void {
             $flow = $this->flow($root);
             $flowIds = $flow->pluck('id')->all();
-            $selectedIds = array_values(array_unique(array_map('intval', $resolution['selected_card_ids'] ?? [])));
+            $selectedIds = array_map('intval', $resolution['selected_card_ids']);
 
             if (! in_array($root->id, $selectedIds, true) || array_diff($selectedIds, $flowIds) !== []) {
                 throw ValidationException::withMessages(['backlog_resolution' => 'La selección no pertenece al flujo actual o no incluye la Card raíz.']);
             }
 
             $destinations = collect($resolution['destinations'] ?? [])->keyBy('board_id');
-            $boardIds = $flow->pluck('board_id')->unique();
             $selectedBoardIds = $flow->whereIn('id', $selectedIds)->pluck('board_id')->unique();
-            if ($destinations->keys()->diff($selectedBoardIds->map(fn ($id) => (string) $id))->isNotEmpty()) {
+            if ($destinations->keys()->map(fn ($id) => (int) $id)->diff($selectedBoardIds)->isNotEmpty()) {
                 throw ValidationException::withMessages(['backlog_resolution' => 'Cada destino debe corresponder a un Board con Cards seleccionadas.']);
             }
+            if ($destinations->has($root->board_id)) {
+                throw ValidationException::withMessages(['backlog_resolution' => 'El destino del Board de la Card raíz viene determinado por el Backlog donde se realizó el movimiento.']);
+            }
             $columns = collect();
-            foreach ($boardIds as $boardId) {
+            foreach ($selectedBoardIds as $boardId) {
                 $columnId = $boardId === $root->board_id ? $target->id : ($destinations->get($boardId)['column_id'] ?? $this->firstBacklog($boardId)->id);
                 $column = Column::where('board_id', $boardId)->whereKey($columnId)->where('workflow_state', 'backlog')->first();
                 if (! $column) {
@@ -98,7 +100,9 @@ class CardBacklogService
                 $columns[$boardId] = $column;
             }
 
-            $selected = Card::whereIn('id', $selectedIds)->get();
+            $selected = Card::whereIn('id', $selectedIds)->get()->sortBy(fn (Card $card) => [$card->position, $card->id])->values();
+            $selectedIdsByColumn = $selected->groupBy(fn (Card $card) => $columns[$card->board_id]->id);
+            $originColumnIds = $selected->pluck('column_id')->unique();
             $touchedBoards = $selected->pluck('board_id')->merge(
                 CardDependency::where(function ($query) use ($selectedIds) {
                     $query->whereIn('predecessor_card_id', $selectedIds)->orWhereIn('successor_card_id', $selectedIds);
@@ -110,8 +114,29 @@ class CardBacklogService
 
             foreach ($selected as $card) {
                 $column = $columns[$card->board_id];
-                $card->update(['column_id' => $column->id, 'position' => $card->id === $root->id ? $position : $column->cards()->max('position') + 1, 'start_date' => null, 'due_date' => null, 'completed_at' => null]);
+                $card->update(['column_id' => $column->id, 'position' => 0, 'start_date' => null, 'due_date' => null, 'completed_at' => null]);
                 $card->activities()->create(['user_id' => $userId, 'type' => 'moved', 'meta' => ['column' => $column->name]]);
+            }
+
+            $destinationColumnIds = $columns->pluck('id')->unique();
+            foreach ($originColumnIds->merge($destinationColumnIds)->unique() as $columnId) {
+                $cards = Card::where('column_id', $columnId)
+                    ->whereNull('archived_at')
+                    ->whereNotIn('id', $selectedIds)
+                    ->orderBy('position')
+                    ->orderBy('id')
+                    ->get();
+                $incoming = $selectedIdsByColumn->get($columnId, collect())->values();
+                $rootInColumn = $incoming->firstWhere('id', $root->id);
+                if ($rootInColumn) {
+                    $incoming = $incoming->reject(fn (Card $card) => $card->id === $root->id)->values();
+                    $insertAt = min(max(0, $position), $cards->count());
+                    $cards->splice($insertAt, 0, [$rootInColumn]);
+                }
+                $cards = $cards->concat($incoming)->values();
+                foreach ($cards as $index => $card) {
+                    $card->update(['position' => $index]);
+                }
             }
 
             foreach ($touchedBoards->unique() as $boardId) {
