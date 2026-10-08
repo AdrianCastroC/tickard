@@ -4,7 +4,9 @@ namespace Tests\Feature;
 
 use App\Models\Board;
 use App\Models\Card;
+use App\Models\CardChecklistItem;
 use App\Models\CardDependency;
+use App\Models\CardModule;
 use App\Models\ClientCompany;
 use App\Models\Column;
 use App\Models\Project;
@@ -66,6 +68,74 @@ class CardBacklogTest extends TestCase
             ->assertNoContent();
 
         $this->assertSame('backlog', $card->fresh()->column->workflow_state);
+    }
+
+    public function test_backlog_resolution_requires_a_non_empty_selected_card_ids_array(): void
+    {
+        [$user, $card, , $backlog] = $this->createGraph();
+        $url = "/api/cards/{$card->id}/move";
+        $base = ['column_id' => $backlog->id, 'position' => 0];
+
+        foreach ([
+            ['backlog_resolution' => []],
+            ['backlog_resolution' => ['selected_card_ids' => 'hola']],
+            ['backlog_resolution' => ['selected_card_ids' => [$card->id, $card->id]]],
+            ['backlog_resolution' => ['selected_card_ids' => [$card->id], 'destinations' => 'invalid']],
+            ['backlog_resolution' => ['selected_card_ids' => [$card->id], 'destinations' => [['board_id' => $card->board_id]]]],
+        ] as $invalid) {
+            $this->actingAs($user)->postJson($url, array_merge($base, $invalid))->assertStatus(422);
+        }
+
+        $this->assertSame('pending', $card->fresh()->column->workflow_state);
+        $this->assertDatabaseCount('card_dependencies', 0);
+    }
+
+    public function test_confirmed_move_preserves_execution_history_checklist_history_and_positions(): void
+    {
+        [$user, $card, $other, $backlog] = $this->createGraph();
+        $board = $card->board;
+        foreach (['X', 'Y', 'Z'] as $index => $title) {
+            Card::create([
+                'board_id' => $board->id,
+                'column_id' => $backlog->id,
+                'title' => $title,
+                'position' => $index,
+            ]);
+        }
+        $startedAt = '2026-10-01 09:00:00';
+        $completedAt = '2026-10-02 17:00:00';
+        $card->update([
+            'started_at' => $startedAt,
+            'completed_at' => $completedAt,
+        ]);
+        $module = CardModule::create(['card_id' => $card->id, 'type' => CardModule::TYPE_CHECKLIST, 'title' => 'Checklist']);
+        $item = CardChecklistItem::create([
+            'card_id' => $card->id,
+            'card_module_id' => $module->id,
+            'body' => 'Histórico',
+            'is_done' => true,
+            'due_date' => '2026-10-05',
+            'completed_at' => '2026-10-04 12:00:00',
+            'position' => 0,
+        ]);
+        app(CardDependencyService::class)->create($card, $other);
+
+        $this->actingAs($user)->postJson("/api/cards/{$card->id}/move", [
+            'column_id' => $backlog->id,
+            'position' => 1,
+            'backlog_resolution' => ['selected_card_ids' => [$card->id]],
+        ])->assertNoContent();
+
+        $card->refresh();
+        $item->refresh();
+        $backlogCards = $backlog->cards()->whereNull('archived_at')->orderBy('position')->get();
+        $this->assertSame(['X', 'A', 'Y', 'Z'], $backlogCards->pluck('title')->all());
+        $this->assertNull($card->start_date);
+        $this->assertNull($card->due_date);
+        $this->assertNull($card->completed_at);
+        $this->assertSame($startedAt, $card->started_at->format('Y-m-d H:i:s'));
+        $this->assertSame('2026-10-05', $item->due_date->toDateString());
+        $this->assertSame('2026-10-04 12:00:00', $item->completed_at->format('Y-m-d H:i:s'));
     }
 
     /** @return array{0: User, 1: Card, 2: Card, 3: Column} */

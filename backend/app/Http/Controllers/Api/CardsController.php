@@ -363,7 +363,11 @@ class CardsController extends ApiController
             'column_id' => ['required', 'integer'],
             'position' => ['required', 'integer', 'min:0'],
             'backlog_resolution' => ['sometimes', 'array'],
-            'backlog_resolution.selected_card_ids' => ['required_with:backlog_resolution', 'array', 'min:1'],
+            'backlog_resolution.selected_card_ids' => [
+                Rule::requiredIf(fn (): bool => $request->exists('backlog_resolution')),
+                'array',
+                'min:1',
+            ],
             'backlog_resolution.selected_card_ids.*' => ['integer', 'distinct'],
             'backlog_resolution.destinations' => ['sometimes', 'array'],
             'backlog_resolution.destinations.*.board_id' => ['required', 'integer', 'distinct'],
