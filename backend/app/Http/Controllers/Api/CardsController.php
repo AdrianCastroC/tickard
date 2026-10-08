@@ -49,6 +49,17 @@ class CardsController extends ApiController
         abort_unless($data !== [], 422);
         $board = $column->board;
 
+        if (
+            $column->workflow_state === 'backlog'
+            && ($data['workflow_state'] ?? null) !== null
+            && $data['workflow_state'] !== 'backlog'
+            && $board->columns()->where('workflow_state', 'backlog')->count() === 1
+        ) {
+            throw ValidationException::withMessages([
+                'workflow_state' => 'El Board debe conservar al menos una columna Backlog.',
+            ]);
+        }
+
         $affectedBoardIds = [$board->id];
 
         DB::transaction(function () use ($column, $data, $board, $dependencies, &$affectedBoardIds) {
@@ -103,6 +114,15 @@ class CardsController extends ApiController
     public function destroyColumn(Request $request, Column $column)
     {
         abort_unless(ProjectAccess::canManage($request->user(), $column->board->project), 403);
+
+        if (
+            $column->workflow_state === 'backlog'
+            && $column->board->columns()->where('workflow_state', 'backlog')->count() === 1
+        ) {
+            throw ValidationException::withMessages([
+                'column' => 'El Board debe conservar al menos una columna Backlog.',
+            ]);
+        }
 
         if ($column->cards()->whereNull('archived_at')->exists()) {
             throw ValidationException::withMessages([
