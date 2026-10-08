@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from 'react'
+import { createPortal } from 'react-dom'
 import { api, type BoardPayload, type Card, type CardDependency, type Column } from '../../api'
 import { CollapseColumnIcon, DependencyConnectorIcon, DoneIcon, ExpandColumnIcon, EyeIcon, EyeLowVisionIcon } from '../../shared/icons'
 import { KanbanMiniCard } from './KanbanMiniCard'
@@ -30,6 +31,7 @@ type DragPreview = { cardId: number; start: string; due: string }
 type GanttDependency = CardDependency & { predecessorId: number; successorId: number }
 type DependencyPopover = { dependency: GanttDependency; x: number; y: number }
 type DependencyCreation = { cardId: number; endpoint: 'start' | 'finish'; cursorX: number; cursorY: number; targetId: number | null; targetEndpoint: 'start' | 'finish' | null }
+type HoveredCard = { item: GanttCard; left: number; top: number }
 
 type GanttGridStyle = CSSProperties & {
   '--left-columns': string
@@ -351,6 +353,7 @@ export function GanttView({ board, cards, canEdit, onOpen, onChange }: GanttProp
   const [dragError, setDragError] = useState<string | null>(null)
   const [dependencyPopover, setDependencyPopover] = useState<DependencyPopover | null>(null)
   const [dependencyCreation, setDependencyCreation] = useState<DependencyCreation | null>(null)
+  const [hoveredCard, setHoveredCard] = useState<HoveredCard | null>(null)
   const suppressClickRef = useRef<number | null>(null)
   const timelineGridRef = useRef<HTMLDivElement>(null)
   const toolbarRef = useRef<HTMLDivElement>(null)
@@ -467,6 +470,7 @@ export function GanttView({ board, cards, canEdit, onOpen, onChange }: GanttProp
 
     event.preventDefault()
     event.stopPropagation()
+    setHoveredCard(null)
     setDragError(null)
 
     const timelineWidth = timelineGridRef.current.getBoundingClientRect().width
@@ -478,6 +482,23 @@ export function GanttView({ board, cards, canEdit, onOpen, onChange }: GanttProp
       dayWidth,
     })
     setDragPreview({ cardId: item.card.id, start: item.card.start_date, due: item.card.due_date })
+  }
+
+  function updateHoveredCard(event: ReactPointerEvent, item: GanttCard) {
+    const rect = event.currentTarget.getBoundingClientRect()
+    const width = 230
+    const height = 220
+    const gap = 8
+    const left = Math.min(Math.max(8, rect.left), window.innerWidth - width - 8)
+    const top = rect.bottom + gap + height <= window.innerHeight
+      ? rect.bottom + gap
+      : Math.max(8, rect.top - height - gap)
+
+    setHoveredCard({ item, left, top })
+  }
+
+  function clearHoveredCard() {
+    setHoveredCard(null)
   }
 
   const monthRows = monthSpans(days)
@@ -515,6 +536,7 @@ export function GanttView({ board, cards, canEdit, onOpen, onChange }: GanttProp
     if (!canEdit) return
     event.preventDefault()
     event.stopPropagation()
+    setHoveredCard(null)
     setDependencyPopover(null)
     setDragError(null)
     setDependencyCreation({ cardId, endpoint, cursorX: event.clientX, cursorY: event.clientY, targetId: null, targetEndpoint: null })
@@ -753,6 +775,8 @@ export function GanttView({ board, cards, canEdit, onOpen, onChange }: GanttProp
                     ? 'Pendiente'
                     : 'Backlog'
 
+            void workflowLabel
+
             return (
               <button
                 key={item.card.id}
@@ -768,18 +792,14 @@ export function GanttView({ board, cards, canEdit, onOpen, onChange }: GanttProp
                   onOpen(item.card)
                 }}
                 onPointerDown={(event) => beginDrag(event, item, 'move')}
+                onPointerEnter={(event) => updateHoveredCard(event, item)}
+                onPointerMove={(event) => updateHoveredCard(event, item)}
+                onPointerLeave={clearHoveredCard}
                 style={cardStyle}
                 title={cardLabel}
                 aria-label={cardLabel}
               >
                 {canEdit && <span className={`${styles.dependencyConnector} ${styles.dependencyConnectorStart}`} data-dependency-connector="true" data-card-id={item.card.id} data-endpoint="start" data-target={dependencyCreation?.targetId === item.card.id && dependencyCreation.targetEndpoint === 'start' ? 'true' : undefined} onPointerDown={(event) => beginDependencyCreation(event, item.card.id, 'start')} role="button" aria-label={`Crear dependencia desde inicio de ${item.card.title}`} tabIndex={0}><DependencyConnectorIcon /></span>}
-                <KanbanMiniCard
-                  card={item.card}
-                  workflowLabel={workflowLabel}
-                  dateLabel={dateLabel}
-                  progressLabel={`Progreso: ${cardVisualProgress(item)}%`}
-                  className={styles.cardMinicard}
-                />
                 {canEdit && <span className={`${styles.resizeHandle} ${styles.resizeHandleStart}`} onPointerDown={(event) => beginDrag(event, item, 'resize-start')} aria-hidden="true" />}
                 {preview && <span className={styles.dragDates} aria-hidden="true">{dateLabel}</span>}
                 {inReview && <EyeIcon />}
@@ -849,6 +869,14 @@ export function GanttView({ board, cards, canEdit, onOpen, onChange }: GanttProp
           {canEdit && <button type="button" className="ghost" onClick={() => void deleteDependency(dependencyPopover.dependency)}>Eliminar dependencia</button>}
         </div>
       )}
+      {hoveredCard && !dragState && !dragPreview && !dependencyCreation
+        ? createPortal(
+            <div className={styles.kanbanMiniCardPortal} style={{ left: hoveredCard.left, top: hoveredCard.top }}>
+              <KanbanMiniCard card={hoveredCard.item.card} />
+            </div>,
+            document.body,
+          )
+        : null}
     </div>
   )
 }

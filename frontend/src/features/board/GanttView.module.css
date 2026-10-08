@@ -395,39 +395,10 @@
   right: 0;
 }
 
-.cardMinicard {
-  position: absolute;
-  bottom: calc(100% + 8px);
-  left: 50%;
-  z-index: 12;
-  display: grid;
-  gap: 3px;
-  min-width: 170px;
-  padding: 8px 10px;
-  transform: translateX(-50%);
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: var(--surface);
-  box-shadow: 0 8px 20px color-mix(in srgb, var(--ink) 18%, transparent);
-  color: var(--ink);
-  font-size: 11px;
-  font-weight: 500;
-  opacity: 0;
+.kanbanMiniCardPortal {
+  position: fixed;
+  z-index: 100;
   pointer-events: none;
-  transition: opacity 120ms ease;
-}
-
-.cardMinicard strong {
-  font-size: 12px;
-}
-
-.cardBar:hover .cardMinicard {
-  opacity: 1;
-}
-
-.dragging .cardMinicard,
-.dependencyCreating .cardMinicard {
-  opacity: 0;
 }
 
 .dependencyConnector {
