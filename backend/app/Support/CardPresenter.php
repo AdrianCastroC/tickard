@@ -83,18 +83,12 @@ class CardPresenter
                 'author' => $activity->user?->name,
             ])->values();
             $payload['dependencies'] = [
-                'predecessors' => $card->successorDependencies->map(fn ($dependency) => [
-                    'id' => $dependency->id,
-                    'card_id' => $dependency->predecessor_card_id,
-                    'title' => $dependency->predecessor->title,
-                    'type' => $dependency->type,
-                ])->values(),
-                'successors' => $card->predecessorDependencies->map(fn ($dependency) => [
-                    'id' => $dependency->id,
-                    'card_id' => $dependency->successor_card_id,
-                    'title' => $dependency->successor->title,
-                    'type' => $dependency->type,
-                ])->values(),
+                'predecessors' => $card->successorDependencies->map(fn ($dependency) => self::dependency(
+                    $dependency, $dependency->predecessor, $card
+                ))->values(),
+                'successors' => $card->predecessorDependencies->map(fn ($dependency) => self::dependency(
+                    $dependency, $dependency->successor, $card
+                ))->values(),
             ];
 
             return $payload;
@@ -153,6 +147,65 @@ class CardPresenter
         }
 
         return $payload;
+    }
+
+    private static function dependency($dependency, Card $other, Card $current): array
+    {
+        $external = $other->board_id !== $current->board_id;
+
+        return [
+            'id' => $dependency->id,
+            'card_id' => $other->id,
+            'title' => $other->title,
+            'type' => $dependency->type,
+            'board_id' => $other->board_id,
+            'board_name' => $external ? $other->board->name : null,
+            'preview' => $external ? self::dependencyPreview($other) : null,
+        ];
+    }
+
+    private static function dependencyPreview(Card $other): array
+    {
+        // External Gantt references render the same Kanban minicard on hover.
+        // Include only display fields, not the full related Card or its dependencies.
+        $other->loadMissing([
+            'assignees', 'teams', 'labels', 'attachments',
+            'modules.checklistItems', 'checklistItems',
+        ]);
+        $items = $other->modules->where('type', 'checklist')
+            ->flatMap(fn ($module) => $module->checklistItems);
+        if ($items->isEmpty()) {
+            $items = $other->checklistItems;
+        }
+        $total = $items->count();
+        $done = $items->where('is_done', true)->count();
+
+        return [
+            'id' => $other->id,
+            'title' => $other->title,
+            'color' => $other->color,
+            'is_internal' => $other->is_internal,
+            'teams' => $other->teams->map(fn ($team) => [
+                'id' => $team->id,
+                'name' => $team->name,
+            ])->values(),
+            'labels' => $other->labels->map(fn ($label) => [
+                'id' => $label->id,
+                'name' => $label->name,
+                'tone' => $label->tone,
+            ])->values(),
+            'assignees' => $other->assignees->map(fn ($assignee) => [
+                'id' => $assignee->id,
+                'name' => $assignee->name,
+                'avatar_url' => $assignee->avatarUrl(),
+            ])->values(),
+            'attachments' => self::attachments($other),
+            'progress' => [
+                'done' => $done,
+                'total' => $total,
+                'percent' => $total ? (int) round($done / $total * 100) : 0,
+            ],
+        ];
     }
 
     public static function module($module): array
