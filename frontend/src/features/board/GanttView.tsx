@@ -413,6 +413,50 @@ function routeDependency(
   return []
 }
 
+// External references share the real Card's row, but are not positioned by
+// their own dates. Keep the line under the title/avatars, then rise to Start
+// or finish under the target's bar with the same FF/SF marker.
+function routeExternalDependency(
+  source: Point,
+  target: Point,
+  sourceEndpoint: 'start' | 'finish',
+  targetEndpoint: 'start' | 'finish',
+  sourceBar: Rect,
+  targetBar: Rect,
+  dayWidth: number,
+  reserved: DependencySegment[],
+  sourceKey: string,
+): Point[] {
+  const laneY = Math.max(sourceBar.bottom, targetBar.bottom) + 5
+  const finishArrival = targetEndpoint === 'finish'
+  const arrow: Point = finishArrival
+    ? { x: targetBar.right, y: targetBar.bottom + 5 }
+    : { x: target.x - Math.max(1, dayWidth), y: target.y }
+  const exit = sourceEndpoint === 'start' ? source : { x: source.x + 16, y: source.y }
+  const prefix: Point[] = sourceEndpoint === 'start'
+    ? [source, { x: source.x, y: laneY }]
+    : [source, exit, { x: exit.x, y: laneY }]
+
+  if (arrow.x <= exit.x) return []
+  const offsets = finishArrival ? [0] : Array.from({ length: 12 }, (_, index) => 10 + index * 6)
+  for (const offset of offsets) {
+    const turnX = arrow.x - offset
+    if (turnX <= exit.x) continue
+    const raw: Point[] = finishArrival
+      ? [...prefix, arrow]
+      : [...prefix, { x: turnX, y: laneY }, { x: turnX, y: arrow.y }, arrow]
+    const points = raw.filter((point, index) =>
+      index === 0 || point.x !== raw[index - 1].x || point.y !== raw[index - 1].y
+    )
+    const verticalConflict = dependencySegments(points, 0, sourceKey).some((part) =>
+      reserved.some((taken) => taken.sourceKey !== sourceKey &&
+        verticalSegmentsOverlap(part.start, part.end, taken.start, taken.end))
+    )
+    if (!verticalConflict) return points
+  }
+  return []
+}
+
 function routeHasClearOrthogonalSegments(route: Point[], obstacles: Rect[], bounds: { width: number; height: number }) {
   return route.every((point) => point.x >= 0 && point.x <= bounds.width && point.y >= 4 && point.y <= bounds.height)
     && route.slice(0, -1).every((point, index) => {
@@ -1008,7 +1052,12 @@ export function GanttView({ board, cards, canEdit, onOpen, onChange }: GanttProp
     })
     return result
   }, [externalDependencies])
-  const range = timelineRange(allCards)
+  const baseRange = timelineRange(allCards)
+  // Extra space on the left is for undated incoming board references; their
+  // position never depends on the remote Card's start or due date.
+  const range = externalDependencies.some((dependency) => dependency.direction === 'incoming')
+    ? { ...baseRange, start: shift(baseRange.start, -16) }
+    : baseRange
   const days = buildDays(range.start, range.end)
   const entries: TimelineEntry[] = []
   let row = 3
@@ -1217,6 +1266,40 @@ export function GanttView({ board, cards, canEdit, onOpen, onChange }: GanttProp
     })
     return result
   }, [groups, collapsed])
+
+  const externalRoutes = useMemo(() => {
+    const routes = new Map<number, { points: Point[]; targetBar: Rect }>()
+    if (!dependencyGeometry.width || !dependencyGeometry.height) return routes
+
+    const reserved: DependencySegment[] = []
+    externalDependencies.forEach((dependency) => {
+      const local = cardRows.get(dependency.localCardId)
+      const localBar = dependencyGeometry.obstacles.find((bar) => bar.cardId === dependency.localCardId)
+      const remote = dependencyGeometry.externalRefs[dependency.id]
+      if (!local || !hasTemporalPlanning(local.item) || !localBar || !remote) return
+
+      const sourceEndpoint = dependency.type === 'ss' || dependency.type === 'sf' ? 'start' : 'finish'
+      const targetEndpoint = dependency.type === 'ff' || dependency.type === 'sf' ? 'finish' : 'start'
+      const outgoing = dependency.direction === 'outgoing'
+      const sourceBar = outgoing ? localBar : remote
+      const targetBar = outgoing ? remote : localBar
+      const source = outgoing
+        ? dependencyGeometry.anchors[`${dependency.localCardId}:${sourceEndpoint}`]
+        : { x: sourceEndpoint === 'start' ? remote.left - 25 : remote.right + 25, y: (remote.top + remote.bottom) / 2 }
+      const target = outgoing
+        ? { x: targetEndpoint === 'start' ? remote.left - 25 : remote.right + 25, y: (remote.top + remote.bottom) / 2 }
+        : dependencyGeometry.anchors[`${dependency.localCardId}:${targetEndpoint}`]
+      if (!source || !target) return
+
+      const sourceKey = `${outgoing ? dependency.localCardId : dependency.card_id}:${sourceEndpoint}`
+      const points = routeExternalDependency(source, target, sourceEndpoint, targetEndpoint,
+        sourceBar, targetBar, dependencyGeometry.dayWidth, reserved, sourceKey)
+      if (!points.length) return
+      routes.set(dependency.id, { points, targetBar })
+      reserved.push(...dependencySegments(points, dependency.id, sourceKey))
+    })
+    return routes
+  }, [cardRows, dependencyGeometry, externalDependencies])
 
   const plannedDependencyRoutes = useMemo(() => {
     const routes = new Map<number, Point[]>()
