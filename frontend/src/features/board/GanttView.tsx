@@ -2172,7 +2172,7 @@ export function GanttView({ board, cards, canEdit, onOpen, onChange }: GanttProp
             const references = externalByCard.get(item.card.id)
             const incoming = references?.incoming ?? []
             const outgoing = references?.outgoing ?? []
-            if (!leftCollapsed && incoming.length === 0 && outgoing.length === 0) return []
+            // Card metadata is visible after every planned bar in both panel modes.
 
             const preview = dragPreview?.cardId === item.card.id ? dragPreview : null
             const start = preview?.start ?? item.card.start_date!
@@ -2186,8 +2186,8 @@ export function GanttView({ board, cards, canEdit, onOpen, onChange }: GanttProp
                 {incoming.length > 0 && <span className={styles.externalIncoming}>
                   {incoming.map(renderExternalReference)}
                 </span>}
-                {(leftCollapsed || outgoing.length > 0) && <span className={styles.cardRowTail}>
-                  {leftCollapsed && <span className={styles.cardRowMeta} data-gantt-card-metadata="true">
+                <span className={styles.cardRowTail}>
+                  <span className={styles.cardRowMeta} data-gantt-card-metadata="true">
                     <span className={styles.cardRowName} title={item.card.title}>{item.card.title}</span>
                     {(item.card.assignees?.length ?? 0) > 0 && <span className={styles.cardRowAssignees}>
                       {item.card.assignees?.slice(0, 4).map((person) =>
@@ -2196,11 +2196,11 @@ export function GanttView({ board, cards, canEdit, onOpen, onChange }: GanttProp
                       {(item.card.assignees?.length ?? 0) > 4 &&
                         <span className={styles.cardRowAssigneeExtra}>+{item.card.assignees!.length - 4}</span>}
                     </span>}
-                  </span>}
+                  </span>
                   {outgoing.length > 0 && <span className={styles.externalReferences}>
                     {outgoing.map(renderExternalReference)}
                   </span>}
-                </span>}
+                </span>
               </span>
             )
           }))}
