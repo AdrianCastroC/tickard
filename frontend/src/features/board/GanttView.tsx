@@ -181,7 +181,7 @@ function routeDependency(
   const mandatoryWaypoint = { x: sourceExit.x, y: sourceRowBottom }
   const startExitWaypoint = {
     x: sourceExit.x,
-    y: source.y + (target.y < source.y ? -rowHeight / 2 : rowHeight / 2),
+    y: sourceRowBottom,
   }
   const exitWaypoint = sourceEndpoint === 'start'
     ? startExitWaypoint
@@ -204,6 +204,7 @@ function routeDependency(
     bounds.height - 8,
     sourceExit.y,
     targetEntry.y,
+    ...(sourceEndpoint === 'start' ? [startExitWaypoint.y] : []),
     ...(returnBelow ? [preferredReturnY] : []),
     ...obstacleYChannels,
   ]
@@ -311,30 +312,60 @@ function routeDependency(
     : true
 
   if (route.length === 0 || keyOf(route[0]) !== keyOf(sourceExit) || !containsExitWaypoint) {
-    const outerY = returnBelow ? bounds.height - 8 : 8
-    return [
-      source,
-      sourceExit,
-      ...(exitWaypoint ? [exitWaypoint, { x: exitWaypoint.x, y: outerY }] : [{ x: sourceExit.x, y: outerY }]),
-      { x: targetEntry.x, y: outerY },
-      targetEntry,
-      targetArrow,
-    ]
+    if (import.meta.env.DEV) {
+      console.warn('No se encontró una ruta ortogonal válida para una dependencia del Gantt.', {
+        source,
+        target,
+        sourceEndpoint,
+        targetEndpoint,
+      })
+    }
+
+    return []
   }
 
   return [source, ...route, targetArrow]
 }
 
-function verifySyntheticReturnWaypoint() {
-  const source = { x: 240, y: 45 }
-  const target = { x: 80, y: 105 }
-  const sourceBar = { left: 120, right: 215, top: 35, bottom: 55 }
-  const route = routeDependency(source, target, [sourceBar], 'finish', 'start', { width: 400, height: 300 })
-  const waypoint = { x: source.x + 16, y: source.y + 15 }
-  const waypointIndex = route.findIndex((point) => point.x === waypoint.x && point.y === waypoint.y)
-  const firstHorizontalAfterExit = route.findIndex((point, index) => index > 0 && point.y === route[index - 1].y && point.x !== route[index - 1].x)
+function routeHasClearOrthogonalSegments(route: Point[], obstacles: Rect[], bounds: { width: number; height: number }) {
+  return route.every((point) => point.x >= 0 && point.x <= bounds.width && point.y >= 4 && point.y <= bounds.height)
+    && route.slice(0, -1).every((point, index) => {
+      const next = route[index + 1]
+      return (point.x === next.x || point.y === next.y)
+        && !obstacles.some((obstacle) => segmentIntersectsRect(point, next, obstacle))
+    })
+}
 
-  return waypointIndex > 0 && (firstHorizontalAfterExit === -1 || firstHorizontalAfterExit > waypointIndex)
+function verifySyntheticReturnWaypoint() {
+  const bounds = { width: 400, height: 300 }
+  const sourceBar = { left: 120, right: 215, top: 35, bottom: 55 }
+  const lowerStartBar = { left: 300, right: 370, top: 95, bottom: 115 }
+  const upperFinishBar = { left: 300, right: 370, top: 20, bottom: 40 }
+  const source = { x: 240, y: 45 }
+  const lowerStart = { x: 275, y: 105 }
+  const upperStart = { x: 275, y: 15 }
+  const lowerFinish = { x: 395, y: 105 }
+  const upperFinish = { x: 395, y: 15 }
+  const returnRoute = routeDependency(source, { x: 80, y: 105 }, [sourceBar], 'finish', 'start', bounds)
+  const lowerStartRoute = routeDependency(source, lowerStart, [sourceBar, lowerStartBar], 'start', 'start', bounds)
+  const upperStartRoute = routeDependency(source, upperStart, [sourceBar, upperFinishBar], 'start', 'start', bounds)
+  const lowerFinishRoute = routeDependency(source, lowerFinish, [sourceBar, lowerStartBar], 'start', 'finish', bounds)
+  const upperFinishRoute = routeDependency(source, upperFinish, [sourceBar, upperFinishBar], 'start', 'finish', bounds)
+  const startWaypoint = { x: source.x - 16, y: source.y + 15 }
+  const hasStartWaypoint = (route: Point[]) => route.some((point) => point.x === startWaypoint.x && point.y === startWaypoint.y)
+  const startsVertically = (route: Point[]) => route[1]?.x === route[2]?.x && route[2]?.y === startWaypoint.y
+
+  return [
+    returnRoute,
+    lowerStartRoute,
+    upperStartRoute,
+    lowerFinishRoute,
+    upperFinishRoute,
+  ].every((route) => route.length > 0 && routeHasClearOrthogonalSegments(route, [sourceBar, lowerStartBar, upperFinishBar], bounds))
+    && hasStartWaypoint(lowerStartRoute)
+    && hasStartWaypoint(upperStartRoute)
+    && startsVertically(lowerStartRoute)
+    && startsVertically(upperStartRoute)
 }
 
 if (import.meta.env.DEV) {
