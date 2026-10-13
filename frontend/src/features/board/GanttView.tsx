@@ -78,6 +78,12 @@ function dateKey(date: Date) {
   return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}-${String(date.getUTCDate()).padStart(2, '0')}`
 }
 
+function todayKey() {
+  // "Hoy" follows the user's local calendar day, not the UTC day.
+  const today = new Date()
+  return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
+}
+
 function shift(value: string, amount: number) {
   const date = parseDay(value)
   date.setUTCDate(date.getUTCDate() + amount)
@@ -802,7 +808,7 @@ if (import.meta.env.DEV) {
   )
 }
 
-function timelineRange(cards: Card[], today = dateKey(new Date())) {
+function timelineRange(cards: Card[], today = todayKey()) {
   const plannedCards = cards.filter(planned)
   const first = plannedCards.reduce((value, card) =>
     card.start_date! < value ? card.start_date! : value, today)
@@ -837,8 +843,9 @@ function fitTimelineRange(
     minimum: Math.min(value.minimum, x),
     maximum: Math.max(value.maximum, x),
   }), { minimum: Infinity, maximum: -Infinity })
-  const first = shift(currentStart, Math.floor(minimum / dayWidth) - 2)
-  const last = shift(currentStart, Math.ceil(maximum / dayWidth) + 1)
+  // Avoid a whole extra day from subpixel grid rounding at exact edges.
+  const first = shift(currentStart, Math.floor(minimum / dayWidth + 0.0001) - 2)
+  const last = shift(currentStart, Math.ceil(maximum / dayWidth - 0.0001) + 1)
   return {
     start: first < base.start ? first : base.start,
     end: last > base.end ? last : base.end,
@@ -1554,7 +1561,7 @@ export function GanttView({ board, cards, canEdit, onOpen, onChange }: GanttProp
   const showWeeks = zoom === 'week'
   const showMonths = zoom === 'month'
   const showQuarters = zoom === 'quarter'
-  const today = dateKey(new Date())
+  const today = todayKey()
   const todayColumn = gridColumn(range.start, today)
   const todayVisible = today >= range.start && today <= range.end
   const effectiveLeftWidth = Math.max(totalLeftWidth, toolbarMinWidth)
