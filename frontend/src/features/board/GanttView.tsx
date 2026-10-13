@@ -1055,8 +1055,9 @@ export function GanttView({ board, cards, canEdit, onOpen, onChange }: GanttProp
   const baseRange = timelineRange(allCards)
   // Extra space on the left is for undated incoming board references; their
   // position never depends on the remote Card's start or due date.
-  const range = externalDependencies.some((dependency) => dependency.direction === 'incoming')
-    ? { ...baseRange, start: shift(baseRange.start, -24) }
+  const maxIncomingReferences = Math.max(0, ...[...externalByCard.values()].map((items) => items.incoming.length))
+  const range = maxIncomingReferences > 0
+    ? { ...baseRange, start: shift(baseRange.start, -24 - 15 * (maxIncomingReferences - 1)) }
     : baseRange
   const days = buildDays(range.start, range.end)
   const entries: TimelineEntry[] = []
@@ -1304,7 +1305,7 @@ export function GanttView({ board, cards, canEdit, onOpen, onChange }: GanttProp
   const effectiveLeftWidth = Math.max(totalLeftWidth, toolbarMinWidth)
   const maxOutgoingReferences = Math.max(0, ...[...externalByCard.values()].map((items) => items.outgoing.length))
   const timelineRightReserve = leftCollapsed || maxOutgoingReferences > 0
-    ? (leftCollapsed ? 360 : 160) + maxOutgoingReferences * 170
+    ? (leftCollapsed ? 520 : 160) + maxOutgoingReferences * 170
     : 0
   const cardRows = useMemo(() => {
     const result = new Map<number, { item: GanttCard; row: number }>()
@@ -1315,40 +1316,6 @@ export function GanttView({ board, cards, canEdit, onOpen, onChange }: GanttProp
     })
     return result
   }, [groups, collapsed])
-
-  const externalRoutes = useMemo(() => {
-    const routes = new Map<number, { points: Point[]; targetBar: Rect }>()
-    if (!dependencyGeometry.width || !dependencyGeometry.height) return routes
-
-    const reserved: DependencySegment[] = []
-    externalDependencies.forEach((dependency) => {
-      const local = cardRows.get(dependency.localCardId)
-      const localBar = dependencyGeometry.obstacles.find((bar) => bar.cardId === dependency.localCardId)
-      const remote = dependencyGeometry.externalRefs[dependency.id]
-      if (!local || !hasTemporalPlanning(local.item) || !localBar || !remote) return
-
-      const sourceEndpoint = dependency.type === 'ss' || dependency.type === 'sf' ? 'start' : 'finish'
-      const targetEndpoint = dependency.type === 'ff' || dependency.type === 'sf' ? 'finish' : 'start'
-      const outgoing = dependency.direction === 'outgoing'
-      const sourceBar = outgoing ? localBar : remote
-      const targetBar = outgoing ? remote : localBar
-      const source = outgoing
-        ? dependencyGeometry.anchors[`${dependency.localCardId}:${sourceEndpoint}`]
-        : { x: sourceEndpoint === 'start' ? remote.left - 25 : remote.right + 25, y: (remote.top + remote.bottom) / 2 }
-      const target = outgoing
-        ? { x: targetEndpoint === 'start' ? remote.left - 25 : remote.right + 25, y: (remote.top + remote.bottom) / 2 }
-        : dependencyGeometry.anchors[`${dependency.localCardId}:${targetEndpoint}`]
-      if (!source || !target) return
-
-      const sourceKey = `${outgoing ? dependency.localCardId : dependency.card_id}:${sourceEndpoint}`
-      const points = routeExternalDependency(source, target, sourceEndpoint, targetEndpoint,
-        sourceBar, targetBar, dependencyGeometry.dayWidth, reserved, sourceKey)
-      if (!points.length) return
-      routes.set(dependency.id, { points, targetBar })
-      reserved.push(...dependencySegments(points, dependency.id, sourceKey))
-    })
-    return routes
-  }, [cardRows, dependencyGeometry, externalDependencies])
 
   const plannedDependencyRoutes = useMemo(() => {
     const routes = new Map<number, Point[]>()
@@ -1399,6 +1366,47 @@ export function GanttView({ board, cards, canEdit, onOpen, onChange }: GanttProp
 
     return routes
   }, [cardRows, dependencyGeometry, ganttDependencies])
+
+  const externalRoutes = useMemo(() => {
+    const routes = new Map<number, { points: Point[]; targetBar: Rect }>()
+    if (!dependencyGeometry.width || !dependencyGeometry.height) return routes
+
+    const reserved: DependencySegment[] = []
+    ganttDependencies.forEach((dependency) => {
+      const points = plannedDependencyRoutes.get(dependency.id)
+      if (!points) return
+      const sourceEndpoint = dependency.type === 'ss' || dependency.type === 'sf' ? 'start' : 'finish'
+      const sourceKey = `${dependency.predecessorId}:${sourceEndpoint}`
+      reserved.push(...dependencySegments(points, dependency.id, sourceKey))
+    })
+    externalDependencies.forEach((dependency) => {
+      const local = cardRows.get(dependency.localCardId)
+      const localBar = dependencyGeometry.obstacles.find((bar) => bar.cardId === dependency.localCardId)
+      const remote = dependencyGeometry.externalRefs[dependency.id]
+      if (!local || !hasTemporalPlanning(local.item) || !localBar || !remote) return
+
+      const sourceEndpoint = dependency.type === 'ss' || dependency.type === 'sf' ? 'start' : 'finish'
+      const targetEndpoint = dependency.type === 'ff' || dependency.type === 'sf' ? 'finish' : 'start'
+      const outgoing = dependency.direction === 'outgoing'
+      const sourceBar = outgoing ? localBar : remote
+      const targetBar = outgoing ? remote : localBar
+      const source = outgoing
+        ? dependencyGeometry.anchors[`${dependency.localCardId}:${sourceEndpoint}`]
+        : { x: sourceEndpoint === 'start' ? remote.left - 25 : remote.right + 25, y: (remote.top + remote.bottom) / 2 }
+      const target = outgoing
+        ? { x: targetEndpoint === 'start' ? remote.left - 25 : remote.right + 25, y: (remote.top + remote.bottom) / 2 }
+        : dependencyGeometry.anchors[`${dependency.localCardId}:${targetEndpoint}`]
+      if (!source || !target) return
+
+      const sourceKey = `${outgoing ? dependency.localCardId : dependency.card_id}:${sourceEndpoint}`
+      const points = routeExternalDependency(source, target, sourceEndpoint, targetEndpoint,
+        sourceBar, targetBar, dependencyGeometry.dayWidth, reserved, sourceKey)
+      if (!points.length) return
+      routes.set(dependency.id, { points, targetBar })
+      reserved.push(...dependencySegments(points, dependency.id, sourceKey))
+    })
+    return routes
+  }, [cardRows, dependencyGeometry, externalDependencies, ganttDependencies, plannedDependencyRoutes])
 
   const unroutedDependencies = useMemo(() => {
     if (!dependencyGeometry.width || !dependencyGeometry.height) return []
