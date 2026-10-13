@@ -55,7 +55,7 @@ export function BoardSurface({ state, filters, activeBoardId, project, profile, 
   useEffect(() => {
     // Cross-board navigation should land in the Gantt even if this board was
     // previously displayed as Kanban, a table or a summary.
-    if (!ganttFocus || ganttFocus.boardId !== activeBoardId || view?.board.id !== activeBoardId) return
+    if (!ganttFocus || activeBoardId === null || ganttFocus.boardId !== activeBoardId || view?.board.id !== activeBoardId) return
     if (viewMode !== 'gantt') {
       setViewModes((current) => ({ ...current, [activeBoardId]: 'gantt' }))
       localStorage.setItem(`tickard:board-view:${activeBoardId}`, 'gantt')
