@@ -118,7 +118,7 @@ function verticalSegmentsOverlap(first: Point, second: Point, third: Point, four
     < Math.min(Math.max(first.y, second.y), Math.max(third.y, fourth.y))
 }
 
-function pathToSvg(points: Point[], cornerRadius = 6) {
+function pathToSvg(points: Point[], cornerRadius = 8) {
   const cleanPoints = points.filter((point, index) => {
     const previous = points[index - 1]
     return !previous || point.x !== previous.x || point.y !== previous.y
