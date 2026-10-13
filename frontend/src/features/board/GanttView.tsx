@@ -8,6 +8,7 @@ import styles from './GanttView.module.css'
 
 const DAY_MS = 86_400_000
 const TASK_WIDTH = 200
+const MIN_ZOOM_UNIT_WIDTH = 24
 const FF_FINISH_MARKER_OFFSET_PX = 5
 const DEFAULT_COLUMNS = { start: true, end: true, progress: true }
 const ZOOMS = ['day', 'week', 'month', 'quarter'] as const
@@ -59,6 +60,7 @@ type DependencyGeometry = {
 type GanttGridStyle = CSSProperties & {
   '--left-columns': string
   '--left-width': string
+  '--min-day-size': string
 }
 
 function cardVisualProgress(item: GanttCard) {
@@ -1333,6 +1335,14 @@ export function GanttView({ board, cards, canEdit, onOpen, onChange }: GanttProp
     end: fittedRange && fittedRange.end > baseRange.end ? fittedRange.end : baseRange.end,
   }
   const days = buildDays(range.start, range.end)
+  const monthRows = monthSpans(days)
+  const yearRows = yearSpans(days)
+  const quarterRows = quarterSpans(days, false)
+  const monthQuarterRows = quarterSpans(days, true)
+  const weekRows = weekSpans(days)
+  const showWeeks = zoom === 'week'
+  const showMonths = zoom === 'month'
+  const showQuarters = zoom === 'quarter'
   const entries: TimelineEntry[] = []
   let row = 3
   groups.forEach((group) => {
@@ -1343,11 +1353,23 @@ export function GanttView({ board, cards, canEdit, onOpen, onChange }: GanttProp
 
   const totalDays = days.length
   const totalLeftWidth = leftWidth(visibility)
+  // One minimum-size grid unit is a day/week/month/quarter respectively.
+  // Day-based Card coordinates remain unchanged: share that unit width
+  // across its constituent days. If the timeline fits, CSS expands it.
+  const zoomUnitCount = zoom === 'day'
+    ? totalDays
+    : zoom === 'week'
+      ? weekRows.length
+      : zoom === 'month'
+        ? monthRows.length
+        : quarterRows.length
+  const minimumDayWidth = MIN_ZOOM_UNIT_WIDTH * zoomUnitCount / Math.max(totalDays, 1)
   const gridStyle = {
     '--total-days': totalDays,
     '--data-rows': row - 3,
     '--left-columns': visibleColumnTemplate(visibility),
     '--left-width': `${totalLeftWidth}px`,
+    '--min-day-size': `${minimumDayWidth}px`,
   } as GanttGridStyle
 
   useEffect(() => {
@@ -1570,14 +1592,6 @@ export function GanttView({ board, cards, canEdit, onOpen, onChange }: GanttProp
     setHoveredCard(null)
   }
 
-  const monthRows = monthSpans(days)
-  const yearRows = yearSpans(days)
-  const quarterRows = quarterSpans(days, false)
-  const monthQuarterRows = quarterSpans(days, true)
-  const weekRows = weekSpans(days)
-  const showWeeks = zoom === 'week'
-  const showMonths = zoom === 'month'
-  const showQuarters = zoom === 'quarter'
   const today = todayKey()
   const todayColumn = gridColumn(range.start, today)
   const todayVisible = today >= range.start && today <= range.end
