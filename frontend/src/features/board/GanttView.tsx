@@ -576,7 +576,7 @@ function verifyExternalFfInlineTrack() {
     && route[2].x === route[1].x && route[2].y === remote.bottom + 5
     && route[3].x === remote.right && route[3].y === remote.bottom + 5
     && obstructed.length > 0
-    && !(obstructed.length === 4 && obstructed[1].y === source.y)
+    && obstructed[1]?.x === source.x + 16
 }
 
 function verifyExternalFsOwnConnectorDoesNotBlock() {
@@ -1907,7 +1907,7 @@ export function GanttView({ board, cards, canEdit, onOpen, onChange }: GanttProp
                   {incoming.map(renderExternalReference)}
                 </span>}
                 {(leftCollapsed || outgoing.length > 0) && <span className={styles.cardRowTail}>
-                  {leftCollapsed && <>
+                  {leftCollapsed && <span className={styles.cardRowMeta}>
                     <span className={styles.cardRowName} title={item.card.title}>{item.card.title}</span>
                     {(item.card.assignees?.length ?? 0) > 0 && <span className={styles.cardRowAssignees}>
                       {item.card.assignees?.slice(0, 4).map((person) =>
@@ -1916,7 +1916,7 @@ export function GanttView({ board, cards, canEdit, onOpen, onChange }: GanttProp
                       {(item.card.assignees?.length ?? 0) > 4 &&
                         <span className={styles.cardRowAssigneeExtra}>+{item.card.assignees!.length - 4}</span>}
                     </span>}
-                  </>}
+                  </span>}
                   {outgoing.length > 0 && <span className={styles.externalReferences}>
                     {outgoing.map(renderExternalReference)}
                   </span>}
