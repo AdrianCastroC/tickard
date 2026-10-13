@@ -23,7 +23,7 @@ export function CardProgressBar({ progress }: { progress?: Card['progress'] }) {
   )
 }
 
-export function CardAttachmentsIndicator({ card }: { card: Card }) {
+export function CardAttachmentsIndicator({ card }: { card: Pick<Card, 'attachments'> }) {
   if (!card.attachments?.length) return null
 
   return (
