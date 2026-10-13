@@ -34,7 +34,17 @@ type DependencyCreation = { cardId: number; endpoint: 'start' | 'finish'; cursor
 type HoveredCard = { item: GanttCard; left: number; top: number }
 type Point = { x: number; y: number }
 type Rect = { left: number; right: number; top: number; bottom: number }
-type DependencyGeometry = { width: number; height: number; anchors: Record<string, Point>; obstacles: Rect[] }
+type BarObstacle = Rect & { cardId?: number }
+type ConnectorObstacle = Rect & { cardId: number; endpoint: 'start' | 'finish' }
+type DependencySegment = { start: Point; end: Point; sourceKey: string; dependencyId: number }
+type DependencyGeometry = {
+  width: number
+  height: number
+  dayWidth: number
+  anchors: Record<string, Point>
+  obstacles: BarObstacle[]
+  connectors: ConnectorObstacle[]
+}
 
 type GanttGridStyle = CSSProperties & {
   '--left-columns': string
@@ -95,8 +105,23 @@ function segmentIntersectsRect(start: Point, end: Point, rect: Rect, padding = 8
   return start.x > left && start.x < right && Math.max(start.y, end.y) > top && Math.min(start.y, end.y) < bottom
 }
 
-function containsPoint(rect: Rect, point: Point) {
-  return point.x >= rect.left && point.x <= rect.right && point.y >= rect.top && point.y <= rect.bottom
+function segmentsSharePositiveLength(first: Point, second: Point, third: Point, fourth: Point) {
+  const firstHorizontal = first.y === second.y
+  const secondHorizontal = third.y === fourth.y
+
+  if (firstHorizontal !== secondHorizontal) {
+    return false
+  }
+
+  if (firstHorizontal) {
+    return first.y === third.y
+      && Math.max(Math.min(first.x, second.x), Math.min(third.x, fourth.x))
+        < Math.min(Math.max(first.x, second.x), Math.max(third.x, fourth.x))
+  }
+
+  return first.x === third.x
+    && Math.max(Math.min(first.y, second.y), Math.min(third.y, fourth.y))
+      < Math.min(Math.max(first.y, second.y), Math.max(third.y, fourth.y))
 }
 
 function pathToSvg(points: Point[], cornerRadius = 4) {
@@ -141,6 +166,15 @@ function pathToSvg(points: Point[], cornerRadius = 4) {
   return path
 }
 
+function dependencySegments(route: Point[], dependencyId: number, sourceKey: string) {
+  return route.slice(0, -1).map((start, index) => ({
+    start,
+    end: route[index + 1],
+    sourceKey,
+    dependencyId,
+  }))
+}
+
 function dependencyArrowPosition(points: Point[]) {
   const cleanPoints = points.filter((point, index) => {
     const previous = points[index - 1]
@@ -162,10 +196,15 @@ function dependencyArrowPosition(points: Point[]) {
 function routeDependency(
   source: Point,
   target: Point,
-  obstacles: Rect[],
+  obstacles: BarObstacle[],
   sourceEndpoint: 'start' | 'finish',
   targetEndpoint: 'start' | 'finish',
-  bounds: { width: number; height: number },
+  bounds: { width: number; height: number; dayWidth?: number },
+  connectorObstacles: ConnectorObstacle[] = [],
+  reservedSegments: DependencySegment[] = [],
+  sourceKey = '',
+  sourceCardId?: number,
+  targetCardId?: number,
 ) {
   const exitDistance = 16
   const arrowDistance = 15
@@ -191,6 +230,12 @@ function routeDependency(
     : returnBelow
       ? mandatoryWaypoint
       : null
+  const returnToLeftStart = targetEndpoint === 'start' && targetEntry.x < sourceExit.x
+  const targetTurnXs = returnToLeftStart
+    ? Array.from({ length: Math.max(1, Math.ceil(targetEntry.x / Math.max(bounds.dayWidth ?? 1, 1))) }, (_, index) =>
+      targetEntry.x - (index + 1) * (bounds.dayWidth ?? 1)
+    )
+    : []
   const obstacleYChannels = obstacles.flatMap((obstacle) => returnBelow
     ? [obstacle.bottom + channelGap, obstacle.top - channelGap]
     : [obstacle.top - channelGap, obstacle.bottom + channelGap])
@@ -200,6 +245,7 @@ function routeDependency(
     bounds.width - 8,
     sourceExit.x,
     targetEntry.x,
+    ...targetTurnXs,
     ...obstacles.flatMap((obstacle) => [obstacle.left - 8, obstacle.right + 8]),
   ]
   const yChannels = [
@@ -229,9 +275,24 @@ function routeDependency(
   const queue = [sourceExit]
 
   function canUseSegment(start: Point, end: Point) {
-    return start.x === end.x || start.y === end.y
-      ? !obstacles.some((obstacle) => segmentIntersectsRect(start, end, obstacle, padding))
-      : false
+    if (start.x !== end.x && start.y !== end.y) {
+      return false
+    }
+
+    const horizontal = start.y === end.y
+    const blockedByBar = obstacles.some((obstacle) => {
+      if (!segmentIntersectsRect(start, end, obstacle, padding)) {
+        return false
+      }
+
+      return horizontal || obstacle.cardId === sourceCardId || obstacle.cardId === targetCardId
+    })
+    const blockedByConnector = connectorObstacles.some((obstacle) => segmentIntersectsRect(start, end, obstacle, padding))
+    const blockedByReservedSegment = reservedSegments.some((segment) =>
+      segment.sourceKey !== sourceKey && segmentsSharePositiveLength(start, end, segment.start, segment.end)
+    )
+
+    return !blockedByBar && !blockedByConnector && !blockedByReservedSegment
   }
 
   function hasValidTargetEntry(previousPoint: Point, entryPoint: Point) {
@@ -284,12 +345,10 @@ function routeDependency(
       const wasHorizontal = parent ? parent.y === current.y : null
       const isHorizontal = current.y === neighbor.y
       const turnPenalty = wasHorizontal !== null && wasHorizontal !== isHorizontal ? 32 : 0
-      const preferredLanePenalty = returnBelow && isHorizontal && current.y !== preferredReturnY ? 96 : 0
       const distance = (distances.get(currentKey) ?? Infinity)
         + Math.abs(current.x - neighbor.x)
         + Math.abs(current.y - neighbor.y)
         + turnPenalty
-        + preferredLanePenalty
       if (distance < (distances.get(neighborKey) ?? Infinity)) {
         distances.set(neighborKey, distance)
         previous.set(neighborKey, currentKey)
@@ -313,8 +372,16 @@ function routeDependency(
   const containsExitWaypoint = exitWaypoint
     ? route.some((point) => keyOf(point) === keyOf(exitWaypoint))
     : true
+  const reachesStartFromLeft = targetEndpoint === 'start'
+    ? route.length >= 2 && route[route.length - 1].x === targetEntry.x && route[route.length - 2].x < targetEntry.x
+    : true
 
-  if (route.length === 0 || keyOf(route[0]) !== keyOf(sourceExit) || !containsExitWaypoint) {
+  if (
+    route.length === 0
+    || keyOf(route[0]) !== keyOf(sourceExit)
+    || !containsExitWaypoint
+    || !reachesStartFromLeft
+  ) {
     if (import.meta.env.DEV) {
       console.warn('No se encontró una ruta ortogonal válida para una dependencia del Gantt.', {
         source,
@@ -393,9 +460,35 @@ function verifySyntheticSsExit() {
     && firstSegment[1].y > firstSegment[0].y
 }
 
+function verifySyntheticLeftStartReturn() {
+  const bounds = { width: 400, height: 300, dayWidth: 20 }
+  const sourceBar = { left: 220, right: 330, top: 35, bottom: 55, cardId: 1 }
+  const targetBar = { left: 174, right: 264, top: 95, bottom: 115, cardId: 2 }
+  const source = { x: 346, y: 45 }
+  const target = { x: 150, y: 105 }
+  const route = routeDependency(source, target, [sourceBar, targetBar], 'finish', 'start', bounds, [], [], '1:finish', 1, 2)
+  const targetEntry = { x: target.x - 24, y: target.y }
+  const hasLeftwardReturn = route.some((point, index) => {
+    const next = route[index + 1]
+    return next && point.y === next.y && next.x < point.x
+  })
+  const reachesStartFromLeft = route.length >= 2
+    && route[route.length - 2].x < targetEntry.x
+    && route[route.length - 1].x === targetEntry.x
+    && route[route.length - 1].y === targetEntry.y
+  const usesNearestTurnCandidate = route.some((point) => point.x === targetEntry.x - bounds.dayWidth)
+
+  return route.length > 0
+    && routeHasClearOrthogonalSegments(route, [sourceBar, targetBar], bounds)
+    && hasLeftwardReturn
+    && reachesStartFromLeft
+    && usesNearestTurnCandidate
+}
+
 if (import.meta.env.DEV) {
   console.assert(verifySyntheticReturnWaypoint(), 'Gantt dependency return route must reach the lower source-row waypoint before returning horizontally.')
   console.assert(verifySyntheticSsExit(), 'Gantt SS dependency route must exit vertically down to the lower source-row waypoint.')
+  console.assert(verifySyntheticLeftStartReturn(), 'Gantt return routes to a left-side Start connector must use an exterior left lane and enter from the left.')
 }
 
 function timelineRange(cards: Card[]) {
@@ -748,7 +841,7 @@ export function GanttView({ board, cards, canEdit, onOpen, onChange }: GanttProp
   const suppressClickRef = useRef<number | null>(null)
   const timelineGridRef = useRef<HTMLDivElement>(null)
   const dependencyAnchorRefs = useRef(new Map<string, HTMLSpanElement>())
-  const [dependencyGeometry, setDependencyGeometry] = useState<DependencyGeometry>({ width: 0, height: 0, anchors: {}, obstacles: [] })
+  const [dependencyGeometry, setDependencyGeometry] = useState<DependencyGeometry>({ width: 0, height: 0, dayWidth: 0, anchors: {}, obstacles: [], connectors: [] })
   const toolbarRef = useRef<HTMLDivElement>(null)
   const leftToolbarRef = useRef<HTMLDivElement>(null)
   const [toolbarMinWidth, setToolbarMinWidth] = useState(0)
@@ -875,6 +968,20 @@ export function GanttView({ board, cards, canEdit, onOpen, onChange }: GanttProp
       const obstacles = [...grid.querySelectorAll<HTMLElement>('[data-gantt-card-bar="true"]')].map((element) => {
         const rect = element.getBoundingClientRect()
         return {
+          cardId: Number(element.dataset.cardId),
+          left: rect.left - gridRect.left,
+          right: rect.right - gridRect.left,
+          top: rect.top - gridRect.top,
+          bottom: rect.bottom - gridRect.top,
+        }
+      })
+      const connectors = [...dependencyAnchorRefs.current.entries()].map(([key, element]) => {
+        const rect = element.getBoundingClientRect()
+        const [cardId, endpoint] = key.split(':') as [string, 'start' | 'finish']
+
+        return {
+          cardId: Number(cardId),
+          endpoint,
           left: rect.left - gridRect.left,
           right: rect.right - gridRect.left,
           top: rect.top - gridRect.top,
@@ -884,8 +991,10 @@ export function GanttView({ board, cards, canEdit, onOpen, onChange }: GanttProp
       const nextGeometry = {
         width: gridRect.width,
         height: gridRect.height,
+        dayWidth: gridRect.width / Math.max(totalDays, 1),
         anchors,
         obstacles,
+        connectors,
       }
 
       setDependencyGeometry((current) => JSON.stringify(current) === JSON.stringify(nextGeometry) ? current : nextGeometry)
@@ -958,6 +1067,50 @@ export function GanttView({ board, cards, canEdit, onOpen, onChange }: GanttProp
       group.cards.forEach((item, index) => cardRows.set(item.card.id, { item, row: groupRow + index + 1 }))
     }
   })
+
+  const plannedDependencyRoutes = useMemo(() => {
+    const routes = new Map<number, Point[]>()
+    const reservedSegments: DependencySegment[] = []
+
+    ganttDependencies.forEach((dependency) => {
+      const predecessor = cardRows.get(dependency.predecessorId)
+      const successor = cardRows.get(dependency.successorId)
+      if (!predecessor || !successor || !hasTemporalPlanning(predecessor.item) || !hasTemporalPlanning(successor.item)) {
+        return
+      }
+
+      const sourceEndpoint = dependency.type === 'ss' || dependency.type === 'sf' ? 'start' : 'finish'
+      const targetEndpoint = dependency.type === 'ff' || dependency.type === 'sf' ? 'finish' : 'start'
+      const source = dependencyGeometry.anchors[`${dependency.predecessorId}:${sourceEndpoint}`]
+      const target = dependencyGeometry.anchors[`${dependency.successorId}:${targetEndpoint}`]
+      if (!source || !target) {
+        return
+      }
+
+      const sourceKey = `${dependency.predecessorId}:${sourceEndpoint}`
+      const route = routeDependency(
+        source,
+        target,
+        dependencyGeometry.obstacles,
+        sourceEndpoint,
+        targetEndpoint,
+        dependencyGeometry,
+        dependencyGeometry.connectors.filter((connector) => connector.cardId !== dependency.predecessorId && connector.cardId !== dependency.successorId),
+        reservedSegments,
+        sourceKey,
+        dependency.predecessorId,
+        dependency.successorId,
+      )
+      if (route.length === 0) {
+        return
+      }
+
+      routes.set(dependency.id, route)
+      reservedSegments.push(...dependencySegments(route, dependency.id, sourceKey))
+    })
+
+    return routes
+  }, [cardRows, dependencyGeometry, ganttDependencies])
 
   async function changeDependency(dependency: GanttDependency, type: GanttDependency['type']) {
     await api(`/card-dependencies/${dependency.id}`, { method: 'PATCH', body: JSON.stringify({ type }) })
@@ -1272,20 +1425,8 @@ export function GanttView({ board, cards, canEdit, onOpen, onChange }: GanttProp
               const predecessor = cardRows.get(dependency.predecessorId)
               const successor = cardRows.get(dependency.successorId)
               if (!predecessor || !successor || !hasTemporalPlanning(predecessor.item) || !hasTemporalPlanning(successor.item)) return null
-              const sourceEndpoint = dependency.type === 'ss' || dependency.type === 'sf' ? 'start' : 'finish'
-              const targetEndpoint = dependency.type === 'ff' || dependency.type === 'sf' ? 'finish' : 'start'
-              const source = dependencyGeometry.anchors[`${dependency.predecessorId}:${sourceEndpoint}`]
-              const target = dependencyGeometry.anchors[`${dependency.successorId}:${targetEndpoint}`]
-              if (!source || !target) return null
-              const obstacles = dependencyGeometry.obstacles.filter((obstacle) => !containsPoint(obstacle, source) && !containsPoint(obstacle, target))
-              const route = routeDependency(
-                source,
-                target,
-                obstacles,
-                sourceEndpoint,
-                targetEndpoint,
-                dependencyGeometry,
-              )
+              const route = plannedDependencyRoutes.get(dependency.id)
+              if (!route) return null
               const path = pathToSvg(route)
               const arrow = dependencyArrowPosition(route)
               return (
