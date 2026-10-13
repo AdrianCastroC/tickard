@@ -657,6 +657,53 @@ function routeHasClearOrthogonalSegments(route: Point[], obstacles: Rect[], boun
     })
 }
 
+function verifyCompactZoomDependencySpacing() {
+  const daily = dependencyRoutingStep(24, 'day')
+  const weekly = dependencyRoutingStep(0.4, 'week')
+  const monthly = dependencyRoutingStep(0.4, 'month')
+  const quarterly = dependencyRoutingStep(0.4, 'quarter')
+  const wideQuarter = dependencyRoutingStep(30, 'quarter')
+  const bounds = { width: 580, height: 300, dayWidth: 0.4, zoom: 'quarter' as const }
+  const predecessor: BarObstacle = { cardId: 1, left: 215, right: 218, top: 165, bottom: 185 }
+  const successor: BarObstacle = { cardId: 2, left: 260, right: 264, top: 105, bottom: 125 }
+  const start = { x: predecessor.left - 25, y: 175 }
+  const finish = { x: predecessor.right + 25, y: 175 }
+  const targetStart = { x: successor.left - 25, y: 115 }
+  const targetFinish = { x: successor.right + 25, y: 115 }
+  const barRects = [predecessor, successor]
+
+  const fs = routeDependency(finish, targetStart, barRects,
+    'finish', 'start', bounds, [], [], '1:finish', 1, 2)
+  const ss = routeDependency(start, targetStart, barRects,
+    'start', 'start', bounds, [], [], '1:start', 1, 2)
+  const ff = routeDependency(finish, targetFinish, barRects,
+    'finish', 'finish', bounds, [], [], '1:finish', 1, 2, successor, predecessor)
+  const sf = routeDependency(start, targetFinish, barRects,
+    'start', 'finish', bounds, [], [], '1:start', 1, 2, successor)
+
+  const remote: Rect = { left: 340, right: 480, top: 165, bottom: 185 }
+  const external = routeExternalDependency(finish, { x: remote.left - 25, y: 175 },
+    'finish', 'start', predecessor, remote, quarterly,
+    [], '1:finish', true, [predecessor, remote], true)
+
+  const endsAt = (route: Point[], x: number, y: number) =>
+    route.length >= 2
+      && Math.abs((route.at(-1)?.x ?? Infinity) - x) < 0.001
+      && Math.abs((route.at(-1)?.y ?? Infinity) - y) < 0.001
+      && route.slice(0, -1).every((point, i) =>
+        point.x === route[i + 1].x || point.y === route[i + 1].y)
+
+  return daily === 24 && weekly === 10 && monthly === 14
+    && quarterly === 18 && wideQuarter === 30
+    && endsAt(fs, targetStart.x - quarterly, targetStart.y)
+    && endsAt(ss, targetStart.x - quarterly, targetStart.y)
+    && endsAt(ff, successor.right, successor.bottom + 5)
+    && endsAt(sf, successor.right, successor.bottom + 5)
+    && endsAt(external, remote.left - 25 - quarterly, 175)
+    && fs[0].x === finish.x && ss[0].x === start.x
+    && ff[0].x === finish.x && sf[0].x === start.x
+}
+
 function verifySyntheticFfUnderBars() {
   const bounds = { width: 600, height: 350, dayWidth: 20 }
   const sourceBar: BarObstacle = { left: 220, right: 350, top: 195, bottom: 215, cardId: 1 }
@@ -818,6 +865,10 @@ function verifySyntheticFsMinimalRoute() {
 }
 
 if (import.meta.env.DEV) {
+  console.assert(
+    verifyCompactZoomDependencySpacing(),
+    'Quarter zoom routes must retain visible Start/Finish approaches, including external references.',
+  )
   console.assert(
     verifySyntheticTimelineMargins(),
     'Gantt should keep two calendar days beyond Cards, today, external refs, and route detours.',
