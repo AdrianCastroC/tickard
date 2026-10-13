@@ -1241,6 +1241,51 @@ export function GanttView({ board, cards, canEdit, onOpen, onChange }: GanttProp
     setHoveredCard({ card, left, top })
   }
 
+  function openExternalDependency(dependency: ExternalGanttDependency, x: number, y: number) {
+    setHoveredCard(null)
+    setDependencyPopover({
+      dependency: {
+        ...dependency,
+        predecessorId: dependency.direction === 'incoming' ? dependency.card_id : dependency.localCardId,
+        successorId: dependency.direction === 'incoming' ? dependency.localCardId : dependency.card_id,
+      },
+      x,
+      y,
+    })
+  }
+
+  function renderExternalReference(dependency: ExternalGanttDependency) {
+    const boardName = dependency.board_name || 'Otro tablero'
+    const label = `${dependency.direction === 'incoming' ? 'Entra desde' : 'Sale hacia'} ${boardName}: ${dependency.title} (${dependency.type.toUpperCase()})`
+    return (
+      <span
+        key={dependency.id}
+        className={styles.externalReference}
+        data-gantt-external-dependency={dependency.id}
+        title={label}
+        role="button"
+        tabIndex={0}
+        aria-label={label}
+        onPointerEnter={(event) => { if (dependency.preview) updateHoveredCard(event, dependency.preview) }}
+        onPointerMove={(event) => { if (dependency.preview) updateHoveredCard(event, dependency.preview) }}
+        onPointerLeave={clearHoveredCard}
+        onFocus={(event) => { if (dependency.preview) updateHoveredCard(event, dependency.preview) }}
+        onBlur={clearHoveredCard}
+        onClick={(event) => openExternalDependency(dependency, event.clientX, event.clientY)}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault()
+            const rect = event.currentTarget.getBoundingClientRect()
+            openExternalDependency(dependency, rect.left + rect.width / 2, rect.bottom)
+          }
+        }}
+      >
+        <span>{boardName}</span>
+        <small>{dependency.type.toUpperCase()}</small>
+      </span>
+    )
+  }
+
   function clearHoveredCard() {
     setHoveredCard(null)
   }
@@ -1257,6 +1302,10 @@ export function GanttView({ board, cards, canEdit, onOpen, onChange }: GanttProp
   const todayColumn = gridColumn(range.start, today)
   const todayVisible = today >= range.start && today <= range.end
   const effectiveLeftWidth = Math.max(totalLeftWidth, toolbarMinWidth)
+  const maxOutgoingReferences = Math.max(0, ...[...externalByCard.values()].map((items) => items.outgoing.length))
+  const timelineRightReserve = leftCollapsed || maxOutgoingReferences > 0
+    ? (leftCollapsed ? 360 : 160) + maxOutgoingReferences * 170
+    : 0
   const cardRows = useMemo(() => {
     const result = new Map<number, { item: GanttCard; row: number }>()
     entries.forEach(({ group, row: groupRow, collapsed: isCollapsed }) => {
@@ -1561,7 +1610,7 @@ export function GanttView({ board, cards, canEdit, onOpen, onChange }: GanttProp
         </div>
       )}
         <div className={styles.timelineViewport}>
-        <div ref={timelineGridRef} className={styles.timelineGrid} style={gridStyle}>
+        <div ref={timelineGridRef} className={styles.timelineGrid} style={{ ...gridStyle, marginRight: timelineRightReserve }}>
           {(showMonths ? monthQuarterRows : showQuarters ? yearRows : monthRows).map((item) => <span key={item.label} className={showMonths || showQuarters ? styles.quarter : styles.month} style={{ gridRow: 1, gridColumn: `${item.start} / ${item.end}` }}>{item.label}</span>)}
           {showMonths && monthRows.map((month) => <span key={`month-${month.label}`} className={styles.month} style={{ gridRow: 2, gridColumn: `${month.start} / ${month.end}` }}>{month.label}</span>)}
           {showQuarters && quarterRows.map((quarter) => <span key={`quarter-${quarter.start}`} className={styles.quarter} style={{ gridRow: 2, gridColumn: `${quarter.start} / ${quarter.end}` }}>{quarter.label}</span>)}
@@ -1668,6 +1717,43 @@ export function GanttView({ board, cards, canEdit, onOpen, onChange }: GanttProp
               </button>
             )
           }))}
+          {entries.flatMap(({ group, row: groupRow, collapsed: isCollapsed }) => isCollapsed ? [] : group.cards.flatMap((item, index) => {
+            if (!hasTemporalPlanning(item)) return []
+            const references = externalByCard.get(item.card.id)
+            const incoming = references?.incoming ?? []
+            const outgoing = references?.outgoing ?? []
+            if (!leftCollapsed && incoming.length === 0 && outgoing.length === 0) return []
+
+            const preview = dragPreview?.cardId === item.card.id ? dragPreview : null
+            const start = preview?.start ?? item.card.start_date!
+            const due = preview?.due ?? item.card.due_date!
+            return (
+              <span
+                key={`card-extras-${item.card.id}`}
+                className={styles.cardRowExtras}
+                style={{ gridRow: groupRow + index + 1, gridColumn: `${gridColumn(range.start, start)} / ${dateEndColumn(range.start, due)}` }}
+              >
+                {incoming.length > 0 && <span className={styles.externalIncoming}>
+                  {incoming.map(renderExternalReference)}
+                </span>}
+                {(leftCollapsed || outgoing.length > 0) && <span className={styles.cardRowTail}>
+                  {leftCollapsed && <>
+                    <span className={styles.cardRowName} title={item.card.title}>{item.card.title}</span>
+                    {(item.card.assignees?.length ?? 0) > 0 && <span className={styles.cardRowAssignees}>
+                      {item.card.assignees?.slice(0, 4).map((person) =>
+                        <Avatar key={person.id} id={person.id} name={person.name} size={19} src={person.avatar_url} />
+                      )}
+                      {(item.card.assignees?.length ?? 0) > 4 &&
+                        <span className={styles.cardRowAssigneeExtra}>+{item.card.assignees!.length - 4}</span>}
+                    </span>}
+                  </>}
+                  {outgoing.length > 0 && <span className={styles.externalReferences}>
+                    {outgoing.map(renderExternalReference)}
+                  </span>}
+                </span>}
+              </span>
+            )
+          }))}
           <svg className={styles.dependencyLayer} width={dependencyGeometry.width} height={dependencyGeometry.height} viewBox={`0 0 ${dependencyGeometry.width} ${dependencyGeometry.height}`} aria-label="Dependencias de tareas">
             {dependencyCreation && (() => {
               const sourcePoint = dependencyGeometry.anchors[`${dependencyCreation.cardId}:${dependencyCreation.endpoint}`]
@@ -1718,6 +1804,31 @@ export function GanttView({ board, cards, canEdit, onOpen, onChange }: GanttProp
                 </g>
               )
             })}
+            {externalDependencies.map((dependency) => {
+              const geometry = externalRoutes.get(dependency.id)
+              if (!geometry) return null
+              const path = pathToSvg(geometry.points)
+              const arrow = dependencyArrowPosition(geometry.points)
+              const finishArrival = dependency.type === 'ff' || dependency.type === 'sf'
+              const name = `${dependency.direction === 'incoming' ? dependency.title : cardRows.get(dependency.localCardId)?.item.card.title} → ${dependency.direction === 'outgoing' ? dependency.title : cardRows.get(dependency.localCardId)?.item.card.title}`
+              return (
+                <g key={`external-${dependency.id}`} className={`${styles.dependencyLineGroup} ${dependencyPopover?.dependency.id === dependency.id ? styles.dependencySelected : ''}`}>
+                  <path className={styles.dependencyHitArea} d={path}
+                    aria-label={`Dependencia externa ${dependency.type.toUpperCase()}: ${name}`}
+                    onClick={(event) => openExternalDependency(dependency, event.clientX, event.clientY)} />
+                  <path className={styles.dependencyLine} d={path} aria-hidden="true" />
+                  {finishArrival && arrow && <path
+                    className={styles.dependencyLine}
+                    d={`M ${geometry.targetBar.right + FF_FINISH_MARKER_OFFSET_PX} ${geometry.targetBar.top} V ${arrow.point.y + 5}`}
+                    aria-hidden="true" />}
+                  {arrow && <g className={styles.dependencyArrow}
+                    transform={`translate(${arrow.point.x} ${arrow.point.y}) rotate(${arrow.angle}) scale(0.01875) translate(-439.1 -320)`}
+                    aria-hidden="true">
+                    <path d="M439.1 297.4C451.6 309.9 451.6 330.2 439.1 342.7L279.1 502.7C266.6 515.2 246.3 515.2 233.8 502.7C221.3 490.2 221.3 469.9 233.8 457.4L371.2 320L233.9 182.6C221.4 170.1 221.4 149.8 233.9 137.3C246.4 124.8 266.7 124.8 279.2 137.3L439.2 297.3z" />
+                  </g>}
+                </g>
+              )
+            })}
             {unroutedDependencies.map((dependency) => {
               const endpoint = dependency.type === 'ss' || dependency.type === 'sf' ? 'start' : 'finish'
               const origin = dependencyGeometry.anchors[`${dependency.predecessorId}:${endpoint}`]
@@ -1743,6 +1854,9 @@ export function GanttView({ board, cards, canEdit, onOpen, onChange }: GanttProp
       {dependencyPopover && (
         <div className={styles.dependencyPopover} role="dialog" aria-label="Tipo de dependencia" style={{ left: dependencyPopover.x, top: dependencyPopover.y }}>
           <strong>Tipo de dependencia</strong>
+          {dependencyPopover.dependency.board_name && <small>
+            Card externa: {dependencyPopover.dependency.title} · {dependencyPopover.dependency.board_name}
+          </small>}
           {(['fs', 'ss', 'ff', 'sf'] as const).map((type) => (
             <label key={type}>
               <input type="radio" checked={dependencyPopover.dependency.type === type} disabled={!canEdit} onChange={() => void changeDependency(dependencyPopover.dependency, type)} />
