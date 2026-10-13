@@ -277,6 +277,23 @@ function routeDependency(
       })
   }
 
+  // FS can usually leave Finish horizontally, travel directly up/down
+  // beside the predecessor and enter Start with one last horizontal run.
+  // Do not force a separator detour unless a bar, foreign connector or
+  // reserved vertical segment actually blocks this minimal route.
+  if (sourceEndpoint === 'finish' && targetEndpoint === 'start' && targetArrow.x > sourceExit.x) {
+    const direct: Point[] = [
+      source,
+      sourceExit,
+      { x: sourceExit.x, y: targetArrow.y },
+      targetArrow,
+    ]
+    const directRoute = direct.filter((point, index) =>
+      index === 0 || point.x !== direct[index - 1].x || point.y !== direct[index - 1].y
+    )
+    if (validRoute(directRoute)) return directRoute
+  }
+
   // All start-side departures descend immediately. Finish-side departures
   // retain the horizontal exit, then join the separator below their own row.
   const prefix = sourceEndpoint === 'start'
@@ -444,7 +461,49 @@ function verifySyntheticFfUnderBars() {
     && !verticalSegmentsOverlap({ x: 10, y: 10 }, { x: 60, y: 10 }, { x: 30, y: 0 }, { x: 30, y: 30 })
 }
 
+function verifySyntheticFsMinimalRoute() {
+  const bounds = { width: 440, height: 210, dayWidth: 20 }
+  const sourceBar: BarObstacle = { left: 32, right: 110, top: 35, bottom: 55, cardId: 1 }
+  const targetBar: BarObstacle = { left: 351, right: 425, top: 95, bottom: 115, cardId: 2 }
+  const thirdBar: BarObstacle = { left: 146, right: 164, top: 75, bottom: 95, cardId: 3 }
+  const source = { x: 135, y: 45 }
+  const target = { x: 326, y: 105 }
+  const sourceKey = '1:finish'
+  const route = (connectors: ConnectorObstacle[] = [], reserved: DependencySegment[] = []) =>
+    routeDependency(source, target, [sourceBar, targetBar, thirdBar], 'finish', 'start',
+      bounds, connectors, reserved, sourceKey, 1, 2)
+
+  const direct = route()
+  const blockedByConnector = route([{
+    left: 144, right: 158, top: 77, bottom: 87, cardId: 3, endpoint: 'start',
+  }])
+  const blockedByReservedVertical = route([], [{
+    start: { x: 151, y: 65 },
+    end: { x: 151, y: 95 },
+    sourceKey: '3:finish',
+    dependencyId: 100,
+  }])
+
+  function isCompactFs(points: Point[]) {
+    return points.length === 4
+      && points[0].x === source.x && points[0].y === source.y
+      && points[1].x === source.x + 16 && points[1].y === source.y
+      && points[2].x === points[1].x && points[2].y === target.y
+      && points[3].x === target.x - bounds.dayWidth && points[3].y === target.y
+  }
+
+  return isCompactFs(direct)
+    && blockedByConnector.length > direct.length
+    && blockedByReservedVertical.length > direct.length
+    && blockedByConnector.at(-1)?.x === target.x - bounds.dayWidth
+    && blockedByReservedVertical.at(-1)?.x === target.x - bounds.dayWidth
+}
+
 if (import.meta.env.DEV) {
+  console.assert(
+    verifySyntheticFsMinimalRoute(),
+    'FS must use its shortest valid Finish-exit/Start-entry route before trying detours.',
+  )
   console.assert(
     verifySyntheticFfUnderBars(),
     'FF must skirt the predecessor underneath, travel by a free exterior lane and finish under the successor.',
