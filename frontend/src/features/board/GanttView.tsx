@@ -204,16 +204,35 @@ function routeDependency(
   if (bounds.width <= 0 || bounds.height <= 0) return []
   const day = Math.max(1, bounds.dayWidth ?? 20)
   const row = 30
-  const padding = 4
+  const finishBelowBar = sourceEndpoint === 'finish' && targetEndpoint === 'finish' && Boolean(targetBar && sourceBar)
+
+  // FF uses the ACTUAL gap between adjacent measured bars, not a fixed +6px
+  // offset which can overlap the next row (especially at compact page zoom).
+  const gapBelow = (bar: BarObstacle) => {
+    const nextTop = obstacles.reduce((nearest, candidate) =>
+      candidate.top >= bar.bottom - 0.01 && candidate.top < nearest
+        ? candidate.top
+        : nearest, Infinity)
+    return Number.isFinite(nextTop) ? Math.max(0, nextTop - bar.bottom) : 10
+  }
+  const ffGap = finishBelowBar && targetBar && sourceBar
+    ? Math.min(gapBelow(sourceBar), gapBelow(targetBar))
+    : 10
+  const padding = finishBelowBar ? Math.min(4, Math.max(0.5, ffGap / 2 - 0.5)) : 4
+  const ffLane = (bar: BarObstacle) =>
+    bar.bottom + Math.max(padding + 0.25, gapBelow(bar) / 2)
+
   const sourceExit = sourceEndpoint === 'start'
     ? source
     : { x: source.x + 16, y: source.y }
-  const sourceSeparator = source.y + row / 2
-  // FF terminates underneath the successor bar: the arrow meets its real
-  // right edge, while a vertical tick marks the same Finish position.
-  const finishBelowBar = sourceEndpoint === 'finish' && targetEndpoint === 'finish' && targetBar !== undefined
-  const targetArrow: Point = finishBelowBar
-    ? { x: targetBar.right, y: targetBar.bottom + 6 }
+  const sourceSeparator = finishBelowBar && sourceBar
+    ? ffLane(sourceBar)
+    : source.y + row / 2
+
+  // FF terminates below the successor bar; the vertical tick remains at the
+  // successor's real right edge.
+  const targetArrow: Point = finishBelowBar && targetBar
+    ? { x: targetBar.right, y: ffLane(targetBar) }
     : {
       x: target.x + (targetEndpoint === 'start' ? -day : 15),
       y: target.y,
@@ -344,6 +363,7 @@ function verifySyntheticFfUnderBars() {
   const sourceBar: BarObstacle = { left: 220, right: 350, top: 195, bottom: 215, cardId: 1 }
   const aboveBar: BarObstacle = { left: 260, right: 430, top: 75, bottom: 95, cardId: 2 }
   const belowBar: BarObstacle = { left: 260, right: 430, top: 255, bottom: 275, cardId: 3 }
+  const crowdedNextBar: BarObstacle = { left: 260, right: 460, top: 105, bottom: 125, cardId: 4 }
   const source = { x: 375, y: 205 }
 
   const findRoute = (targetBar: BarObstacle, reserved: DependencySegment[] = []) =>
@@ -373,6 +393,14 @@ function verifySyntheticFfUnderBars() {
     dependencyId: 998,
   }]
   const sharedHorizontalRoute = findRoute(aboveBar, occupiedHorizontal)
+  // A bar immediately below the target left only a 10px gap. The arrow must
+  // remain in the middle of that gap, never 6px down plus a 4px exclusion.
+  const crowdedRoute = routeDependency(
+    source,
+    { x: aboveBar.right + 25, y: (aboveBar.top + aboveBar.bottom) / 2 },
+    [sourceBar, aboveBar, crowdedNextBar],
+    'finish', 'finish', bounds, [], [], '1:finish', 1, aboveBar.cardId, aboveBar, sourceBar,
+  )
   const reserved: DependencySegment[] = [{
     start: { x: 180, y: 100 },
     end: { x: 180, y: 230 },
@@ -387,10 +415,10 @@ function verifySyntheticFfUnderBars() {
     return route.length === 6
       && route[0].x === source.x && route[0].y === source.y
       && route[1].x === source.x + 16 && route[1].y === source.y
-      && route[2].x === route[1].x && route[2].y === source.y + 15
+      && route[2].x === route[1].x && route[2].y === sourceBar.bottom + 5
       && route[3].x === expectedTurnX && route[3].y === route[2].y
-      && route[4].x === expectedTurnX && route[4].y === targetBar.bottom + 6
-      && final?.x === targetBar.right && final?.y === targetBar.bottom + 6
+      && route[4].x === expectedTurnX && route[4].y === targetBar.bottom + 5
+      && final?.x === targetBar.right && final?.y === targetBar.bottom + 5
       && previous?.y === final.y && previous.x < final.x
       && routeHasClearOrthogonalSegments(route, [sourceBar, targetBar], bounds)
   }
@@ -399,6 +427,8 @@ function verifySyntheticFfUnderBars() {
     && followsFfShape(lowerRoute, belowBar, 180)
     && followsFfShape(divertedRoute, aboveBar, 160)
     && followsFfShape(sharedHorizontalRoute, aboveBar, 180)
+    && crowdedRoute.length > 0
+    && crowdedRoute.at(-1)?.y === aboveBar.bottom + 5
     && verticalSegmentsOverlap({ x: 10, y: 10 }, { x: 10, y: 60 }, { x: 10, y: 40 }, { x: 10, y: 90 })
     && !verticalSegmentsOverlap({ x: 10, y: 10 }, { x: 10, y: 60 }, { x: 10, y: 60 }, { x: 10, y: 90 })
     && !verticalSegmentsOverlap({ x: 10, y: 10 }, { x: 60, y: 10 }, { x: 30, y: 10 }, { x: 80, y: 10 })
