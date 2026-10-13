@@ -79,6 +79,24 @@ function hasTemporalPlanning(item: GanttCard) {
   return item.column.workflow_state !== 'backlog' && planned(item.card)
 }
 
+function dependencyPath(
+  sourceX: number,
+  sourceY: number,
+  targetX: number,
+  targetY: number,
+  sourceEndpoint: 'start' | 'finish',
+  targetEndpoint: 'start' | 'finish',
+  lane: number,
+) {
+  const anchorGap = 14
+  const sourceExitX = sourceX + (sourceEndpoint === 'start' ? -anchorGap : anchorGap)
+  const targetEntryX = targetX + (targetEndpoint === 'start' ? -anchorGap : anchorGap)
+  const laneOffset = lane * 7
+  const routeX = (sourceExitX + targetEntryX) / 2 + laneOffset
+
+  return `M ${sourceX} ${sourceY} H ${sourceExitX} H ${routeX} V ${targetY} H ${targetEntryX} H ${targetX}`
+}
+
 function timelineRange(cards: Card[]) {
   const plannedCards = cards.filter(planned)
   if (plannedCards.length === 0) {
@@ -827,7 +845,7 @@ export function GanttView({ board, cards, canEdit, onOpen, onChange }: GanttProp
               const y2 = dependencyCreation.cursorY - grid.top
               return <path className={styles.dependencyPreview} d={`M ${x1} ${y1} L ${x2} ${y2}`} />
             })()}
-            {ganttDependencies.map((dependency) => {
+            {ganttDependencies.map((dependency, dependencyIndex) => {
               const predecessor = cardRows.get(dependency.predecessorId)
               const successor = cardRows.get(dependency.successorId)
               if (!predecessor || !successor || !hasTemporalPlanning(predecessor.item) || !hasTemporalPlanning(successor.item)) return null
@@ -841,8 +859,10 @@ export function GanttView({ board, cards, canEdit, onOpen, onChange }: GanttProp
               const x2 = ((to - 1) / days.length) * 1000
               const y1 = 56 + (predecessor.row - 3) * 30 + 15
               const y2 = 56 + (successor.row - 3) * 30 + 15
-              const midX = (x1 + x2) / 2
-              const path = `M ${x1} ${y1} H ${midX} V ${y2} H ${x2}`
+              const sourceEndpoint = dependency.type === 'ss' || dependency.type === 'sf' ? 'start' : 'finish'
+              const targetEndpoint = dependency.type === 'ff' || dependency.type === 'sf' ? 'finish' : 'start'
+              const lane = (dependencyIndex % 5) - 2
+              const path = dependencyPath(x1, y1, x2, y2, sourceEndpoint, targetEndpoint, lane)
               return (
                 <g key={dependency.id} className={dependencyPopover?.dependency.id === dependency.id ? styles.dependencySelected : ''}>
                   <path className={styles.dependencyHitArea} d={path} onClick={(event) => setDependencyPopover({ dependency, x: event.clientX, y: event.clientY })} aria-label={`Dependencia ${dependency.type.toUpperCase()}: ${predecessor.item.card.title} → ${successor.item.card.title}`} />

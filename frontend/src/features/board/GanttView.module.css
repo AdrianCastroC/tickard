@@ -509,11 +509,13 @@
 .dependencyHitArea {
   fill: none;
   stroke: var(--muted);
+  stroke-linecap: round;
+  stroke-linejoin: round;
   vector-effect: non-scaling-stroke;
 }
 
 .dependencyLine {
-  stroke-width: 1.5;
+  stroke-width: 2;
 }
 
 .dependencyPreview {
@@ -521,6 +523,8 @@
   stroke: var(--accent);
   stroke-width: 2;
   stroke-dasharray: 5 4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
   vector-effect: non-scaling-stroke;
 }
 
@@ -534,6 +538,7 @@
 .dependencySelected .dependencyLine,
 .dependencyHitArea:hover + .dependencyLine {
   stroke: var(--accent);
+  stroke-width: 2.75;
 }
 
 .dependencyLine marker path {
