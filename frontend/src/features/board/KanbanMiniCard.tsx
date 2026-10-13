@@ -3,7 +3,7 @@ import { AttachmentIcon, VisibilityIcon } from '../../shared/icons'
 import { Avatar, cardStripeStyle } from '../../shared/ui'
 
 export type KanbanMiniCardProps = {
-  card: Card
+  card: Pick<Card, 'title' | 'color' | 'is_internal' | 'teams' | 'labels' | 'assignees' | 'attachments' | 'progress'>
   workflowLabel?: string
   dateLabel?: string
   progressLabel?: string
