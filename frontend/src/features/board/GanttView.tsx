@@ -1344,15 +1344,25 @@ function weekSpans(days: Day[]) {
   return spans
 }
 
+export type GanttDependencyNavigation = {
+  boardId: number
+  cardId: number
+  dependencyId: number
+}
+
+export type GanttCardFocus = GanttDependencyNavigation & { requestId: number }
+
 type GanttProps = {
   board: BoardPayload
   cards: BoardPayload['columns']
   canEdit: boolean
   onOpen: (card: Card) => void
+  onNavigateExternalCard: (target: GanttDependencyNavigation) => void
+  focus?: GanttCardFocus | null
   onChange: () => Promise<void>
 }
 
-export function GanttView({ board, cards, canEdit, onOpen, onChange }: GanttProps) {
+export function GanttView({ board, cards, canEdit, onOpen, onNavigateExternalCard, focus, onChange }: GanttProps) {
   const allCards = cards.flatMap((column) => column.workflow_state === 'backlog' ? [] : column.cards)
   const groups = useMemo(() => categoryGroups(board, cards), [board, cards])
   const [zoom, setZoom] = useState<Zoom>(() => (localStorage.getItem(`tickard:gantt-zoom:${board.board.id}`) as Zoom) || 'week')
@@ -1688,7 +1698,7 @@ export function GanttView({ board, cards, canEdit, onOpen, onChange }: GanttProp
     return (
       <span
         key={dependency.id}
-        className={styles.externalReference}
+        className={`${styles.externalReference} ${focus?.dependencyId === dependency.id ? styles.externalReferenceFocused : ''}`}
         data-gantt-external-dependency={dependency.id}
         title={label}
         role="button"
@@ -1699,12 +1709,25 @@ export function GanttView({ board, cards, canEdit, onOpen, onChange }: GanttProp
         onPointerLeave={clearHoveredCard}
         onFocus={(event) => { if (dependency.preview) updateHoveredCard(event, dependency.preview) }}
         onBlur={clearHoveredCard}
-        onClick={(event) => openExternalDependency(dependency, event.clientX, event.clientY)}
+        onClick={() => {
+          setHoveredCard(null)
+          setDependencyPopover(null)
+          onNavigateExternalCard({
+            boardId: dependency.board_id,
+            cardId: dependency.card_id,
+            dependencyId: dependency.id,
+          })
+        }}
         onKeyDown={(event) => {
           if (event.key === 'Enter' || event.key === ' ') {
             event.preventDefault()
-            const rect = event.currentTarget.getBoundingClientRect()
-            openExternalDependency(dependency, rect.left + rect.width / 2, rect.bottom)
+            setHoveredCard(null)
+            setDependencyPopover(null)
+            onNavigateExternalCard({
+              boardId: dependency.board_id,
+              cardId: dependency.card_id,
+              dependencyId: dependency.id,
+            })
           }
         }}
       >
@@ -1721,6 +1744,15 @@ export function GanttView({ board, cards, canEdit, onOpen, onChange }: GanttProp
   const todayColumn = gridColumn(range.start, today)
   const todayVisible = today >= range.start && today <= range.end
   const effectiveLeftWidth = Math.max(totalLeftWidth, toolbarMinWidth)
+  // Centre the related Card after navigation from another board, including
+  // any extra calendar space added for dependency bends/references.
+  useLayoutEffect(() => {
+    if (!focus || focus.boardId !== board.board.id) return
+    const bar = [...(timelineGridRef.current?.querySelectorAll<HTMLElement>('[data-gantt-card-bar="true"]') ?? [])]
+      .find((element) => Number(element.dataset.cardId) === focus.cardId)
+    bar?.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' })
+  }, [board.board.id, focus?.requestId, focus?.cardId, range.start, range.end])
+
   const cardRows = useMemo(() => {
     const result = new Map<number, { item: GanttCard; row: number }>()
     entries.forEach(({ group, row: groupRow, collapsed: isCollapsed }) => {
@@ -2132,6 +2164,7 @@ export function GanttView({ board, cards, canEdit, onOpen, onChange }: GanttProp
               item.column.workflow_state === 'pending' ? styles.pendingBar : '',
               preview ? styles.dragging : '',
               dependencyCreation ? styles.dependencyCreating : '',
+              focus?.cardId === item.card.id ? styles.focusedCardBar : '',
             ].filter(Boolean).join(' ')
 
             const inReview = item.column.workflow_state === 'review'
@@ -2259,7 +2292,7 @@ export function GanttView({ board, cards, canEdit, onOpen, onChange }: GanttProp
                 ? dependencyGeometry.obstacles.find((bar) => bar.cardId === dependency.successorId)
                 : undefined
               return (
-                <g key={dependency.id} className={`${styles.dependencyLineGroup} ${dependencyPopover?.dependency.id === dependency.id ? styles.dependencySelected : ''}`}>
+                <g key={dependency.id} className={`${styles.dependencyLineGroup} ${dependencyPopover?.dependency.id === dependency.id || focus?.dependencyId === dependency.id ? styles.dependencySelected : ''}`}>
                   <path className={styles.dependencyHitArea} d={path} onClick={(event) => setDependencyPopover({ dependency, x: event.clientX, y: event.clientY })} aria-label={`Dependencia ${dependency.type.toUpperCase()}: ${predecessor.item.card.title} → ${successor.item.card.title}`} />
                   <path className={styles.dependencyLine} d={path} aria-hidden="true" />
                   {(dependency.type === 'ff' || dependency.type === 'sf') && targetBar && arrow && <path
@@ -2286,7 +2319,7 @@ export function GanttView({ board, cards, canEdit, onOpen, onChange }: GanttProp
               const finishArrival = dependency.type === 'ff' || dependency.type === 'sf'
               const name = `${dependency.direction === 'incoming' ? dependency.title : cardRows.get(dependency.localCardId)?.item.card.title} → ${dependency.direction === 'outgoing' ? dependency.title : cardRows.get(dependency.localCardId)?.item.card.title}`
               return (
-                <g key={`external-${dependency.id}`} className={`${styles.dependencyLineGroup} ${dependencyPopover?.dependency.id === dependency.id ? styles.dependencySelected : ''}`}>
+                <g key={`external-${dependency.id}`} className={`${styles.dependencyLineGroup} ${dependencyPopover?.dependency.id === dependency.id || focus?.dependencyId === dependency.id ? styles.dependencySelected : ''}`}>
                   <path className={styles.dependencyHitArea} d={path}
                     aria-label={`Dependencia externa ${dependency.type.toUpperCase()}: ${name}`}
                     onClick={(event) => openExternalDependency(dependency, event.clientX, event.clientY)} />
