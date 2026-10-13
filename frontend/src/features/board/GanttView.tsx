@@ -798,20 +798,43 @@ if (import.meta.env.DEV) {
   )
 }
 
-function timelineRange(cards: Card[]) {
+function timelineRange(cards: Card[], today = dateKey(new Date())) {
   const plannedCards = cards.filter(planned)
-  if (plannedCards.length === 0) {
-    const today = dateKey(new Date())
-    return { start: shift(today, -7), end: shift(today, 14) }
-  }
+  const first = plannedCards.reduce((value, card) =>
+    card.start_date! < value ? card.start_date! : value, today)
+  const last = plannedCards.reduce((value, card) =>
+    card.due_date! > value ? card.due_date! : value, today)
 
-  const start = plannedCards.reduce((value, card) => card.start_date! < value ? card.start_date! : value, plannedCards[0].start_date!)
-  const end = plannedCards.reduce((value, card) => card.due_date! > value ? card.due_date! : value, plannedCards[0].due_date!)
-  // Start arrivals reserve two days for the arrow and at least a third for
-  // the first possible turn. Provide a little additional conflict space.
-  // Compact zooms need more than two day-cells after Finish: connector
-  // anchors and the 16px horizontal departure may extend over 40px.
-  return { start: shift(start, -6), end: shift(end, 5) }
+  // Both the first Card and "Hoy" are real timeline content. Exactly two
+  // full calendar days remain before the earliest and after the latest.
+  return { start: shift(first, -2), end: shift(last, 2) }
+}
+
+// Reference badges and dependency routes are positioned in pixels, not by
+// external Card dates. Convert their measured extremes back into dates so
+// that every visible item (including a detour around overlapping bars) has
+// two complete day cells of breathing room on both sides.
+function fitTimelineRange(
+  base: { start: string; end: string },
+  currentStart: string,
+  dayWidth: number,
+  extents: Rect[],
+  routes: Point[][],
+) {
+  if (!Number.isFinite(dayWidth) || dayWidth <= 0) return base
+
+  const xs = [
+    ...extents.flatMap((rect) => [rect.left, rect.right]),
+    ...routes.flatMap((points) => points.map((point) => point.x)),
+  ]
+  if (xs.length === 0) return base
+
+  const first = shift(currentStart, Math.floor(Math.min(...xs) / dayWidth) - 2)
+  const last = shift(currentStart, Math.ceil(Math.max(...xs) / dayWidth) + 1)
+  return {
+    start: first < base.start ? first : base.start,
+    end: last > base.end ? last : base.end,
+  }
 }
 
 function buildDays(start: string, endInclusive: string): Day[] {
@@ -1210,12 +1233,11 @@ export function GanttView({ board, cards, canEdit, onOpen, onChange }: GanttProp
     return result
   }, [externalDependencies])
   const baseRange = timelineRange(allCards)
-  // Extra space on the left is for undated incoming board references; their
-  // position never depends on the remote Card's start or due date.
-  const maxIncomingReferences = Math.max(0, ...[...externalByCard.values()].map((items) => items.incoming.length))
-  const range = maxIncomingReferences > 0
-    ? { ...baseRange, start: shift(baseRange.start, -28 - 19 * (maxIncomingReferences - 1)) }
-    : baseRange
+  const [fittedRange, setFittedRange] = useState<{ start: string; end: string } | null>(null)
+  const range = {
+    start: fittedRange && fittedRange.start < baseRange.start ? fittedRange.start : baseRange.start,
+    end: fittedRange && fittedRange.end > baseRange.end ? fittedRange.end : baseRange.end,
+  }
   const days = buildDays(range.start, range.end)
   const entries: TimelineEntry[] = []
   let row = 3
@@ -1459,10 +1481,6 @@ export function GanttView({ board, cards, canEdit, onOpen, onChange }: GanttProp
   const todayColumn = gridColumn(range.start, today)
   const todayVisible = today >= range.start && today <= range.end
   const effectiveLeftWidth = Math.max(totalLeftWidth, toolbarMinWidth)
-  const maxOutgoingReferences = Math.max(0, ...[...externalByCard.values()].map((items) => items.outgoing.length))
-  const timelineRightReserve = leftCollapsed || maxOutgoingReferences > 0
-    ? (leftCollapsed ? 530 : 170) + maxOutgoingReferences * 220
-    : 0
   const cardRows = useMemo(() => {
     const result = new Map<number, { item: GanttCard; row: number }>()
     entries.forEach(({ group, row: groupRow, collapsed: isCollapsed }) => {
@@ -1784,7 +1802,7 @@ export function GanttView({ board, cards, canEdit, onOpen, onChange }: GanttProp
         </div>
       )}
         <div className={styles.timelineViewport}>
-        <div ref={timelineGridRef} className={styles.timelineGrid} style={{ ...gridStyle, marginRight: timelineRightReserve }}>
+        <div ref={timelineGridRef} className={styles.timelineGrid} style={gridStyle}>
           {(showMonths ? monthQuarterRows : showQuarters ? yearRows : monthRows).map((item) => <span key={item.label} className={showMonths || showQuarters ? styles.quarter : styles.month} style={{ gridRow: 1, gridColumn: `${item.start} / ${item.end}` }}>{item.label}</span>)}
           {showMonths && monthRows.map((month) => <span key={`month-${month.label}`} className={styles.month} style={{ gridRow: 2, gridColumn: `${month.start} / ${month.end}` }}>{month.label}</span>)}
           {showQuarters && quarterRows.map((quarter) => <span key={`quarter-${quarter.start}`} className={styles.quarter} style={{ gridRow: 2, gridColumn: `${quarter.start} / ${quarter.end}` }}>{quarter.label}</span>)}
