@@ -205,6 +205,7 @@ function routeDependency(
   sourceKey = '',
   sourceCardId?: number,
   targetCardId?: number,
+  targetBar?: BarObstacle,
 ) {
   // Try a small, ordered set of complete orthogonal routes. The previous
   // Cartesian graph expanded every candidate day against every obstacle row,
@@ -217,12 +218,18 @@ function routeDependency(
     ? source
     : { x: source.x + 16, y: source.y }
   const sourceSeparator = source.y + row / 2
-  const targetArrow = {
-    x: target.x + (targetEndpoint === 'start' ? -2 * day : 15),
-    y: target.y,
-  }
-  const firstTurn = targetArrow.x + (targetEndpoint === 'start' ? -day : day)
-  const turnDirection = targetEndpoint === 'start' ? -1 : 1
+  // FF terminates underneath the successor bar: the arrow meets its real
+  // right edge, while a vertical tick marks the same Finish position.
+  const finishBelowBar = sourceEndpoint === 'finish' && targetEndpoint === 'finish' && targetBar !== undefined
+  const targetArrow: Point = finishBelowBar
+    ? { x: targetBar.right, y: targetBar.bottom + 6 }
+    : {
+      x: target.x + (targetEndpoint === 'start' ? -2 * day : 15),
+      y: target.y,
+    }
+  const approachFromLeft = targetEndpoint === 'start' || finishBelowBar
+  const firstTurn = targetArrow.x + (approachFromLeft ? -day : day)
+  const turnDirection = approachFromLeft ? -1 : 1
 
   function isFree(start: Point, end: Point) {
     if (start.x !== end.x && start.y !== end.y) return false
@@ -264,15 +271,20 @@ function routeDependency(
   // A candidate reserves only the actual vertical interval, never an entire
   // day column. Perpendicular intersections remain valid.
   const maxTurns = Math.min(64, Math.ceil(bounds.width / day) + 1)
-  for (let shift = 0; shift < maxTurns; shift++) {
-    const turnX = firstTurn + shift * day * turnDirection
-    if (turnX < 4 || turnX > bounds.width - 4) break
+  const dayTurns = Array.from({ length: maxTurns }, (_, shift) => firstTurn + shift * day * turnDirection)
+  // A long successor can extend more than 64 days. In that case the only
+  // obstacle-free way to approach FF from above may be just left of its bar.
+  const extraTurns = finishBelowBar ? [targetBar.left - padding - 5] : []
+  const turns = [...new Set([...dayTurns, ...extraTurns])]
+    .filter((x) => x >= 4 && x <= bounds.width - 4)
+    .sort((a, b) => Math.abs(a - targetArrow.x) - Math.abs(b - targetArrow.x))
+  for (const turnX of turns) {
     for (const laneY of lanes) {
       const raw = [
         ...prefix,
         ...(laneY !== sourceSeparator ? [{ x: sourceExit.x, y: laneY }] : []),
         { x: turnX, y: laneY },
-        { x: turnX, y: target.y },
+        { x: turnX, y: targetArrow.y },
         targetArrow,
       ]
       const route = raw.filter((point, i) => i === 0 || point.x !== raw[i - 1].x || point.y !== raw[i - 1].y)
@@ -387,7 +399,9 @@ function timelineRange(cards: Card[]) {
 
   const start = plannedCards.reduce((value, card) => card.start_date! < value ? card.start_date! : value, plannedCards[0].start_date!)
   const end = plannedCards.reduce((value, card) => card.due_date! > value ? card.due_date! : value, plannedCards[0].due_date!)
-  return { start: shift(start, -2), end: shift(end, 2) }
+  // Start arrivals reserve two days for the arrow and at least a third for
+  // the first possible turn. Provide a little additional conflict space.
+  return { start: shift(start, -6), end: shift(end, 2) }
 }
 
 function buildDays(start: string, endInclusive: string): Day[] {
@@ -948,12 +962,15 @@ export function GanttView({ board, cards, canEdit, onOpen, onChange }: GanttProp
   const todayColumn = gridColumn(range.start, today)
   const todayVisible = today >= range.start && today <= range.end
   const effectiveLeftWidth = Math.max(totalLeftWidth, toolbarMinWidth)
-  const cardRows = new Map<number, { item: GanttCard; row: number }>()
-  entries.forEach(({ group, row: groupRow, collapsed: isCollapsed }) => {
-    if (!isCollapsed) {
-      group.cards.forEach((item, index) => cardRows.set(item.card.id, { item, row: groupRow + index + 1 }))
-    }
-  })
+  const cardRows = useMemo(() => {
+    const result = new Map<number, { item: GanttCard; row: number }>()
+    entries.forEach(({ group, row: groupRow, collapsed: isCollapsed }) => {
+      if (!isCollapsed) {
+        group.cards.forEach((item, index) => result.set(item.card.id, { item, row: groupRow + index + 1 }))
+      }
+    })
+    return result
+  }, [groups, collapsed])
 
   const plannedDependencyRoutes = useMemo(() => {
     const routes = new Map<number, Point[]>()
@@ -987,6 +1004,9 @@ export function GanttView({ board, cards, canEdit, onOpen, onChange }: GanttProp
         sourceKey,
         dependency.predecessorId,
         dependency.successorId,
+        dependency.type === 'ff'
+          ? dependencyGeometry.obstacles.find((bar) => bar.cardId === dependency.successorId)
+          : undefined,
       )
       if (route.length === 0) {
         return
@@ -998,6 +1018,22 @@ export function GanttView({ board, cards, canEdit, onOpen, onChange }: GanttProp
 
     return routes
   }, [cardRows, dependencyGeometry, ganttDependencies])
+
+  const unroutedDependencies = useMemo(() => {
+    if (!dependencyGeometry.width || !dependencyGeometry.height) return []
+    return ganttDependencies.filter((dependency) => {
+      const predecessor = cardRows.get(dependency.predecessorId)
+      const successor = cardRows.get(dependency.successorId)
+      if (!predecessor || !successor || !hasTemporalPlanning(predecessor.item) || !hasTemporalPlanning(successor.item)) return false
+      const from = dependency.type === 'ss' || dependency.type === 'sf' ? 'start' : 'finish'
+      const to = dependency.type === 'ff' || dependency.type === 'sf' ? 'finish' : 'start'
+      return Boolean(
+        dependencyGeometry.anchors[`${dependency.predecessorId}:${from}`]
+        && dependencyGeometry.anchors[`${dependency.successorId}:${to}`]
+        && !plannedDependencyRoutes.has(dependency.id)
+      )
+    })
+  }, [cardRows, dependencyGeometry, ganttDependencies, plannedDependencyRoutes])
 
   async function changeDependency(dependency: GanttDependency, type: GanttDependency['type']) {
     await api(`/card-dependencies/${dependency.id}`, { method: 'PATCH', body: JSON.stringify({ type }) })
@@ -1121,6 +1157,17 @@ export function GanttView({ board, cards, canEdit, onOpen, onChange }: GanttProp
   return (
     <div className={styles.gantt} data-zoom={zoom} data-left-collapsed={leftCollapsed} style={{ '--left-width': `${effectiveLeftWidth}px` } as CSSProperties}>
       {dragError && <p className={styles.dragError} role="alert">{dragError}</p>}
+      {unroutedDependencies.length > 0 && <div role="status" aria-live="polite" style={{
+        position: 'absolute', top: 58, right: 10, zIndex: 8, padding: '5px 9px',
+        borderRadius: 6, background: '#fff3d6', color: '#744b0c',
+        fontSize: 12, fontWeight: 600, boxShadow: '0 2px 8px #0002',
+      }} title={unroutedDependencies.map((dependency) => {
+        const from = cardRows.get(dependency.predecessorId)?.item.card.title ?? String(dependency.predecessorId)
+        const to = cardRows.get(dependency.successorId)?.item.card.title ?? String(dependency.successorId)
+        return `${dependency.type.toUpperCase()}: ${from} → ${to}`
+      }).join('\n')}>
+        ⚠ {unroutedDependencies.length} dependencia(s) sin trazado. Señaladas en sus orígenes.
+      </div>}
       {leftCollapsed ? (
         <button
           className={`${styles.ganttLeft} ${styles.collapsedRail}`}
@@ -1316,10 +1363,18 @@ export function GanttView({ board, cards, canEdit, onOpen, onChange }: GanttProp
               if (!route) return null
               const path = pathToSvg(route)
               const arrow = dependencyArrowPosition(route)
+              const targetBar = dependency.type === 'ff'
+                ? dependencyGeometry.obstacles.find((bar) => bar.cardId === dependency.successorId)
+                : undefined
               return (
                 <g key={dependency.id} className={`${styles.dependencyLineGroup} ${dependencyPopover?.dependency.id === dependency.id ? styles.dependencySelected : ''}`}>
                   <path className={styles.dependencyHitArea} d={path} onClick={(event) => setDependencyPopover({ dependency, x: event.clientX, y: event.clientY })} aria-label={`Dependencia ${dependency.type.toUpperCase()}: ${predecessor.item.card.title} → ${successor.item.card.title}`} />
                   <path className={styles.dependencyLine} d={path} aria-hidden="true" />
+                  {dependency.type === 'ff' && targetBar && arrow && <path
+                    d={`M ${targetBar.right} ${targetBar.top} V ${arrow.point.y + 5}`}
+                    className={styles.dependencyLine}
+                    aria-hidden="true"
+                  />}
                   {arrow && <g
                     className={styles.dependencyArrow}
                     transform={`translate(${arrow.point.x} ${arrow.point.y}) rotate(${arrow.angle}) scale(0.01875) translate(-439.1 -320)`}
@@ -1330,6 +1385,21 @@ export function GanttView({ board, cards, canEdit, onOpen, onChange }: GanttProp
                   </g>}
                 </g>
               )
+            })}
+            {unroutedDependencies.map((dependency) => {
+              const endpoint = dependency.type === 'ss' || dependency.type === 'sf' ? 'start' : 'finish'
+              const origin = dependencyGeometry.anchors[`${dependency.predecessorId}:${endpoint}`]
+              if (!origin) return null
+              const from = cardRows.get(dependency.predecessorId)?.item.card.title ?? String(dependency.predecessorId)
+              const to = cardRows.get(dependency.successorId)?.item.card.title ?? String(dependency.successorId)
+              return <g key={`unrouted-${dependency.id}`} transform={`translate(${origin.x} ${origin.y - 13})`}
+                style={{ pointerEvents: 'all', cursor: 'pointer' }}
+                onClick={(event) => setDependencyPopover({ dependency, x: event.clientX, y: event.clientY })}
+                role="button" aria-label={`Dependencia sin recorrido: ${from} → ${to}`}>
+                <title>{`Sin recorrido: ${dependency.type.toUpperCase()} · ${from} → ${to}`}</title>
+                <circle r="8" fill="#b45309" stroke="white" strokeWidth="1.5" />
+                <text y="4" textAnchor="middle" fontSize="12" fontWeight="bold" fill="white">!</text>
+              </g>
             })}
           </svg>
           {todayVisible && <>
