@@ -925,25 +925,51 @@ function routeWithExtendedBounds(
 function verifySyntheticTimelineMargins() {
   const base = { start: '2026-08-29', end: '2026-09-12' }
   const card: Rect = { left: 48, right: 312, top: 80, bottom: 100 }
-  const minimum = fitTimelineRange(base, base.start, 24, [card], [])
+  const minimum = fitTimelineRange(base, 'day', base.start, 24, [card], [])
   const externalLeft: Rect = { left: -190, right: 10, top: 80, bottom: 100 }
   const externalRight: Rect = { left: 330, right: 530, top: 80, bottom: 100 }
-  const extended = fitTimelineRange(base, base.start, 24, [card, externalLeft, externalRight], [])
-  const detour = fitTimelineRange(base, base.start, 24, [card], [[
+  const extended = fitTimelineRange(base, 'day', base.start, 24, [card, externalLeft, externalRight], [])
+  const detour = fitTimelineRange(base, 'day', base.start, 24, [card], [[
     { x: -288, y: 100 }, { x: 48, y: 100 }, { x: 620, y: 100 },
   ]])
+  const week = fitTimelineRange(base, 'week', base.start, 24, [card], [])
+  const month = fitTimelineRange(base, 'month', base.start, 24, [card], [])
+  const quarter = fitTimelineRange(base, 'quarter', base.start, 24, [card], [])
+  const externalMonth = fitTimelineRange(base, 'month', base.start, 24,
+    [card, externalLeft, externalRight], [])
+
   const today = '2026-10-13'
-  const prior = timelineRange([{ start_date: '2026-10-20', due_date: '2026-10-30' } as Card], today)
-  const later = timelineRange([{ start_date: '2026-08-20', due_date: '2026-09-01' } as Card], today)
-  const empty = timelineRange([], today)
+  const nextCard = [{ start_date: '2026-10-20', due_date: '2026-10-30' } as Card]
+  const earlierCard = [{ start_date: '2026-08-20', due_date: '2026-09-01' } as Card]
+  const dayBefore = timelineRange(nextCard, 'day', today)
+  const dayAfter = timelineRange(earlierCard, 'day', today)
+  const emptyDay = timelineRange([], 'day', today)
+  const weekBefore = timelineRange(nextCard, 'week', today)
+  const weekAfter = timelineRange(earlierCard, 'week', today)
+  const monthBefore = timelineRange(nextCard, 'month', today)
+  const quarterBefore = timelineRange(nextCard, 'quarter', today)
+  const emptyMonth = timelineRange([], 'month', today)
+
   return minimum.start === base.start && minimum.end === base.end
     && extended.start === shift(base.start, -10)
     && extended.end === shift(base.start, 24)
     && detour.start === shift(base.start, -14)
     && detour.end === shift(base.start, 27)
-    && prior.start === '2026-10-11' && prior.end === '2026-11-01'
-    && later.start === '2026-08-18' && later.end === '2026-10-15'
-    && empty.start === '2026-10-11' && empty.end === '2026-10-15'
+    && week.start === '2026-08-17' && week.end === '2026-09-24'
+    && month.start === '2026-06-30' && month.end === '2026-11-10'
+    && quarter.start === '2026-02-28' && quarter.end === '2027-03-10'
+    && externalMonth.start === '2026-06-21' && externalMonth.end === '2026-11-20'
+    && dayBefore.start === '2026-10-11' && dayBefore.end === '2026-11-01'
+    && dayAfter.start === '2026-08-18' && dayAfter.end === '2026-10-15'
+    && emptyDay.start === '2026-10-11' && emptyDay.end === '2026-10-15'
+    && weekBefore.start === '2026-09-29' && weekBefore.end === '2026-11-13'
+    && weekAfter.start === '2026-08-06' && weekAfter.end === '2026-10-27'
+    && monthBefore.start === '2026-08-13' && monthBefore.end === '2026-12-30'
+    && quarterBefore.start === '2026-04-13' && quarterBefore.end === '2027-04-30'
+    && emptyMonth.start === '2026-08-13' && emptyMonth.end === '2026-12-13'
+    && shiftZoomUnits('2028-03-31', 'month', -1) === '2028-02-29'
+    && shiftZoomUnits('2026-01-31', 'month', 2) === '2026-03-31'
+    && shiftZoomUnits('2026-03-31', 'quarter', 2) === '2026-09-30'
 }
 
 function buildDays(start: string, endInclusive: string): Day[] {
