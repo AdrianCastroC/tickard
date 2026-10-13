@@ -428,6 +428,7 @@ function routeExternalDependency(
   sourceKey: string,
   allowDirectFs = false,
   occupiedRects: Rect[] = [],
+  outgoing = false,
 ): Point[] {
   const laneY = Math.max(sourceBar.bottom, targetBar.bottom) + 5
   const finishArrival = targetEndpoint === 'finish'
@@ -436,9 +437,8 @@ function routeExternalDependency(
     : { x: target.x - Math.max(1, dayWidth), y: target.y }
   const exit = sourceEndpoint === 'start' ? source : { x: source.x + 16, y: source.y }
 
-  // Prefer a horizontal FS connection when no inline title/assignees or
-  // obstacles occupy the space between Finish and Start. Incoming relations
-  // always qualify; outgoing relations qualify only with the left pane open.
+  // Titles and avatars are non-blocking labels, not Card obstacles.
+  // FS uses a direct horizontal path in both panel states whenever clear.
   if (
     allowDirectFs && sourceEndpoint === 'finish' && targetEndpoint === 'start'
     && Math.abs(source.y - arrow.y) < 0.5
@@ -448,6 +448,34 @@ function routeExternalDependency(
     && !occupiedRects.some((rect) => segmentIntersectsRect(source, arrow, rect, 4))
   ) {
     return [source, arrow]
+  }
+
+  // Outgoing FF can also travel along the Card's own row, across its
+  // informational labels, and only descend beside the external reference.
+  // This keeps the descent aligned with the separator between task rows.
+  if (
+    outgoing && sourceEndpoint === 'finish' && targetEndpoint === 'finish'
+    && Math.abs(source.y - (targetBar.top + targetBar.bottom) / 2) < 0.5
+    && source.x >= sourceBar.right + 4
+  ) {
+    const finishLane = targetBar.bottom + 5
+    for (let step = 0; step < 12; step += 1) {
+      const turnX = targetBar.left - 12 - step * Math.max(6, dayWidth / 2)
+      if (turnX <= source.x + 6) break
+      const track: Point[] = [
+        source,
+        { x: turnX, y: source.y },
+        { x: turnX, y: finishLane },
+        { x: targetBar.right, y: finishLane },
+      ]
+      const segments = dependencySegments(track, 0, sourceKey)
+      const blocked = segments.some((segment) =>
+        occupiedRects.some((rect) => segmentIntersectsRect(segment.start, segment.end, rect, 4))
+        || reserved.some((taken) => taken.sourceKey !== sourceKey
+          && verticalSegmentsOverlap(segment.start, segment.end, taken.start, taken.end))
+      )
+      if (!blocked) return track
+    }
   }
 
   const prefix: Point[] = sourceEndpoint === 'start'
@@ -490,7 +518,7 @@ function verifySyntheticExternalDependencyRoutes() {
     const source: Point = { x: from === 'start' ? sourceBar.left - 25 : sourceBar.right + 25, y: 205 }
     const target: Point = { x: to === 'start' ? targetBar.left - 25 : targetBar.right + 25, y: 205 }
     const points = routeExternalDependency(source, target, from, to,
-      sourceBar, targetBar, 24, [], 'test', true, [sourceBar, targetBar])
+      sourceBar, targetBar, 24, [], 'test', true, [sourceBar, targetBar], side === 1)
     const end = points.at(-1)
     const expectedX = to === 'start' ? targetBar.left - 49 : targetBar.right
     const expectedY = to === 'start' ? 205 : targetBar.bottom + 5
@@ -528,8 +556,27 @@ function verifyExternalFsObstacleFallback() {
     && route.some((point) => point.y === 220)
     && expandedOutgoing.length === 2
     && expandedOutgoing.every((point) => point.y === 205)
-    && collapsedOutgoing.length > 2
-    && collapsedOutgoing.some((point) => point.y === 220)
+    && collapsedOutgoing.length === 2
+    && collapsedOutgoing.every((point) => point.y === 205)
+}
+
+function verifyExternalFfInlineTrack() {
+  const local: Rect = { left: 360, right: 530, top: 195, bottom: 215 }
+  const remote: Rect = { left: 675, right: 875, top: 195, bottom: 215 }
+  const source: Point = { x: 555, y: 205 }
+  const target: Point = { x: 900, y: 205 }
+  const route = routeExternalDependency(source, target, 'finish', 'finish',
+    local, remote, 24, [], 'local:finish', true, [local, remote], true)
+  const blocker: Rect = { left: 610, right: 625, top: 200, bottom: 212 }
+  const obstructed = routeExternalDependency(source, target, 'finish', 'finish',
+    local, remote, 24, [], 'local:finish', true, [local, remote, blocker], true)
+  return route.length === 4
+    && route[0].x === source.x && route[0].y === source.y
+    && route[1].x > source.x && route[1].y === source.y
+    && route[2].x === route[1].x && route[2].y === remote.bottom + 5
+    && route[3].x === remote.right && route[3].y === remote.bottom + 5
+    && obstructed.length > 0
+    && !(obstructed.length === 4 && obstructed[1].y === source.y)
 }
 
 function verifyExternalFsOwnConnectorDoesNotBlock() {
@@ -729,7 +776,8 @@ if (import.meta.env.DEV) {
   console.assert(
     verifySyntheticExternalDependencyRoutes()
       && verifyExternalFsObstacleFallback()
-      && verifyExternalFsOwnConnectorDoesNotBlock(),
+      && verifyExternalFsOwnConnectorDoesNotBlock()
+      && verifyExternalFfInlineTrack(),
     'External FS must stay horizontal when clear, while blocked routes and other dependencies keep valid turns.',
   )
   console.assert(
@@ -1514,7 +1562,7 @@ export function GanttView({ board, cards, canEdit, onOpen, onChange }: GanttProp
       ]
       const points = routeExternalDependency(source, target, sourceEndpoint, targetEndpoint,
         sourceBar, targetBar, dependencyGeometry.dayWidth, reserved, sourceKey,
-        !outgoing || !leftCollapsed, occupiedRects)
+        true, occupiedRects, outgoing)
       if (!points.length) return
       routes.set(dependency.id, { points, targetBar })
       reserved.push(...dependencySegments(points, dependency.id, sourceKey))
