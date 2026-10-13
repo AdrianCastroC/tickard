@@ -141,30 +141,131 @@ function pathToSvg(points: Point[], cornerRadius = 4) {
   return path
 }
 
-function routeDependency(source: Point, target: Point, obstacles: Rect[], sourceEndpoint: 'start' | 'finish', targetEndpoint: 'start' | 'finish') {
+function routeDependency(
+  source: Point,
+  target: Point,
+  obstacles: Rect[],
+  sourceEndpoint: 'start' | 'finish',
+  targetEndpoint: 'start' | 'finish',
+  bounds: { width: number; height: number },
+) {
   const exitDistance = 16
   const arrowDistance = 15
   const entryDistance = 24
   const sourceExit = { x: source.x + (sourceEndpoint === 'start' ? -exitDistance : exitDistance), y: source.y }
   const targetEntry = { x: target.x + (targetEndpoint === 'start' ? -entryDistance : entryDistance), y: target.y }
   const targetArrow = { x: target.x + (targetEndpoint === 'start' ? -arrowDistance : arrowDistance), y: target.y }
-  const obstacleEdges = obstacles.flatMap((obstacle) => [obstacle.left - 12, obstacle.right + 12])
-  const candidates = [
-    (sourceExit.x + targetEntry.x) / 2,
+  const padding = 12
+  const returnBelow = sourceEndpoint === 'finish' && target.x < source.x
+  const obstacleYChannels = obstacles.flatMap((obstacle) => returnBelow
+    ? [obstacle.bottom + padding, obstacle.top - padding]
+    : [obstacle.top - padding, obstacle.bottom + padding])
+  const xChannels = [
+    8,
+    bounds.width - 8,
     sourceExit.x,
     targetEntry.x,
-    ...obstacleEdges,
+    ...obstacles.flatMap((obstacle) => [obstacle.left - padding, obstacle.right + padding]),
   ]
-  const uniqueCandidates = [...new Set(candidates.map((value) => Math.round(value)))]
-  const paths = uniqueCandidates.map((routeX) => {
-    const points = [source, sourceExit, { x: routeX, y: source.y }, { x: routeX, y: target.y }, targetEntry, targetArrow]
-    const intersections = points.slice(0, -1).filter((point, index) => obstacles.some((obstacle) => segmentIntersectsRect(point, points[index + 1], obstacle))).length
-    const distance = Math.abs(sourceExit.x - routeX) + Math.abs(targetEntry.x - routeX)
-    return { points, intersections, distance }
-  })
-  const best = paths.sort((left, right) => left.intersections - right.intersections || left.distance - right.distance)[0]
+  const yChannels = [
+    8,
+    bounds.height - 8,
+    sourceExit.y,
+    targetEntry.y,
+    ...obstacleYChannels,
+  ]
+  const xs = [...new Set(xChannels.map((value) => Math.max(4, Math.min(bounds.width - 4, Math.round(value)))))]
+  const ys = [...new Set(yChannels.map((value) => Math.max(4, Math.min(bounds.height - 4, Math.round(value)))))]
+  const nodes = [sourceExit, targetEntry, ...xs.flatMap((x) => ys.map((y) => ({ x, y })))]
+  const keyOf = (point: Point) => `${point.x}:${point.y}`
+  const targetKey = keyOf(targetEntry)
+  const nodeByKey = new Map(nodes.map((node) => [keyOf(node), node]))
+  const distances = new Map<string, number>([[keyOf(sourceExit), 0]])
+  const previous = new Map<string, string>()
+  const visited = new Set<string>()
+  const queue = [sourceExit]
 
-  return best.points
+  function canUseSegment(start: Point, end: Point) {
+    return start.x === end.x || start.y === end.y
+      ? !obstacles.some((obstacle) => segmentIntersectsRect(start, end, obstacle, padding))
+      : false
+  }
+
+  function hasValidTargetEntry(previousPoint: Point, entryPoint: Point) {
+    return targetEndpoint === 'start'
+      ? previousPoint.x < entryPoint.x
+      : previousPoint.x > entryPoint.x
+  }
+
+  while (queue.length > 0) {
+    queue.sort((left, right) => (distances.get(keyOf(left)) ?? Infinity) - (distances.get(keyOf(right)) ?? Infinity))
+    const current = queue.shift()!
+    const currentKey = keyOf(current)
+    if (visited.has(currentKey)) {
+      continue
+    }
+
+    visited.add(currentKey)
+    if (currentKey === targetKey) {
+      break
+    }
+
+    const neighbors = nodes.filter((node) =>
+      (node.x === current.x || node.y === current.y) && keyOf(node) !== currentKey
+    )
+
+    neighbors.forEach((neighbor) => {
+      const neighborKey = keyOf(neighbor)
+      if (visited.has(neighborKey) || !canUseSegment(current, neighbor)) {
+        return
+      }
+
+      if (neighborKey === targetKey && !hasValidTargetEntry(current, neighbor)) {
+        return
+      }
+
+      const parentKey = previous.get(currentKey)
+      const parent = parentKey ? nodeByKey.get(parentKey) : undefined
+      const wasHorizontal = parent ? parent.y === current.y : null
+      const isHorizontal = current.y === neighbor.y
+      const turnPenalty = wasHorizontal !== null && wasHorizontal !== isHorizontal ? 32 : 0
+      const distance = (distances.get(currentKey) ?? Infinity)
+        + Math.abs(current.x - neighbor.x)
+        + Math.abs(current.y - neighbor.y)
+        + turnPenalty
+      if (distance < (distances.get(neighborKey) ?? Infinity)) {
+        distances.set(neighborKey, distance)
+        previous.set(neighborKey, currentKey)
+        queue.push(neighbor)
+      }
+    })
+  }
+
+  const route: Point[] = []
+  let currentKey: string | undefined = targetKey
+  while (currentKey) {
+    const node = nodeByKey.get(currentKey)
+    if (!node) {
+      break
+    }
+
+    route.unshift(node)
+    currentKey = previous.get(currentKey)
+  }
+
+  if (route.length === 0 || keyOf(route[0]) !== keyOf(sourceExit)) {
+    const outerY = returnBelow ? bounds.height - 8 : 8
+    return [
+      source,
+      sourceExit,
+      { x: sourceExit.x, y: outerY },
+      { x: targetEntry.x, y: outerY },
+      targetEntry,
+      targetArrow,
+    ]
+  }
+
+  return [source, ...route, targetArrow]
 }
 
 function timelineRange(cards: Card[]) {
@@ -960,7 +1061,14 @@ export function GanttView({ board, cards, canEdit, onOpen, onChange }: GanttProp
                 x: dependencyCreation.cursorX - grid.left,
                 y: dependencyCreation.cursorY - grid.top,
               }
-              const path = routeDependency(sourcePoint, targetPoint, [], dependencyCreation.endpoint, dependencyCreation.targetEndpoint ?? 'start')
+              const path = routeDependency(
+                sourcePoint,
+                targetPoint,
+                [],
+                dependencyCreation.endpoint,
+                dependencyCreation.targetEndpoint ?? 'start',
+                { width: grid.width, height: grid.height },
+              )
               return <path className={styles.dependencyPreview} d={pathToSvg(path)} />
             })()}
             {ganttDependencies.map((dependency) => {
@@ -973,7 +1081,14 @@ export function GanttView({ board, cards, canEdit, onOpen, onChange }: GanttProp
               const target = dependencyGeometry.anchors[`${dependency.successorId}:${targetEndpoint}`]
               if (!source || !target) return null
               const obstacles = dependencyGeometry.obstacles.filter((obstacle) => !containsPoint(obstacle, source) && !containsPoint(obstacle, target))
-              const path = pathToSvg(routeDependency(source, target, obstacles, sourceEndpoint, targetEndpoint))
+              const path = pathToSvg(routeDependency(
+                source,
+                target,
+                obstacles,
+                sourceEndpoint,
+                targetEndpoint,
+                dependencyGeometry,
+              ))
               return (
                 <g key={dependency.id} className={dependencyPopover?.dependency.id === dependency.id ? styles.dependencySelected : ''}>
                   <path className={styles.dependencyHitArea} d={path} onClick={(event) => setDependencyPopover({ dependency, x: event.clientX, y: event.clientY })} aria-label={`Dependencia ${dependency.type.toUpperCase()}: ${predecessor.item.card.title} → ${successor.item.card.title}`} />
