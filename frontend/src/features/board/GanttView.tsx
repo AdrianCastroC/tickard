@@ -141,6 +141,24 @@ function pathToSvg(points: Point[], cornerRadius = 4) {
   return path
 }
 
+function dependencyArrowPosition(points: Point[]) {
+  const cleanPoints = points.filter((point, index) => {
+    const previous = points[index - 1]
+    return !previous || point.x !== previous.x || point.y !== previous.y
+  })
+  const end = cleanPoints.at(-1)
+  const previous = cleanPoints.at(-2)
+
+  if (!end || !previous) {
+    return null
+  }
+
+  return {
+    point: end,
+    angle: Math.atan2(end.y - previous.y, end.x - previous.x) * 180 / Math.PI,
+  }
+}
+
 function routeDependency(
   source: Point,
   target: Point,
@@ -155,23 +173,29 @@ function routeDependency(
   const sourceExit = { x: source.x + (sourceEndpoint === 'start' ? -exitDistance : exitDistance), y: source.y }
   const targetEntry = { x: target.x + (targetEndpoint === 'start' ? -entryDistance : entryDistance), y: target.y }
   const targetArrow = { x: target.x + (targetEndpoint === 'start' ? -arrowDistance : arrowDistance), y: target.y }
-  const padding = 12
+  const padding = 4
+  const channelGap = 6
   const returnBelow = sourceEndpoint === 'finish' && target.x < source.x
   const obstacleYChannels = obstacles.flatMap((obstacle) => returnBelow
-    ? [obstacle.bottom + padding, obstacle.top - padding]
-    : [obstacle.top - padding, obstacle.bottom + padding])
+    ? [obstacle.bottom + channelGap, obstacle.top - channelGap]
+    : [obstacle.top - channelGap, obstacle.bottom + channelGap])
+  const sourceRow = obstacles.find((obstacle) => source.y >= obstacle.top && source.y <= obstacle.bottom)
+  const preferredReturnY = sourceRow
+    ? sourceRow.bottom + channelGap
+    : source.y + 30
   const xChannels = [
     8,
     bounds.width - 8,
     sourceExit.x,
     targetEntry.x,
-    ...obstacles.flatMap((obstacle) => [obstacle.left - padding, obstacle.right + padding]),
+    ...obstacles.flatMap((obstacle) => [obstacle.left - 8, obstacle.right + 8]),
   ]
   const yChannels = [
     8,
     bounds.height - 8,
     sourceExit.y,
     targetEntry.y,
+    ...(returnBelow ? [preferredReturnY] : []),
     ...obstacleYChannels,
   ]
   const xs = [...new Set(xChannels.map((value) => Math.max(4, Math.min(bounds.width - 4, Math.round(value)))))]
@@ -229,10 +253,12 @@ function routeDependency(
       const wasHorizontal = parent ? parent.y === current.y : null
       const isHorizontal = current.y === neighbor.y
       const turnPenalty = wasHorizontal !== null && wasHorizontal !== isHorizontal ? 32 : 0
+      const preferredLanePenalty = returnBelow && isHorizontal && current.y !== preferredReturnY ? 96 : 0
       const distance = (distances.get(currentKey) ?? Infinity)
         + Math.abs(current.x - neighbor.x)
         + Math.abs(current.y - neighbor.y)
         + turnPenalty
+        + preferredLanePenalty
       if (distance < (distances.get(neighborKey) ?? Infinity)) {
         distances.set(neighborKey, distance)
         previous.set(neighborKey, currentKey)
@@ -1048,11 +1074,6 @@ export function GanttView({ board, cards, canEdit, onOpen, onChange }: GanttProp
             )
           }))}
           <svg className={styles.dependencyLayer} width={dependencyGeometry.width} height={dependencyGeometry.height} viewBox={`0 0 ${dependencyGeometry.width} ${dependencyGeometry.height}`} aria-label="Dependencias de tareas">
-            <defs>
-              <marker id="gantt-dependency-arrow" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto" markerUnits="userSpaceOnUse">
-                <path d="M0 0L6 3L0 6Z" />
-              </marker>
-            </defs>
             {dependencyCreation && (() => {
               const sourcePoint = dependencyGeometry.anchors[`${dependencyCreation.cardId}:${dependencyCreation.endpoint}`]
               const grid = timelineGridRef.current?.getBoundingClientRect()
@@ -1081,18 +1102,28 @@ export function GanttView({ board, cards, canEdit, onOpen, onChange }: GanttProp
               const target = dependencyGeometry.anchors[`${dependency.successorId}:${targetEndpoint}`]
               if (!source || !target) return null
               const obstacles = dependencyGeometry.obstacles.filter((obstacle) => !containsPoint(obstacle, source) && !containsPoint(obstacle, target))
-              const path = pathToSvg(routeDependency(
+              const route = routeDependency(
                 source,
                 target,
                 obstacles,
                 sourceEndpoint,
                 targetEndpoint,
                 dependencyGeometry,
-              ))
+              )
+              const path = pathToSvg(route)
+              const arrow = dependencyArrowPosition(route)
               return (
-                <g key={dependency.id} className={dependencyPopover?.dependency.id === dependency.id ? styles.dependencySelected : ''}>
+                <g key={dependency.id} className={`${styles.dependencyLineGroup} ${dependencyPopover?.dependency.id === dependency.id ? styles.dependencySelected : ''}`}>
                   <path className={styles.dependencyHitArea} d={path} onClick={(event) => setDependencyPopover({ dependency, x: event.clientX, y: event.clientY })} aria-label={`Dependencia ${dependency.type.toUpperCase()}: ${predecessor.item.card.title} → ${successor.item.card.title}`} />
-                  <path className={styles.dependencyLine} d={path} markerEnd="url(#gantt-dependency-arrow)" aria-hidden="true" />
+                  <path className={styles.dependencyLine} d={path} aria-hidden="true" />
+                  {arrow && <g
+                    className={styles.dependencyArrow}
+                    transform={`translate(${arrow.point.x} ${arrow.point.y}) rotate(${arrow.angle}) scale(0.01875) translate(-439.1 -320)`}
+                    aria-hidden="true"
+                  >
+                    {/* Font Awesome Free v7.3.1 — https://fontawesome.com — https://fontawesome.com/license/free — Copyright 2026 Fonticons, Inc. */}
+                    <path d="M439.1 297.4C451.6 309.9 451.6 330.2 439.1 342.7L279.1 502.7C266.6 515.2 246.3 515.2 233.8 502.7C221.3 490.2 221.3 469.9 233.8 457.4L371.2 320L233.9 182.6C221.4 170.1 221.4 149.8 233.9 137.3C246.4 124.8 266.7 124.8 279.2 137.3L439.2 297.3z" />
+                  </g>}
                 </g>
               )
             })}

@@ -513,10 +513,14 @@
 .dependencyLine,
 .dependencyHitArea {
   fill: none;
-  stroke: var(--muted);
+  stroke: currentColor;
   stroke-linecap: round;
   stroke-linejoin: round;
   vector-effect: non-scaling-stroke;
+}
+
+.dependencyLineGroup {
+  color: var(--muted);
 }
 
 .dependencyLine {
@@ -542,13 +546,22 @@
 
 .dependencySelected .dependencyLine,
 .dependencyHitArea:hover + .dependencyLine {
-  stroke: var(--accent);
+  color: var(--accent);
   stroke-width: 2.75;
 }
 
-.dependencyLine marker path {
-  fill: var(--muted);
+.dependencySelected {
+  color: var(--accent);
+}
+
+.dependencyHitArea:hover ~ .dependencyArrow {
+  color: var(--accent);
+}
+
+.dependencyArrow {
+  fill: currentColor;
   stroke: none;
+  pointer-events: none;
 }
 
 .dependencyPopover {
