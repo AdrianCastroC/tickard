@@ -1056,7 +1056,7 @@ export function GanttView({ board, cards, canEdit, onOpen, onChange }: GanttProp
   // Extra space on the left is for undated incoming board references; their
   // position never depends on the remote Card's start or due date.
   const range = externalDependencies.some((dependency) => dependency.direction === 'incoming')
-    ? { ...baseRange, start: shift(baseRange.start, -16) }
+    ? { ...baseRange, start: shift(baseRange.start, -24) }
     : baseRange
   const days = buildDays(range.start, range.end)
   const entries: TimelineEntry[] = []
