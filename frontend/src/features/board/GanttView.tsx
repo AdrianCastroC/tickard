@@ -1397,6 +1397,15 @@ export function GanttView({ board, cards, canEdit, onOpen, onNavigateExternalCar
       return {}
     }
   })
+  useEffect(() => {
+    if (!focus || focus.boardId !== board.board.id) return
+    const targetGroup = groups.find((group) =>
+      group.cards.some(({ card }) => card.id === focus.cardId))
+    if (targetGroup && collapsed[targetGroup.id]) {
+      setCollapsed((current) => ({ ...current, [targetGroup.id]: false }))
+    }
+  }, [board.board.id, focus?.requestId, focus?.cardId, groups, collapsed])
+
   const ganttDependencies = useMemo(() => {
     const cardsById = new Map(groups.flatMap((group) => group.cards).map((item) => [item.card.id, item.card]))
     const dependencies = new Map<number, GanttDependency>()
@@ -1751,7 +1760,7 @@ export function GanttView({ board, cards, canEdit, onOpen, onNavigateExternalCar
     const bar = [...(timelineGridRef.current?.querySelectorAll<HTMLElement>('[data-gantt-card-bar="true"]') ?? [])]
       .find((element) => Number(element.dataset.cardId) === focus.cardId)
     bar?.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' })
-  }, [board.board.id, focus?.requestId, focus?.cardId, range.start, range.end])
+  }, [board.board.id, focus?.requestId, focus?.cardId, range.start, range.end, collapsed])
 
   const cardRows = useMemo(() => {
     const result = new Map<number, { item: GanttCard; row: number }>()
