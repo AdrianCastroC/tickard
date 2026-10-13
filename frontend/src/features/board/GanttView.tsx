@@ -99,14 +99,55 @@ function containsPoint(rect: Rect, point: Point) {
   return point.x >= rect.left && point.x <= rect.right && point.y >= rect.top && point.y <= rect.bottom
 }
 
-function pathToSvg(points: Point[]) {
-  return points.map((point, index) => `${index === 0 ? 'M' : 'L'} ${point.x} ${point.y}`).join(' ')
+function pathToSvg(points: Point[], cornerRadius = 4) {
+  const cleanPoints = points.filter((point, index) => {
+    const previous = points[index - 1]
+    return !previous || point.x !== previous.x || point.y !== previous.y
+  })
+
+  if (cleanPoints.length < 2) {
+    return ''
+  }
+
+  let path = `M ${cleanPoints[0].x} ${cleanPoints[0].y}`
+
+  cleanPoints.slice(1, -1).forEach((point, index) => {
+    const previous = cleanPoints[index]
+    const next = cleanPoints[index + 2]
+    const previousLength = Math.hypot(point.x - previous.x, point.y - previous.y)
+    const nextLength = Math.hypot(next.x - point.x, next.y - point.y)
+    const radius = Math.min(cornerRadius, previousLength / 2, nextLength / 2)
+
+    if (radius <= 0) {
+      path += ` L ${point.x} ${point.y}`
+      return
+    }
+
+    const before = {
+      x: point.x + (previous.x - point.x) * radius / previousLength,
+      y: point.y + (previous.y - point.y) * radius / previousLength,
+    }
+    const after = {
+      x: point.x + (next.x - point.x) * radius / nextLength,
+      y: point.y + (next.y - point.y) * radius / nextLength,
+    }
+
+    path += ` L ${before.x} ${before.y} Q ${point.x} ${point.y} ${after.x} ${after.y}`
+  })
+
+  const last = cleanPoints.at(-1)!
+  path += ` L ${last.x} ${last.y}`
+
+  return path
 }
 
 function routeDependency(source: Point, target: Point, obstacles: Rect[], sourceEndpoint: 'start' | 'finish', targetEndpoint: 'start' | 'finish') {
   const exitDistance = 16
+  const arrowDistance = 15
+  const entryDistance = 24
   const sourceExit = { x: source.x + (sourceEndpoint === 'start' ? -exitDistance : exitDistance), y: source.y }
-  const targetEntry = { x: target.x + (targetEndpoint === 'start' ? -exitDistance : exitDistance), y: target.y }
+  const targetEntry = { x: target.x + (targetEndpoint === 'start' ? -entryDistance : entryDistance), y: target.y }
+  const targetArrow = { x: target.x + (targetEndpoint === 'start' ? -arrowDistance : arrowDistance), y: target.y }
   const obstacleEdges = obstacles.flatMap((obstacle) => [obstacle.left - 12, obstacle.right + 12])
   const candidates = [
     (sourceExit.x + targetEntry.x) / 2,
@@ -116,7 +157,7 @@ function routeDependency(source: Point, target: Point, obstacles: Rect[], source
   ]
   const uniqueCandidates = [...new Set(candidates.map((value) => Math.round(value)))]
   const paths = uniqueCandidates.map((routeX) => {
-    const points = [source, sourceExit, { x: routeX, y: source.y }, { x: routeX, y: target.y }, targetEntry, target]
+    const points = [source, sourceExit, { x: routeX, y: source.y }, { x: routeX, y: target.y }, targetEntry, targetArrow]
     const intersections = points.slice(0, -1).filter((point, index) => obstacles.some((obstacle) => segmentIntersectsRect(point, points[index + 1], obstacle))).length
     const distance = Math.abs(sourceExit.x - routeX) + Math.abs(targetEntry.x - routeX)
     return { points, intersections, distance }
@@ -907,8 +948,8 @@ export function GanttView({ board, cards, canEdit, onOpen, onChange }: GanttProp
           }))}
           <svg className={styles.dependencyLayer} width={dependencyGeometry.width} height={dependencyGeometry.height} viewBox={`0 0 ${dependencyGeometry.width} ${dependencyGeometry.height}`} aria-label="Dependencias de tareas">
             <defs>
-              <marker id="gantt-dependency-arrow" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto">
-                <path d="M0 0L7 3.5L0 7Z" />
+              <marker id="gantt-dependency-arrow" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto" markerUnits="userSpaceOnUse">
+                <path d="M0 0L6 3L0 6Z" />
               </marker>
             </defs>
             {dependencyCreation && (() => {
