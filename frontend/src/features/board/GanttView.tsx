@@ -215,13 +215,26 @@ function dependencyArrowPosition(points: Point[]) {
   }
 }
 
+// Date positions remain day-accurate at every zoom, but orthogonal dependency
+// lanes and Start approaches need a readable physical distance. A calendar
+// day can occupy much less than 1px in Month or Quarter.
+function dependencyRoutingStep(dayWidth: number, zoom: Zoom = 'day') {
+  const minimumByZoom: Record<Zoom, number> = {
+    day: 1,
+    week: 10,
+    month: 14,
+    quarter: 18,
+  }
+  return Math.max(1, dayWidth, minimumByZoom[zoom])
+}
+
 function routeDependency(
   source: Point,
   target: Point,
   obstacles: BarObstacle[],
   sourceEndpoint: 'start' | 'finish',
   targetEndpoint: 'start' | 'finish',
-  bounds: { width: number; height: number; dayWidth?: number },
+  bounds: { width: number; height: number; dayWidth?: number; zoom?: Zoom },
   connectorObstacles: ConnectorObstacle[] = [],
   reservedSegments: DependencySegment[] = [],
   sourceKey = '',
@@ -234,7 +247,7 @@ function routeDependency(
   // Cartesian graph expanded every candidate day against every obstacle row,
   // causing quadratic neighbor searches and long main-thread freezes.
   if (bounds.width <= 0 || bounds.height <= 0) return []
-  const day = Math.max(1, bounds.dayWidth ?? 20)
+  const day = dependencyRoutingStep(bounds.dayWidth ?? 20, bounds.zoom)
   const row = 30
   const finishBelowBar = targetEndpoint === 'finish' && targetBar !== undefined
   const ffOrigin = finishBelowBar && sourceEndpoint === 'finish' && sourceBar !== undefined
@@ -908,7 +921,7 @@ function routeWithExtendedBounds(
     obstacles.map(moveRect),
     sourceEndpoint,
     targetEndpoint,
-    { width: geometry.width + 2 * overscan, height: geometry.height, dayWidth: geometry.dayWidth },
+    { width: geometry.width + 2 * overscan, height: geometry.height, dayWidth: geometry.dayWidth, zoom: geometry.zoom },
     connectors.map(moveRect),
     reservedSegments.map((segment) => ({
       ...segment, start: move(segment.start), end: move(segment.end),
@@ -1739,8 +1752,9 @@ export function GanttView({ board, cards, canEdit, onOpen, onChange }: GanttProp
           .map(([, rect]) => rect),
       ]
       const points = routeExternalDependency(source, target, sourceEndpoint, targetEndpoint,
-        sourceBar, targetBar, dependencyGeometry.dayWidth, reserved, sourceKey,
-        true, occupiedRects, outgoing)
+        sourceBar, targetBar,
+        dependencyRoutingStep(dependencyGeometry.dayWidth, dependencyGeometry.zoom),
+        reserved, sourceKey, true, occupiedRects, outgoing)
       if (!points.length) return
       routes.set(dependency.id, { points, targetBar })
       reserved.push(...dependencySegments(points, dependency.id, sourceKey))
