@@ -457,6 +457,34 @@ function routeExternalDependency(
   return []
 }
 
+function verifySyntheticExternalDependencyRoutes() {
+  const local: Rect = { left: 360, right: 530, top: 195, bottom: 215 }
+  const inbound: Rect = { left: 60, right: 200, top: 195, bottom: 215 }
+  const outbound: Rect = { left: 675, right: 815, top: 195, bottom: 215 }
+  const variants: Array<['start' | 'finish', 'start' | 'finish']> = [
+    ['finish', 'start'], // FS
+    ['start', 'start'], // SS
+    ['finish', 'finish'], // FF
+    ['start', 'finish'], // SF
+  ]
+  return [inbound, outbound].every((remote, side) => variants.every(([from, to]) => {
+    const sourceBar = side === 0 ? remote : local
+    const targetBar = side === 0 ? local : remote
+    const source: Point = { x: from === 'start' ? sourceBar.left - 25 : sourceBar.right + 25, y: 205 }
+    const target: Point = { x: to === 'start' ? targetBar.left - 25 : targetBar.right + 25, y: 205 }
+    const points = routeExternalDependency(source, target, from, to, sourceBar, targetBar, 24, [], 'test')
+    const end = points.at(-1)
+    const expectedX = to === 'start' ? targetBar.left - 49 : targetBar.right
+    const expectedY = to === 'start' ? 205 : targetBar.bottom + 5
+    return points.length >= 3
+      && points[0].x === source.x && points[0].y === source.y
+      && end?.x === expectedX && end?.y === expectedY
+      && points.slice(0, -1).every((point, index) =>
+        point.x === points[index + 1].x || point.y === points[index + 1].y)
+      && points.some((point) => point.y === 220)
+  }))
+}
+
 function routeHasClearOrthogonalSegments(route: Point[], obstacles: Rect[], bounds: { width: number; height: number }) {
   return route.every((point) => point.x >= 0 && point.x <= bounds.width && point.y >= 4 && point.y <= bounds.height)
     && route.slice(0, -1).every((point, index) => {
@@ -627,6 +655,10 @@ function verifySyntheticFsMinimalRoute() {
 }
 
 if (import.meta.env.DEV) {
+  console.assert(
+    verifySyntheticExternalDependencyRoutes(),
+    'External FS/SS/FF/SF must preserve their Start/Finish endpoints in both directions.',
+  )
   console.assert(
     verifySyntheticSfFinishArrival(),
     'SF must depart Start vertically and finish beneath the successor with the same marker as FF.',
