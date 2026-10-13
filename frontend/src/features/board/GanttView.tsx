@@ -16,7 +16,7 @@ type Zoom = (typeof ZOOMS)[number]
 type Visibility = typeof DEFAULT_COLUMNS
 type Day = { key: string; date: Date }
 type GanttCard = { card: Card; column: Column }
-type CategoryGroup = { id: string; name: string; cards: GanttCard[] }
+type CategoryGroup = { id: string; name: string; cards: GanttCard[]; kind?: 'board' | 'category'; boardId?: number; summaryCards?: GanttCard[] }
 type TimelineEntry = { group: CategoryGroup; row: number; collapsed: boolean }
 type CategoryStats = { start: string | null; end: string | null; progress: number | null }
 type CardBarStyle = CSSProperties & {
@@ -1170,6 +1170,21 @@ function categoryGroups(board: BoardPayload, columns: BoardPayload['columns']): 
   return groups.filter((group) => group.cards.length > 0)
 }
 
+function projectCategoryGroups(boards: BoardPayload[]): CategoryGroup[] {
+  return boards.flatMap((board) => {
+    const children = categoryGroups(board, board.columns).map((group) => ({
+      ...group, id: `board:${board.board.id}/category:${group.id}`,
+      boardId: board.board.id, kind: 'category' as const,
+    }))
+    const boardCards = children.flatMap((group) => group.cards)
+    return [
+      { id: `board:${board.board.id}`, name: board.board.name, cards: [], summaryCards: boardCards,
+        boardId: board.board.id, kind: 'board' as const },
+      ...children,
+    ]
+  })
+}
+
 function weekNumber(days: Day[], index: number) {
   const weekStart = monday(days[index].key)
   const weekEnd = shift(weekStart, 6)
@@ -1315,15 +1330,16 @@ function categoryRange(group: CategoryGroup, timelineStart: string) {
 }
 
 function categoryStats(group: CategoryGroup): CategoryStats {
-  const plannedCards = group.cards.filter(hasTemporalPlanning)
+  const relevantCards = group.summaryCards ?? group.cards
+  const plannedCards = relevantCards.filter(hasTemporalPlanning)
   const startDates = plannedCards.map(({ card }) => card.start_date).filter((value): value is string => Boolean(value))
   const endDates = plannedCards.map(({ card }) => card.due_date).filter((value): value is string => Boolean(value))
-  const progressTotal = group.cards.reduce((total, item) => total + cardVisualProgress(item), 0)
+  const progressTotal = relevantCards.reduce((total, item) => total + cardVisualProgress(item), 0)
 
   return {
     start: startDates.length > 0 ? startDates.reduce((value, date) => date < value ? date : value, startDates[0]) : null,
     end: endDates.length > 0 ? endDates.reduce((value, date) => date > value ? date : value, endDates[0]) : null,
-    progress: group.cards.length > 0 ? Math.round(progressTotal / group.cards.length) : null,
+    progress: relevantCards.length > 0 ? Math.round(progressTotal / relevantCards.length) : null,
   }
 }
 
@@ -1359,12 +1375,14 @@ type GanttProps = {
   onOpen: (card: Card) => void
   onNavigateExternalCard: (target: GanttDependencyNavigation) => void
   focus?: GanttCardFocus | null
+  projectBoards?: BoardPayload[]
   onChange: () => Promise<void>
 }
 
-export function GanttView({ board, cards, canEdit, onOpen, onNavigateExternalCard, focus, onChange }: GanttProps) {
+export function GanttView({ board, cards, canEdit, onOpen, onNavigateExternalCard, focus, projectBoards, onChange }: GanttProps) {
   const allCards = cards.flatMap((column) => column.workflow_state === 'backlog' ? [] : column.cards)
-  const groups = useMemo(() => categoryGroups(board, cards), [board, cards])
+  const groups = useMemo(() => projectBoards ? projectCategoryGroups(projectBoards) : categoryGroups(board, cards), [board, cards, projectBoards])
+  const visibleBoardIds = useMemo(() => new Set((projectBoards ?? [board]).map((item) => item.board.id)), [board, projectBoards])
   const [zoom, setZoom] = useState<Zoom>(() => (localStorage.getItem(`tickard:gantt-zoom:${board.board.id}`) as Zoom) || 'week')
   const visibilityStorageKey = `tickard:gantt-columns:${board.board.id}`
   const [visibility, setVisibility] = useState<Visibility>(() => readVisibility(visibilityStorageKey))
@@ -1389,7 +1407,7 @@ export function GanttView({ board, cards, canEdit, onOpen, onNavigateExternalCar
   const toolbarRef = useRef<HTMLDivElement>(null)
   const leftToolbarRef = useRef<HTMLDivElement>(null)
   const [toolbarMinWidth, setToolbarMinWidth] = useState(0)
-  const collapsedStorageKey = `tickard:gantt-collapsed:${board.board.id}`
+  const collapsedStorageKey = projectBoards ? `tickard:gantt-project-collapsed:${board.board.project_id}` : `tickard:gantt-collapsed:${board.board.id}`
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>(() => {
     try {
       return JSON.parse(localStorage.getItem(collapsedStorageKey) ?? '{}') as Record<string, boolean>
@@ -1398,13 +1416,18 @@ export function GanttView({ board, cards, canEdit, onOpen, onNavigateExternalCar
     }
   })
   useEffect(() => {
-    if (!focus || focus.boardId !== board.board.id) return
+    if (!focus || !visibleBoardIds.has(focus.boardId)) return
     const targetGroup = groups.find((group) =>
       group.cards.some(({ card }) => card.id === focus.cardId))
-    if (targetGroup && collapsed[targetGroup.id]) {
-      setCollapsed((current) => ({ ...current, [targetGroup.id]: false }))
+    if (!targetGroup) return
+    const parentId = projectBoards ? `board:${targetGroup.boardId}` : null
+    if (collapsed[targetGroup.id] || (parentId && collapsed[parentId])) {
+      setCollapsed((current) => ({
+        ...current, [targetGroup.id]: false,
+        ...(parentId ? { [parentId]: false } : {}),
+      }))
     }
-  }, [board.board.id, focus?.requestId, focus?.cardId, groups, collapsed])
+  }, [focus?.requestId, focus?.cardId, groups, collapsed, projectBoards, visibleBoardIds])
 
   const ganttDependencies = useMemo(() => {
     const cardsById = new Map(groups.flatMap((group) => group.cards).map((item) => [item.card.id, item.card]))
@@ -1429,18 +1452,18 @@ export function GanttView({ board, cards, canEdit, onOpen, onNavigateExternalCar
     const external = new Map<number, ExternalGanttDependency>()
     groups.flatMap((group) => group.cards).forEach(({ card }) => {
       card.dependencies?.predecessors.forEach((dependency) => {
-        if (dependency.board_id !== undefined && dependency.board_id !== board.board.id) {
+        if (dependency.board_id !== undefined && !visibleBoardIds.has(dependency.board_id)) {
           external.set(dependency.id, { ...dependency, localCardId: card.id, direction: 'incoming' })
         }
       })
       card.dependencies?.successors.forEach((dependency) => {
-        if (dependency.board_id !== undefined && dependency.board_id !== board.board.id) {
+        if (dependency.board_id !== undefined && !visibleBoardIds.has(dependency.board_id)) {
           external.set(dependency.id, { ...dependency, localCardId: card.id, direction: 'outgoing' })
         }
       })
     })
     return [...external.values()]
-  }, [groups, board.board.id])
+  }, [groups, visibleBoardIds])
   const externalByCard = useMemo(() => {
     const result = new Map<number, { incoming: ExternalGanttDependency[]; outgoing: ExternalGanttDependency[] }>()
     externalDependencies.forEach((dependency) => {
@@ -1469,7 +1492,10 @@ export function GanttView({ board, cards, canEdit, onOpen, onNavigateExternalCar
   const showQuarters = zoom === 'quarter'
   const entries: TimelineEntry[] = []
   let row = 3
+  let parentCollapsed = false
   groups.forEach((group) => {
+    if (group.kind === 'board') parentCollapsed = Boolean(collapsed[group.id])
+    else if (parentCollapsed) return
     const isCollapsed = Boolean(collapsed[group.id])
     entries.push({ group, row, collapsed: isCollapsed })
     row += 1 + (isCollapsed ? 0 : group.cards.length)
@@ -1756,11 +1782,11 @@ export function GanttView({ board, cards, canEdit, onOpen, onNavigateExternalCar
   // Centre the related Card after navigation from another board, including
   // any extra calendar space added for dependency bends/references.
   useLayoutEffect(() => {
-    if (!focus || focus.boardId !== board.board.id) return
+    if (!focus || !visibleBoardIds.has(focus.boardId)) return
     const bar = [...(timelineGridRef.current?.querySelectorAll<HTMLElement>('[data-gantt-card-bar="true"]') ?? [])]
       .find((element) => Number(element.dataset.cardId) === focus.cardId)
     bar?.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' })
-  }, [board.board.id, focus?.requestId, focus?.cardId, range.start, range.end, collapsed])
+  }, [focus?.requestId, focus?.cardId, range.start, range.end, collapsed, visibleBoardIds])
 
   const cardRows = useMemo(() => {
     const result = new Map<number, { item: GanttCard; row: number }>()
@@ -2106,10 +2132,10 @@ export function GanttView({ board, cards, canEdit, onOpen, onNavigateExternalCar
           const stats = categoryStats(group)
 
           return (
-            <div key={group.id} className={styles.leftCategory} style={{ gridRow: groupRow }}>
+            <div key={group.id} className={`${styles.leftCategory} ${group.kind === 'board' ? styles.leftBoardGroup : group.kind === 'category' ? styles.leftProjectCategory : ''}`} style={{ gridRow: groupRow }}>
               <div className={styles.categoryInfo}>
                 <button type="button" onClick={() => setCollapsed((current) => ({ ...current, [group.id]: !current[group.id] }))}>{isCollapsed ? '▸' : '▾'} {group.name}</button>
-                <small>{group.cards.length}</small>
+                <small>{(group.summaryCards ?? group.cards).length}</small>
               </div>
               {visibility.start && <span>{compactDate(stats.start)}</span>}
               {visibility.end && <span>{compactDate(stats.end)}</span>}
@@ -2127,7 +2153,7 @@ export function GanttView({ board, cards, canEdit, onOpen, onNavigateExternalCar
           {showMonths && monthRows.map((month) => <span key={`month-${month.label}`} className={styles.month} style={{ gridRow: 2, gridColumn: `${month.start} / ${month.end}` }}>{month.label}</span>)}
           {showQuarters && quarterRows.map((quarter) => <span key={`quarter-${quarter.start}`} className={styles.quarter} style={{ gridRow: 2, gridColumn: `${quarter.start} / ${quarter.end}` }}>{quarter.label}</span>)}
           {!showMonths && !showQuarters && (showWeeks ? weekRows : days.map((day, index) => ({ label: formatDay(day.date), start: index + 1, end: index + 2 }))).map((item) => <span key={`${item.label}-${item.start}`} className={styles.day} style={{ gridRow: 2, gridColumn: `${item.start} / ${item.end}` }}>{item.label}</span>)}
-          {entries.map(({ group, row: groupRow }) => <span key={`category-background-${group.id}`} className={styles.categoryRowBackground} style={{ gridRow: groupRow, gridColumn: '1 / -1' }} aria-hidden="true" />)}
+          {entries.map(({ group, row: groupRow }) => <span key={`category-background-${group.id}`} className={`${styles.categoryRowBackground} ${group.kind === 'board' ? styles.boardRowBackground : ''}`} style={{ gridRow: groupRow, gridColumn: '1 / -1' }} aria-hidden="true" />)}
           {entries.flatMap(({ group, row: groupRow, collapsed: isCollapsed }) => isCollapsed ? [] : group.cards.map((item, index) => <span key={`task-background-${item.card.id}`} className={`${styles.taskRowBackground} ${index % 2 === 1 ? styles.taskRowAlternate : ''}`} style={{ gridRow: groupRow + index + 1, gridColumn: '1 / -1' }} aria-hidden="true" />))}
           {zoom === 'day' && days.map((day, index) => isWeekend(day) && <span key={`weekend-${day.key}`} className={styles.weekend} style={{ gridRow: '2 / -1', gridColumn: index + 1 }} aria-hidden="true" />)}
           {zoom === 'day' && days.slice(0, -1).map((day, index) => <span key={`day-line-${day.key}`} className={styles.timeSeparator} style={{ gridRow: '2 / -1', gridColumn: `${index + 1} / span 1` }} aria-hidden="true" />)}
