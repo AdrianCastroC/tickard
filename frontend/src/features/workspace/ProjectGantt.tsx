@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { api, type BoardPayload, type Project, type Profile } from '../../api'
+import { api, ApiError, type BacklogResolution, type BoardPayload, type Project, type Profile } from '../../api'
 import { CardDrawer } from '../cards/CardDetail'
+import { BacklogResolutionModal } from '../board/BacklogResolutionModal'
 import { GanttView, type GanttDependencyNavigation } from '../board/GanttView'
 
 type ProjectSnapshot = { projectId: number; boardIds: string; boards: BoardPayload[] }
@@ -18,6 +19,9 @@ export function ProjectGantt({ project, profile, onNavigateExternalCard }: Props
   const [error, setError] = useState<string | null>(null)
   const [selected, setSelected] = useState<{ cardId: number; mode: 'view' | 'edit' } | null>(null)
   const [refreshKey, setRefreshKey] = useState(0)
+  const [pendingMove, setPendingMove] = useState<{
+    cardId: number; columnId: number; position: number; resolution: BacklogResolution
+  } | null>(null)
   const load = useCallback(async () => {
     // Reuse the existing authenticated board endpoint: role, client visibility
     // and CardPresenter filtering are applied to every board by the backend.
@@ -100,7 +104,35 @@ export function ProjectGantt({ project, profile, onNavigateExternalCard }: Props
         onView={() => setSelected({ cardId: cardData.card.id, mode: 'view' })}
         onChange={refresh}
         onMove={async (cardId, columnId, position) => {
-          await api(`/cards/${cardId}/move`, { method: 'POST', body: JSON.stringify({ column_id: columnId, position }) })
+          try {
+            await api(`/cards/${cardId}/move`, { method: 'POST', body: JSON.stringify({ column_id: columnId, position }) })
+            await refresh()
+          } catch (cause) {
+            if (cause instanceof ApiError && cause.status === 409 && cause.code === 'backlog_dependencies') {
+              const resolution = (cause.data as { resolution?: BacklogResolution }).resolution
+              if (resolution) {
+                setPendingMove({ cardId, columnId, position, resolution })
+                return
+              }
+            }
+            throw cause
+          }
+        }} />,
+      document.body,
+    )}
+    {pendingMove && createPortal(
+      <BacklogResolutionModal resolution={pendingMove.resolution}
+        onCancel={() => setPendingMove(null)}
+        onConfirm={async (selectedCardIds, destinations) => {
+          await api(`/cards/${pendingMove.cardId}/move`, {
+            method: 'POST',
+            body: JSON.stringify({
+              column_id: pendingMove.columnId,
+              position: pendingMove.position,
+              backlog_resolution: { selected_card_ids: selectedCardIds, destinations },
+            }),
+          })
+          setPendingMove(null)
           await refresh()
         }} />,
       document.body,
