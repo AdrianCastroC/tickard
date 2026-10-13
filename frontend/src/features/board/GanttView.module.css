@@ -236,14 +236,6 @@
   min-width: 100%;
 }
 
-.gantt[data-zoom='month'] {
-  --min-day-size: 16px;
-}
-
-.gantt[data-zoom='quarter'] {
-  --min-day-size: 12px;
-}
-
 .month,
 .quarter,
 .day,
