@@ -37,7 +37,6 @@ type Rect = { left: number; right: number; top: number; bottom: number }
 type BarObstacle = Rect & { cardId?: number }
 type ConnectorObstacle = Rect & { cardId: number; endpoint: 'start' | 'finish' }
 type DependencySegment = { start: Point; end: Point; sourceKey: string; dependencyId: number }
-type DependencyRoute = Point[] & { routingConflict?: true }
 type DependencyGeometry = {
   width: number
   height: number
@@ -106,23 +105,13 @@ function segmentIntersectsRect(start: Point, end: Point, rect: Rect, padding = 8
   return start.x > left && start.x < right && Math.max(start.y, end.y) > top && Math.min(start.y, end.y) < bottom
 }
 
-function segmentsSharePositiveLength(first: Point, second: Point, third: Point, fourth: Point) {
-  const firstHorizontal = first.y === second.y
-  const secondHorizontal = third.y === fourth.y
-
-  if (firstHorizontal !== secondHorizontal) {
-    return false
-  }
-
-  if (firstHorizontal) {
-    return first.y === third.y
-      && Math.max(Math.min(first.x, second.x), Math.min(third.x, fourth.x))
-        < Math.min(Math.max(first.x, second.x), Math.max(third.x, fourth.x))
-  }
-
-  return first.x === third.x
-    && Math.max(Math.min(first.y, second.y), Math.min(third.y, fourth.y))
-      < Math.min(Math.max(first.y, second.y), Math.max(third.y, fourth.y))
+function verticalSegmentsOverlap(first: Point, second: Point, third: Point, fourth: Point) {
+  // Horizontal overlaps and perpendicular crossings are intentionally allowed.
+  // Only positive-length overlap of collinear vertical segments is prohibited
+  // when the dependencies have different source connectors.
+  if (first.x !== second.x || third.x !== fourth.x || first.x !== third.x) return false
+  return Math.max(Math.min(first.y, second.y), Math.min(third.y, fourth.y))
+    < Math.min(Math.max(first.y, second.y), Math.max(third.y, fourth.y))
 }
 
 function pathToSvg(points: Point[], cornerRadius = 4) {
@@ -243,7 +232,7 @@ function routeDependency(
     if (connectorObstacles.some((obstacle) => segmentIntersectsRect(start, end, obstacle, padding))) return false
     return !reservedSegments.some((segment) =>
       segment.sourceKey !== sourceKey
-      && segmentsSharePositiveLength(start, end, segment.start, segment.end)
+      && verticalSegmentsOverlap(start, end, segment.start, segment.end)
     )
   }
 
@@ -279,8 +268,6 @@ function routeDependency(
     // This outer vertical segment works regardless of which row is higher.
     const nearestExteriorX = Math.min(sourceBar.left, targetBar.left) - 2 * day
     const maxExteriorAttempts = Math.min(64, Math.ceil(bounds.width / day) + 1)
-    let geometricFallback: DependencyRoute | null = null
-
     for (let attempt = 0; attempt < maxExteriorAttempts; attempt += 1) {
       const exteriorX = nearestExteriorX - attempt * day
       if (exteriorX < 4) break
@@ -295,23 +282,9 @@ function routeDependency(
         index === 0 || point.x !== raw[index - 1].x || point.y !== raw[index - 1].y
       )
       if (validRoute(route)) return route
-      // A congested board can have no non-overlapping exterior corridor.
-      // Preserve the geometry first and keep the dependency visible, rather
-      // than silently losing it. Flag the shared-lane fallback for the SVG.
-      if (!geometricFallback && validRoute(route, false)) {
-        geometricFallback = route
-      }
     }
 
-    if (geometricFallback) {
-      geometricFallback.routingConflict = true
-      if (import.meta.env.DEV) console.warn('FF usa un carril compartido por falta de alternativa.', {
-        sourceCardId, targetCardId,
-      })
-      return geometricFallback
-    }
-
-    if (import.meta.env.DEV) console.warn('No se encontró un recorrido FF exterior libre de Cards y conectores.', {
+    if (import.meta.env.DEV) console.warn('No se encontró un recorrido FF exterior sin conflicto vertical ni obstáculos.', {
       sourceCardId, targetCardId, sourceBar, targetBar,
     })
     return []
@@ -392,13 +365,14 @@ function verifySyntheticFfUnderBars() {
 
   const upperRoute = findRoute(aboveBar)
   const lowerRoute = findRoute(belowBar)
-  const fullyReservedLane: DependencySegment[] = [{
+  // Different sources may freely share a horizontal track.
+  const occupiedHorizontal: DependencySegment[] = [{
     start: { x: 5, y: source.y + 15 },
     end: { x: bounds.width - 5, y: source.y + 15 },
     sourceKey: 'other:finish',
     dependencyId: 998,
   }]
-  const congestedRoute = findRoute(aboveBar, fullyReservedLane)
+  const sharedHorizontalRoute = findRoute(aboveBar, occupiedHorizontal)
   const reserved: DependencySegment[] = [{
     start: { x: 180, y: 100 },
     end: { x: 180, y: 230 },
@@ -424,8 +398,11 @@ function verifySyntheticFfUnderBars() {
   return followsFfShape(upperRoute, aboveBar, 180)
     && followsFfShape(lowerRoute, belowBar, 180)
     && followsFfShape(divertedRoute, aboveBar, 160)
-    && followsFfShape(congestedRoute, aboveBar, 180)
-    && (congestedRoute as DependencyRoute).routingConflict === true
+    && followsFfShape(sharedHorizontalRoute, aboveBar, 180)
+    && verticalSegmentsOverlap({ x: 10, y: 10 }, { x: 10, y: 60 }, { x: 10, y: 40 }, { x: 10, y: 90 })
+    && !verticalSegmentsOverlap({ x: 10, y: 10 }, { x: 10, y: 60 }, { x: 10, y: 60 }, { x: 10, y: 90 })
+    && !verticalSegmentsOverlap({ x: 10, y: 10 }, { x: 60, y: 10 }, { x: 30, y: 10 }, { x: 80, y: 10 })
+    && !verticalSegmentsOverlap({ x: 10, y: 10 }, { x: 60, y: 10 }, { x: 30, y: 0 }, { x: 30, y: 30 })
 }
 
 if (import.meta.env.DEV) {
@@ -1413,17 +1390,13 @@ export function GanttView({ board, cards, canEdit, onOpen, onChange }: GanttProp
               if (!route) return null
               const path = pathToSvg(route)
               const arrow = dependencyArrowPosition(route)
-              const routingConflict = (route as DependencyRoute).routingConflict === true
               const targetBar = dependency.type === 'ff'
                 ? dependencyGeometry.obstacles.find((bar) => bar.cardId === dependency.successorId)
                 : undefined
               return (
                 <g key={dependency.id} className={`${styles.dependencyLineGroup} ${dependencyPopover?.dependency.id === dependency.id ? styles.dependencySelected : ''}`}>
                   <path className={styles.dependencyHitArea} d={path} onClick={(event) => setDependencyPopover({ dependency, x: event.clientX, y: event.clientY })} aria-label={`Dependencia ${dependency.type.toUpperCase()}: ${predecessor.item.card.title} → ${successor.item.card.title}`} />
-                  <path className={styles.dependencyLine} d={path}
-                    strokeDasharray={routingConflict ? '5 3' : undefined}
-                    aria-hidden="true" />
-                  {routingConflict && <title>Recorrido FF compartido: no existe un carril exterior sin solapamiento</title>}
+                  <path className={styles.dependencyLine} d={path} aria-hidden="true" />
                   {dependency.type === 'ff' && targetBar && arrow && <path
                     d={`M ${targetBar.right} ${targetBar.top} V ${arrow.point.y + 5}`}
                     className={styles.dependencyLine}
