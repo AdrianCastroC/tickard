@@ -670,12 +670,14 @@ class NebulaMobileDemoSeeder extends Seeder
 
         $demoDate = CarbonImmutable::parse(self::DEMO_DATE)->setTime(18, 0);
         $exceptionalEarly = [
-            'Revisar accesibilidad móvil' => 82,
-            'Ejecutar auditoría de seguridad' => 96,
+            'Revisar accesibilidad móvil' => 3,
+            'Ejecutar auditoría de seguridad' => 1,
         ];
 
         if (isset($exceptionalEarly[$title])) {
-            $started = $plannedStart->subDays($exceptionalEarly[$title])->setTime(9, 0);
+            $started = $demoDate
+                ->subDays($exceptionalEarly[$title])
+                ->setTime(9, 0);
         } else {
             $offsets = [-6, -3, 0, 2, 4, 7, 10, -1];
             $started = $plannedStart
