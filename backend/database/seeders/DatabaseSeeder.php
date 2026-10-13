@@ -15,8 +15,8 @@ class DatabaseSeeder extends Seeder
             TeamSeeder::class,
             CardSeeder::class,
 
-            // Proyecto completo para pruebas de Gantt y KPIs.
-            GanttDemoSeeder::class,
+            // Proyecto completo para pruebas de Nébula Mobile, Gantt y KPIs.
+            NebulaMobileDemoSeeder::class,
         ]);
     }
 }
