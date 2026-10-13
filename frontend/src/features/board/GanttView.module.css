@@ -498,6 +498,18 @@
   font-weight: 700;
 }
 
+.externalReferenceFocused {
+  border-style: solid;
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 20%, var(--surface));
+}
+
+.focusedCardBar {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+  box-shadow: 0 0 0 5px color-mix(in srgb, var(--accent) 15%, transparent);
+}
+
 .externalReference:hover,
 .externalReference:focus-visible {
   border-style: solid;
