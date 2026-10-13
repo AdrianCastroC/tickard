@@ -224,7 +224,7 @@ function routeDependency(
   const targetArrow: Point = finishBelowBar
     ? { x: targetBar.right, y: targetBar.bottom + 6 }
     : {
-      x: target.x + (targetEndpoint === 'start' ? -2 * day : 15),
+      x: target.x + (targetEndpoint === 'start' ? -day : 15),
       y: target.y,
     }
   const approachFromLeft = targetEndpoint === 'start' || finishBelowBar
