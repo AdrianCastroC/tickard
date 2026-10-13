@@ -837,6 +837,51 @@ function fitTimelineRange(
   }
 }
 
+// A tight two-day calendar can hide a valid path that needs to bypass a
+// crowded bar outside its edge. Retry only such failed routes with temporary
+// off-screen space; the measured extent will then grow the real date range.
+function routeWithExtendedBounds(
+  source: Point,
+  target: Point,
+  obstacles: BarObstacle[],
+  sourceEndpoint: 'start' | 'finish',
+  targetEndpoint: 'start' | 'finish',
+  geometry: DependencyGeometry,
+  connectors: ConnectorObstacle[],
+  reservedSegments: DependencySegment[],
+  sourceKey: string,
+  sourceCardId: number,
+  targetCardId: number,
+  targetBar?: BarObstacle,
+  sourceBar?: BarObstacle,
+) {
+  const overscan = Math.max(64 * geometry.dayWidth, 512)
+  const move = (point: Point): Point => ({ x: point.x + overscan, y: point.y })
+  const moveRect = <T extends Rect>(rect: T): T => ({
+    ...rect,
+    left: rect.left + overscan,
+    right: rect.right + overscan,
+  })
+  const extended = routeDependency(
+    move(source),
+    move(target),
+    obstacles.map(moveRect),
+    sourceEndpoint,
+    targetEndpoint,
+    { width: geometry.width + 2 * overscan, height: geometry.height, dayWidth: geometry.dayWidth },
+    connectors.map(moveRect),
+    reservedSegments.map((segment) => ({
+      ...segment, start: move(segment.start), end: move(segment.end),
+    })),
+    sourceKey,
+    sourceCardId,
+    targetCardId,
+    targetBar ? moveRect(targetBar) : undefined,
+    sourceBar ? moveRect(sourceBar) : undefined,
+  )
+  return extended.map((point) => ({ x: point.x - overscan, y: point.y }))
+}
+
 function buildDays(start: string, endInclusive: string): Day[] {
   return Array.from({ length: daysBetween(start, endInclusive) + 1 }, (_, index) => {
     const key = shift(start, index)
@@ -1511,28 +1556,25 @@ export function GanttView({ board, cards, canEdit, onOpen, onChange }: GanttProp
       }
 
       const sourceKey = `${dependency.predecessorId}:${sourceEndpoint}`
-      const route = routeDependency(
-        source,
-        target,
-        dependencyGeometry.obstacles,
-        sourceEndpoint,
-        targetEndpoint,
-        dependencyGeometry,
-        dependencyGeometry.connectors.filter((connector) => connector.cardId !== dependency.predecessorId && connector.cardId !== dependency.successorId),
-        reservedSegments,
-        sourceKey,
-        dependency.predecessorId,
-        dependency.successorId,
-        dependency.type === 'ff' || dependency.type === 'sf'
-          ? dependencyGeometry.obstacles.find((bar) => bar.cardId === dependency.successorId)
-          : undefined,
-        dependency.type === 'ff'
-          ? dependencyGeometry.obstacles.find((bar) => bar.cardId === dependency.predecessorId)
-          : undefined,
+      const availableConnectors = dependencyGeometry.connectors.filter((connector) =>
+        connector.cardId !== dependency.predecessorId && connector.cardId !== dependency.successorId)
+      const targetBar = dependency.type === 'ff' || dependency.type === 'sf'
+        ? dependencyGeometry.obstacles.find((bar) => bar.cardId === dependency.successorId) : undefined
+      const sourceBar = dependency.type === 'ff'
+        ? dependencyGeometry.obstacles.find((bar) => bar.cardId === dependency.predecessorId) : undefined
+      let route = routeDependency(
+        source, target, dependencyGeometry.obstacles, sourceEndpoint, targetEndpoint,
+        dependencyGeometry, availableConnectors, reservedSegments, sourceKey,
+        dependency.predecessorId, dependency.successorId, targetBar, sourceBar,
       )
       if (route.length === 0) {
-        return
+        route = routeWithExtendedBounds(
+          source, target, dependencyGeometry.obstacles, sourceEndpoint, targetEndpoint,
+          dependencyGeometry, availableConnectors, reservedSegments, sourceKey,
+          dependency.predecessorId, dependency.successorId, targetBar, sourceBar,
+        )
       }
+      if (route.length === 0) return
 
       routes.set(dependency.id, route)
       reservedSegments.push(...dependencySegments(route, dependency.id, sourceKey))
@@ -1591,6 +1633,39 @@ export function GanttView({ board, cards, canEdit, onOpen, onChange }: GanttProp
     })
     return routes
   }, [cardRows, dependencyGeometry, externalDependencies, ganttDependencies, plannedDependencyRoutes])
+
+  useLayoutEffect(() => {
+    const geometry = dependencyGeometry
+    if (geometry.width <= 0 || geometry.dayWidth <= 0) return
+
+    const grid = timelineGridRef.current
+    const gridRect = grid?.getBoundingClientRect()
+    const metadata: Rect[] = grid && gridRect
+      ? [...grid.querySelectorAll<HTMLElement>('[data-gantt-card-metadata]')].map((element) => {
+        const rect = element.getBoundingClientRect()
+        return {
+          left: rect.left - gridRect.left,
+          right: rect.right - gridRect.left,
+          top: rect.top - gridRect.top,
+          bottom: rect.bottom - gridRect.top,
+        }
+      })
+      : []
+    const routes = [
+      ...plannedDependencyRoutes.values(),
+      ...[...externalRoutes.values()].map(({ points }) => points),
+    ]
+    const fitted = fitTimelineRange(
+      baseRange, range.start, geometry.dayWidth,
+      [...geometry.obstacles, ...Object.values(geometry.externalRefs), ...metadata],
+      routes,
+    )
+    setFittedRange((current) =>
+      current?.start === fitted.start && current.end === fitted.end ? current : fitted)
+  }, [
+    baseRange.start, baseRange.end, range.start, range.end, dependencyGeometry,
+    externalRoutes, plannedDependencyRoutes, leftCollapsed,
+  ])
 
   const unroutedDependencies = useMemo(() => {
     if (!dependencyGeometry.width || !dependencyGeometry.height) return []
@@ -1929,7 +2004,7 @@ export function GanttView({ board, cards, canEdit, onOpen, onChange }: GanttProp
                   {incoming.map(renderExternalReference)}
                 </span>}
                 {(leftCollapsed || outgoing.length > 0) && <span className={styles.cardRowTail}>
-                  {leftCollapsed && <span className={styles.cardRowMeta}>
+                  {leftCollapsed && <span className={styles.cardRowMeta} data-gantt-card-metadata="true">
                     <span className={styles.cardRowName} title={item.card.title}>{item.card.title}</span>
                     {(item.card.assignees?.length ?? 0) > 0 && <span className={styles.cardRowAssignees}>
                       {item.card.assignees?.slice(0, 4).map((person) =>
