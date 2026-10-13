@@ -206,197 +206,84 @@ function routeDependency(
   sourceCardId?: number,
   targetCardId?: number,
 ) {
-  const exitDistance = 16
-  const arrowDistance = 15
-  const entryDistance = 24
-  const sourceExit = {
-    x: sourceEndpoint === 'start' ? source.x : source.x + exitDistance,
-    y: source.y,
-  }
-  const targetEntry = { x: target.x + (targetEndpoint === 'start' ? -entryDistance : entryDistance), y: target.y }
-  const targetArrow = { x: target.x + (targetEndpoint === 'start' ? -arrowDistance : arrowDistance), y: target.y }
+  // Try a small, ordered set of complete orthogonal routes. The previous
+  // Cartesian graph expanded every candidate day against every obstacle row,
+  // causing quadratic neighbor searches and long main-thread freezes.
+  if (bounds.width <= 0 || bounds.height <= 0) return []
+  const day = Math.max(1, bounds.dayWidth ?? 20)
+  const row = 30
   const padding = 4
-  const rowHeight = 30
-  const channelGap = 6
-  const returnBelow = sourceEndpoint === 'finish' && targetEntry.x < sourceExit.x
-  const sourceRowBottom = source.y + rowHeight / 2
-  const mandatoryWaypoint = { x: sourceExit.x, y: sourceRowBottom }
-  const startExitWaypoint = {
-    x: sourceExit.x,
-    y: sourceRowBottom,
+  const sourceExit = sourceEndpoint === 'start'
+    ? source
+    : { x: source.x + 16, y: source.y }
+  const sourceSeparator = source.y + row / 2
+  const targetArrow = {
+    x: target.x + (targetEndpoint === 'start' ? -2 * day : 15),
+    y: target.y,
   }
-  const exitWaypoint = sourceEndpoint === 'start'
-    ? startExitWaypoint
-    : returnBelow
-      ? mandatoryWaypoint
-      : null
-  const returnToLeftStart = targetEndpoint === 'start' && targetEntry.x < sourceExit.x
-  const targetTurnXs = returnToLeftStart
-    ? Array.from({ length: Math.max(1, Math.ceil(targetEntry.x / Math.max(bounds.dayWidth ?? 1, 1))) }, (_, index) =>
-      targetEntry.x - (index + 1) * (bounds.dayWidth ?? 1)
-    )
-    : []
-  const obstacleYChannels = obstacles.flatMap((obstacle) => returnBelow
-    ? [obstacle.bottom + channelGap, obstacle.top - channelGap]
-    : [obstacle.top - channelGap, obstacle.bottom + channelGap])
-  const preferredReturnY = mandatoryWaypoint.y
-  const xChannels = [
-    8,
-    bounds.width - 8,
-    sourceExit.x,
-    targetEntry.x,
-    ...targetTurnXs,
-    ...obstacles.flatMap((obstacle) => [obstacle.left - 8, obstacle.right + 8]),
-  ]
-  const yChannels = [
-    8,
-    bounds.height - 8,
-    sourceExit.y,
-    targetEntry.y,
-    ...(sourceEndpoint === 'start' ? [startExitWaypoint.y] : []),
-    ...(returnBelow ? [preferredReturnY] : []),
-    ...obstacleYChannels,
-  ]
-  const xs = [...new Set(xChannels.map((value) => Math.max(4, Math.min(bounds.width - 4, Math.round(value)))))]
-  const ys = [...new Set(yChannels.map((value) => Math.max(4, Math.min(bounds.height - 4, Math.round(value)))))]
-  const nodes = [
-    sourceExit,
-    mandatoryWaypoint,
-    startExitWaypoint,
-    targetEntry,
-    ...xs.flatMap((x) => ys.map((y) => ({ x, y }))),
-  ]
-  const keyOf = (point: Point) => `${point.x}:${point.y}`
-  const targetKey = keyOf(targetEntry)
-  const nodeByKey = new Map(nodes.map((node) => [keyOf(node), node]))
-  const distances = new Map<string, number>([[keyOf(sourceExit), 0]])
-  const previous = new Map<string, string>()
-  const visited = new Set<string>()
-  const queue = [sourceExit]
+  const firstTurn = targetArrow.x + (targetEndpoint === 'start' ? -day : day)
+  const turnDirection = targetEndpoint === 'start' ? -1 : 1
 
-  function canUseSegment(start: Point, end: Point) {
-    if (start.x !== end.x && start.y !== end.y) {
-      return false
-    }
-
+  function isFree(start: Point, end: Point) {
+    if (start.x !== end.x && start.y !== end.y) return false
     const horizontal = start.y === end.y
-    const blockedByBar = obstacles.some((obstacle) => {
-      if (!segmentIntersectsRect(start, end, obstacle, padding)) {
-        return false
-      }
-
-      return horizontal || obstacle.cardId === sourceCardId || obstacle.cardId === targetCardId
-    })
-    const blockedByConnector = connectorObstacles.some((obstacle) => segmentIntersectsRect(start, end, obstacle, padding))
-    const blockedByReservedSegment = reservedSegments.some((segment) =>
-      segment.sourceKey !== sourceKey && segmentsSharePositiveLength(start, end, segment.start, segment.end)
+    if (obstacles.some((obstacle) =>
+      segmentIntersectsRect(start, end, obstacle, padding)
+      && (horizontal || obstacle.cardId === sourceCardId || obstacle.cardId === targetCardId)
+    )) return false
+    if (connectorObstacles.some((obstacle) => segmentIntersectsRect(start, end, obstacle, padding))) return false
+    return !reservedSegments.some((segment) =>
+      segment.sourceKey !== sourceKey
+      && segmentsSharePositiveLength(start, end, segment.start, segment.end)
     )
-
-    return !blockedByBar && !blockedByConnector && !blockedByReservedSegment
   }
 
-  function hasValidTargetEntry(previousPoint: Point, entryPoint: Point) {
-    return targetEndpoint === 'start'
-      ? previousPoint.x < entryPoint.x
-      : previousPoint.x > entryPoint.x
+  function validRoute(points: Point[]) {
+    return points.length >= 2
+      && points.every((point) => point.x >= 0 && point.x <= bounds.width
+        && point.y >= 4 && point.y <= bounds.height - 4)
+      && points.slice(0, -1).every((point, index) => isFree(point, points[index + 1]))
   }
 
-  while (queue.length > 0) {
-    queue.sort((left, right) => (distances.get(keyOf(left)) ?? Infinity) - (distances.get(keyOf(right)) ?? Infinity))
-    const current = queue.shift()!
-    const currentKey = keyOf(current)
-    if (visited.has(currentKey)) {
-      continue
+  // All start-side departures descend immediately. Finish-side departures
+  // retain the horizontal exit, then join the separator below their own row.
+  const prefix = sourceEndpoint === 'start'
+    ? [source, { x: source.x, y: sourceSeparator }]
+    : [source, sourceExit, { x: sourceExit.x, y: sourceSeparator }]
+
+  const lanes = [
+    sourceSeparator,
+    target.y - row / 2,
+    target.y + row / 2,
+    source.y + row * 1.5,
+    source.y - row / 2,
+    target.y - row * 1.5,
+    target.y + row * 1.5,
+  ].filter((y, i, all) => y >= 4 && y <= bounds.height - 4 && all.indexOf(y) === i)
+
+  // A candidate reserves only the actual vertical interval, never an entire
+  // day column. Perpendicular intersections remain valid.
+  const maxTurns = Math.min(64, Math.ceil(bounds.width / day) + 1)
+  for (let shift = 0; shift < maxTurns; shift++) {
+    const turnX = firstTurn + shift * day * turnDirection
+    if (turnX < 4 || turnX > bounds.width - 4) break
+    for (const laneY of lanes) {
+      const raw = [
+        ...prefix,
+        ...(laneY !== sourceSeparator ? [{ x: sourceExit.x, y: laneY }] : []),
+        { x: turnX, y: laneY },
+        { x: turnX, y: target.y },
+        targetArrow,
+      ]
+      const route = raw.filter((point, i) => i === 0 || point.x !== raw[i - 1].x || point.y !== raw[i - 1].y)
+      if (validRoute(route)) return route
     }
-
-    visited.add(currentKey)
-    if (currentKey === targetKey) {
-      break
-    }
-
-    const neighbors = nodes.filter((node) =>
-      (node.x === current.x || node.y === current.y) && keyOf(node) !== currentKey
-    )
-
-    neighbors.forEach((neighbor) => {
-      const neighborKey = keyOf(neighbor)
-      if (visited.has(neighborKey) || !canUseSegment(current, neighbor)) {
-        return
-      }
-
-      if (
-        exitWaypoint
-        && currentKey === keyOf(sourceExit)
-        && neighborKey !== keyOf(exitWaypoint)
-      ) {
-        return
-      }
-
-      if (exitWaypoint && currentKey === keyOf(exitWaypoint) && neighbor.y !== exitWaypoint.y) {
-        return
-      }
-
-      if (neighborKey === targetKey && !hasValidTargetEntry(current, neighbor)) {
-        return
-      }
-
-      const parentKey = previous.get(currentKey)
-      const parent = parentKey ? nodeByKey.get(parentKey) : undefined
-      const wasHorizontal = parent ? parent.y === current.y : null
-      const isHorizontal = current.y === neighbor.y
-      const turnPenalty = wasHorizontal !== null && wasHorizontal !== isHorizontal ? 32 : 0
-      const distance = (distances.get(currentKey) ?? Infinity)
-        + Math.abs(current.x - neighbor.x)
-        + Math.abs(current.y - neighbor.y)
-        + turnPenalty
-      if (distance < (distances.get(neighborKey) ?? Infinity)) {
-        distances.set(neighborKey, distance)
-        previous.set(neighborKey, currentKey)
-        queue.push(neighbor)
-      }
-    })
   }
 
-  const route: Point[] = []
-  let currentKey: string | undefined = targetKey
-  while (currentKey) {
-    const node = nodeByKey.get(currentKey)
-    if (!node) {
-      break
-    }
-
-    route.unshift(node)
-    currentKey = previous.get(currentKey)
-  }
-
-  const containsExitWaypoint = exitWaypoint
-    ? route.some((point) => keyOf(point) === keyOf(exitWaypoint))
-    : true
-  const reachesStartFromLeft = targetEndpoint === 'start'
-    ? route.length >= 2 && route[route.length - 1].x === targetEntry.x && route[route.length - 2].x < targetEntry.x
-    : true
-
-  if (
-    route.length === 0
-    || keyOf(route[0]) !== keyOf(sourceExit)
-    || !containsExitWaypoint
-    || !reachesStartFromLeft
-  ) {
-    if (import.meta.env.DEV) {
-      console.warn('No se encontró una ruta ortogonal válida para una dependencia del Gantt.', {
-        source,
-        target,
-        sourceEndpoint,
-        targetEndpoint,
-      })
-    }
-
-    return []
-  }
-
-  return sourceEndpoint === 'start'
-    ? [...route, targetArrow]
-    : [source, ...route, targetArrow]
+  if (import.meta.env.DEV) console.warn('No se encontró una ruta corta válida para la dependencia Gantt.', {
+    source, target, sourceEndpoint, targetEndpoint, sourceKey,
+  })
+  return []
 }
 
 function routeHasClearOrthogonalSegments(route: Point[], obstacles: Rect[], bounds: { width: number; height: number }) {
