@@ -425,6 +425,20 @@
   gap: 16px;
 }
 
+/* Names and assignees are informational overlays, never routing obstacles.
+   A translucent light background preserves readability as horizontal dependency
+   lines continue under this label instead of bending around it. */
+.cardRowMeta {
+  display: inline-flex;
+  align-items: center;
+  flex: 0 0 auto;
+  gap: 8px;
+  min-height: 22px;
+  padding: 0 6px;
+  border-radius: 5px;
+  background: color-mix(in srgb, var(--surface) 84%, transparent);
+}
+
 .cardRowName {
   display: inline-block;
   max-width: 190px;
