@@ -56,7 +56,12 @@ export type CardDependency = {
   card_id: number
   title: string
   type: 'fs' | 'ss' | 'ff' | 'sf'
+  board_id: number
+  board_name: string | null
+  preview?: CardDependencyPreview | null
 }
+
+export type CardDependencyPreview = Pick<Card, 'id' | 'title' | 'color' | 'is_internal' | 'teams' | 'labels' | 'assignees' | 'attachments' | 'progress'>
 
 export type CardDependencies = {
   predecessors: CardDependency[]
