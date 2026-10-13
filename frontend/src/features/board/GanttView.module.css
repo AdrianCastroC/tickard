@@ -420,7 +420,7 @@
 }
 
 .externalIncoming {
-  right: calc(100% + 100px);
+  right: calc(100% + 160px);
   gap: 16px;
 }
 
@@ -449,6 +449,7 @@
 }
 
 .externalReferences {
+  margin-left: 64px;
   display: inline-flex;
   align-items: center;
   flex: 0 0 auto;
