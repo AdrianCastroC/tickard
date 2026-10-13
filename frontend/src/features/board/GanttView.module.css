@@ -395,6 +395,107 @@
   right: 0;
 }
 
+.cardRowExtras {
+  position: relative;
+  z-index: 6;
+  align-self: stretch;
+  min-width: 0;
+  pointer-events: none;
+}
+
+.cardRowTail,
+.externalIncoming {
+  position: absolute;
+  top: 50%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  transform: translateY(-50%);
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.cardRowTail {
+  left: calc(100% + 80px);
+}
+
+.externalIncoming {
+  right: calc(100% + 100px);
+  gap: 16px;
+}
+
+.cardRowName {
+  display: inline-block;
+  max-width: 190px;
+  overflow: hidden;
+  color: var(--ink);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 20px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cardRowAssignees {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 2px;
+}
+
+.cardRowAssigneeExtra {
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.externalReferences {
+  display: inline-flex;
+  align-items: center;
+  flex: 0 0 auto;
+  gap: 16px;
+  pointer-events: none;
+}
+
+.externalReference {
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  width: 140px;
+  height: 20px;
+  overflow: hidden;
+  padding: 0 6px;
+  border: 1px dashed var(--accent);
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--accent) 9%, var(--surface));
+  color: var(--ink);
+  font-size: 10px;
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.externalReference > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.externalReference > small {
+  flex: 0 0 auto;
+  color: var(--muted);
+  font-size: 9px;
+  font-weight: 700;
+}
+
+.externalReference:hover,
+.externalReference:focus-visible {
+  border-style: solid;
+  background: color-mix(in srgb, var(--accent) 18%, var(--surface));
+  outline-offset: 2px;
+}
+
 .kanbanMiniCardPortal {
   position: fixed;
   z-index: 100;
