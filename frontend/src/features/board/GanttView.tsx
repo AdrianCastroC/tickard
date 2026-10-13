@@ -41,6 +41,12 @@ type BarObstacle = Rect & { cardId?: number }
 type ConnectorObstacle = Rect & { cardId: number; endpoint: 'start' | 'finish' }
 type DependencySegment = { start: Point; end: Point; sourceKey: string; dependencyId: number }
 type DependencyGeometry = {
+  // The bounds and measured coordinates must come from the same rendered
+  // calendar. Never combine an old geometry with a newly shifted date range.
+  rangeStart: string
+  rangeEnd: string
+  zoom: Zoom
+  leftCollapsed: boolean
   width: number
   height: number
   dayWidth: number
@@ -1259,7 +1265,11 @@ export function GanttView({ board, cards, canEdit, onOpen, onChange }: GanttProp
   const suppressClickRef = useRef<number | null>(null)
   const timelineGridRef = useRef<HTMLDivElement>(null)
   const dependencyAnchorRefs = useRef(new Map<string, HTMLSpanElement>())
-  const [dependencyGeometry, setDependencyGeometry] = useState<DependencyGeometry>({ width: 0, height: 0, dayWidth: 0, anchors: {}, obstacles: [], connectors: [], externalRefs: {} })
+  const [dependencyGeometry, setDependencyGeometry] = useState<DependencyGeometry>({
+    rangeStart: '', rangeEnd: '', zoom, leftCollapsed,
+    width: 0, height: 0, dayWidth: 0,
+    anchors: {}, obstacles: [], connectors: [], externalRefs: {},
+  })
   const toolbarRef = useRef<HTMLDivElement>(null)
   const leftToolbarRef = useRef<HTMLDivElement>(null)
   const [toolbarMinWidth, setToolbarMinWidth] = useState(0)
@@ -1447,7 +1457,11 @@ export function GanttView({ board, cards, canEdit, onOpen, onChange }: GanttProp
           bottom: rect.bottom - gridRect.top,
         }
       })
-      const nextGeometry = {
+      const nextGeometry: DependencyGeometry = {
+        rangeStart: range.start,
+        rangeEnd: range.end,
+        zoom,
+        leftCollapsed,
         width: gridRect.width,
         height: gridRect.height,
         dayWidth: gridRect.width / Math.max(totalDays, 1),
@@ -1469,7 +1483,10 @@ export function GanttView({ board, cards, canEdit, onOpen, onChange }: GanttProp
       observer.disconnect()
       window.removeEventListener('scroll', measureDependencyGeometry, true)
     }
-  }, [collapsed, dependencyCreation, dragPreview, ganttDependencies, externalDependencies, leftCollapsed, totalDays, visibility, zoom])
+  }, [
+    collapsed, dependencyCreation, dragPreview, ganttDependencies,
+    externalDependencies, leftCollapsed, range.start, range.end, totalDays, visibility, zoom,
+  ])
 
   function beginDrag(event: ReactPointerEvent, item: GanttCard, mode: DragMode) {
     if (!canEdit || !item.card.start_date || !item.card.due_date || !timelineGridRef.current) {
@@ -1676,6 +1693,13 @@ export function GanttView({ board, cards, canEdit, onOpen, onChange }: GanttProp
   useLayoutEffect(() => {
     const geometry = dependencyGeometry
     if (geometry.width <= 0 || geometry.dayWidth <= 0) return
+    // On a date-range expansion React renders the new dates before the
+    // measurement update becomes available. Fitting those old pixel extents
+    // against the new origin makes the timeline expand repeatedly.
+    if (
+      geometry.rangeStart !== range.start || geometry.rangeEnd !== range.end
+      || geometry.zoom !== zoom || geometry.leftCollapsed !== leftCollapsed
+    ) return
 
     const grid = timelineGridRef.current
     const gridRect = grid?.getBoundingClientRect()
@@ -1695,7 +1719,7 @@ export function GanttView({ board, cards, canEdit, onOpen, onChange }: GanttProp
       ...[...externalRoutes.values()].map(({ points }) => points),
     ]
     const fitted = fitTimelineRange(
-      baseRange, range.start, geometry.dayWidth,
+      baseRange, geometry.rangeStart, geometry.dayWidth,
       [...geometry.obstacles, ...Object.values(geometry.externalRefs), ...metadata],
       routes,
     )
@@ -1703,7 +1727,7 @@ export function GanttView({ board, cards, canEdit, onOpen, onChange }: GanttProp
       current?.start === fitted.start && current.end === fitted.end ? current : fitted)
   }, [
     baseRange.start, baseRange.end, range.start, range.end, dependencyGeometry,
-    externalRoutes, plannedDependencyRoutes, leftCollapsed,
+    externalRoutes, plannedDependencyRoutes, leftCollapsed, zoom,
   ])
 
   const unroutedDependencies = useMemo(() => {
