@@ -220,8 +220,10 @@ function routeDependency(
     ? Math.min(gapBelow(sourceBar), gapBelow(targetBar))
     : 10
   const padding = finishBelowBar ? Math.min(4, Math.max(0.5, ffGap / 2 - 0.5)) : 4
+  // Keep the FF track immediately below each bar (roughly the row divider).
+  // Empty rows must not push the arrival halfway toward the next visible bar.
   const ffLane = (bar: BarObstacle) =>
-    bar.bottom + Math.max(padding + 0.25, gapBelow(bar) / 2)
+    bar.bottom + Math.min(5, gapBelow(bar) / 2)
 
   const sourceExit = sourceEndpoint === 'start'
     ? source
@@ -282,11 +284,12 @@ function routeDependency(
     : [source, sourceExit, { x: sourceExit.x, y: sourceSeparator }]
 
   if (finishBelowBar && sourceBar && targetBar) {
-    // FF always skirts the complete predecessor bar underneath. A two-day
-    // clearance beyond the leftmost bar allows space for its Start connector
-    // and for an unambiguous final arrow beneath the successor.
-    // This outer vertical segment works regardless of which row is higher.
-    const nearestExteriorX = Math.min(sourceBar.left, targetBar.left) - 2 * day
+    // Only the bar crossed by the vertical transition needs an outer bypass:
+    // - target ABOVE source: upward transition must clear the SOURCE bar.
+    // - target BELOW source: downward transition must clear the TARGET bar.
+    // Never route around both bars when one is already below its track.
+    const blockingBar = targetBar.top < sourceBar.top ? sourceBar : targetBar
+    const nearestExteriorX = blockingBar.left - 2 * day
     const maxExteriorAttempts = Math.min(64, Math.ceil(bounds.width / day) + 1)
     for (let attempt = 0; attempt < maxExteriorAttempts; attempt += 1) {
       const exteriorX = nearestExteriorX - attempt * day
@@ -355,7 +358,7 @@ function routeHasClearOrthogonalSegments(route: Point[], obstacles: Rect[], boun
     && route.slice(0, -1).every((point, index) => {
       const next = route[index + 1]
       return (point.x === next.x || point.y === next.y)
-        && !obstacles.some((obstacle) => segmentIntersectsRect(point, next, obstacle))
+        && !obstacles.some((obstacle) => segmentIntersectsRect(point, next, obstacle, 4))
     })
 }
 
@@ -363,6 +366,9 @@ function verifySyntheticFfUnderBars() {
   const bounds = { width: 600, height: 350, dayWidth: 20 }
   const sourceBar: BarObstacle = { left: 220, right: 350, top: 195, bottom: 215, cardId: 1 }
   const aboveBar: BarObstacle = { left: 260, right: 430, top: 75, bottom: 95, cardId: 2 }
+  // Wide predecessor/successor combinations must not force a detour around
+  // the bar that the vertical line does not actually cross.
+  const wideAboveBar: BarObstacle = { left: 80, right: 430, top: 75, bottom: 95, cardId: 5 }
   const belowBar: BarObstacle = { left: 260, right: 430, top: 255, bottom: 275, cardId: 3 }
   const crowdedNextBar: BarObstacle = { left: 260, right: 460, top: 105, bottom: 125, cardId: 4 }
   const source = { x: 375, y: 205 }
@@ -385,6 +391,7 @@ function verifySyntheticFfUnderBars() {
     )
 
   const upperRoute = findRoute(aboveBar)
+  const wideUpperRoute = findRoute(wideAboveBar)
   const lowerRoute = findRoute(belowBar)
   // Different sources may freely share a horizontal track.
   const occupiedHorizontal: DependencySegment[] = [{
@@ -425,7 +432,8 @@ function verifySyntheticFfUnderBars() {
   }
 
   return followsFfShape(upperRoute, aboveBar, 180)
-    && followsFfShape(lowerRoute, belowBar, 180)
+    && followsFfShape(wideUpperRoute, wideAboveBar, 180)
+    && followsFfShape(lowerRoute, belowBar, 220)
     && followsFfShape(divertedRoute, aboveBar, 160)
     && followsFfShape(sharedHorizontalRoute, aboveBar, 180)
     && crowdedRoute.length > 0
