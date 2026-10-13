@@ -14,7 +14,7 @@ import type { useBoard } from './useBoard'
 import type { useBoardFilters } from './useBoardFilters'
 import { ListView } from './ListView'
 import { TableView } from './TableView'
-import { GanttView } from './GanttView'
+import { GanttView, type GanttCardFocus, type GanttDependencyNavigation } from './GanttView'
 import { BoardSummary } from './BoardSummary'
 import { BoardConfigPanel } from './BoardConfigPanel'
 import { BacklogResolutionModal } from './BacklogResolutionModal'
@@ -27,10 +27,12 @@ type Props = {
   profile: Profile
   query: string
   onBoardDeleted?: (boardId: number) => Promise<void>
+  onNavigateExternalCard: (target: GanttDependencyNavigation) => void
+  ganttFocus?: GanttCardFocus | null
   embedded?: boolean
 }
 
-export function BoardSurface({ state, filters, activeBoardId, project, profile, query, onBoardDeleted, embedded = false }: Props) {
+export function BoardSurface({ state, filters, activeBoardId, project, profile, query, onBoardDeleted, onNavigateExternalCard, ganttFocus, embedded = false }: Props) {
   const { board: view, selected, setSelected, openCard, refresh, move, moveColumn, pendingMove, setPendingMove, confirmPendingMove } = state
   const [createColumn, setCreateColumn] = useState<{ id: number; name: string } | null>(null)
   const [showCategories, setShowCategories] = useState(false)
@@ -49,6 +51,16 @@ export function BoardSurface({ state, filters, activeBoardId, project, profile, 
       setPendingMove(null)
     }
   }, [activeBoardId, pendingMove, setPendingMove])
+
+  useEffect(() => {
+    // Cross-board navigation should land in the Gantt even if this board was
+    // previously displayed as Kanban, a table or a summary.
+    if (!ganttFocus || ganttFocus.boardId !== activeBoardId || view?.board.id !== activeBoardId) return
+    if (viewMode !== 'gantt') {
+      setViewModes((current) => ({ ...current, [activeBoardId]: 'gantt' }))
+      localStorage.setItem(`tickard:board-view:${activeBoardId}`, 'gantt')
+    }
+  }, [activeBoardId, ganttFocus, view?.board.id, viewMode])
 
   function changeViewMode(value: BoardViewMode) {
     if (!activeBoardId) return
@@ -75,7 +87,12 @@ export function BoardSurface({ state, filters, activeBoardId, project, profile, 
       {viewMode === 'summary' && <BoardSummary board={view} projectName={project?.name} onConfigure={() => setShowConfig(true)} />}
       {viewMode === 'list' && <ListView board={view} cards={filteredColumns} onOpen={(card) => setSelected({ card, mode: 'view' })} />}
       {viewMode === 'table' && <TableView board={view} cards={filteredColumns} onOpen={(card) => setSelected({ card, mode: 'view' })} />}
-      {viewMode === 'gantt' && <GanttView key={view.board.id} board={view} cards={filteredColumns} canEdit={canEdit} onOpen={(card) => setSelected({ card, mode: 'view' })} onChange={refresh} />}
+      {viewMode === 'gantt' && <GanttView key={view.board.id} board={view}
+        cards={ganttFocus?.boardId === view.board.id ? view.columns : filteredColumns}
+        canEdit={canEdit} onOpen={(card) => setSelected({ card, mode: 'view' })}
+        onNavigateExternalCard={onNavigateExternalCard}
+        focus={ganttFocus?.boardId === view.board.id ? ganttFocus : null}
+        onChange={refresh} />}
       {viewMode === 'board' && <Kanban board={view} canEdit={canEdit} canManage={canManage} query={query}
         assignee={filters.assignee} teamId={filters.teamId} label={filters.label} priority={filters.priority}
         onOpen={(card) => setSelected({ card, mode: 'view' })}
