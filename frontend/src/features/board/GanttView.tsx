@@ -575,8 +575,12 @@ function verifyExternalFfInlineTrack() {
     && route[1].x > source.x && route[1].y === source.y
     && route[2].x === route[1].x && route[2].y === remote.bottom + 5
     && route[3].x === remote.right && route[3].y === remote.bottom + 5
-    && obstructed.length > 0
-    && obstructed[1]?.x === source.x + 16
+    && obstructed.length === 4
+    && obstructed[1].y === source.y
+    && obstructed[1].x < blocker.left - 4
+    && obstructed[2].x === obstructed[1].x
+    && obstructed[2].y === remote.bottom + 5
+    && obstructed[3].x === remote.right
 }
 
 function verifyExternalFsOwnConnectorDoesNotBlock() {
@@ -1568,7 +1572,7 @@ export function GanttView({ board, cards, canEdit, onOpen, onChange }: GanttProp
       reserved.push(...dependencySegments(points, dependency.id, sourceKey))
     })
     return routes
-  }, [cardRows, dependencyGeometry, externalDependencies, ganttDependencies, plannedDependencyRoutes, leftCollapsed])
+  }, [cardRows, dependencyGeometry, externalDependencies, ganttDependencies, plannedDependencyRoutes])
 
   const unroutedDependencies = useMemo(() => {
     if (!dependencyGeometry.width || !dependencyGeometry.height) return []
