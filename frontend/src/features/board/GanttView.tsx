@@ -1089,7 +1089,7 @@ export function GanttView({ board, cards, canEdit, onOpen, onChange }: GanttProp
   // position never depends on the remote Card's start or due date.
   const maxIncomingReferences = Math.max(0, ...[...externalByCard.values()].map((items) => items.incoming.length))
   const range = maxIncomingReferences > 0
-    ? { ...baseRange, start: shift(baseRange.start, -24 - 15 * (maxIncomingReferences - 1)) }
+    ? { ...baseRange, start: shift(baseRange.start, -28 - 19 * (maxIncomingReferences - 1)) }
     : baseRange
   const days = buildDays(range.start, range.end)
   const entries: TimelineEntry[] = []
@@ -1337,7 +1337,7 @@ export function GanttView({ board, cards, canEdit, onOpen, onChange }: GanttProp
   const effectiveLeftWidth = Math.max(totalLeftWidth, toolbarMinWidth)
   const maxOutgoingReferences = Math.max(0, ...[...externalByCard.values()].map((items) => items.outgoing.length))
   const timelineRightReserve = leftCollapsed || maxOutgoingReferences > 0
-    ? (leftCollapsed ? 520 : 160) + maxOutgoingReferences * 170
+    ? (leftCollapsed ? 530 : 170) + maxOutgoingReferences * 220
     : 0
   const cardRows = useMemo(() => {
     const result = new Map<number, { item: GanttCard; row: number }>()
