@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import { api, type BoardPayload, type Card, type CardDependency, type Column } from '../../api'
 import { CollapseColumnIcon, DependencyConnectorIcon, DoneIcon, ExpandColumnIcon, EyeIcon, EyeLowVisionIcon } from '../../shared/icons'
 import { KanbanMiniCard } from './KanbanMiniCard'
+import { Avatar } from '../../shared/ui'
 import styles from './GanttView.module.css'
 
 const DAY_MS = 86_400_000
@@ -30,9 +31,10 @@ type DragState = {
 }
 type DragPreview = { cardId: number; start: string; due: string }
 type GanttDependency = CardDependency & { predecessorId: number; successorId: number }
+type ExternalGanttDependency = CardDependency & { localCardId: number; direction: 'incoming' | 'outgoing' }
 type DependencyPopover = { dependency: GanttDependency; x: number; y: number }
 type DependencyCreation = { cardId: number; endpoint: 'start' | 'finish'; cursorX: number; cursorY: number; targetId: number | null; targetEndpoint: 'start' | 'finish' | null }
-type HoveredCard = { item: GanttCard; left: number; top: number }
+type HoveredCard = { card: Card | NonNullable<CardDependency['preview']>; left: number; top: number }
 type Point = { x: number; y: number }
 type Rect = { left: number; right: number; top: number; bottom: number }
 type BarObstacle = Rect & { cardId?: number }
@@ -45,6 +47,7 @@ type DependencyGeometry = {
   anchors: Record<string, Point>
   obstacles: BarObstacle[]
   connectors: ConnectorObstacle[]
+  externalRefs: Record<number, Rect>
 }
 
 type GanttGridStyle = CSSProperties & {
@@ -948,7 +951,7 @@ export function GanttView({ board, cards, canEdit, onOpen, onChange }: GanttProp
   const suppressClickRef = useRef<number | null>(null)
   const timelineGridRef = useRef<HTMLDivElement>(null)
   const dependencyAnchorRefs = useRef(new Map<string, HTMLSpanElement>())
-  const [dependencyGeometry, setDependencyGeometry] = useState<DependencyGeometry>({ width: 0, height: 0, dayWidth: 0, anchors: {}, obstacles: [], connectors: [] })
+  const [dependencyGeometry, setDependencyGeometry] = useState<DependencyGeometry>({ width: 0, height: 0, dayWidth: 0, anchors: {}, obstacles: [], connectors: [], externalRefs: {} })
   const toolbarRef = useRef<HTMLDivElement>(null)
   const leftToolbarRef = useRef<HTMLDivElement>(null)
   const [toolbarMinWidth, setToolbarMinWidth] = useState(0)
@@ -979,6 +982,32 @@ export function GanttView({ board, cards, canEdit, onOpen, onChange }: GanttProp
 
     return [...dependencies.values()]
   }, [groups])
+  const externalDependencies = useMemo(() => {
+    const external = new Map<number, ExternalGanttDependency>()
+    groups.flatMap((group) => group.cards).forEach(({ card }) => {
+      card.dependencies?.predecessors.forEach((dependency) => {
+        if (dependency.board_id !== undefined && dependency.board_id !== board.board.id) {
+          external.set(dependency.id, { ...dependency, localCardId: card.id, direction: 'incoming' })
+        }
+      })
+      card.dependencies?.successors.forEach((dependency) => {
+        if (dependency.board_id !== undefined && dependency.board_id !== board.board.id) {
+          external.set(dependency.id, { ...dependency, localCardId: card.id, direction: 'outgoing' })
+        }
+      })
+    })
+    return [...external.values()]
+  }, [groups, board.board.id])
+  const externalByCard = useMemo(() => {
+    const result = new Map<number, { incoming: ExternalGanttDependency[]; outgoing: ExternalGanttDependency[] }>()
+    externalDependencies.forEach((dependency) => {
+      if (!result.has(dependency.localCardId)) {
+        result.set(dependency.localCardId, { incoming: [], outgoing: [] })
+      }
+      result.get(dependency.localCardId)![dependency.direction].push(dependency)
+    })
+    return result
+  }, [externalDependencies])
   const range = timelineRange(allCards)
   const days = buildDays(range.start, range.end)
   const entries: TimelineEntry[] = []
@@ -1095,6 +1124,16 @@ export function GanttView({ board, cards, canEdit, onOpen, onChange }: GanttProp
           bottom: rect.bottom - gridRect.top,
         }
       })
+      const externalRefs: Record<number, Rect> = {}
+      grid.querySelectorAll<HTMLElement>('[data-gantt-external-dependency]').forEach((element) => {
+        const rect = element.getBoundingClientRect()
+        externalRefs[Number(element.dataset.ganttExternalDependency)] = {
+          left: rect.left - gridRect.left,
+          right: rect.right - gridRect.left,
+          top: rect.top - gridRect.top,
+          bottom: rect.bottom - gridRect.top,
+        }
+      })
       const nextGeometry = {
         width: gridRect.width,
         height: gridRect.height,
@@ -1102,6 +1141,7 @@ export function GanttView({ board, cards, canEdit, onOpen, onChange }: GanttProp
         anchors,
         obstacles,
         connectors,
+        externalRefs,
       }
 
       setDependencyGeometry((current) => JSON.stringify(current) === JSON.stringify(nextGeometry) ? current : nextGeometry)
@@ -1116,7 +1156,7 @@ export function GanttView({ board, cards, canEdit, onOpen, onChange }: GanttProp
       observer.disconnect()
       window.removeEventListener('scroll', measureDependencyGeometry, true)
     }
-  }, [collapsed, dependencyCreation, dragPreview, ganttDependencies, leftCollapsed, totalDays, visibility, zoom])
+  }, [collapsed, dependencyCreation, dragPreview, ganttDependencies, externalDependencies, leftCollapsed, totalDays, visibility, zoom])
 
   function beginDrag(event: ReactPointerEvent, item: GanttCard, mode: DragMode) {
     if (!canEdit || !item.card.start_date || !item.card.due_date || !timelineGridRef.current) {
@@ -1139,7 +1179,7 @@ export function GanttView({ board, cards, canEdit, onOpen, onChange }: GanttProp
     setDragPreview({ cardId: item.card.id, start: item.card.start_date, due: item.card.due_date })
   }
 
-  function updateHoveredCard(event: ReactPointerEvent, item: GanttCard) {
+  function updateHoveredCard(event: { currentTarget: HTMLElement }, card: Card | NonNullable<CardDependency['preview']>) {
     const rect = event.currentTarget.getBoundingClientRect()
     const width = 230
     const height = 220
@@ -1149,7 +1189,7 @@ export function GanttView({ board, cards, canEdit, onOpen, onChange }: GanttProp
       ? rect.bottom + gap
       : Math.max(8, rect.top - height - gap)
 
-    setHoveredCard({ item, left, top })
+    setHoveredCard({ card, left, top })
   }
 
   function clearHoveredCard() {
@@ -1528,8 +1568,8 @@ export function GanttView({ board, cards, canEdit, onOpen, onChange }: GanttProp
                   onOpen(item.card)
                 }}
                 onPointerDown={(event) => beginDrag(event, item, 'move')}
-                onPointerEnter={(event) => updateHoveredCard(event, item)}
-                onPointerMove={(event) => updateHoveredCard(event, item)}
+                onPointerEnter={(event) => updateHoveredCard(event, item.card)}
+                onPointerMove={(event) => updateHoveredCard(event, item.card)}
                 onPointerLeave={clearHoveredCard}
                 style={cardStyle}
                 title={cardLabel}
@@ -1632,7 +1672,7 @@ export function GanttView({ board, cards, canEdit, onOpen, onChange }: GanttProp
       {hoveredCard && !dragState && !dragPreview && !dependencyCreation
         ? createPortal(
             <div className={styles.kanbanMiniCardPortal} style={{ left: hoveredCard.left, top: hoveredCard.top }}>
-              <KanbanMiniCard card={hoveredCard.item.card} />
+              <KanbanMiniCard card={hoveredCard.card} />
             </div>,
             document.body,
           )
