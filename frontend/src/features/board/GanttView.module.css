@@ -441,6 +441,11 @@
   opacity: 1;
 }
 
+.dependencyConnector[data-readonly='true'] {
+  visibility: hidden;
+  pointer-events: none;
+}
+
 .dragDates {
   position: absolute;
   top: calc(100% + 4px);

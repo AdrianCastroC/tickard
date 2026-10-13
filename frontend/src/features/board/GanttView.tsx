@@ -32,6 +32,9 @@ type GanttDependency = CardDependency & { predecessorId: number; successorId: nu
 type DependencyPopover = { dependency: GanttDependency; x: number; y: number }
 type DependencyCreation = { cardId: number; endpoint: 'start' | 'finish'; cursorX: number; cursorY: number; targetId: number | null; targetEndpoint: 'start' | 'finish' | null }
 type HoveredCard = { item: GanttCard; left: number; top: number }
+type Point = { x: number; y: number }
+type Rect = { left: number; right: number; top: number; bottom: number }
+type DependencyGeometry = { width: number; height: number; anchors: Record<string, Point>; obstacles: Rect[] }
 
 type GanttGridStyle = CSSProperties & {
   '--left-columns': string
@@ -79,22 +82,48 @@ function hasTemporalPlanning(item: GanttCard) {
   return item.column.workflow_state !== 'backlog' && planned(item.card)
 }
 
-function dependencyPath(
-  sourceX: number,
-  sourceY: number,
-  targetX: number,
-  targetY: number,
-  sourceEndpoint: 'start' | 'finish',
-  targetEndpoint: 'start' | 'finish',
-  lane: number,
-) {
-  const anchorGap = 14
-  const sourceExitX = sourceX + (sourceEndpoint === 'start' ? -anchorGap : anchorGap)
-  const targetEntryX = targetX + (targetEndpoint === 'start' ? -anchorGap : anchorGap)
-  const laneOffset = lane * 7
-  const routeX = (sourceExitX + targetEntryX) / 2 + laneOffset
+function segmentIntersectsRect(start: Point, end: Point, rect: Rect, padding = 8) {
+  const left = rect.left - padding
+  const right = rect.right + padding
+  const top = rect.top - padding
+  const bottom = rect.bottom + padding
 
-  return `M ${sourceX} ${sourceY} H ${sourceExitX} H ${routeX} V ${targetY} H ${targetEntryX} H ${targetX}`
+  if (start.y === end.y) {
+    return start.y > top && start.y < bottom && Math.max(start.x, end.x) > left && Math.min(start.x, end.x) < right
+  }
+
+  return start.x > left && start.x < right && Math.max(start.y, end.y) > top && Math.min(start.y, end.y) < bottom
+}
+
+function containsPoint(rect: Rect, point: Point) {
+  return point.x >= rect.left && point.x <= rect.right && point.y >= rect.top && point.y <= rect.bottom
+}
+
+function pathToSvg(points: Point[]) {
+  return points.map((point, index) => `${index === 0 ? 'M' : 'L'} ${point.x} ${point.y}`).join(' ')
+}
+
+function routeDependency(source: Point, target: Point, obstacles: Rect[], sourceEndpoint: 'start' | 'finish', targetEndpoint: 'start' | 'finish') {
+  const exitDistance = 16
+  const sourceExit = { x: source.x + (sourceEndpoint === 'start' ? -exitDistance : exitDistance), y: source.y }
+  const targetEntry = { x: target.x + (targetEndpoint === 'start' ? -exitDistance : exitDistance), y: target.y }
+  const obstacleEdges = obstacles.flatMap((obstacle) => [obstacle.left - 12, obstacle.right + 12])
+  const candidates = [
+    (sourceExit.x + targetEntry.x) / 2,
+    sourceExit.x,
+    targetEntry.x,
+    ...obstacleEdges,
+  ]
+  const uniqueCandidates = [...new Set(candidates.map((value) => Math.round(value)))]
+  const paths = uniqueCandidates.map((routeX) => {
+    const points = [source, sourceExit, { x: routeX, y: source.y }, { x: routeX, y: target.y }, targetEntry, target]
+    const intersections = points.slice(0, -1).filter((point, index) => obstacles.some((obstacle) => segmentIntersectsRect(point, points[index + 1], obstacle))).length
+    const distance = Math.abs(sourceExit.x - routeX) + Math.abs(targetEntry.x - routeX)
+    return { points, intersections, distance }
+  })
+  const best = paths.sort((left, right) => left.intersections - right.intersections || left.distance - right.distance)[0]
+
+  return best.points
 }
 
 function timelineRange(cards: Card[]) {
@@ -374,6 +403,8 @@ export function GanttView({ board, cards, canEdit, onOpen, onChange }: GanttProp
   const [hoveredCard, setHoveredCard] = useState<HoveredCard | null>(null)
   const suppressClickRef = useRef<number | null>(null)
   const timelineGridRef = useRef<HTMLDivElement>(null)
+  const dependencyAnchorRefs = useRef(new Map<string, HTMLSpanElement>())
+  const [dependencyGeometry, setDependencyGeometry] = useState<DependencyGeometry>({ width: 0, height: 0, anchors: {}, obstacles: [] })
   const toolbarRef = useRef<HTMLDivElement>(null)
   const leftToolbarRef = useRef<HTMLDivElement>(null)
   const [toolbarMinWidth, setToolbarMinWidth] = useState(0)
@@ -480,6 +511,52 @@ export function GanttView({ board, cards, canEdit, onOpen, onChange }: GanttProp
 
     return () => observer.disconnect()
   }, [leftCollapsed])
+
+  useLayoutEffect(() => {
+    const grid = timelineGridRef.current
+    if (!grid) {
+      return
+    }
+
+    const measureDependencyGeometry = () => {
+      const gridRect = grid.getBoundingClientRect()
+      const anchors: Record<string, Point> = {}
+      dependencyAnchorRefs.current.forEach((element, key) => {
+        const rect = element.getBoundingClientRect()
+        anchors[key] = {
+          x: rect.left + rect.width / 2 - gridRect.left,
+          y: rect.top + rect.height / 2 - gridRect.top,
+        }
+      })
+      const obstacles = [...grid.querySelectorAll<HTMLElement>('[data-gantt-card-bar="true"]')].map((element) => {
+        const rect = element.getBoundingClientRect()
+        return {
+          left: rect.left - gridRect.left,
+          right: rect.right - gridRect.left,
+          top: rect.top - gridRect.top,
+          bottom: rect.bottom - gridRect.top,
+        }
+      })
+      const nextGeometry = {
+        width: gridRect.width,
+        height: gridRect.height,
+        anchors,
+        obstacles,
+      }
+
+      setDependencyGeometry((current) => JSON.stringify(current) === JSON.stringify(nextGeometry) ? current : nextGeometry)
+    }
+
+    const observer = new ResizeObserver(measureDependencyGeometry)
+    observer.observe(grid)
+    measureDependencyGeometry()
+    window.addEventListener('scroll', measureDependencyGeometry, true)
+
+    return () => {
+      observer.disconnect()
+      window.removeEventListener('scroll', measureDependencyGeometry, true)
+    }
+  }, [collapsed, dependencyCreation, dragPreview, ganttDependencies, leftCollapsed, totalDays, visibility, zoom])
 
   function beginDrag(event: ReactPointerEvent, item: GanttCard, mode: DragMode) {
     if (!canEdit || !item.card.start_date || !item.card.due_date || !timelineGridRef.current) {
@@ -800,6 +877,7 @@ export function GanttView({ board, cards, canEdit, onOpen, onChange }: GanttProp
                 key={item.card.id}
                 className={cardClassName}
                 data-card-id={item.card.id}
+                data-gantt-card-bar="true"
                 type="button"
                 onClick={() => {
                   if (suppressClickRef.current === item.card.id) {
@@ -817,52 +895,44 @@ export function GanttView({ board, cards, canEdit, onOpen, onChange }: GanttProp
                 title={cardLabel}
                 aria-label={cardLabel}
               >
-                {canEdit && <span className={`${styles.dependencyConnector} ${styles.dependencyConnectorStart}`} data-dependency-connector="true" data-card-id={item.card.id} data-endpoint="start" data-target={dependencyCreation?.targetId === item.card.id && dependencyCreation.targetEndpoint === 'start' ? 'true' : undefined} onPointerDown={(event) => beginDependencyCreation(event, item.card.id, 'start')} role="button" aria-label={`Crear dependencia desde inicio de ${item.card.title}`} tabIndex={0}><DependencyConnectorIcon /></span>}
+                <span ref={(element) => { if (element) dependencyAnchorRefs.current.set(`${item.card.id}:start`, element); else dependencyAnchorRefs.current.delete(`${item.card.id}:start`) }} className={`${styles.dependencyConnector} ${styles.dependencyConnectorStart}`} data-dependency-connector="true" data-card-id={item.card.id} data-endpoint="start" data-readonly={!canEdit ? 'true' : undefined} data-target={dependencyCreation?.targetId === item.card.id && dependencyCreation.targetEndpoint === 'start' ? 'true' : undefined} onPointerDown={canEdit ? (event) => beginDependencyCreation(event, item.card.id, 'start') : undefined} role={canEdit ? 'button' : undefined} aria-hidden={!canEdit} aria-label={canEdit ? `Crear dependencia desde inicio de ${item.card.title}` : undefined} tabIndex={canEdit ? 0 : -1}><DependencyConnectorIcon /></span>
                 {canEdit && <span className={`${styles.resizeHandle} ${styles.resizeHandleStart}`} onPointerDown={(event) => beginDrag(event, item, 'resize-start')} aria-hidden="true" />}
                 {preview && <span className={styles.dragDates} aria-hidden="true">{dateLabel}</span>}
                 {inReview && <EyeIcon />}
                 {isDone && <DoneIcon />}
                 {canEdit && <span className={`${styles.resizeHandle} ${styles.resizeHandleEnd}`} onPointerDown={(event) => beginDrag(event, item, 'resize-end')} aria-hidden="true" />}
-                {canEdit && <span className={`${styles.dependencyConnector} ${styles.dependencyConnectorEnd}`} data-dependency-connector="true" data-card-id={item.card.id} data-endpoint="finish" data-target={dependencyCreation?.targetId === item.card.id && dependencyCreation.targetEndpoint === 'finish' ? 'true' : undefined} onPointerDown={(event) => beginDependencyCreation(event, item.card.id, 'finish')} role="button" aria-label={`Crear dependencia desde fin de ${item.card.title}`} tabIndex={0}><DependencyConnectorIcon /></span>}
+                <span ref={(element) => { if (element) dependencyAnchorRefs.current.set(`${item.card.id}:finish`, element); else dependencyAnchorRefs.current.delete(`${item.card.id}:finish`) }} className={`${styles.dependencyConnector} ${styles.dependencyConnectorEnd}`} data-dependency-connector="true" data-card-id={item.card.id} data-endpoint="finish" data-readonly={!canEdit ? 'true' : undefined} data-target={dependencyCreation?.targetId === item.card.id && dependencyCreation.targetEndpoint === 'finish' ? 'true' : undefined} onPointerDown={canEdit ? (event) => beginDependencyCreation(event, item.card.id, 'finish') : undefined} role={canEdit ? 'button' : undefined} aria-hidden={!canEdit} aria-label={canEdit ? `Crear dependencia desde fin de ${item.card.title}` : undefined} tabIndex={canEdit ? 0 : -1}><DependencyConnectorIcon /></span>
               </button>
             )
           }))}
-          <svg className={styles.dependencyLayer} viewBox={`0 0 1000 ${row * 30 + 56}`} preserveAspectRatio="none" aria-label="Dependencias de tareas">
+          <svg className={styles.dependencyLayer} width={dependencyGeometry.width} height={dependencyGeometry.height} viewBox={`0 0 ${dependencyGeometry.width} ${dependencyGeometry.height}`} aria-label="Dependencias de tareas">
             <defs>
               <marker id="gantt-dependency-arrow" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto">
                 <path d="M0 0L7 3.5L0 7Z" />
               </marker>
             </defs>
             {dependencyCreation && (() => {
-              const source = cardRows.get(dependencyCreation.cardId)
+              const sourcePoint = dependencyGeometry.anchors[`${dependencyCreation.cardId}:${dependencyCreation.endpoint}`]
               const grid = timelineGridRef.current?.getBoundingClientRect()
-              if (!source || !grid) return null
-              const date = dependencyCreation.endpoint === 'start' ? source.item.card.start_date! : source.item.card.due_date!
-              const sourceColumn = dependencyCreation.endpoint === 'start' ? gridColumn(range.start, date) : dateEndColumn(range.start, date)
-              const x1 = ((sourceColumn - 1) / days.length) * 1000
-              const y1 = 56 + (source.row - 3) * 30 + 15
-              const x2 = ((dependencyCreation.cursorX - grid.left) / grid.width) * 1000
-              const y2 = dependencyCreation.cursorY - grid.top
-              return <path className={styles.dependencyPreview} d={`M ${x1} ${y1} L ${x2} ${y2}`} />
+              if (!sourcePoint || !grid) return null
+              const targetPoint = {
+                x: dependencyCreation.cursorX - grid.left,
+                y: dependencyCreation.cursorY - grid.top,
+              }
+              const path = routeDependency(sourcePoint, targetPoint, [], dependencyCreation.endpoint, dependencyCreation.targetEndpoint ?? 'start')
+              return <path className={styles.dependencyPreview} d={pathToSvg(path)} />
             })()}
-            {ganttDependencies.map((dependency, dependencyIndex) => {
+            {ganttDependencies.map((dependency) => {
               const predecessor = cardRows.get(dependency.predecessorId)
               const successor = cardRows.get(dependency.successorId)
               if (!predecessor || !successor || !hasTemporalPlanning(predecessor.item) || !hasTemporalPlanning(successor.item)) return null
-              const predecessorStart = gridColumn(range.start, predecessor.item.card.start_date!)
-              const predecessorEnd = dateEndColumn(range.start, predecessor.item.card.due_date!)
-              const successorStart = gridColumn(range.start, successor.item.card.start_date!)
-              const successorEnd = dateEndColumn(range.start, successor.item.card.due_date!)
-              const from = dependency.type === 'ss' || dependency.type === 'sf' ? predecessorStart : predecessorEnd
-              const to = dependency.type === 'ff' || dependency.type === 'sf' ? successorEnd : successorStart
-              const x1 = ((from - 1) / days.length) * 1000
-              const x2 = ((to - 1) / days.length) * 1000
-              const y1 = 56 + (predecessor.row - 3) * 30 + 15
-              const y2 = 56 + (successor.row - 3) * 30 + 15
               const sourceEndpoint = dependency.type === 'ss' || dependency.type === 'sf' ? 'start' : 'finish'
               const targetEndpoint = dependency.type === 'ff' || dependency.type === 'sf' ? 'finish' : 'start'
-              const lane = (dependencyIndex % 5) - 2
-              const path = dependencyPath(x1, y1, x2, y2, sourceEndpoint, targetEndpoint, lane)
+              const source = dependencyGeometry.anchors[`${dependency.predecessorId}:${sourceEndpoint}`]
+              const target = dependencyGeometry.anchors[`${dependency.successorId}:${targetEndpoint}`]
+              if (!source || !target) return null
+              const obstacles = dependencyGeometry.obstacles.filter((obstacle) => !containsPoint(obstacle, source) && !containsPoint(obstacle, target))
+              const path = pathToSvg(routeDependency(source, target, obstacles, sourceEndpoint, targetEndpoint))
               return (
                 <g key={dependency.id} className={dependencyPopover?.dependency.id === dependency.id ? styles.dependencySelected : ''}>
                   <path className={styles.dependencyHitArea} d={path} onClick={(event) => setDependencyPopover({ dependency, x: event.clientX, y: event.clientY })} aria-label={`Dependencia ${dependency.type.toUpperCase()}: ${predecessor.item.card.title} → ${successor.item.card.title}`} />
