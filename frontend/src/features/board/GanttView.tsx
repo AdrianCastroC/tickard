@@ -532,6 +532,30 @@ function verifyExternalFsObstacleFallback() {
     && collapsedOutgoing.some((point) => point.y === 220)
 }
 
+function verifyExternalFsOwnConnectorDoesNotBlock() {
+  const local: Rect = { left: 360, right: 530, top: 195, bottom: 215 }
+  const external: Rect = { left: 675, right: 875, top: 195, bottom: 215 }
+  const source = { x: 544, y: 205 } // Finish connector, 14px outside the real bar
+  const target = { x: 661, y: 205 }
+  const ownConnector: ConnectorObstacle = {
+    cardId: 1, endpoint: 'finish', left: 533, right: 555, top: 194, bottom: 216,
+  }
+  const otherConnector: ConnectorObstacle = {
+    cardId: 3, endpoint: 'finish', left: 578, right: 600, top: 194, bottom: 216,
+  }
+  const occupied = [local, external, ownConnector]
+  const directRoute = routeExternalDependency(source, target, 'finish', 'start',
+    local, external, 24, [], '1:finish', true,
+    occupied.filter((rect) => !('cardId' in rect && rect.cardId === 1 && 'endpoint' in rect)))
+  const obstructedRoute = routeExternalDependency(source, target, 'finish', 'start',
+    local, external, 24, [], '1:finish', true,
+    [local, external, otherConnector])
+  return directRoute.length === 2
+    && directRoute[0].x === source.x && directRoute[0].y === source.y
+    && directRoute[1].x === target.x - 24 && directRoute[1].y === target.y
+    && obstructedRoute.length > 2
+}
+
 function routeHasClearOrthogonalSegments(route: Point[], obstacles: Rect[], bounds: { width: number; height: number }) {
   return route.every((point) => point.x >= 0 && point.x <= bounds.width && point.y >= 4 && point.y <= bounds.height)
     && route.slice(0, -1).every((point, index) => {
@@ -703,7 +727,9 @@ function verifySyntheticFsMinimalRoute() {
 
 if (import.meta.env.DEV) {
   console.assert(
-    verifySyntheticExternalDependencyRoutes() && verifyExternalFsObstacleFallback(),
+    verifySyntheticExternalDependencyRoutes()
+      && verifyExternalFsObstacleFallback()
+      && verifyExternalFsOwnConnectorDoesNotBlock(),
     'External FS must stay horizontal when clear, while blocked routes and other dependencies keep valid turns.',
   )
   console.assert(
@@ -1479,7 +1505,9 @@ export function GanttView({ board, cards, canEdit, onOpen, onChange }: GanttProp
       const sourceKey = `${outgoing ? dependency.localCardId : dependency.card_id}:${sourceEndpoint}`
       const occupiedRects: Rect[] = [
         ...dependencyGeometry.obstacles,
-        ...dependencyGeometry.connectors,
+        // The route starts/ends at this Card's connector: it is not a
+        // blocking obstacle. Keep unrelated Cards' connectors excluded.
+        ...dependencyGeometry.connectors.filter((connector) => connector.cardId !== dependency.localCardId),
         ...Object.entries(dependencyGeometry.externalRefs)
           .filter(([id]) => Number(id) !== dependency.id)
           .map(([, rect]) => rect),
