@@ -426,6 +426,8 @@ function routeExternalDependency(
   dayWidth: number,
   reserved: DependencySegment[],
   sourceKey: string,
+  incoming = false,
+  occupiedRects: Rect[] = [],
 ): Point[] {
   const laneY = Math.max(sourceBar.bottom, targetBar.bottom) + 5
   const finishArrival = targetEndpoint === 'finish'
@@ -433,6 +435,22 @@ function routeExternalDependency(
     ? { x: targetBar.right, y: targetBar.bottom + 5 }
     : { x: target.x - Math.max(1, dayWidth), y: target.y }
   const exit = sourceEndpoint === 'start' ? source : { x: source.x + 16, y: source.y }
+
+  // An incoming FS reference has no title or assignees between its Finish
+  // connector and the local Start. Draw the direct same-row connection first.
+  // Never use this shortcut for outgoing links, where the card title and
+  // assignees occupy the space to the right of the source.
+  if (
+    incoming && sourceEndpoint === 'finish' && targetEndpoint === 'start'
+    && Math.abs(source.y - arrow.y) < 0.5
+    && source.x >= sourceBar.right + 4
+    && arrow.x > source.x
+    && arrow.x <= targetBar.left - 4
+    && !occupiedRects.some((rect) => segmentIntersectsRect(source, arrow, rect, 4))
+  ) {
+    return [source, arrow]
+  }
+
   const prefix: Point[] = sourceEndpoint === 'start'
     ? [source, { x: source.x, y: laneY }]
     : [source, exit, { x: exit.x, y: laneY }]
@@ -472,17 +490,34 @@ function verifySyntheticExternalDependencyRoutes() {
     const targetBar = side === 0 ? local : remote
     const source: Point = { x: from === 'start' ? sourceBar.left - 25 : sourceBar.right + 25, y: 205 }
     const target: Point = { x: to === 'start' ? targetBar.left - 25 : targetBar.right + 25, y: 205 }
-    const points = routeExternalDependency(source, target, from, to, sourceBar, targetBar, 24, [], 'test')
+    const incoming = side === 0
+    const points = routeExternalDependency(source, target, from, to,
+      sourceBar, targetBar, 24, [], 'test', incoming, [sourceBar, targetBar])
     const end = points.at(-1)
     const expectedX = to === 'start' ? targetBar.left - 49 : targetBar.right
     const expectedY = to === 'start' ? 205 : targetBar.bottom + 5
-    return points.length >= 3
+    const shapeMatches = incoming && from === 'finish' && to === 'start'
+      ? points.length === 2 && points.every((point) => point.y === 205)
+      : points.length >= 3 && points.some((point) => point.y === 220)
+    return shapeMatches
       && points[0].x === source.x && points[0].y === source.y
       && end?.x === expectedX && end?.y === expectedY
       && points.slice(0, -1).every((point, index) =>
         point.x === points[index + 1].x || point.y === points[index + 1].y)
-      && points.some((point) => point.y === 220)
   }))
+}
+
+function verifyExternalFsObstacleFallback() {
+  const external: Rect = { left: 60, right: 200, top: 195, bottom: 215 }
+  const local: Rect = { left: 360, right: 530, top: 195, bottom: 215 }
+  const obstacle: Rect = { left: 260, right: 285, top: 195, bottom: 215 }
+  const source = { x: 225, y: 205 }
+  const target = { x: 335, y: 205 }
+  const route = routeExternalDependency(source, target, 'finish', 'start',
+    external, local, 24, [], 'test', true, [external, local, obstacle])
+  return route.length > 2
+    && route.at(-1)?.x === 311 && route.at(-1)?.y === 205
+    && route.some((point) => point.y === 220)
 }
 
 function routeHasClearOrthogonalSegments(route: Point[], obstacles: Rect[], bounds: { width: number; height: number }) {
@@ -656,8 +691,8 @@ function verifySyntheticFsMinimalRoute() {
 
 if (import.meta.env.DEV) {
   console.assert(
-    verifySyntheticExternalDependencyRoutes(),
-    'External FS/SS/FF/SF must preserve their Start/Finish endpoints in both directions.',
+    verifySyntheticExternalDependencyRoutes() && verifyExternalFsObstacleFallback(),
+    'External FS must stay horizontal when clear, while blocked routes and other dependencies keep valid turns.',
   )
   console.assert(
     verifySyntheticSfFinishArrival(),
@@ -1431,8 +1466,15 @@ export function GanttView({ board, cards, canEdit, onOpen, onChange }: GanttProp
       if (!source || !target) return
 
       const sourceKey = `${outgoing ? dependency.localCardId : dependency.card_id}:${sourceEndpoint}`
+      const occupiedRects: Rect[] = [
+        ...dependencyGeometry.obstacles,
+        ...dependencyGeometry.connectors,
+        ...Object.entries(dependencyGeometry.externalRefs)
+          .filter(([id]) => Number(id) !== dependency.id)
+          .map(([, rect]) => rect),
+      ]
       const points = routeExternalDependency(source, target, sourceEndpoint, targetEndpoint,
-        sourceBar, targetBar, dependencyGeometry.dayWidth, reserved, sourceKey)
+        sourceBar, targetBar, dependencyGeometry.dayWidth, reserved, sourceKey, !outgoing, occupiedRects)
       if (!points.length) return
       routes.set(dependency.id, { points, targetBar })
       reserved.push(...dependencySegments(points, dependency.id, sourceKey))
