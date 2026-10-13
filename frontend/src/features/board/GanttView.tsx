@@ -1383,10 +1383,11 @@ export function GanttView({ board, cards, canEdit, onOpen, onNavigateExternalCar
   const allCards = cards.flatMap((column) => column.workflow_state === 'backlog' ? [] : column.cards)
   const groups = useMemo(() => projectBoards ? projectCategoryGroups(projectBoards) : categoryGroups(board, cards), [board, cards, projectBoards])
   const visibleBoardIds = useMemo(() => new Set((projectBoards ?? [board]).map((item) => item.board.id)), [board, projectBoards])
-  const [zoom, setZoom] = useState<Zoom>(() => (localStorage.getItem(`tickard:gantt-zoom:${board.board.id}`) as Zoom) || 'week')
-  const visibilityStorageKey = `tickard:gantt-columns:${board.board.id}`
+  const ganttStorageScope = projectBoards ? `project:${board.board.project_id}` : String(board.board.id)
+  const [zoom, setZoom] = useState<Zoom>(() => (localStorage.getItem(`tickard:gantt-zoom:${ganttStorageScope}`) as Zoom) || 'week')
+  const visibilityStorageKey = `tickard:gantt-columns:${ganttStorageScope}`
   const [visibility, setVisibility] = useState<Visibility>(() => readVisibility(visibilityStorageKey))
-  const leftCollapsedStorageKey = `tickard:gantt-left-collapsed:${board.board.id}`
+  const leftCollapsedStorageKey = `tickard:gantt-left-collapsed:${ganttStorageScope}`
   const [leftCollapsed, setLeftCollapsed] = useState(() => readCollapsed(leftCollapsedStorageKey))
   const [columnsOpen, setColumnsOpen] = useState(false)
   const [dragState, setDragState] = useState<DragState | null>(null)
@@ -1523,8 +1524,8 @@ export function GanttView({ board, cards, canEdit, onOpen, onNavigateExternalCar
   } as GanttGridStyle
 
   useEffect(() => {
-    localStorage.setItem(`tickard:gantt-zoom:${board.board.id}`, zoom)
-  }, [board.board.id, zoom])
+    localStorage.setItem(`tickard:gantt-zoom:${ganttStorageScope}`, zoom)
+  }, [ganttStorageScope, zoom])
 
   useEffect(() => {
     localStorage.setItem(collapsedStorageKey, JSON.stringify(collapsed))
