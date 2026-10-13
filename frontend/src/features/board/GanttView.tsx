@@ -1365,6 +1365,7 @@ export function GanttView({ board, cards, canEdit, onOpen, onChange }: GanttProp
   const [dragPreview, setDragPreview] = useState<DragPreview | null>(null)
   const [dragError, setDragError] = useState<string | null>(null)
   const [dependencyPopover, setDependencyPopover] = useState<DependencyPopover | null>(null)
+  const dependencyPopoverRef = useRef<HTMLDivElement>(null)
   const [dependencyCreation, setDependencyCreation] = useState<DependencyCreation | null>(null)
   const [hoveredCard, setHoveredCard] = useState<HoveredCard | null>(null)
   const suppressClickRef = useRef<number | null>(null)
@@ -1507,6 +1508,26 @@ export function GanttView({ board, cards, canEdit, onOpen, onChange }: GanttProp
 
     return () => document.removeEventListener('mousedown', closeOnOutsideClick)
   }, [columnsOpen])
+
+  useEffect(() => {
+    if (!dependencyPopover) return
+
+    const closeOnOutsidePointer = (event: PointerEvent) => {
+      if (event.target instanceof Node && !dependencyPopoverRef.current?.contains(event.target)) {
+        setDependencyPopover(null)
+      }
+    }
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setDependencyPopover(null)
+    }
+
+    document.addEventListener('pointerdown', closeOnOutsidePointer)
+    document.addEventListener('keydown', closeOnEscape)
+    return () => {
+      document.removeEventListener('pointerdown', closeOnOutsidePointer)
+      document.removeEventListener('keydown', closeOnEscape)
+    }
+  }, [dependencyPopover])
 
   useLayoutEffect(() => {
     if (leftCollapsed || !leftToolbarRef.current) {
@@ -2305,7 +2326,7 @@ export function GanttView({ board, cards, canEdit, onOpen, onChange }: GanttProp
         </div>
       </div>
       {dependencyPopover && (
-        <div className={styles.dependencyPopover} role="dialog" aria-label="Tipo de dependencia" style={{ left: dependencyPopover.x, top: dependencyPopover.y }}>
+        <div ref={dependencyPopoverRef} className={styles.dependencyPopover} role="dialog" aria-label="Tipo de dependencia" style={{ left: dependencyPopover.x, top: dependencyPopover.y }}>
           <strong>Tipo de dependencia</strong>
           {dependencyPopover.dependency.board_name && <small>
             Card externa: {dependencyPopover.dependency.title} · {dependencyPopover.dependency.board_name}
