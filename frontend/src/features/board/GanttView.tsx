@@ -426,7 +426,7 @@ function routeExternalDependency(
   dayWidth: number,
   reserved: DependencySegment[],
   sourceKey: string,
-  incoming = false,
+  allowDirectFs = false,
   occupiedRects: Rect[] = [],
 ): Point[] {
   const laneY = Math.max(sourceBar.bottom, targetBar.bottom) + 5
@@ -436,12 +436,11 @@ function routeExternalDependency(
     : { x: target.x - Math.max(1, dayWidth), y: target.y }
   const exit = sourceEndpoint === 'start' ? source : { x: source.x + 16, y: source.y }
 
-  // An incoming FS reference has no title or assignees between its Finish
-  // connector and the local Start. Draw the direct same-row connection first.
-  // Never use this shortcut for outgoing links, where the card title and
-  // assignees occupy the space to the right of the source.
+  // Prefer a horizontal FS connection when no inline title/assignees or
+  // obstacles occupy the space between Finish and Start. Incoming relations
+  // always qualify; outgoing relations qualify only with the left pane open.
   if (
-    incoming && sourceEndpoint === 'finish' && targetEndpoint === 'start'
+    allowDirectFs && sourceEndpoint === 'finish' && targetEndpoint === 'start'
     && Math.abs(source.y - arrow.y) < 0.5
     && source.x >= sourceBar.right + 4
     && arrow.x > source.x
@@ -490,13 +489,12 @@ function verifySyntheticExternalDependencyRoutes() {
     const targetBar = side === 0 ? local : remote
     const source: Point = { x: from === 'start' ? sourceBar.left - 25 : sourceBar.right + 25, y: 205 }
     const target: Point = { x: to === 'start' ? targetBar.left - 25 : targetBar.right + 25, y: 205 }
-    const incoming = side === 0
     const points = routeExternalDependency(source, target, from, to,
-      sourceBar, targetBar, 24, [], 'test', incoming, [sourceBar, targetBar])
+      sourceBar, targetBar, 24, [], 'test', true, [sourceBar, targetBar])
     const end = points.at(-1)
     const expectedX = to === 'start' ? targetBar.left - 49 : targetBar.right
     const expectedY = to === 'start' ? 205 : targetBar.bottom + 5
-    const shapeMatches = incoming && from === 'finish' && to === 'start'
+    const shapeMatches = from === 'finish' && to === 'start'
       ? points.length === 2 && points.every((point) => point.y === 205)
       : points.length >= 3 && points.some((point) => point.y === 220)
     return shapeMatches
@@ -515,9 +513,23 @@ function verifyExternalFsObstacleFallback() {
   const target = { x: 335, y: 205 }
   const route = routeExternalDependency(source, target, 'finish', 'start',
     external, local, 24, [], 'test', true, [external, local, obstacle])
+  const collapsedOutgoing = routeExternalDependency(
+    { x: 555, y: 205 }, { x: 650, y: 205 }, 'finish', 'start',
+    local, { left: 675, right: 815, top: 195, bottom: 215 },
+    24, [], 'local:finish', false, [local, { left: 675, right: 815, top: 195, bottom: 215 }]
+  )
+  const expandedOutgoing = routeExternalDependency(
+    { x: 555, y: 205 }, { x: 650, y: 205 }, 'finish', 'start',
+    local, { left: 675, right: 815, top: 195, bottom: 215 },
+    24, [], 'local:finish', true, [local, { left: 675, right: 815, top: 195, bottom: 215 }]
+  )
   return route.length > 2
     && route.at(-1)?.x === 311 && route.at(-1)?.y === 205
     && route.some((point) => point.y === 220)
+    && expandedOutgoing.length === 2
+    && expandedOutgoing.every((point) => point.y === 205)
+    && collapsedOutgoing.length > 2
+    && collapsedOutgoing.some((point) => point.y === 220)
 }
 
 function routeHasClearOrthogonalSegments(route: Point[], obstacles: Rect[], bounds: { width: number; height: number }) {
@@ -1349,7 +1361,6 @@ export function GanttView({ board, cards, canEdit, onOpen, onChange }: GanttProp
         }}
       >
         <span>{boardName}</span>
-        <small>{dependency.type.toUpperCase()}</small>
       </span>
     )
   }
@@ -1474,13 +1485,14 @@ export function GanttView({ board, cards, canEdit, onOpen, onChange }: GanttProp
           .map(([, rect]) => rect),
       ]
       const points = routeExternalDependency(source, target, sourceEndpoint, targetEndpoint,
-        sourceBar, targetBar, dependencyGeometry.dayWidth, reserved, sourceKey, !outgoing, occupiedRects)
+        sourceBar, targetBar, dependencyGeometry.dayWidth, reserved, sourceKey,
+        !outgoing || !leftCollapsed, occupiedRects)
       if (!points.length) return
       routes.set(dependency.id, { points, targetBar })
       reserved.push(...dependencySegments(points, dependency.id, sourceKey))
     })
     return routes
-  }, [cardRows, dependencyGeometry, externalDependencies, ganttDependencies, plannedDependencyRoutes])
+  }, [cardRows, dependencyGeometry, externalDependencies, ganttDependencies, plannedDependencyRoutes, leftCollapsed])
 
   const unroutedDependencies = useMemo(() => {
     if (!dependencyGeometry.width || !dependencyGeometry.height) return []
