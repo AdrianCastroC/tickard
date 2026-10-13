@@ -206,6 +206,7 @@ function routeDependency(
   sourceCardId?: number,
   targetCardId?: number,
   targetBar?: BarObstacle,
+  sourceBar?: BarObstacle,
 ) {
   // Try a small, ordered set of complete orthogonal routes. The previous
   // Cartesian graph expanded every candidate day against every obstacle row,
@@ -258,6 +259,36 @@ function routeDependency(
     ? [source, { x: source.x, y: sourceSeparator }]
     : [source, sourceExit, { x: sourceExit.x, y: sourceSeparator }]
 
+  if (finishBelowBar && sourceBar && targetBar) {
+    // FF always skirts the complete predecessor bar underneath. A two-day
+    // clearance beyond the leftmost bar allows space for its Start connector
+    // and for an unambiguous final arrow beneath the successor.
+    // This outer vertical segment works regardless of which row is higher.
+    const nearestExteriorX = Math.min(sourceBar.left, targetBar.left) - 2 * day
+    const maxExteriorAttempts = Math.min(64, Math.ceil(bounds.width / day) + 1)
+
+    for (let attempt = 0; attempt < maxExteriorAttempts; attempt += 1) {
+      const exteriorX = nearestExteriorX - attempt * day
+      if (exteriorX < 4) break
+
+      const raw = [
+        ...prefix,
+        { x: exteriorX, y: sourceSeparator },
+        { x: exteriorX, y: targetArrow.y },
+        targetArrow,
+      ]
+      const route = raw.filter((point, index) =>
+        index === 0 || point.x !== raw[index - 1].x || point.y !== raw[index - 1].y
+      )
+      if (validRoute(route)) return route
+    }
+
+    if (import.meta.env.DEV) console.warn('No se encontró un recorrido FF exterior válido.', {
+      sourceCardId, targetCardId, sourceBar, targetBar,
+    })
+    return []
+  }
+
   const lanes = [
     sourceSeparator,
     target.y - row / 2,
@@ -307,87 +338,64 @@ function routeHasClearOrthogonalSegments(route: Point[], obstacles: Rect[], boun
     })
 }
 
-function verifySyntheticReturnWaypoint() {
-  const bounds = { width: 400, height: 300 }
-  const sourceBar = { left: 120, right: 215, top: 35, bottom: 55 }
-  const lowerStartBar = { left: 300, right: 370, top: 95, bottom: 115 }
-  const upperFinishBar = { left: 300, right: 370, top: 20, bottom: 40 }
-  const source = { x: 240, y: 45 }
-  const lowerStart = { x: 275, y: 105 }
-  const upperStart = { x: 275, y: 15 }
-  const lowerFinish = { x: 395, y: 105 }
-  const upperFinish = { x: 395, y: 15 }
-  const returnRoute = routeDependency(source, { x: 80, y: 105 }, [sourceBar], 'finish', 'start', bounds)
-  const lowerStartRoute = routeDependency(source, lowerStart, [sourceBar, lowerStartBar], 'start', 'start', bounds)
-  const upperStartRoute = routeDependency(source, upperStart, [sourceBar, upperFinishBar], 'start', 'start', bounds)
-  const lowerFinishRoute = routeDependency(source, lowerFinish, [sourceBar, lowerStartBar], 'start', 'finish', bounds)
-  const upperFinishRoute = routeDependency(source, upperFinish, [sourceBar, upperFinishBar], 'start', 'finish', bounds)
-  const startWaypoint = { x: source.x - 16, y: source.y + 15 }
-  const hasStartWaypoint = (route: Point[]) => route.some((point) => point.x === startWaypoint.x && point.y === startWaypoint.y)
-  const startsVertically = (route: Point[]) => route[1]?.x === route[2]?.x && route[2]?.y === startWaypoint.y
+function verifySyntheticFfUnderBars() {
+  const bounds = { width: 600, height: 350, dayWidth: 20 }
+  const sourceBar: BarObstacle = { left: 220, right: 350, top: 195, bottom: 215, cardId: 1 }
+  const aboveBar: BarObstacle = { left: 260, right: 430, top: 75, bottom: 95, cardId: 2 }
+  const belowBar: BarObstacle = { left: 260, right: 430, top: 255, bottom: 275, cardId: 3 }
+  const source = { x: 375, y: 205 }
 
-  return [
-    returnRoute,
-    lowerStartRoute,
-    upperStartRoute,
-    lowerFinishRoute,
-    upperFinishRoute,
-  ].every((route) => route.length > 0 && routeHasClearOrthogonalSegments(route, [sourceBar, lowerStartBar, upperFinishBar], bounds))
-    && hasStartWaypoint(lowerStartRoute)
-    && hasStartWaypoint(upperStartRoute)
-    && startsVertically(lowerStartRoute)
-    && startsVertically(upperStartRoute)
-}
+  const findRoute = (targetBar: BarObstacle, reserved: DependencySegment[] = []) =>
+    routeDependency(
+      source,
+      { x: targetBar.right + 25, y: (targetBar.top + targetBar.bottom) / 2 },
+      [sourceBar, targetBar],
+      'finish',
+      'finish',
+      bounds,
+      [],
+      reserved,
+      '1:finish',
+      1,
+      targetBar.cardId,
+      targetBar,
+      sourceBar,
+    )
 
-function verifySyntheticSsExit() {
-  const bounds = { width: 400, height: 300 }
-  const obstacles = [
-    { left: 120, right: 215, top: 35, bottom: 55 },
-    { left: 300, right: 370, top: 95, bottom: 115 },
-  ]
-  const route = routeDependency({ x: 240, y: 45 }, { x: 275, y: 105 }, obstacles, 'start', 'start', bounds)
-  const sourceExit = { x: 240, y: 45 }
-  const lowerRowWaypoint = { x: 240, y: 60 }
-  const firstSegment = [route[0], route[1]]
+  const upperRoute = findRoute(aboveBar)
+  const lowerRoute = findRoute(belowBar)
+  const reserved: DependencySegment[] = [{
+    start: { x: 180, y: 100 },
+    end: { x: 180, y: 230 },
+    sourceKey: '999:finish',
+    dependencyId: 999,
+  }]
+  const divertedRoute = findRoute(aboveBar, reserved)
 
-  return routeHasClearOrthogonalSegments(route, obstacles, bounds)
-    && firstSegment[0]?.x === 240
-    && firstSegment[0]?.y === 45
-    && firstSegment[1]?.x === sourceExit.x
-    && firstSegment[1]?.x === sourceExit.x
-    && firstSegment[1]?.y === lowerRowWaypoint.y
-    && firstSegment[1].y > firstSegment[0].y
-}
+  function followsFfShape(route: Point[], targetBar: BarObstacle, expectedTurnX: number) {
+    const final = route.at(-1)
+    const previous = route.at(-2)
+    return route.length === 6
+      && route[0].x === source.x && route[0].y === source.y
+      && route[1].x === source.x + 16 && route[1].y === source.y
+      && route[2].x === route[1].x && route[2].y === source.y + 15
+      && route[3].x === expectedTurnX && route[3].y === route[2].y
+      && route[4].x === expectedTurnX && route[4].y === targetBar.bottom + 6
+      && final?.x === targetBar.right && final?.y === targetBar.bottom + 6
+      && previous?.y === final.y && previous.x < final.x
+      && routeHasClearOrthogonalSegments(route, [sourceBar, targetBar], bounds)
+  }
 
-function verifySyntheticLeftStartReturn() {
-  const bounds = { width: 400, height: 300, dayWidth: 20 }
-  const sourceBar = { left: 220, right: 330, top: 35, bottom: 55, cardId: 1 }
-  const targetBar = { left: 174, right: 264, top: 95, bottom: 115, cardId: 2 }
-  const source = { x: 346, y: 45 }
-  const target = { x: 150, y: 105 }
-  const route = routeDependency(source, target, [sourceBar, targetBar], 'finish', 'start', bounds, [], [], '1:finish', 1, 2)
-  const targetEntry = { x: target.x - 24, y: target.y }
-  const hasLeftwardReturn = route.some((point, index) => {
-    const next = route[index + 1]
-    return next && point.y === next.y && next.x < point.x
-  })
-  const reachesStartFromLeft = route.length >= 2
-    && route[route.length - 2].x < targetEntry.x
-    && route[route.length - 1].x === targetEntry.x
-    && route[route.length - 1].y === targetEntry.y
-  const usesNearestTurnCandidate = route.some((point) => point.x === targetEntry.x - bounds.dayWidth)
-
-  return route.length > 0
-    && routeHasClearOrthogonalSegments(route, [sourceBar, targetBar], bounds)
-    && hasLeftwardReturn
-    && reachesStartFromLeft
-    && usesNearestTurnCandidate
+  return followsFfShape(upperRoute, aboveBar, 180)
+    && followsFfShape(lowerRoute, belowBar, 180)
+    && followsFfShape(divertedRoute, aboveBar, 160)
 }
 
 if (import.meta.env.DEV) {
-  console.assert(verifySyntheticReturnWaypoint(), 'Gantt dependency return route must reach the lower source-row waypoint before returning horizontally.')
-  console.assert(verifySyntheticSsExit(), 'Gantt SS dependency route must exit vertically down to the lower source-row waypoint.')
-  console.assert(verifySyntheticLeftStartReturn(), 'Gantt return routes to a left-side Start connector must use an exterior left lane and enter from the left.')
+  console.assert(
+    verifySyntheticFfUnderBars(),
+    'FF must skirt the predecessor underneath, travel by a free exterior lane and finish under the successor.',
+  )
 }
 
 function timelineRange(cards: Card[]) {
@@ -1006,6 +1014,9 @@ export function GanttView({ board, cards, canEdit, onOpen, onChange }: GanttProp
         dependency.successorId,
         dependency.type === 'ff'
           ? dependencyGeometry.obstacles.find((bar) => bar.cardId === dependency.successorId)
+          : undefined,
+        dependency.type === 'ff'
+          ? dependencyGeometry.obstacles.find((bar) => bar.cardId === dependency.predecessorId)
           : undefined,
       )
       if (route.length === 0) {
