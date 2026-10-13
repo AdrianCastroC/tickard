@@ -170,7 +170,10 @@ function routeDependency(
   const exitDistance = 16
   const arrowDistance = 15
   const entryDistance = 24
-  const sourceExit = { x: source.x + (sourceEndpoint === 'start' ? -exitDistance : exitDistance), y: source.y }
+  const sourceExit = {
+    x: sourceEndpoint === 'start' ? source.x : source.x + exitDistance,
+    y: source.y,
+  }
   const targetEntry = { x: target.x + (targetEndpoint === 'start' ? -entryDistance : entryDistance), y: target.y }
   const targetArrow = { x: target.x + (targetEndpoint === 'start' ? -arrowDistance : arrowDistance), y: target.y }
   const padding = 4
@@ -324,7 +327,9 @@ function routeDependency(
     return []
   }
 
-  return [source, ...route, targetArrow]
+  return sourceEndpoint === 'start'
+    ? [...route, targetArrow]
+    : [source, ...route, targetArrow]
 }
 
 function routeHasClearOrthogonalSegments(route: Point[], obstacles: Rect[], bounds: { width: number; height: number }) {
@@ -375,19 +380,17 @@ function verifySyntheticSsExit() {
     { left: 300, right: 370, top: 95, bottom: 115 },
   ]
   const route = routeDependency({ x: 240, y: 45 }, { x: 275, y: 105 }, obstacles, 'start', 'start', bounds)
-  const sourceExit = { x: 224, y: 45 }
-  const lowerRowWaypoint = { x: 224, y: 60 }
+  const sourceExit = { x: 240, y: 45 }
+  const lowerRowWaypoint = { x: 240, y: 60 }
   const firstSegment = [route[0], route[1]]
-  const firstPostExitSegment = [route[1], route[2]]
 
   return routeHasClearOrthogonalSegments(route, obstacles, bounds)
     && firstSegment[0]?.x === 240
     && firstSegment[0]?.y === 45
     && firstSegment[1]?.x === sourceExit.x
-    && firstPostExitSegment[0]?.x === lowerRowWaypoint.x
-    && firstPostExitSegment[1]?.x === lowerRowWaypoint.x
-    && firstPostExitSegment[1]?.y === lowerRowWaypoint.y
-    && firstPostExitSegment[1].y > firstPostExitSegment[0].y
+    && firstSegment[1]?.x === sourceExit.x
+    && firstSegment[1]?.y === lowerRowWaypoint.y
+    && firstSegment[1].y > firstSegment[0].y
 }
 
 if (import.meta.env.DEV) {
