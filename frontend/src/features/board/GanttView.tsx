@@ -179,6 +179,15 @@ function routeDependency(
   const returnBelow = sourceEndpoint === 'finish' && targetEntry.x < sourceExit.x
   const sourceRowBottom = source.y + rowHeight / 2
   const mandatoryWaypoint = { x: sourceExit.x, y: sourceRowBottom }
+  const startExitWaypoint = {
+    x: sourceExit.x,
+    y: source.y + (target.y < source.y ? -rowHeight / 2 : rowHeight / 2),
+  }
+  const exitWaypoint = sourceEndpoint === 'start'
+    ? startExitWaypoint
+    : returnBelow
+      ? mandatoryWaypoint
+      : null
   const obstacleYChannels = obstacles.flatMap((obstacle) => returnBelow
     ? [obstacle.bottom + channelGap, obstacle.top - channelGap]
     : [obstacle.top - channelGap, obstacle.bottom + channelGap])
@@ -200,7 +209,13 @@ function routeDependency(
   ]
   const xs = [...new Set(xChannels.map((value) => Math.max(4, Math.min(bounds.width - 4, Math.round(value)))))]
   const ys = [...new Set(yChannels.map((value) => Math.max(4, Math.min(bounds.height - 4, Math.round(value)))))]
-  const nodes = [sourceExit, mandatoryWaypoint, targetEntry, ...xs.flatMap((x) => ys.map((y) => ({ x, y })))]
+  const nodes = [
+    sourceExit,
+    mandatoryWaypoint,
+    startExitWaypoint,
+    targetEntry,
+    ...xs.flatMap((x) => ys.map((y) => ({ x, y }))),
+  ]
   const keyOf = (point: Point) => `${point.x}:${point.y}`
   const targetKey = keyOf(targetEntry)
   const nodeByKey = new Map(nodes.map((node) => [keyOf(node), node]))
@@ -245,14 +260,14 @@ function routeDependency(
       }
 
       if (
-        returnBelow
+        exitWaypoint
         && currentKey === keyOf(sourceExit)
-        && neighborKey !== keyOf(mandatoryWaypoint)
+        && neighborKey !== keyOf(exitWaypoint)
       ) {
         return
       }
 
-      if (returnBelow && currentKey === keyOf(mandatoryWaypoint) && neighbor.y !== mandatoryWaypoint.y) {
+      if (exitWaypoint && currentKey === keyOf(exitWaypoint) && neighbor.y !== exitWaypoint.y) {
         return
       }
 
@@ -291,15 +306,16 @@ function routeDependency(
     currentKey = previous.get(currentKey)
   }
 
-  const containsMandatoryWaypoint = route.some((point) => keyOf(point) === keyOf(mandatoryWaypoint))
+  const containsExitWaypoint = exitWaypoint
+    ? route.some((point) => keyOf(point) === keyOf(exitWaypoint))
+    : true
 
-  if (route.length === 0 || keyOf(route[0]) !== keyOf(sourceExit) || (returnBelow && !containsMandatoryWaypoint)) {
+  if (route.length === 0 || keyOf(route[0]) !== keyOf(sourceExit) || !containsExitWaypoint) {
     const outerY = returnBelow ? bounds.height - 8 : 8
     return [
       source,
       sourceExit,
-      ...(returnBelow ? [mandatoryWaypoint, { x: mandatoryWaypoint.x, y: outerY }] : []),
-      ...(!returnBelow ? [{ x: sourceExit.x, y: outerY }] : []),
+      ...(exitWaypoint ? [exitWaypoint, { x: exitWaypoint.x, y: outerY }] : [{ x: sourceExit.x, y: outerY }]),
       { x: targetEntry.x, y: outerY },
       targetEntry,
       targetArrow,
