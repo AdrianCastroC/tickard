@@ -368,8 +368,31 @@ function verifySyntheticReturnWaypoint() {
     && startsVertically(upperStartRoute)
 }
 
+function verifySyntheticSsExit() {
+  const bounds = { width: 400, height: 300 }
+  const obstacles = [
+    { left: 120, right: 215, top: 35, bottom: 55 },
+    { left: 300, right: 370, top: 95, bottom: 115 },
+  ]
+  const route = routeDependency({ x: 240, y: 45 }, { x: 275, y: 105 }, obstacles, 'start', 'start', bounds)
+  const sourceExit = { x: 224, y: 45 }
+  const lowerRowWaypoint = { x: 224, y: 60 }
+  const firstSegment = [route[0], route[1]]
+  const firstPostExitSegment = [route[1], route[2]]
+
+  return routeHasClearOrthogonalSegments(route, obstacles, bounds)
+    && firstSegment[0]?.x === 240
+    && firstSegment[0]?.y === 45
+    && firstSegment[1]?.x === sourceExit.x
+    && firstPostExitSegment[0]?.x === lowerRowWaypoint.x
+    && firstPostExitSegment[1]?.x === lowerRowWaypoint.x
+    && firstPostExitSegment[1]?.y === lowerRowWaypoint.y
+    && firstPostExitSegment[1].y > firstPostExitSegment[0].y
+}
+
 if (import.meta.env.DEV) {
   console.assert(verifySyntheticReturnWaypoint(), 'Gantt dependency return route must reach the lower source-row waypoint before returning horizontally.')
+  console.assert(verifySyntheticSsExit(), 'Gantt SS dependency route must exit vertically down to the lower source-row waypoint.')
 }
 
 function timelineRange(cards: Card[]) {
