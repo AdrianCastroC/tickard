@@ -421,7 +421,7 @@ function compareGanttCards(first: GanttCard, second: GanttCard) {
     return dueComparison
   }
 
-  return first.card.position - second.card.position
+  return first.card.position - second.card.position || first.card.id - second.card.id
 }
 
 function compareOptionalDates(first?: string | null, second?: string | null) {
@@ -436,16 +436,88 @@ function compareOptionalDates(first?: string | null, second?: string | null) {
   return first.localeCompare(second)
 }
 
+function topologicallySortSameStartCards(cards: GanttCard[]) {
+  const cardsById = new Map(cards.map((item) => [item.card.id, item]))
+  const outgoing = new Map<number, Set<number>>()
+  const indegree = new Map(cards.map((item) => [item.card.id, 0]))
+
+  function addEdge(predecessorId: number, successorId: number) {
+    if (!cardsById.has(predecessorId) || !cardsById.has(successorId)) {
+      return
+    }
+
+    const successors = outgoing.get(predecessorId) ?? new Set<number>()
+    if (successors.has(successorId)) {
+      return
+    }
+
+    successors.add(successorId)
+    outgoing.set(predecessorId, successors)
+    indegree.set(successorId, (indegree.get(successorId) ?? 0) + 1)
+  }
+
+  cards.forEach((item) => {
+    item.card.dependencies?.predecessors.forEach((dependency) => {
+      addEdge(dependency.card_id, item.card.id)
+    })
+    item.card.dependencies?.successors.forEach((dependency) => {
+      addEdge(item.card.id, dependency.card_id)
+    })
+  })
+
+  const ready = cards.filter((item) => indegree.get(item.card.id) === 0).sort(compareGanttCards)
+  const ordered: GanttCard[] = []
+
+  while (ready.length > 0) {
+    const current = ready.shift()!
+    ordered.push(current)
+
+    outgoing.get(current.card.id)?.forEach((successorId) => {
+      const nextIndegree = (indegree.get(successorId) ?? 0) - 1
+      indegree.set(successorId, nextIndegree)
+      if (nextIndegree === 0) {
+        ready.push(cardsById.get(successorId)!)
+        ready.sort(compareGanttCards)
+      }
+    })
+  }
+
+  if (ordered.length < cards.length) {
+    const orderedIds = new Set(ordered.map((item) => item.card.id))
+    ordered.push(...cards.filter((item) => !orderedIds.has(item.card.id)).sort(compareGanttCards))
+  }
+
+  return ordered
+}
+
+function sortGanttCards(cards: GanttCard[]) {
+  const baseline = [...cards].sort(compareGanttCards)
+  const sorted: GanttCard[] = []
+  let index = 0
+
+  while (index < baseline.length) {
+    const startDate = baseline[index].card.start_date
+    let end = index + 1
+    while (end < baseline.length && baseline[end].card.start_date === startDate) {
+      end += 1
+    }
+
+    const bucket = baseline.slice(index, end)
+    sorted.push(...(startDate ? topologicallySortSameStartCards(bucket) : bucket))
+    index = end
+  }
+
+  return sorted
+}
+
 function categoryGroups(board: BoardPayload, columns: BoardPayload['columns']): CategoryGroup[] {
   const items = columns.flatMap((column) => column.cards.map((card) => ({ card, column })))
   const groups = board.categories.map((category) => ({
     id: String(category.id),
     name: category.name,
-    cards: items
-      .filter(({ card }) => card.category_id === category.id)
-      .sort(compareGanttCards),
+    cards: sortGanttCards(items.filter(({ card }) => card.category_id === category.id)),
   }))
-  const uncategorized = items.filter(({ card }) => card.category_id == null).sort(compareGanttCards)
+  const uncategorized = sortGanttCards(items.filter(({ card }) => card.category_id == null))
   if (uncategorized.length > 0) groups.push({ id: 'uncategorized', name: 'Sin categoría', cards: uncategorized })
   return groups.filter((group) => group.cards.length > 0)
 }
