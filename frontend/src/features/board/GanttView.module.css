@@ -161,6 +161,25 @@
   background: color-mix(in srgb, var(--canvas) 82%, var(--surface));
 }
 
+.leftBoardGroup {
+  background: color-mix(in srgb, var(--accent) 12%, var(--surface));
+  border-top: 1px solid var(--line);
+}
+
+.leftBoardGroup .categoryInfo button {
+  color: var(--ink);
+  font-weight: 800;
+}
+
+.leftProjectCategory .categoryInfo {
+  padding-left: 15px;
+}
+
+.boardRowBackground {
+  background: color-mix(in srgb, var(--accent) 12%, var(--surface));
+  border-top: 1px solid var(--line);
+}
+
 .categoryInfo {
   display: flex;
   align-items: center;
