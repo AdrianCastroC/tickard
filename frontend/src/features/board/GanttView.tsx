@@ -174,15 +174,15 @@ function routeDependency(
   const targetEntry = { x: target.x + (targetEndpoint === 'start' ? -entryDistance : entryDistance), y: target.y }
   const targetArrow = { x: target.x + (targetEndpoint === 'start' ? -arrowDistance : arrowDistance), y: target.y }
   const padding = 4
+  const rowHeight = 30
   const channelGap = 6
-  const returnBelow = sourceEndpoint === 'finish' && target.x < source.x
+  const returnBelow = sourceEndpoint === 'finish' && targetEntry.x < sourceExit.x
+  const sourceRowBottom = source.y + rowHeight / 2
+  const mandatoryWaypoint = { x: sourceExit.x, y: sourceRowBottom }
   const obstacleYChannels = obstacles.flatMap((obstacle) => returnBelow
     ? [obstacle.bottom + channelGap, obstacle.top - channelGap]
     : [obstacle.top - channelGap, obstacle.bottom + channelGap])
-  const sourceRow = obstacles.find((obstacle) => source.y >= obstacle.top && source.y <= obstacle.bottom)
-  const preferredReturnY = sourceRow
-    ? sourceRow.bottom + channelGap
-    : source.y + 30
+  const preferredReturnY = mandatoryWaypoint.y
   const xChannels = [
     8,
     bounds.width - 8,
@@ -200,7 +200,7 @@ function routeDependency(
   ]
   const xs = [...new Set(xChannels.map((value) => Math.max(4, Math.min(bounds.width - 4, Math.round(value)))))]
   const ys = [...new Set(yChannels.map((value) => Math.max(4, Math.min(bounds.height - 4, Math.round(value)))))]
-  const nodes = [sourceExit, targetEntry, ...xs.flatMap((x) => ys.map((y) => ({ x, y })))]
+  const nodes = [sourceExit, mandatoryWaypoint, targetEntry, ...xs.flatMap((x) => ys.map((y) => ({ x, y })))]
   const keyOf = (point: Point) => `${point.x}:${point.y}`
   const targetKey = keyOf(targetEntry)
   const nodeByKey = new Map(nodes.map((node) => [keyOf(node), node]))
@@ -247,8 +247,12 @@ function routeDependency(
       if (
         returnBelow
         && currentKey === keyOf(sourceExit)
-        && (neighbor.x !== sourceExit.x || neighbor.y !== preferredReturnY)
+        && neighborKey !== keyOf(mandatoryWaypoint)
       ) {
+        return
+      }
+
+      if (returnBelow && currentKey === keyOf(mandatoryWaypoint) && neighbor.y !== mandatoryWaypoint.y) {
         return
       }
 
@@ -287,12 +291,15 @@ function routeDependency(
     currentKey = previous.get(currentKey)
   }
 
-  if (route.length === 0 || keyOf(route[0]) !== keyOf(sourceExit)) {
+  const containsMandatoryWaypoint = route.some((point) => keyOf(point) === keyOf(mandatoryWaypoint))
+
+  if (route.length === 0 || keyOf(route[0]) !== keyOf(sourceExit) || (returnBelow && !containsMandatoryWaypoint)) {
     const outerY = returnBelow ? bounds.height - 8 : 8
     return [
       source,
       sourceExit,
-      { x: sourceExit.x, y: outerY },
+      ...(returnBelow ? [mandatoryWaypoint, { x: mandatoryWaypoint.x, y: outerY }] : []),
+      ...(!returnBelow ? [{ x: sourceExit.x, y: outerY }] : []),
       { x: targetEntry.x, y: outerY },
       targetEntry,
       targetArrow,
@@ -300,6 +307,22 @@ function routeDependency(
   }
 
   return [source, ...route, targetArrow]
+}
+
+function verifySyntheticReturnWaypoint() {
+  const source = { x: 240, y: 45 }
+  const target = { x: 80, y: 105 }
+  const sourceBar = { left: 120, right: 215, top: 35, bottom: 55 }
+  const route = routeDependency(source, target, [sourceBar], 'finish', 'start', { width: 400, height: 300 })
+  const waypoint = { x: source.x + 16, y: source.y + 15 }
+  const waypointIndex = route.findIndex((point) => point.x === waypoint.x && point.y === waypoint.y)
+  const firstHorizontalAfterExit = route.findIndex((point, index) => index > 0 && point.y === route[index - 1].y && point.x !== route[index - 1].x)
+
+  return waypointIndex > 0 && (firstHorizontalAfterExit === -1 || firstHorizontalAfterExit > waypointIndex)
+}
+
+if (import.meta.env.DEV) {
+  console.assert(verifySyntheticReturnWaypoint(), 'Gantt dependency return route must reach the lower source-row waypoint before returning horizontally.')
 }
 
 function timelineRange(cards: Card[]) {
