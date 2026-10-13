@@ -98,6 +98,20 @@ function shift(value: string, amount: number) {
   return dateKey(date)
 }
 
+// A margin follows the chosen zoom unit, using calendar months instead of
+// approximating them as 30-day periods. Clamp end-of-month dates (31 -> 30/29).
+function shiftZoomUnits(value: string, zoom: Zoom, amount: number) {
+  if (zoom === 'day') return shift(value, amount)
+  if (zoom === 'week') return shift(value, amount * 7)
+
+  const date = parseDay(value)
+  const months = amount * (zoom === 'quarter' ? 3 : 1)
+  const destination = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + months, 1))
+  const lastDay = new Date(Date.UTC(destination.getUTCFullYear(), destination.getUTCMonth() + 1, 0)).getUTCDate()
+  destination.setUTCDate(Math.min(date.getUTCDate(), lastDay))
+  return dateKey(destination)
+}
+
 function daysBetween(start: string, end: string) {
   return Math.round((parseDay(end).getTime() - parseDay(start).getTime()) / DAY_MS)
 }
@@ -816,24 +830,25 @@ if (import.meta.env.DEV) {
   )
 }
 
-function timelineRange(cards: Card[], today = todayKey()) {
+function timelineRange(cards: Card[], zoom: Zoom, today = todayKey()) {
   const plannedCards = cards.filter(planned)
   const first = plannedCards.reduce((value, card) =>
     card.start_date! < value ? card.start_date! : value, today)
   const last = plannedCards.reduce((value, card) =>
     card.due_date! > value ? card.due_date! : value, today)
 
-  // Both the first Card and "Hoy" are real timeline content. Exactly two
-  // full calendar days remain before the earliest and after the latest.
-  return { start: shift(first, -2), end: shift(last, 2) }
+  // Both the first Card and "Hoy" are content. Keep two full zoom units
+  // before the earliest and after the latest, including empty boards.
+  return { start: shiftZoomUnits(first, zoom, -2), end: shiftZoomUnits(last, zoom, 2) }
 }
 
 // Reference badges and dependency routes are positioned in pixels, not by
 // external Card dates. Convert their measured extremes back into dates so
 // that every visible item (including a detour around overlapping bars) has
-// two complete day cells of breathing room on both sides.
+// two complete zoom units of breathing room on both sides.
 function fitTimelineRange(
   base: { start: string; end: string },
+  zoom: Zoom,
   currentStart: string,
   dayWidth: number,
   extents: Rect[],
@@ -852,8 +867,10 @@ function fitTimelineRange(
     maximum: Math.max(value.maximum, x),
   }), { minimum: Infinity, maximum: -Infinity })
   // Avoid a whole extra day from subpixel grid rounding at exact edges.
-  const first = shift(currentStart, Math.floor(minimum / dayWidth + 0.0001) - 2)
-  const last = shift(currentStart, Math.ceil(maximum / dayWidth - 0.0001) + 1)
+  const firstOccupied = shift(currentStart, Math.floor(minimum / dayWidth + 0.0001))
+  const lastOccupied = shift(currentStart, Math.ceil(maximum / dayWidth - 0.0001) - 1)
+  const first = shiftZoomUnits(firstOccupied, zoom, -2)
+  const last = shiftZoomUnits(lastOccupied, zoom, 2)
   return {
     start: first < base.start ? first : base.start,
     end: last > base.end ? last : base.end,
@@ -1328,11 +1345,12 @@ export function GanttView({ board, cards, canEdit, onOpen, onChange }: GanttProp
     })
     return result
   }, [externalDependencies])
-  const baseRange = timelineRange(allCards)
-  const [fittedRange, setFittedRange] = useState<{ start: string; end: string } | null>(null)
+  const baseRange = timelineRange(allCards, zoom)
+  const [fittedRange, setFittedRange] = useState<{ zoom: Zoom; start: string; end: string } | null>(null)
+  const activeFittedRange = fittedRange?.zoom === zoom ? fittedRange : null
   const range = {
-    start: fittedRange && fittedRange.start < baseRange.start ? fittedRange.start : baseRange.start,
-    end: fittedRange && fittedRange.end > baseRange.end ? fittedRange.end : baseRange.end,
+    start: activeFittedRange && activeFittedRange.start < baseRange.start ? activeFittedRange.start : baseRange.start,
+    end: activeFittedRange && activeFittedRange.end > baseRange.end ? activeFittedRange.end : baseRange.end,
   }
   const days = buildDays(range.start, range.end)
   const monthRows = monthSpans(days)
@@ -1733,12 +1751,13 @@ export function GanttView({ board, cards, canEdit, onOpen, onChange }: GanttProp
       ...[...externalRoutes.values()].map(({ points }) => points),
     ]
     const fitted = fitTimelineRange(
-      baseRange, geometry.rangeStart, geometry.dayWidth,
+      baseRange, zoom, geometry.rangeStart, geometry.dayWidth,
       [...geometry.obstacles, ...Object.values(geometry.externalRefs), ...metadata],
       routes,
     )
     setFittedRange((current) =>
-      current?.start === fitted.start && current.end === fitted.end ? current : fitted)
+      current?.zoom === zoom && current.start === fitted.start && current.end === fitted.end
+        ? current : { ...fitted, zoom })
   }, [
     baseRange.start, baseRange.end, range.start, range.end, dependencyGeometry,
     externalRoutes, plannedDependencyRoutes, leftCollapsed, zoom,
