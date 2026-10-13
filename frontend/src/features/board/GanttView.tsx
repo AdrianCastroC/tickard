@@ -2223,7 +2223,10 @@ export function GanttView({ board, cards, canEdit, onOpen, onChange }: GanttProp
                 [],
                 dependencyCreation.endpoint,
                 dependencyCreation.targetEndpoint ?? 'start',
-                { width: grid.width, height: grid.height },
+                {
+                  width: grid.width, height: grid.height,
+                  dayWidth: dependencyGeometry.dayWidth, zoom,
+                },
               )
               return <path className={styles.dependencyPreview} d={pathToSvg(path)} />
             })()}
