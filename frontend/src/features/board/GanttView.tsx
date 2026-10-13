@@ -867,7 +867,7 @@ if (import.meta.env.DEV) {
   )
   console.assert(
     verifySyntheticTimelineMargins(),
-    'Gantt should keep two calendar days beyond Cards, today, external refs, and route detours.',
+    'Gantt should keep two zoom units beyond Cards, today, external refs and route detours.',
   )
   console.assert(
     verifySyntheticExternalDependencyRoutes()
