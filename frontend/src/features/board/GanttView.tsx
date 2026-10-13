@@ -7,6 +7,7 @@ import styles from './GanttView.module.css'
 
 const DAY_MS = 86_400_000
 const TASK_WIDTH = 200
+const FF_FINISH_MARKER_OFFSET_PX = 5
 const DEFAULT_COLUMNS = { start: true, end: true, progress: true }
 const ZOOMS = ['day', 'week', 'month', 'quarter'] as const
 type Zoom = (typeof ZOOMS)[number]
@@ -232,7 +233,7 @@ function routeDependency(
   // FF terminates below the successor bar; the vertical tick remains at the
   // successor's real right edge.
   const targetArrow: Point = finishBelowBar && targetBar
-    ? { x: targetBar.right, y: ffLane(targetBar) }
+    ? { x: targetBar.right + FF_FINISH_MARKER_OFFSET_PX, y: ffLane(targetBar) }
     : {
       x: target.x + (targetEndpoint === 'start' ? -day : 15),
       y: target.y,
@@ -418,7 +419,7 @@ function verifySyntheticFfUnderBars() {
       && route[2].x === route[1].x && route[2].y === sourceBar.bottom + 5
       && route[3].x === expectedTurnX && route[3].y === route[2].y
       && route[4].x === expectedTurnX && route[4].y === targetBar.bottom + 5
-      && final?.x === targetBar.right && final?.y === targetBar.bottom + 5
+      && final?.x === targetBar.right + FF_FINISH_MARKER_OFFSET_PX && final?.y === targetBar.bottom + 5
       && previous?.y === final.y && previous.x < final.x
       && routeHasClearOrthogonalSegments(route, [sourceBar, targetBar], bounds)
   }
@@ -1428,7 +1429,7 @@ export function GanttView({ board, cards, canEdit, onOpen, onChange }: GanttProp
                   <path className={styles.dependencyHitArea} d={path} onClick={(event) => setDependencyPopover({ dependency, x: event.clientX, y: event.clientY })} aria-label={`Dependencia ${dependency.type.toUpperCase()}: ${predecessor.item.card.title} → ${successor.item.card.title}`} />
                   <path className={styles.dependencyLine} d={path} aria-hidden="true" />
                   {dependency.type === 'ff' && targetBar && arrow && <path
-                    d={`M ${targetBar.right} ${targetBar.top} V ${arrow.point.y + 5}`}
+                    d={`M ${targetBar.right + FF_FINISH_MARKER_OFFSET_PX} ${targetBar.top} V ${arrow.point.y + 5}`}
                     className={styles.dependencyLine}
                     aria-hidden="true"
                   />}
