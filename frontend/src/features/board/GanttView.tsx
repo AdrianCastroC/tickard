@@ -205,9 +205,10 @@ function routeDependency(
   if (bounds.width <= 0 || bounds.height <= 0) return []
   const day = Math.max(1, bounds.dayWidth ?? 20)
   const row = 30
-  const finishBelowBar = sourceEndpoint === 'finish' && targetEndpoint === 'finish' && Boolean(targetBar && sourceBar)
+  const finishBelowBar = targetEndpoint === 'finish' && targetBar !== undefined
+  const ffOrigin = finishBelowBar && sourceEndpoint === 'finish' && sourceBar !== undefined
 
-  // FF uses the ACTUAL gap between adjacent measured bars, not a fixed +6px
+  // Finish arrivals (FF and SF) use the ACTUAL gap between measured bars, not a fixed +6px
   // offset which can overlap the next row (especially at compact page zoom).
   const gapBelow = (bar: BarObstacle) => {
     const nextTop = obstacles.reduce((nearest, candidate) =>
@@ -216,8 +217,8 @@ function routeDependency(
         : nearest, Infinity)
     return Number.isFinite(nextTop) ? Math.max(0, nextTop - bar.bottom) : 10
   }
-  const ffGap = finishBelowBar && targetBar && sourceBar
-    ? Math.min(gapBelow(sourceBar), gapBelow(targetBar))
+  const ffGap = finishBelowBar && targetBar
+    ? ffOrigin && sourceBar ? Math.min(gapBelow(sourceBar), gapBelow(targetBar)) : gapBelow(targetBar)
     : 10
   const padding = finishBelowBar ? Math.min(4, Math.max(0.5, ffGap / 2 - 0.5)) : 4
   // Keep the FF track immediately below each bar (roughly the row divider).
@@ -228,11 +229,11 @@ function routeDependency(
   const sourceExit = sourceEndpoint === 'start'
     ? source
     : { x: source.x + 16, y: source.y }
-  const sourceSeparator = finishBelowBar && sourceBar
+  const sourceSeparator = ffOrigin && sourceBar
     ? ffLane(sourceBar)
     : source.y + row / 2
 
-  // FF terminates below the successor bar; the vertical tick remains at the
+  // FF and SF terminate below the successor bar; the vertical tick remains at the
   // successor's real right edge.
   const targetArrow: Point = finishBelowBar && targetBar
     ? { x: targetBar.right, y: ffLane(targetBar) }
@@ -300,7 +301,46 @@ function routeDependency(
     ? [source, { x: source.x, y: sourceSeparator }]
     : [source, sourceExit, { x: sourceExit.x, y: sourceSeparator }]
 
-  if (finishBelowBar && sourceBar && targetBar) {
+  if (sourceEndpoint === 'start' && finishBelowBar && targetBar) {
+    // SF: leave the actual Start connector vertically down to the next row
+    // seam, then pick the nearest vertical corridor that can enter Finish
+    // horizontally from the left, underneath the successor.
+    // If the destination is ABOVE the predecessor, make a short leftward
+    // move first so the mandatory downward departure never doubles back
+    // over itself. If the destination is BELOW, the transition must also
+    // clear the successor bar before reaching its lower lane.
+    const destinationAbove = targetArrow.y < sourceSeparator
+    const destinationBelow = targetBar.top > source.y
+    const minArrivalWidth = Math.max(8, day / 2)
+    const preferredTurnX = Math.min(
+      source.x - (destinationAbove ? day : 0),
+      targetArrow.x - minArrivalWidth,
+      destinationBelow ? targetBar.left - padding - 5 : Infinity,
+    )
+    const maxAttempts = Math.min(64, Math.ceil(bounds.width / day) + 1)
+
+    for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+      const turnX = preferredTurnX - attempt * day
+      if (turnX < 4) break
+      const raw: Point[] = [
+        ...prefix,
+        { x: turnX, y: sourceSeparator },
+        { x: turnX, y: targetArrow.y },
+        targetArrow,
+      ]
+      const route = raw.filter((point, index) =>
+        index === 0 || point.x !== raw[index - 1].x || point.y !== raw[index - 1].y
+      )
+      if (validRoute(route)) return route
+    }
+
+    if (import.meta.env.DEV) console.warn('No se encontró un recorrido SF hacia Finish sin obstáculos.', {
+      sourceCardId, targetCardId,
+    })
+    return []
+  }
+
+  if (ffOrigin && sourceBar && targetBar) {
     // Only the bar crossed by the vertical transition needs an outer bypass:
     // - target ABOVE source: upward transition must clear the SOURCE bar.
     // - target BELOW source: downward transition must clear the TARGET bar.
@@ -461,6 +501,46 @@ function verifySyntheticFfUnderBars() {
     && !verticalSegmentsOverlap({ x: 10, y: 10 }, { x: 60, y: 10 }, { x: 30, y: 0 }, { x: 30, y: 30 })
 }
 
+function verifySyntheticSfFinishArrival() {
+  const bounds = { width: 620, height: 350, dayWidth: 20 }
+  const sourceBar: BarObstacle = { left: 220, right: 350, top: 195, bottom: 215, cardId: 1 }
+  const aboveBar: BarObstacle = { left: 260, right: 430, top: 75, bottom: 95, cardId: 2 }
+  const belowBar: BarObstacle = { left: 260, right: 430, top: 255, bottom: 275, cardId: 3 }
+  const start = { x: 195, y: 205 }
+  const routeTo = (bar: BarObstacle, connectors: ConnectorObstacle[] = [], reserved: DependencySegment[] = []) =>
+    routeDependency(start, { x: bar.right + 25, y: (bar.top + bar.bottom) / 2 },
+      [sourceBar, bar], 'start', 'finish', bounds, connectors, reserved, '1:start', 1, bar.cardId, bar)
+
+  const above = routeTo(aboveBar)
+  const below = routeTo(belowBar)
+  const blockedByConnector = routeTo(aboveBar,
+    [{ cardId: 8, endpoint: 'start', left: 170, right: 180, top: 135, bottom: 155 }])
+  const blockedByVertical = routeTo(aboveBar, [], [{
+    start: { x: 175, y: 130 },
+    end: { x: 175, y: 185 },
+    sourceKey: '8:start',
+    dependencyId: 99,
+  }])
+  const clearRoute = (points: Point[], targetBar: BarObstacle) =>
+    points.length >= 3
+    && points[0].x === start.x && points[0].y === start.y
+    && points[1].x === start.x && points[1].y === start.y + 15
+    && points.at(-1)?.x === targetBar.right
+    && points.at(-1)?.y === targetBar.bottom + 5
+    && points.at(-2)?.y === targetBar.bottom + 5
+    && (points.at(-2)?.x ?? Infinity) < targetBar.right
+    && routeHasClearOrthogonalSegments(points, [sourceBar, targetBar], bounds)
+
+  return clearRoute(above, aboveBar)
+    && clearRoute(below, belowBar)
+    && clearRoute(blockedByConnector, aboveBar)
+    && clearRoute(blockedByVertical, aboveBar)
+    && above.some((point) => point.x === 175)
+    && below.some((point) => point.x === start.x)
+    && blockedByConnector.some((point) => point.x === 155)
+    && blockedByVertical.some((point) => point.x === 155)
+}
+
 function verifySyntheticFsMinimalRoute() {
   const bounds = { width: 440, height: 210, dayWidth: 20 }
   const sourceBar: BarObstacle = { left: 32, right: 110, top: 35, bottom: 55, cardId: 1 }
@@ -500,6 +580,10 @@ function verifySyntheticFsMinimalRoute() {
 }
 
 if (import.meta.env.DEV) {
+  console.assert(
+    verifySyntheticSfFinishArrival(),
+    'SF must depart Start vertically and finish beneath the successor with the same marker as FF.',
+  )
   console.assert(
     verifySyntheticFsMinimalRoute(),
     'FS must use its shortest valid Finish-exit/Start-entry route before trying detours.',
@@ -1126,7 +1210,7 @@ export function GanttView({ board, cards, canEdit, onOpen, onChange }: GanttProp
         sourceKey,
         dependency.predecessorId,
         dependency.successorId,
-        dependency.type === 'ff'
+        dependency.type === 'ff' || dependency.type === 'sf'
           ? dependencyGeometry.obstacles.find((bar) => bar.cardId === dependency.successorId)
           : undefined,
         dependency.type === 'ff'
@@ -1488,14 +1572,14 @@ export function GanttView({ board, cards, canEdit, onOpen, onChange }: GanttProp
               if (!route) return null
               const path = pathToSvg(route)
               const arrow = dependencyArrowPosition(route)
-              const targetBar = dependency.type === 'ff'
+              const targetBar = dependency.type === 'ff' || dependency.type === 'sf'
                 ? dependencyGeometry.obstacles.find((bar) => bar.cardId === dependency.successorId)
                 : undefined
               return (
                 <g key={dependency.id} className={`${styles.dependencyLineGroup} ${dependencyPopover?.dependency.id === dependency.id ? styles.dependencySelected : ''}`}>
                   <path className={styles.dependencyHitArea} d={path} onClick={(event) => setDependencyPopover({ dependency, x: event.clientX, y: event.clientY })} aria-label={`Dependencia ${dependency.type.toUpperCase()}: ${predecessor.item.card.title} → ${successor.item.card.title}`} />
                   <path className={styles.dependencyLine} d={path} aria-hidden="true" />
-                  {dependency.type === 'ff' && targetBar && arrow && <path
+                  {(dependency.type === 'ff' || dependency.type === 'sf') && targetBar && arrow && <path
                     d={`M ${targetBar.right + FF_FINISH_MARKER_OFFSET_PX} ${targetBar.top} V ${arrow.point.y + 5}`}
                     className={styles.dependencyLine}
                     aria-hidden="true"
