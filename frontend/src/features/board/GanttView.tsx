@@ -215,17 +215,11 @@ function dependencyArrowPosition(points: Point[]) {
   }
 }
 
-// Date positions remain day-accurate at every zoom, but orthogonal dependency
-// lanes and Start approaches need a readable physical distance. A calendar
-// day can occupy much less than 1px in Month or Quarter.
-function dependencyRoutingStep(dayWidth: number, zoom: Zoom = 'day') {
-  const minimumByZoom: Record<Zoom, number> = {
-    day: 1,
-    week: 10,
-    month: 14,
-    quarter: 18,
-  }
-  return Math.max(1, dayWidth, minimumByZoom[zoom])
+// Dependency turns and Start approaches use the same physical 24px minimum
+// in every zoom. Card positions still follow their exact dates; the spacing
+// must not shrink to subpixel lengths in Week, Month or Quarter.
+function dependencyRoutingStep(dayWidth: number) {
+  return Math.max(MIN_ZOOM_UNIT_WIDTH, dayWidth)
 }
 
 function routeDependency(
@@ -247,7 +241,7 @@ function routeDependency(
   // Cartesian graph expanded every candidate day against every obstacle row,
   // causing quadratic neighbor searches and long main-thread freezes.
   if (bounds.width <= 0 || bounds.height <= 0) return []
-  const day = dependencyRoutingStep(bounds.dayWidth ?? 20, bounds.zoom)
+  const day = dependencyRoutingStep(bounds.dayWidth ?? 20)
   const row = 30
   const finishBelowBar = targetEndpoint === 'finish' && targetBar !== undefined
   const ffOrigin = finishBelowBar && sourceEndpoint === 'finish' && sourceBar !== undefined
@@ -658,11 +652,13 @@ function routeHasClearOrthogonalSegments(route: Point[], obstacles: Rect[], boun
 }
 
 function verifyCompactZoomDependencySpacing() {
-  const daily = dependencyRoutingStep(24, 'day')
-  const weekly = dependencyRoutingStep(0.4, 'week')
-  const monthly = dependencyRoutingStep(0.4, 'month')
-  const quarterly = dependencyRoutingStep(0.4, 'quarter')
-  const wideQuarter = dependencyRoutingStep(30, 'quarter')
+  const daily = dependencyRoutingStep(24)
+  // The calendar grid represents <1px per day at compact zooms, but every
+  // dependency still gets the same minimum routing distance as Day.
+  const weekly = dependencyRoutingStep(0.4)
+  const monthly = dependencyRoutingStep(0.4)
+  const quarterly = dependencyRoutingStep(0.4)
+  const wideQuarter = dependencyRoutingStep(30)
   const bounds = { width: 580, height: 300, dayWidth: 0.4, zoom: 'quarter' as const }
   const predecessor: BarObstacle = { cardId: 1, left: 215, right: 218, top: 165, bottom: 185 }
   const successor: BarObstacle = { cardId: 2, left: 260, right: 264, top: 105, bottom: 125 }
@@ -693,8 +689,8 @@ function verifyCompactZoomDependencySpacing() {
       && route.slice(0, -1).every((point, i) =>
         point.x === route[i + 1].x || point.y === route[i + 1].y)
 
-  return daily === 24 && weekly === 10 && monthly === 14
-    && quarterly === 18 && wideQuarter === 30
+  return daily === 24 && weekly === 24 && monthly === 24
+    && quarterly === 24 && wideQuarter === 30
     && endsAt(fs, targetStart.x - quarterly, targetStart.y)
     && endsAt(ss, targetStart.x - quarterly, targetStart.y)
     && endsAt(ff, successor.right, successor.bottom + 5)
@@ -1804,7 +1800,7 @@ export function GanttView({ board, cards, canEdit, onOpen, onChange }: GanttProp
       ]
       const points = routeExternalDependency(source, target, sourceEndpoint, targetEndpoint,
         sourceBar, targetBar,
-        dependencyRoutingStep(dependencyGeometry.dayWidth, dependencyGeometry.zoom),
+        dependencyRoutingStep(dependencyGeometry.dayWidth),
         reserved, sourceKey, true, occupiedRects, outgoing)
       if (!points.length) return
       routes.set(dependency.id, { points, targetBar })
