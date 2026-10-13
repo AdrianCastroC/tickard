@@ -244,6 +244,14 @@ function routeDependency(
         return
       }
 
+      if (
+        returnBelow
+        && currentKey === keyOf(sourceExit)
+        && (neighbor.x !== sourceExit.x || neighbor.y !== preferredReturnY)
+      ) {
+        return
+      }
+
       if (neighborKey === targetKey && !hasValidTargetEntry(current, neighbor)) {
         return
       }
