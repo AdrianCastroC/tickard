@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import type { Profile, Project } from '../../api'
 import { CategoriesDrawer } from '../administration'
@@ -38,6 +38,7 @@ export function BoardSurface({ state, filters, activeBoardId, project, profile, 
   const [showCategories, setShowCategories] = useState(false)
   const [showConfig, setShowConfig] = useState(false)
   const [viewModes, setViewModes] = useState<Record<number, BoardViewMode>>({})
+  const handledGanttFocus = useRef<number | null>(null)
   const canEdit = view?.role === 'responsable' || view?.role === 'editor'
   const canManage = view?.role === 'responsable'
   const clientView = view?.role === 'cliente'
@@ -56,6 +57,8 @@ export function BoardSurface({ state, filters, activeBoardId, project, profile, 
     // Cross-board navigation should land in the Gantt even if this board was
     // previously displayed as Kanban, a table or a summary.
     if (!ganttFocus || activeBoardId === null || ganttFocus.boardId !== activeBoardId || view?.board.id !== activeBoardId) return
+    if (handledGanttFocus.current === ganttFocus.requestId) return
+    handledGanttFocus.current = ganttFocus.requestId
     if (viewMode !== 'gantt') {
       setViewModes((current) => ({ ...current, [activeBoardId]: 'gantt' }))
       localStorage.setItem(`tickard:board-view:${activeBoardId}`, 'gantt')
