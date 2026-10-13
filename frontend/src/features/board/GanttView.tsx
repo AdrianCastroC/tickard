@@ -778,6 +778,10 @@ function verifySyntheticFsMinimalRoute() {
 
 if (import.meta.env.DEV) {
   console.assert(
+    verifySyntheticTimelineMargins(),
+    'Gantt should keep two calendar days beyond Cards, today, external refs, and route detours.',
+  )
+  console.assert(
     verifySyntheticExternalDependencyRoutes()
       && verifyExternalFsObstacleFallback()
       && verifyExternalFsOwnConnectorDoesNotBlock()
@@ -829,8 +833,12 @@ function fitTimelineRange(
   ]
   if (xs.length === 0) return base
 
-  const first = shift(currentStart, Math.floor(Math.min(...xs) / dayWidth) - 2)
-  const last = shift(currentStart, Math.ceil(Math.max(...xs) / dayWidth) + 1)
+  const { minimum, maximum } = xs.reduce((value, x) => ({
+    minimum: Math.min(value.minimum, x),
+    maximum: Math.max(value.maximum, x),
+  }), { minimum: Infinity, maximum: -Infinity })
+  const first = shift(currentStart, Math.floor(minimum / dayWidth) - 2)
+  const last = shift(currentStart, Math.ceil(maximum / dayWidth) + 1)
   return {
     start: first < base.start ? first : base.start,
     end: last > base.end ? last : base.end,
@@ -857,7 +865,7 @@ function routeWithExtendedBounds(
 ) {
   const overscan = Math.max(64 * geometry.dayWidth, 512)
   const move = (point: Point): Point => ({ x: point.x + overscan, y: point.y })
-  const moveRect = <T extends Rect>(rect: T): T => ({
+  const moveRect = <T extends Rect,>(rect: T): T => ({
     ...rect,
     left: rect.left + overscan,
     right: rect.right + overscan,
@@ -880,6 +888,30 @@ function routeWithExtendedBounds(
     sourceBar ? moveRect(sourceBar) : undefined,
   )
   return extended.map((point) => ({ x: point.x - overscan, y: point.y }))
+}
+
+function verifySyntheticTimelineMargins() {
+  const base = { start: '2026-08-29', end: '2026-09-12' }
+  const card: Rect = { left: 48, right: 312, top: 80, bottom: 100 }
+  const minimum = fitTimelineRange(base, base.start, 24, [card], [])
+  const externalLeft: Rect = { left: -190, right: 10, top: 80, bottom: 100 }
+  const externalRight: Rect = { left: 330, right: 530, top: 80, bottom: 100 }
+  const extended = fitTimelineRange(base, base.start, 24, [card, externalLeft, externalRight], [])
+  const detour = fitTimelineRange(base, base.start, 24, [card], [[
+    { x: -288, y: 100 }, { x: 48, y: 100 }, { x: 620, y: 100 },
+  ]])
+  const today = '2026-10-13'
+  const prior = timelineRange([{ start_date: '2026-10-20', due_date: '2026-10-30' } as Card], today)
+  const later = timelineRange([{ start_date: '2026-08-20', due_date: '2026-09-01' } as Card], today)
+  const empty = timelineRange([], today)
+  return minimum.start === base.start && minimum.end === base.end
+    && extended.start === shift(base.start, -10)
+    && extended.end === shift(base.start, 24)
+    && detour.start === shift(base.start, -14)
+    && detour.end === shift(base.start, 27)
+    && prior.start === '2026-10-11' && prior.end === '2026-11-01'
+    && later.start === '2026-08-18' && later.end === '2026-10-15'
+    && empty.start === '2026-10-11' && empty.end === '2026-10-15'
 }
 
 function buildDays(start: string, endInclusive: string): Day[] {
