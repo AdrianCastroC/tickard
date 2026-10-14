@@ -1046,16 +1046,22 @@ function monday(value: string) {
   return dateKey(date)
 }
 
+// Intl formatters are expensive to construct; one instance per locale/shape
+// avoids creating thousands of formatters for project Gantt rows and headers.
+const monthFormatter = new Intl.DateTimeFormat('es-ES', { month: 'long', year: 'numeric', timeZone: 'UTC' })
+const dayFormatter = new Intl.DateTimeFormat('es-ES', { day: 'numeric', timeZone: 'UTC' })
+const compactDateFormatter = new Intl.DateTimeFormat('es-ES', { day: 'numeric', month: 'short', timeZone: 'UTC' })
+
 function formatMonth(date: Date) {
-  return new Intl.DateTimeFormat('es-ES', { month: 'long', year: 'numeric', timeZone: 'UTC' }).format(date)
+  return monthFormatter.format(date)
 }
 
 function formatDay(date: Date) {
-  return new Intl.DateTimeFormat('es-ES', { day: 'numeric', timeZone: 'UTC' }).format(date)
+  return dayFormatter.format(date)
 }
 
 function compactDate(value?: string | null) {
-  return value ? new Intl.DateTimeFormat('es-ES', { day: 'numeric', month: 'short', timeZone: 'UTC' }).format(parseDay(value)).replace('.', '') : '—'
+  return value ? compactDateFormatter.format(parseDay(value)).replace('.', '') : '—'
 }
 
 function compareGanttCards(first: GanttCard, second: GanttCard) {
