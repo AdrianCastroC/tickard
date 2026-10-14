@@ -1420,14 +1420,14 @@ export function GanttView({ board, cards, canEdit, onOpen, onNavigateExternalCar
   const [toolbarMinWidth, setToolbarMinWidth] = useState(0)
   // In the global Gantt both panes scroll vertically. Restore horizontal
   // wheel panning from anywhere inside it (including the left Card list).
-  // A native non-passive handler is needed to prevent the default Ctrl+wheel
-  // browser zoom and Shift+wheel scroll when we consume the gesture.
+  // Intercept only Shift+wheel. Ctrl+wheel (including Ctrl+Shift+wheel)
+  // belongs to the browser's native zoom behavior.
   useEffect(() => {
     const gantt = ganttRootRef.current
     if (!projectBoards || !gantt) return
 
     const onWheel = (event: WheelEvent) => {
-      if (!event.shiftKey && !event.ctrlKey) return
+      if (event.ctrlKey || !event.shiftKey) return
       const timeline = timelineScrollRef.current
       if (!timeline || timeline.scrollWidth <= timeline.clientWidth) return
 
