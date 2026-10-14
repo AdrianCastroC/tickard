@@ -94,7 +94,9 @@ export function BoardSurface({ state, filters, activeBoardId, project, profile, 
     {activeBoardId && !view && <div className="empty-board"><p className="muted">Cargando el tablero…</p></div>}
     {view && <div className={`workspace${embedded ? ' board-embedded' : ''}`}>
       {viewMode === 'summary' && <BoardSummary board={view} projectName={project?.name} onConfigure={() => setShowConfig(true)} />}
-      {viewMode === 'list' && <ListView board={view} cards={filteredColumns} onOpen={(card) => setSelected({ card, mode: 'view' })} />}
+      {viewMode === 'list' && <div className="board-list-scroll" role="region" aria-label="Lista de tareas" tabIndex={0}>
+        <ListView board={view} cards={filteredColumns} onOpen={(card) => setSelected({ card, mode: 'view' })} />
+      </div>}
       {viewMode === 'table' && <TableView board={view} cards={filteredColumns} onOpen={(card) => setSelected({ card, mode: 'view' })} />}
       {viewMode === 'gantt' && <GanttView key={view.board.id} board={view}
         cards={ganttFocus?.boardId === view.board.id ? view.columns : filteredColumns}

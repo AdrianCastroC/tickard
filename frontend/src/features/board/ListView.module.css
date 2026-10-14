@@ -15,7 +15,16 @@
   justify-content: space-between;
   padding: 12px 14px;
   border-bottom: 1px solid var(--line);
+  background: color-mix(in srgb, var(--side) 80%, var(--canvas));
   font-weight: 700;
+}
+
+/* El encabezado usa el mismo tinte que la columna en Kanban. */
+.groupHeader.hasColor {
+  background: color-mix(in srgb, var(--column-stripe) 22%, var(--surface));
+}
+:global(:root[data-theme="dark"]) .groupHeader.hasColor {
+  background: color-mix(in srgb, var(--column-stripe) 28%, var(--surface));
 }
 
 .card {

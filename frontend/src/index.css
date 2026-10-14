@@ -2766,20 +2766,20 @@ h1, h2, h3, p { margin: 0; }
 .workspace.project-layout { gap: 18px; padding: 20px; }
 .workspace.project-layout > .workspace.board-embedded { padding: 0; }
 
-/* En Kanban se desplaza cada columna, no la pantalla ni las cabeceras. */
-.frame:has(.board-embedded .board) {
+/* Kanban y Lista desplazan su contenido sin mover la cabecera de la página. */
+.frame:has(.board-embedded :is(.board, .board-list-scroll)) {
   height: 100dvh;
   min-height: 0;
 }
-.main:has(.board-embedded .board) {
+.main:has(.board-embedded :is(.board, .board-list-scroll)) {
   min-height: 0;
   overflow: hidden;
 }
-.workspace.project-layout:has(> .workspace.board-embedded .board) {
+.workspace.project-layout:has(> .workspace.board-embedded :is(.board, .board-list-scroll)) {
   min-height: 0;
   overflow: hidden;
 }
-.workspace.board-embedded:has(> .board) {
+.workspace.board-embedded:has(> :is(.board, .board-list-scroll)) {
   min-height: 0;
   overflow: hidden;
 }
@@ -2787,6 +2787,21 @@ h1, h2, h3, p { margin: 0; }
   min-height: 0;
   overflow-x: auto;
   overflow-y: hidden;
+}
+/* Solo la lista se desplaza verticalmente. Mantiene fijos la cabecera,
+   la navegación y los filtros del tablero. */
+.workspace.board-embedded > .board-list-scroll {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior-y: contain;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.workspace.board-embedded > .board-list-scroll::-webkit-scrollbar {
+  display: none;
 }
 .board-scroll,
 .board-pinned {
