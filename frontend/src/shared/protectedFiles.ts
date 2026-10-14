@@ -42,6 +42,30 @@ export function useProtectedPreview(url: string | null): { src: string | null; e
   return { src, error }
 }
 
+/** Render old text-based attachments as escaped React text, never as HTML. */
+export function useProtectedTextPreview(url: string | null): { text: string | null; error: string | null } {
+  const [text, setText] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    const abort = new AbortController()
+    setText(null)
+    setError(null)
+    if (url) {
+      void fetchProtectedFile(url, abort.signal).then(async (blob) => {
+        if (blob.size > 1024 * 1024) throw new Error('El archivo es demasiado grande para una vista previa de texto.')
+        const content = await blob.text()
+        if (!abort.signal.aborted) setText(content)
+      }).catch((cause: unknown) => {
+        if (!abort.signal.aborted) setError(cause instanceof Error ? cause.message : 'No se pudo cargar el texto.')
+      })
+    }
+    return () => { abort.abort() }
+  }, [url])
+
+  return { text, error }
+}
+
 export async function downloadProtectedFile(url: string, filename: string): Promise<void> {
   const file = await fetchProtectedFile(url)
   const objectUrl = URL.createObjectURL(file)

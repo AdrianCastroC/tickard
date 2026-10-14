@@ -23,6 +23,11 @@
 .tabs span { font-size:11px; padding:1px 5px; border-radius:20px; background:var(--canvas); color:var(--muted) }
 .tabs button.tabActive { background:var(--accent); border-color:var(--accent); color:var(--accent-ink) }
 .tabs button.tabActive span { background:rgb(255 255 255 / 20%); color:inherit }
+.bulkActions { display:flex; flex:0 0 auto; align-items:center; flex-wrap:wrap; gap:12px; min-width:0; padding:8px 12px; border:1px solid var(--line); border-radius:9px; background:var(--canvas); font-size:12px }
+.bulkActions strong { font-size:12px }
+.bulkActions button { padding:5px 9px; border:1px solid var(--line); border-radius:7px; background:var(--surface); color:var(--ink); cursor:pointer; font-size:12px }
+.bulkActions button:disabled { opacity:.6; cursor:wait }
+.bulkActions button.bulkDelete { border-color:color-mix(in srgb,#b94b4b 35%,var(--line)); color:#a63131 }
 .body { display:grid; grid-template-columns:minmax(0, 1fr); gap:14px; flex:1 1 auto; min-width:0; min-height:0; overflow:hidden }
 .body.withPreview { grid-template-columns:minmax(0, 1fr) minmax(285px, 32%) }
 .fileSection { display:flex; flex-direction:column; flex:1 1 auto; min-width:0; min-height:0; overflow:hidden }
@@ -30,7 +35,9 @@
 .table { border-collapse:collapse; width:100%; font-size:12px; text-align:left }
 .table thead { background:var(--canvas) }
 .table th { position:sticky; top:0; z-index:1; padding:12px 10px; color:var(--muted); background:var(--canvas); font-weight:650; white-space:nowrap; border-bottom:1px solid var(--line) }
-.table th:first-child { padding-left:14px }
+.checkboxCell { width:38px; min-width:38px; max-width:38px; text-align:center; padding-left:10px !important; padding-right:6px !important }
+.checkboxCell input { width:16px; height:16px; vertical-align:middle; accent-color:var(--accent); cursor:pointer }
+.table th:nth-child(2) { padding-left:12px }
 .table td { padding:9px 10px; color:var(--muted); border-bottom:1px solid var(--line); vertical-align:middle; white-space:nowrap }
 .table tr.selectedRow { background:color-mix(in srgb,var(--accent) 10%,var(--surface)) }
 .table tbody tr:hover { background:color-mix(in srgb,var(--accent) 6%,var(--surface)) }
@@ -49,8 +56,6 @@
 .originPill.cardOrigin { background:#eee9ff; color:#6d54b3 }
 .dateCell { display:flex; flex-direction:column; gap:4px }
 .dateCell small { font-size:10px; color:var(--muted) }
-.rowAction { border:0; background:transparent; padding:8px; color:var(--muted); cursor:pointer; font-size:18px }
-.rowAction:hover { color:var(--accent) }
 .details { display:flex; flex-direction:column; gap:13px; min-width:0; min-height:0; height:100%; box-sizing:border-box; overflow-y:auto; overscroll-behavior:contain; scrollbar-width:thin; border:1px solid var(--line); border-radius:11px; padding:14px; background:var(--surface); align-self:stretch }
 .detailHeading { display:flex; align-items:center; gap:11px; min-width:0 }
 .detailHeading > div { flex:1; display:flex; flex-direction:column; min-width:0; gap:4px }
@@ -60,6 +65,7 @@
 .preview { display:grid; place-items:center; height:315px; background:var(--canvas); border-radius:9px; overflow:hidden; border:1px solid var(--line) }
 .previewImage { display:block; max-height:100%; max-width:100%; object-fit:contain }
 .previewFrame { width:100%; height:100%; border:0; background:white }
+.previewText { box-sizing:border-box; align-self:stretch; justify-self:stretch; height:100%; overflow:auto; margin:0; padding:14px; background:var(--surface); color:var(--ink); font-family:ui-monospace,SFMono-Regular,Consolas,monospace; font-size:12px; line-height:1.55; text-align:left; white-space:pre-wrap; overflow-wrap:anywhere }
 .previewMessage { margin:0; color:var(--muted); padding:15px; text-align:center; font-size:12px }
 .noPreview { display:flex; flex-direction:column; gap:15px; align-items:center; padding:20px; text-align:center; color:var(--muted); font-size:12px }
 .noPreview .fileGlyph { transform:scale(2); margin:20px }
@@ -80,6 +86,9 @@
 .storageSize { display:flex; flex-direction:column; gap:4px; min-width:0; text-align:right; white-space:nowrap }
 .storagePercent { color:var(--muted); font-size:12px; font-weight:650 }
 .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(145px,1fr)); gap:14px; min-width:0; align-content:start }
+ .tileContainer { position:relative; min-width:0 }
+.tileContainer .tile { width:100%; height:100% }
+.tileCheckbox { position:absolute; top:14px; left:14px; z-index:1; width:17px; height:17px; accent-color:var(--accent); cursor:pointer; background:var(--surface); }
 .tile { text-align:left; display:flex; flex-direction:column; gap:8px; min-width:0; border:1px solid var(--line); border-radius:10px; padding:10px; background:var(--surface); cursor:pointer; color:var(--ink) }
 .tile.selected { border-color:var(--accent); background:color-mix(in srgb,var(--accent) 8%,var(--surface)) }
 .tileImage { height:115px; background:var(--canvas); display:grid; place-items:center; overflow:hidden; border-radius:7px }

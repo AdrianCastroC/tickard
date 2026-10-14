@@ -2,7 +2,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import { api, uploadFile, type Profile, type Project } from '../../api'
 import { Avatar } from '../../shared/ui'
 import { NavIcon } from '../../shared/icons'
-import { downloadProtectedFile, openProtectedFile, useProtectedPreview } from '../../shared/protectedFiles'
+import { downloadProtectedFile, openProtectedFile, useProtectedPreview, useProtectedTextPreview } from '../../shared/protectedFiles'
 import styles from './ProjectFiles.module.css'
 
 type ProjectFile = {
@@ -39,9 +39,10 @@ function sizeLabel(bytes: number) {
   return `${(bytes / 1024 ** 2).toFixed(1)} MB`
 }
 function fileKind(file: ProjectFile): Kind {
-  if (['image/jpeg', 'image/png', 'image/webp'].includes(file.mime_type ?? '')) return 'image'
-  if (file.mime_type === 'application/pdf') return 'pdf'
-  if (file.name.toLowerCase().endsWith('.txt')) return 'text'
+  if (['image/jpeg', 'image/png', 'image/webp', 'image/svg+xml'].includes(file.mime_type ?? '')
+    || /\.svg$/i.test(file.name)) return 'image'
+  if (file.mime_type === 'application/pdf' || /\.pdf$/i.test(file.name)) return 'pdf'
+  if (/\.(txt|md|markdown|json|csv|log|xml|yaml|yml)$/i.test(file.name)) return 'text'
   return 'document'
 }
 function fileType(file: ProjectFile) {
@@ -51,6 +52,12 @@ function fileType(file: ProjectFile) {
 function fileDate(iso: string | null) {
   return iso ? new Date(iso).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'
 }
+function canOpenInBrowser(file: ProjectFile) {
+  return file.mime_type === 'application/pdf'
+    || ['image/jpeg', 'image/png', 'image/webp', 'text/plain'].includes(file.mime_type ?? '')
+      && !/\.(md|markdown|json|csv|log|xml|yaml|yml)$/i.test(file.name)
+}
+
 function FileGlyph({ file }: { file: ProjectFile }) {
   const kind = fileKind(file)
   return <span className={`${styles.fileGlyph} ${styles[kind]}`} aria-hidden="true">
@@ -63,10 +70,14 @@ function FileGlyph({ file }: { file: ProjectFile }) {
 }
 function FilePreview({ file }: { file: ProjectFile }) {
   const kind = fileKind(file)
-  const eligible = kind === 'pdf' || kind === 'image' || kind === 'text'
-  const { src, error } = useProtectedPreview(eligible ? file.url : null)
-  if (!eligible) return <div className={styles.noPreview}><FileGlyph file={file} /><p>Vista previa no disponible para este tipo de archivo.</p></div>
-  if (error) return <p className={styles.previewMessage} role="alert">{error}</p>
+  const media = kind === 'pdf' || kind === 'image'
+  const { src, error: mediaError } = useProtectedPreview(media ? file.url : null)
+  const { text, error: textError } = useProtectedTextPreview(kind === 'text' ? file.url : null)
+  if (kind === 'document') return <div className={styles.noPreview}><FileGlyph file={file} /><p>Este formato no tiene vista previa integrada. Puedes descargarlo.</p></div>
+  if (mediaError || textError) return <p className={styles.previewMessage} role="alert">{mediaError || textError}</p>
+  if (kind === 'text') return text === null
+    ? <p className={styles.previewMessage}>Preparando vista previa…</p>
+    : <pre className={styles.previewText}>{text}</pre>
   if (!src) return <p className={styles.previewMessage}>Preparando vista previa…</p>
   if (kind === 'image') return <img className={styles.previewImage} src={src} alt={file.name} />
   return <iframe className={styles.previewFrame} src={src} title={`Vista previa de ${file.name}`} />
@@ -91,6 +102,7 @@ export function ProjectFiles({ project, profile }: { project: Project; profile: 
   const [boardId, setBoardId] = useState<number | null>(null)
   const [filtersOpen, setFiltersOpen] = useState(false)
   const [grid, setGrid] = useState(false)
+  const [checkedKeys, setCheckedKeys] = useState<string[]>([])
   const viewportRef = useRef<HTMLElement>(null)
   const filterRef = useRef<HTMLDivElement>(null)
   const uploadRef = useRef<HTMLInputElement>(null)
@@ -99,6 +111,7 @@ export function ProjectFiles({ project, profile }: { project: Project; profile: 
     const result = await api<FilesResponse>(`/projects/${project.id}/files`)
     setData(result)
     setSelectedKey((old) => old && result.files.some((file) => file.key === old) ? old : result.files[0]?.key ?? null)
+    setCheckedKeys((old) => old.filter((key) => result.files.some((file) => file.key === key)))
   }, [project.id])
 
   useEffect(() => {
@@ -106,6 +119,7 @@ export function ProjectFiles({ project, profile }: { project: Project; profile: 
     setData(null)
     setError(null)
     setSelectedKey(null)
+    setCheckedKeys([])
     void api<FilesResponse>(`/projects/${project.id}/files`).then((result) => {
       if (!active) return
       setData(result)
@@ -161,6 +175,18 @@ export function ProjectFiles({ project, profile }: { project: Project; profile: 
         .some((part) => part.toLocaleLowerCase('es').includes(term)))
     )
   }, [files, search, origin, kind, boardId])
+  const allVisibleChecked = filtered.length > 0 && filtered.every((file) => checkedKeys.includes(file.key))
+  const checkedFiles = files.filter((file) => checkedKeys.includes(file.key))
+  const checkedCount = checkedFiles.length
+  function toggleChecked(key: string) {
+    setCheckedKeys((current) => current.includes(key) ? current.filter((item) => item !== key) : [...current, key])
+  }
+  function toggleAllVisible() {
+    const visible = new Set(filtered.map((file) => file.key))
+    setCheckedKeys((current) => allVisibleChecked
+      ? current.filter((key) => !visible.has(key))
+      : [...new Set([...current, ...visible])])
+  }
   const selected = files.find((file) => file.key === selectedKey) ?? null
   const canRemove = (file: ProjectFile) =>
     !!data?.can_upload && (data.can_manage || file.user_id === profile.user.id)
@@ -200,6 +226,25 @@ export function ProjectFiles({ project, profile }: { project: Project; profile: 
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'No se pudo eliminar el archivo.')
     } finally {
+      setBusy(false)
+    }
+  }
+
+  async function removeChecked() {
+    const removable = checkedFiles.filter(canRemove)
+    if (!removable.length || !window.confirm(`¿Eliminar ${removable.length} archivo(s) seleccionado(s)? Los adjuntos también desaparecerán de sus Cards originales.`)) return
+    setBusy(true)
+    setError(null)
+    let removed = 0
+    try {
+      for (const file of removable) {
+        await api(file.origin === 'general' ? `/project-files/${file.id}` : `/attachments/${file.id}`, { method: 'DELETE' })
+        removed += 1
+      }
+    } catch (cause) {
+      setError(`Se eliminaron ${removed} de ${removable.length} archivos. ${cause instanceof Error ? cause.message : 'No se pudieron eliminar los restantes.'}`)
+    } finally {
+      await refresh().catch(() => setError('No se pudo actualizar la lista de archivos.'))
       setBusy(false)
     }
   }
@@ -266,21 +311,32 @@ export function ProjectFiles({ project, profile }: { project: Project; profile: 
     </div>
 
     {error && <div className={styles.error} role="alert">{error}<button type="button" onClick={() => setError(null)} aria-label="Cerrar aviso">×</button></div>}
+    {checkedCount > 0 && <div className={styles.bulkActions} role="region" aria-label="Acciones sobre archivos seleccionados">
+      <strong>{checkedCount} seleccionado{checkedCount === 1 ? '' : 's'}</strong>
+      <button type="button" onClick={() => setCheckedKeys([])} disabled={busy}>Deseleccionar</button>
+      {checkedFiles.some(canRemove) && <button type="button" className={styles.bulkDelete} disabled={busy} onClick={() => void removeChecked()}>
+        {busy ? 'Eliminando…' : `Eliminar permitidos (${checkedFiles.filter(canRemove).length})`}
+      </button>}
+    </div>}
     <div className={`${styles.body} ${selected ? styles.withPreview : ''}`}>
       <div className={styles.fileSection}>
         {filtered.length === 0 ? <div className={styles.empty}>No hay archivos que coincidan con los filtros.</div>
           : grid ? <div className={styles.gridScroller}><div className={styles.grid}>{filtered.map((file) =>
-              <FileTile key={file.key} file={file} selected={selectedKey === file.key} onSelect={() => setSelectedKey(file.key)} />)}</div></div>
+              <div key={file.key} className={styles.tileContainer}>
+                <input className={styles.tileCheckbox} type="checkbox" checked={checkedKeys.includes(file.key)}
+                  aria-label={`Seleccionar ${file.name}`} onChange={() => toggleChecked(file.key)} />
+                <FileTile file={file} selected={selectedKey === file.key} onSelect={() => setSelectedKey(file.key)} />
+              </div>)}</div></div>
             : <div className={styles.listScroller}><table className={styles.table}>
-              <thead><tr><th>Nombre</th><th>Origen</th><th>Tipo</th><th>Tamaño</th><th>Modificado</th><th aria-label="Acciones" /></tr></thead>
+              <thead><tr><th className={styles.checkboxCell}><input type="checkbox" checked={allVisibleChecked} disabled={filtered.length === 0} aria-label="Seleccionar todos los archivos visibles" onChange={toggleAllVisible} /></th><th>Nombre</th><th>Origen</th><th>Tipo</th><th>Tamaño</th><th>Modificado</th></tr></thead>
               <tbody>{filtered.map((file) => <tr key={file.key} className={selectedKey === file.key ? styles.selectedRow : ''}>
+                <td className={styles.checkboxCell}><input type="checkbox" checked={checkedKeys.includes(file.key)} aria-label={`Seleccionar ${file.name}`} onChange={() => toggleChecked(file.key)} /></td>
                 <td><button type="button" className={styles.fileNameButton} onClick={() => setSelectedKey(file.key)}>
                   <FileGlyph file={file} /><span><strong>{file.name}</strong><small>{file.card_title ?? file.description ?? ''}</small></span>
                 </button></td>
                 <td><span className={`${styles.originPill} ${file.origin === 'card' ? styles.cardOrigin : ''}`}>{file.origin === 'card' ? 'Card' : 'General'}</span></td>
                 <td>{fileType(file)}</td><td>{sizeLabel(file.size)}</td>
                 <td><div className={styles.dateCell}><span>{fileDate(file.created_at)}</span>{file.author && <small>{file.author}</small>}</div></td>
-                <td><button className={styles.rowAction} title="Descargar" aria-label={`Descargar ${file.name}`} type="button" onClick={() => void download(file)}>↓</button></td>
               </tr>)}</tbody>
             </table></div>}
       </div>
@@ -293,7 +349,7 @@ export function ProjectFiles({ project, profile }: { project: Project; profile: 
         </div>
         <div className={styles.preview}><FilePreview key={selected.key} file={selected} /></div>
         <div className={styles.previewActions}>
-          <button className={styles.openButton} type="button" onClick={() => void open(selected)}>Abrir en nueva pestaña</button>
+          {canOpenInBrowser(selected) && <button className={styles.openButton} type="button" onClick={() => void open(selected)}>Abrir en nueva pestaña</button>}
           <button className={styles.downloadButton} type="button" onClick={() => void download(selected)}>↓ Descargar</button>
         </div>
         <dl className={styles.metadata}>
