@@ -94,9 +94,9 @@
   top: 0;
   bottom: 0;
   left: var(--left-width);
-  width: 2px;
-  transform: translateX(-50%);
-  background: color-mix(in srgb, var(--accent) 35%, var(--line));
+  width: 1px;
+  transform: translateX(-1px);
+  background: var(--line);
   pointer-events: none;
   z-index: 19;
 }
@@ -316,6 +316,40 @@
   min-width: 0;
   overflow-x: auto;
   overflow-y: hidden;
+}
+
+/* Style the native horizontal scrollbar without arrow buttons. Chromium
+   ignores ::-webkit-scrollbar when standardized width/color are non-auto,
+   so restore auto only in engines supporting this native scrollbar API. */
+@supports selector(::-webkit-scrollbar) {
+  .timelineViewport {
+    scrollbar-width: auto;
+    scrollbar-color: auto;
+  }
+  .timelineViewport::-webkit-scrollbar {
+    height: 8px;
+    width: 8px;
+  }
+  .timelineViewport::-webkit-scrollbar-button {
+    display: none !important;
+    width: 0 !important;
+    height: 0 !important;
+    -webkit-appearance: none;
+  }
+  .timelineViewport::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .timelineViewport::-webkit-scrollbar-thumb {
+    border: 2px solid transparent;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--accent) 35%, var(--line));
+    background-clip: padding-box;
+  }
+  .timelineViewport::-webkit-scrollbar-thumb:hover {
+    background: color-mix(in srgb, var(--accent) 55%, var(--line));
+    border: 2px solid transparent;
+    background-clip: padding-box;
+  }
 }
 
 .timelineGrid {
