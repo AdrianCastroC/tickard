@@ -749,7 +749,8 @@
 }
 
 .todayLine {
-  z-index: 5;
+  /* Above background shading, below Cards and dependency lines. */
+  z-index: 2;
   width: 2px;
   justify-self: center;
   background: repeating-linear-gradient(
