@@ -170,6 +170,21 @@ export type BoardPayload = {
   columns: Column[]
 }
 
+export type CalendarEvent = {
+  id: number
+  project_id: number
+  created_by: number | null
+  kind: 'meeting' | 'appointment' | 'other'
+  title: string
+  description: string | null
+  location: string | null
+  start_date: string
+  end_date: string
+  all_day: boolean
+  start_time: string | null
+  end_time: string | null
+}
+
 export type Project = {
   id: number
   name: string

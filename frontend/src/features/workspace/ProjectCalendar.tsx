@@ -6,7 +6,18 @@ import { CardDrawer } from '../cards/CardDetail'
 import styles from './ProjectCalendar.module.css'
 
 type State = Exclude<WorkflowState, 'backlog'>
-type Item = { card: Card; boardId: number; boardName: string; state: State; color: string; start: string; end: string }
+type EventKind = 'meeting' | 'appointment' | 'other'
+type CalendarEvent = {
+  id: number; project_id: number; created_by: number | null; kind: EventKind
+  title: string; description: string | null; location: string | null
+  start_date: string; end_date: string; all_day: boolean
+  start_time: string | null; end_time: string | null
+}
+type Item = {
+  key: string; kind: 'card' | 'event'; card?: Card; event?: CalendarEvent
+  boardId?: number; boardName: string; state?: State; color: string
+  start: string; end: string; title: string; badge: string
+}
 type Segment = { item: Item; first: number; width: number; lane: number; before: boolean; after: boolean }
 type Week = { days: string[]; segments: Segment[]; hidden: number[] }
 type Snapshot = { projectId: number; boardIds: string; boards: BoardPayload[] }
@@ -66,22 +77,86 @@ function prettyDay(day: string): string {
 function colorStyle(color: string): CSSProperties {
   return { '--calendar-color': color } as CSSProperties
 }
-function cardsFromBoards(boards: BoardPayload[]): Item[] {
-  return boards.flatMap((board) => board.columns.flatMap((column) => {
-    if (column.workflow_state === 'backlog') return []
-    const state = column.workflow_state
-    const fallback = STATES.find((entry) => entry.value === state)?.fallback ?? '#147a5f'
-    return column.cards.flatMap((card) => {
-      if (!validDate(card.start_date) || !validDate(card.due_date) || card.start_date > card.due_date) return []
-      return [{
-        card, boardId: board.board.id, boardName: board.board.name,
-        state, color: card.color || column.color || fallback,
-        start: card.start_date, end: card.due_date,
-      }]
-    })
-  })).sort((a, b) => a.start.localeCompare(b.start) || b.end.localeCompare(a.end)
-    || a.boardName.localeCompare(b.boardName) || a.card.title.localeCompare(b.card.title) || a.card.id - b.card.id)
+function cardsFromBoards(boards: BoardPayload[], today: string): Item[] {
+  const result: Item[] = []
+  for (const board of boards) {
+    for (const column of board.columns) {
+      if (column.workflow_state === 'backlog') continue
+      const state = column.workflow_state
+      const fallback = STATES.find((entry) => entry.value === state)?.fallback ?? '#147a5f'
+      for (const card of column.cards) {
+        if (!validDate(card.start_date) || !validDate(card.due_date) || card.start_date > card.due_date) continue
+        const baseColor = card.color || column.color || fallback
+        const add = (day: string, badge: string, color = baseColor) => {
+          result.push({
+            key: 'card:' + card.id + ':' + badge, kind: 'card', card,
+            boardId: board.board.id, boardName: board.board.name,
+            state, color, start: day, end: day, title: card.title, badge,
+          })
+        }
+        const finished = state === 'done'
+        const completedDay = card.completed_at ? localDateTimeDay(card.completed_at) : null
+        add(card.start_date, 'Inicio')
+        if (card.due_date !== card.start_date) {
+          add(card.due_date, 'Vencimiento')
+        }
+        if (finished) {
+          if (completedDay && validDate(completedDay)) {
+            // A finished Card no longer follows today's date.
+            // The completion marker reflects the real completion timestamp.
+            add(completedDay, 'Completada', '#38A37A')
+          }
+        } else if (today >= card.start_date) {
+          const overdue = today > card.due_date
+          if (today !== card.start_date && today !== card.due_date) {
+            add(today, overdue ? 'Atrasada' : 'En curso', overdue ? '#c4513b' : baseColor)
+          }
+          if (today === card.due_date) {
+            const last = result[result.length - 1]
+            if (last?.card?.id === card.id && last.badge === 'Vencimiento') last.badge = 'Vence hoy'
+          }
+          if (today === card.start_date && today === card.due_date) {
+            const last = result[result.length - 1]
+            if (last?.card?.id === card.id) last.badge = 'Inicio y vencimiento'
+          }
+        }
+      }
+    }
+  }
+  // A Card has at most one occurrence on each day, with the most useful signal.
+  const unique = new Map<string, Item>()
+  for (const item of result) {
+    const id = item.card!.id + ':' + item.start
+    const existing = unique.get(id)
+    const order = (entry: Item) => ({
+      'Atrasada': 6, 'Completada': 5, 'Vence hoy': 4,
+      'Inicio y vencimiento': 4, 'Inicio': 3, 'Vencimiento': 2, 'En curso': 1,
+    }[entry.badge] ?? 0)
+    if (!existing || order(item) > order(existing)) unique.set(id, item)
+  }
+  return [...unique.values()].sort((a, b) => a.start.localeCompare(b.start) || a.title.localeCompare(b.title))
 }
+
+function localDateTimeDay(value: string): string | null {
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return null
+  return [date.getFullYear(), String(date.getMonth() + 1).padStart(2, '0'), String(date.getDate()).padStart(2, '0')].join('-')
+}
+
+function eventsFromApi(events: CalendarEvent[]): Item[] {
+  return events.map((event) => ({
+    key: 'event:' + event.id, kind: 'event' as const, event,
+    boardName: '', start: event.start_date, end: event.end_date,
+    title: event.title,
+    badge: event.kind === 'meeting' ? 'Reunión' : event.kind === 'appointment' ? 'Cita' : 'Evento',
+    color: event.kind === 'meeting' ? '#147a5f' : event.kind === 'appointment' ? '#437f93' : '#7d7292',
+  }))
+}
+function sortEntries(a: Item, b: Item): number {
+  return a.start.localeCompare(b.start) || (a.kind === 'event' ? -1 : 1) - (b.kind === 'event' ? -1 : 1)
+    || a.title.localeCompare(b.title)
+}
+
 function makeWeek(days: string[], items: Item[]): Week {
   const lanes: { start: string; end: string }[][] = []
   const segments: Segment[] = []
@@ -125,6 +200,11 @@ export function ProjectCalendar({ project, profile }: { project: Project; profil
   const [detailRetry, setDetailRetry] = useState(0)
   const [editMode, setEditMode] = useState<'view' | 'edit'>('view')
   const [pendingMove, setPendingMove] = useState<PendingMove | null>(null)
+  const [events, setEvents] = useState<CalendarEvent[]>([])
+  const [eventError, setEventError] = useState<string | null>(null)
+  const [eventReload, setEventReload] = useState(0)
+  const [eventModal, setEventModal] = useState<CalendarEvent | 'new' | null>(null)
+  const [showEvents, setShowEvents] = useState(true)
 
   const load = useCallback(async () => {
     const ids = boardIds.split(',').filter(Boolean).map(Number)
@@ -150,10 +230,26 @@ export function ProjectCalendar({ project, profile }: { project: Project; profil
   }, [load, project.id, boardIds, reloadKey])
 
   const boards = snapshot?.projectId === project.id && snapshot.boardIds === boardIds ? snapshot.boards : null
-  const allCards = useMemo(() => cardsFromBoards(boards ?? []), [boards])
-  const items = useMemo(() => allCards.filter((item) =>
-    !hiddenBoards.includes(item.boardId) && !hiddenStates.includes(item.state)), [allCards, hiddenBoards, hiddenStates])
+  const today = localToday()
   const range = useMemo(() => monthDays(month), [month])
+  const calendarFirst = range.weeks[0][0]
+  const calendarLast = range.weeks[range.weeks.length - 1][6]
+
+  useEffect(() => {
+    if (project.role === 'cliente') { setEvents([]); return }
+    let alive = true
+    setEventError(null)
+    void api<CalendarEvent[]>('/projects/' + project.id + '/calendar-events?start_date=' + calendarFirst + '&end_date=' + calendarLast)
+      .then((loaded) => { if (alive) setEvents(loaded) })
+      .catch((cause: unknown) => { if (alive) setEventError(cause instanceof Error ? cause.message : 'No se pudieron cargar los eventos.') })
+    return () => { alive = false }
+  }, [project.id, project.role, calendarFirst, calendarLast, eventReload])
+
+  const allCards = useMemo(() => cardsFromBoards(boards ?? [], today), [boards, today])
+  const items = useMemo(() => [
+    ...allCards.filter((item) => !hiddenBoards.includes(item.boardId!) && !hiddenStates.includes(item.state!)),
+    ...(showEvents ? eventsFromApi(events) : []),
+  ].sort(sortEntries), [allCards, hiddenBoards, hiddenStates, events, showEvents])
   const weeks = useMemo(() => range.weeks.map((days) => makeWeek(days, items)), [range, items])
   const monthItems = useMemo(() => items.filter((item) => item.start <= range.last && item.end >= range.first), [items, range])
   const dayItems = useMemo(() => selectedDay ? items.filter((item) => item.start <= selectedDay && item.end >= selectedDay) : [], [items, selectedDay])
@@ -189,6 +285,7 @@ export function ProjectCalendar({ project, profile }: { project: Project; profil
   }, [load, project.id, boardIds, selected])
 
   function openCard(item: Item) {
+    if (!item.card || item.boardId == null) return
     setEditMode('view')
     setSelected({ cardId: item.card.id, boardId: item.boardId })
   }
@@ -206,10 +303,9 @@ export function ProjectCalendar({ project, profile }: { project: Project; profil
     }
   }
 
-  const today = localToday()
   if (loading && !boards) return <section className="project-panel" role="status">Cargando calendario del proyecto…</section>
   if (error && !boards) return <section className="project-panel" role="alert"><p>No se pudo cargar el calendario: {error}</p><button className="ghost" type="button" onClick={() => setReloadKey((n) => n + 1)}>Reintentar</button></section>
-  if (!boards?.length) return <section className="project-panel">Este proyecto todavía no tiene tableros.</section>
+
 
   return <section className={styles.root} aria-label={'Calendario del proyecto ' + project.name}>
     <div className={styles.toolbar}>
@@ -225,9 +321,11 @@ export function ProjectCalendar({ project, profile }: { project: Project; profil
           <button type="button" className={mode === 'agenda' ? styles.active : undefined} aria-pressed={mode === 'agenda'} onClick={() => setMode('agenda')}>Agenda</button>
         </div>
         <button className={styles.filterButton} type="button" aria-expanded={filtersOpen} onClick={() => setFiltersOpen((open) => !open)}>Filtros{hiddenBoards.length + hiddenStates.length ? ' (' + (hiddenBoards.length + hiddenStates.length) + ')' : ''}</button>
+        {(project.role === 'responsable' || project.role === 'editor') && <button className="primary" type="button" onClick={() => setEventModal('new')}>+ Nuevo evento</button>}
       </div>
     </div>
 
+    {eventError && <div className={styles.inlineError} role="alert">No se pudieron cargar los eventos: {eventError}. <button type="button" onClick={() => setEventReload((n) => n + 1)}>Reintentar</button></div>}
     {error && <div className={styles.inlineError} role="alert">No se pudieron actualizar las Cards: {error}. <button type="button" onClick={() => setReloadKey((n) => n + 1)}>Reintentar</button></div>}
     {filtersOpen && <div className={styles.filters}>
       <div className={styles.filterGroup}><strong>Tableros</strong><div className={styles.filterOptions}>
@@ -236,7 +334,8 @@ export function ProjectCalendar({ project, profile }: { project: Project; profil
       <div className={styles.filterGroup}><strong>Estados</strong><div className={styles.filterOptions}>
         {STATES.map((state) => <label key={state.value}><input type="checkbox" checked={!hiddenStates.includes(state.value)} onChange={() => setHiddenStates((current) => current.includes(state.value) ? current.filter((value) => value !== state.value) : [...current, state.value])} /><i className={styles.statusDot} style={{ background: state.fallback }} />{state.label}</label>)}
       </div></div>
-      <button className="ghost" type="button" onClick={() => { setHiddenBoards([]); setHiddenStates([]) }}>Mostrar todos</button>
+      {project.role !== 'cliente' && <div className={styles.filterGroup}><strong>Eventos</strong><label className={styles.eventFilter}><input type="checkbox" checked={showEvents} onChange={() => setShowEvents((value) => !value)} /> Mostrar reuniones, citas y eventos</label></div>}
+      <button className="ghost" type="button" onClick={() => { setHiddenBoards([]); setHiddenStates([]); setShowEvents(true) }}>Mostrar todos</button>
     </div>}
 
     {mode === 'month' ? <div className={styles.calendar}>
@@ -247,7 +346,7 @@ export function ProjectCalendar({ project, profile }: { project: Project; profil
           {week.hidden[index] > 0 && <button type="button" className={styles.moreButton} onClick={() => setSelectedDay(day)}>+{week.hidden[index]} más</button>}
         </div>)}</div>
         <div className={styles.segments}>{week.segments.map((part) => <button
-          key={part.item.card.id + '-' + week.days[0]}
+          key={part.item.key + '-' + week.days[0]}
           type="button"
           className={[styles.segment, part.before ? styles.continuesBefore : '', part.after ? styles.continuesAfter : ''].filter(Boolean).join(' ')}
           style={Object.assign(colorStyle(part.item.color), {
@@ -255,29 +354,34 @@ export function ProjectCalendar({ project, profile }: { project: Project; profil
             width: String(part.width / 7 * 100) + '%',
             top: String(34 + part.lane * 29) + 'px',
           })}
-          title={part.item.card.title + ' · ' + part.item.boardName + ' · ' + part.item.start + ' — ' + part.item.end}
-          onClick={() => openCard(part.item)}>
-          <span className={styles.segmentTitle}>{part.item.card.title}</span>
-          {part.width >= 2 && <span className={styles.segmentBoard}>{part.item.boardName}</span>}
+          title={part.item.badge + ' · ' + part.item.title + ' · ' + part.item.start + (part.item.start === part.item.end ? '' : ' — ' + part.item.end)}
+          onClick={() => part.item.kind === 'event' ? setEventModal(part.item.event!) : openCard(part.item)}>
+          <span className={styles.segmentTitle}>{part.item.badge} · {part.item.title}</span>
+          {part.width >= 2 && part.item.boardName && <span className={styles.segmentBoard}>{part.item.boardName}</span>}
         </button>)}</div>
       </div>)}
     </div> : <div className={styles.agenda}>
-      {monthItems.length === 0 ? <p className={styles.empty}>No hay Cards programadas en este mes con los filtros actuales.</p> :
-        monthItems.map((item) => <button key={item.card.id} type="button" className={styles.agendaItem} style={colorStyle(item.color)} onClick={() => openCard(item)}>
+      {monthItems.length === 0 ? <p className={styles.empty}>No hay tareas ni eventos programados en este mes con los filtros actuales.</p> :
+        monthItems.map((item) => <button key={item.key + ':' + item.start} type="button" className={styles.agendaItem} style={colorStyle(item.color)} onClick={() => item.kind === 'event' ? setEventModal(item.event!) : openCard(item)}>
           <span className={styles.agendaDate}>{item.start === item.end ? item.start : item.start + ' — ' + item.end}</span>
-          <span className={styles.agendaTitle}>{item.card.title}</span>
-          <span className={styles.agendaBoard}>{item.boardName}</span>
-          <span className={styles.agendaStatus}>{STATES.find((state) => state.value === item.state)?.label}</span>
+          <span className={styles.agendaTitle}>{item.title}</span>
+          <span className={styles.agendaBoard}>{item.boardName || (item.event && !item.event.all_day ? [item.event.start_time, item.event.end_time].filter(Boolean).join('–') : 'Todo el día')}</span>
+          <span className={styles.agendaStatus}>{item.badge}</span>
         </button>)}
     </div>}
 
-    {mode === 'month' && monthItems.length === 0 && <p className={styles.empty}>No hay Cards programadas en este mes con los filtros actuales.</p>}
+    {mode === 'month' && monthItems.length === 0 && <p className={styles.empty}>No hay tareas ni eventos programados en este mes con los filtros actuales.</p>}
     {mode === 'month' && selectedDay && <div className={styles.dayDetails}>
       <div className={styles.dayDetailsHeader}><strong>{prettyDay(selectedDay)}</strong><button type="button" aria-label="Cerrar tareas del día" onClick={() => setSelectedDay(null)}>×</button></div>
-      {dayItems.length ? dayItems.map((item) => <button className={styles.dayDetailItem} key={item.card.id} type="button" style={colorStyle(item.color)} onClick={() => openCard(item)}><span>{item.card.title}</span><small>{item.boardName}</small></button>) : <p className="muted">Sin Cards programadas.</p>}
+      {dayItems.length ? dayItems.map((item) => <button className={styles.dayDetailItem} key={item.key + ':' + item.start} type="button" style={colorStyle(item.color)} onClick={() => item.kind === 'event' ? setEventModal(item.event!) : openCard(item)}><span>{item.badge} · {item.title}</span><small>{item.boardName}</small></button>) : <p className="muted">Sin tareas ni eventos programados.</p>}
     </div>}
 
     {loading && boards && <p className={styles.refreshing} role="status">Actualizando calendario…</p>}
+    {eventModal && createPortal(<CalendarEventModal key={eventModal === 'new' ? 'new' : eventModal.id}
+      projectId={project.id} event={eventModal === 'new' ? null : eventModal} initialDay={selectedDay ?? today}
+      canEdit={project.role === 'responsable' || project.role === 'editor'}
+      onClose={() => setEventModal(null)}
+      onSaved={() => { setEventModal(null); setEventReload((n) => n + 1) }} />, document.body)}
     {selected && (detailLoading || detailError || (detailBoard && !cardData)) && createPortal(
       <div className="modal-back" role="status"><div className="modal">
         <p>{detailLoading ? 'Cargando detalles de la Card…' : detailError || 'Esta Card ya no está disponible.'}</p>
@@ -300,4 +404,111 @@ export function ProjectCalendar({ project, profile }: { project: Project; profil
         await refresh()
       }} />, document.body)}
   </section>
+}
+
+
+type EventForm = {
+  kind: EventKind; title: string; description: string; location: string
+  start_date: string; end_date: string; all_day: boolean
+  start_time: string; end_time: string
+}
+
+function CalendarEventModal({ projectId, event, initialDay, canEdit, onClose, onSaved }: {
+  projectId: number; event: CalendarEvent | null; initialDay: string
+  canEdit: boolean; onClose: () => void; onSaved: () => void
+}) {
+  const [form, setForm] = useState<EventForm>(() => ({
+    kind: event?.kind ?? 'meeting', title: event?.title ?? '',
+    description: event?.description ?? '', location: event?.location ?? '',
+    start_date: event?.start_date ?? initialDay, end_date: event?.end_date ?? initialDay,
+    all_day: event?.all_day ?? false, start_time: event?.start_time ?? '09:00', end_time: event?.end_time ?? '10:00',
+  }))
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+  const disabled = saving || !canEdit
+  const set = <K extends keyof EventForm>(key: K, value: EventForm[K]) =>
+    setForm((current) => ({ ...current, [key]: value }))
+
+  useEffect(() => {
+    const escape = (keyboard: KeyboardEvent) => { if (keyboard.key === 'Escape' && !saving) onClose() }
+    window.addEventListener('keydown', escape)
+    return () => window.removeEventListener('keydown', escape)
+  }, [onClose, saving])
+
+  async function save() {
+    if (!canEdit || saving) return
+    setSaving(true)
+    setError('')
+    try {
+      const url = event ? '/calendar-events/' + event.id : '/projects/' + projectId + '/calendar-events'
+      await api(url, {
+        method: event ? 'PATCH' : 'POST',
+        body: JSON.stringify({
+          ...form,
+          title: form.title.trim(), description: form.description.trim() || null,
+          location: form.location.trim() || null,
+          start_time: form.all_day ? null : form.start_time,
+          end_time: form.all_day ? null : form.end_time,
+        }),
+      })
+      onSaved()
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'No se pudo guardar el evento.')
+    } finally { setSaving(false) }
+  }
+  async function remove() {
+    if (!event || !canEdit || saving || !window.confirm('¿Eliminar este evento?')) return
+    setSaving(true)
+    setError('')
+    try {
+      await api('/calendar-events/' + event.id, { method: 'DELETE' })
+      onSaved()
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'No se pudo eliminar el evento.')
+    } finally { setSaving(false) }
+  }
+
+  return <div className={styles.eventBackdrop} role="presentation">
+    <div className={styles.eventModal} role="dialog" aria-modal="true" aria-label={event ? 'Detalles del evento' : 'Nuevo evento'}>
+      <div className={styles.eventModalHeader}>
+        <h2>{event ? (canEdit ? 'Editar evento' : 'Detalles del evento') : 'Nuevo evento'}</h2>
+        <button type="button" className={styles.eventClose} aria-label="Cerrar" onClick={onClose} disabled={saving}>×</button>
+      </div>
+      <form onSubmit={(submitted) => { submitted.preventDefault(); void save() }} className={styles.eventForm}>
+        <label>Tipo
+          <select value={form.kind} disabled={disabled} onChange={(change) => set('kind', change.target.value as EventKind)}>
+            <option value="meeting">Reunión</option><option value="appointment">Cita</option><option value="other">Otro evento</option>
+          </select>
+        </label>
+        <label>Título
+          <input value={form.title} disabled={disabled} maxLength={160} required placeholder="Ej. Reunión con el equipo" onChange={(change) => set('title', change.target.value)} />
+        </label>
+        <div className={styles.eventDates}>
+          <label>Desde
+            <input type="date" value={form.start_date} disabled={disabled} required onChange={(change) => set('start_date', change.target.value)} />
+          </label>
+          <label>Hasta
+            <input type="date" value={form.end_date} min={form.start_date} disabled={disabled} required onChange={(change) => set('end_date', change.target.value)} />
+          </label>
+        </div>
+        <label className={styles.allDay}><input type="checkbox" checked={form.all_day} disabled={disabled} onChange={(change) => set('all_day', change.target.checked)} /> Todo el día</label>
+        {!form.all_day && <div className={styles.eventDates}>
+          <label>Hora de inicio <input type="time" required value={form.start_time} disabled={disabled} onChange={(change) => set('start_time', change.target.value)} /></label>
+          <label>Hora de fin <input type="time" required value={form.end_time} disabled={disabled} onChange={(change) => set('end_time', change.target.value)} /></label>
+        </div>}
+        <label>Lugar (opcional)
+          <input value={form.location} maxLength={160} disabled={disabled} placeholder="Sala, dirección o enlace" onChange={(change) => set('location', change.target.value)} />
+        </label>
+        <label>Descripción (opcional)
+          <textarea rows={3} maxLength={4000} value={form.description} disabled={disabled} onChange={(change) => set('description', change.target.value)} />
+        </label>
+        {error && <p className={styles.formError} role="alert">{error}</p>}
+        <div className={styles.eventActions}>
+          {canEdit && event && <button className={styles.deleteEvent} type="button" disabled={saving} onClick={() => void remove()}>Eliminar</button>}
+          <button className="ghost" type="button" onClick={onClose} disabled={saving}>{canEdit ? 'Cancelar' : 'Cerrar'}</button>
+          {canEdit && <button className="primary" type="submit" disabled={saving || !form.title.trim() || form.start_date > form.end_date}>{saving ? 'Guardando…' : event ? 'Guardar cambios' : 'Crear evento'}</button>}
+        </div>
+      </form>
+    </div>
+  </div>
 }
