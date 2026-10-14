@@ -82,7 +82,7 @@ export function CreateCardModal({ board, column, onClose, onCreated }: {
           <label className="field">Periodo
             {isBacklog ? <span className="muted">Disponible cuando la tarea salga de backlog.</span> : <DateRangePicker start={start} end={due} onChange={(nextStart, nextDue) => { setStart(nextStart); setDue(nextDue) }} />}
           </label>
-        )
+        )}
         <label className="field">Prioridad
           <select value={priority} onChange={(event) => setPriority(event.target.value)}>
             {Object.entries(priorityLabel).map(([value, text]) => <option key={value} value={value}>{text}</option>)}
