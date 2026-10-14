@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import { api, type BoardPayload, type Project, type Profile } from '../../api'
 import { CardDrawer } from '../cards/CardDetail'
 import { GanttView, type GanttDependencyNavigation } from '../board/GanttView'
+import { ProjectLoadingIndicator } from './ProjectLoadingIndicator'
 
 type ProjectSnapshot = { projectId: number; boardIds: string; boards: BoardPayload[] }
 type Props = {
@@ -15,6 +16,7 @@ export function ProjectGantt({ project, profile, onNavigateExternalCard }: Props
   const boardIds = project.boards.map((board) => board.id).join(',')
   const [snapshot, setSnapshot] = useState<ProjectSnapshot | null>(null)
   const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [selected, setSelected] = useState<{ cardId: number; boardId: number } | null>(null)
   const [detailBoard, setDetailBoard] = useState<BoardPayload | null>(null)
@@ -82,12 +84,17 @@ export function ProjectGantt({ project, profile, onNavigateExternalCard }: Props
   }, [detailBoard, selected])
 
   const refresh = useCallback(async () => {
-    const [next, detailed] = await Promise.all([
-      load(),
-      selected ? api<BoardPayload>(`/boards/${selected.boardId}`) : Promise.resolve(null),
-    ])
-    setSnapshot({ projectId: project.id, boardIds, boards: next })
-    if (detailed) setDetailBoard(detailed)
+    setRefreshing(true)
+    try {
+      const [next, detailed] = await Promise.all([
+        load(),
+        selected ? api<BoardPayload>(`/boards/${selected.boardId}`) : Promise.resolve(null),
+      ])
+      setSnapshot({ projectId: project.id, boardIds, boards: next })
+      if (detailed) setDetailBoard(detailed)
+    } finally {
+      setRefreshing(false)
+    }
   }, [load, project.id, boardIds, selected?.boardId])
 
   useLayoutEffect(() => {
@@ -105,8 +112,8 @@ export function ProjectGantt({ project, profile, onNavigateExternalCard }: Props
     return () => window.removeEventListener('resize', resizeViewport)
   }, [boards?.length])
 
-  if (loading && !boards) return <section className="project-gantt-loading" role="status" aria-live="polite" aria-label="Cargando Gantt del proyecto">
-    <p>Cargando Gantt del proyecto…</p>
+  if (loading && !boards) return <section className="project-gantt-loading" aria-label="Cargando Gantt del proyecto">
+    <ProjectLoadingIndicator label="Cargando Gantt del proyecto…" />
     <div className="project-gantt-skeleton" aria-hidden="true">
       <div className="project-gantt-skeleton-left">
         <span className="project-gantt-skeleton-header" />
@@ -133,6 +140,9 @@ export function ProjectGantt({ project, profile, onNavigateExternalCard }: Props
   if (!boards?.length) return <section className="project-panel"><p>Este proyecto todavía no tiene tableros.</p></section>
 
   return <section className="project-gantt" aria-label={`Gantt del proyecto ${project.name}`}>
+    {((loading && boards) || refreshing) && (
+      <ProjectLoadingIndicator label="Actualizando Gantt…" floating />
+    )}
     <div ref={ganttViewportRef} className="project-gantt-viewport" tabIndex={0} aria-label="Área desplazable del Gantt del proyecto">
       <GanttView key={`project-${project.id}`}
         board={boards[0]} cards={columns} projectBoards={boards}

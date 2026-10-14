@@ -7,6 +7,7 @@ import { Avatar } from '../../shared/ui'
 import { NavIcon, CloseIcon } from '../../shared/icons'
 import { ProjectCalendarAssigneeFilter, type CalendarAssigneeOption } from './ProjectCalendarAssigneeFilter'
 import { ProjectCalendarMultiFilter } from './ProjectCalendarMultiFilter'
+import { ProjectLoadingIndicator } from './ProjectLoadingIndicator'
 import styles from './ProjectCalendar.module.css'
 
 type State = Exclude<WorkflowState, 'backlog'>
@@ -211,6 +212,8 @@ export function ProjectCalendar({ project, profile }: { project: Project; profil
 
   const [snapshot, setSnapshot] = useState<Snapshot | null>(null)
   const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
+  const [eventLoading, setEventLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [reloadKey, setReloadKey] = useState(0)
   const [month, setMonth] = useState(() => monthStart(localToday()))
@@ -337,12 +340,21 @@ export function ProjectCalendar({ project, profile }: { project: Project; profil
   const calendarLast = range.weeks[range.weeks.length - 1][6]
 
   useEffect(() => {
-    if (project.role === 'cliente') { setEvents([]); return }
+    if (project.role === 'cliente') { setEvents([]); setEventLoading(false); return }
     let alive = true
+    setEventLoading(true)
     setEventError(null)
     void api<CalendarEvent[]>('/projects/' + project.id + '/calendar-events?start_date=' + calendarFirst + '&end_date=' + calendarLast)
-      .then((loaded) => { if (alive) setEvents(loaded) })
-      .catch((cause: unknown) => { if (alive) setEventError(cause instanceof Error ? cause.message : 'No se pudieron cargar los eventos.') })
+      .then((loaded) => {
+        if (!alive) return
+        setEvents(loaded)
+        setEventLoading(false)
+      })
+      .catch((cause: unknown) => {
+        if (!alive) return
+        setEventError(cause instanceof Error ? cause.message : 'No se pudieron cargar los eventos.')
+        setEventLoading(false)
+      })
     return () => { alive = false }
   }, [project.id, project.role, calendarFirst, calendarLast, eventReload])
 
@@ -416,9 +428,14 @@ export function ProjectCalendar({ project, profile }: { project: Project; profil
   }, [selected, detailBoard])
 
   const refresh = useCallback(async () => {
-    const next = await load()
-    setSnapshot({ projectId: project.id, boardIds, boards: next })
-    if (selected) setDetailBoard(await api<BoardPayload>('/boards/' + selected.boardId))
+    setRefreshing(true)
+    try {
+      const next = await load()
+      setSnapshot({ projectId: project.id, boardIds, boards: next })
+      if (selected) setDetailBoard(await api<BoardPayload>('/boards/' + selected.boardId))
+    } finally {
+      setRefreshing(false)
+    }
   }, [load, project.id, boardIds, selected])
 
   function openCard(item: Item) {
@@ -445,7 +462,32 @@ export function ProjectCalendar({ project, profile }: { project: Project; profil
     + (canViewAllTasks ? selectedAssigneeIds.length + Number(includeUnassigned) : 0)
     + (project.role !== 'cliente' && !showEvents ? 1 : 0)
 
-  if (loading && !boards) return <section className="project-panel" role="status">Cargando calendario del proyecto…</section>
+  if (loading && !boards) return (
+    <section className={styles.loading} aria-label="Cargando calendario del proyecto">
+      <ProjectLoadingIndicator label="Cargando calendario del proyecto…" />
+      <div className={styles.loadingToolbar} aria-hidden="true">
+        <span className={styles.loadingBlock} />
+        <span className={styles.loadingBlock} />
+        <span className={styles.loadingBlock} />
+        <span className={styles.loadingBlock} />
+      </div>
+      <div className={styles.loadingCalendar} aria-hidden="true">
+        <div className={styles.loadingWeekdays}>
+          {WEEKDAYS.map((day) => <span key={day}>{day}</span>)}
+        </div>
+        {Array.from({ length: 5 }, (_, row) => (
+          <div className={styles.loadingWeek} key={row}>
+            {Array.from({ length: 7 }, (_, col) => (
+              <div className={styles.loadingDay} key={col}>
+                <span className={styles.loadingBlock} />
+                {(row + col) % 3 === 0 && <span className={styles.loadingTask} />}
+              </div>
+            ))}
+          </div>
+        ))}
+      </div>
+    </section>
+  )
   if (error && !boards) return <section className="project-panel" role="alert"><p>No se pudo cargar el calendario: {error}</p><button className="ghost" type="button" onClick={() => setReloadKey((n) => n + 1)}>Reintentar</button></section>
 
 
@@ -579,7 +621,9 @@ export function ProjectCalendar({ project, profile }: { project: Project; profil
       {dayItems.length ? dayItems.map((item) => <button className={styles.dayDetailItem} key={item.key + ':' + item.start} type="button" style={colorStyle(item.color)} onClick={() => item.kind === 'event' ? setEventModal(item.event!) : openCard(item)}><span>{item.badge} · {item.title}</span><small>{item.boardName}{canViewAllTasks && item.kind === 'card' && <AssignmentChips people={item.card?.assignees} />}</small></button>) : <p className="muted">Sin tareas ni eventos programados.</p>}
     </div>}
 
-    {loading && boards && <p className={styles.refreshing} role="status">Actualizando calendario…</p>}
+    {((loading && boards) || refreshing || eventLoading) && (
+      <ProjectLoadingIndicator label="Actualizando calendario…" floating />
+    )}
     {eventModal && createPortal(<CalendarEventModal key={eventModal === 'new' ? 'new' : eventModal.id}
       projectId={project.id} event={eventModal === 'new' ? null : eventModal} initialDay={selectedDay ?? today}
       canEdit={project.role === 'responsable' || project.role === 'editor'}
