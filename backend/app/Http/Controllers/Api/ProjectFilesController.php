@@ -12,6 +12,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 
 class ProjectFilesController extends ApiController
 {
@@ -51,6 +52,120 @@ class ProjectFilesController extends ApiController
             'can_upload' => ProjectAccess::canEditCards($request->user(), $project),
             'can_manage' => ProjectAccess::canManage($request->user(), $project),
         ]);
+    }
+
+    /**
+     * Produce one ZIP for a multi-selection, including original Card attachments.
+     * Resolve every id within this project and under the requesting user's
+     * visibility rules; a forged id must never expose another project's files.
+     */
+    public function downloadSelected(Request $request, Project $project)
+    {
+        abort_unless(ProjectAccess::canView($request->user(), $project), 403);
+
+        $data = $request->validate([
+            'files' => ['required', 'array', 'min:1', 'max:200'],
+            'files.*.origin' => ['required', 'in:general,card'],
+            'files.*.id' => ['required', 'integer', 'min:1'],
+        ]);
+
+        if (! class_exists(\ZipArchive::class)) {
+            return response()->json([
+                'message' => 'La descarga múltiple requiere la extensión ZIP de PHP en el servidor.',
+            ], 503);
+        }
+
+        $requested = collect($data['files'])->unique(fn ($item) => $item['origin'].'-'.$item['id'])->values();
+        $generalIds = $requested->where('origin', 'general')->pluck('id')->all();
+        $cardIds = $requested->where('origin', 'card')->pluck('id')->all();
+
+        $generals = ProjectFile::query()
+            ->where('project_id', $project->id)
+            ->whereIn('id', $generalIds)
+            ->get()->keyBy('id');
+
+        $role = ProjectAccess::role($request->user(), $project);
+        $attachments = CardAttachment::query()
+            ->whereIn('id', $cardIds)
+            ->whereHas('card.board', fn ($query) => $query->where('project_id', $project->id))
+            ->when($role === 'cliente', fn ($query) => $query->whereHas('card', fn ($card) => $card
+                ->where('is_internal', false)->whereNull('archived_at')))
+            ->get()->keyBy('id');
+
+        // First validate the whole selection, then write the archive. There are
+        // no partial ZIPs when an entry is missing, hidden or exceeds the cap.
+        $entries = [];
+        $totalBytes = 0;
+        $usedNames = [];
+        foreach ($requested as $item) {
+            $file = $item['origin'] === 'general'
+                ? $generals->get($item['id'])
+                : $attachments->get($item['id']);
+            abort_unless($file !== null, 404, 'Uno de los archivos no existe o no está disponible.');
+
+            abort_unless(Storage::disk('local')->exists($file->disk_path), 404, 'El archivo no está en el disco.');
+            $totalBytes += (int) $file->size;
+            if ($totalBytes > 512 * 1024 * 1024) {
+                throw ValidationException::withMessages([
+                    'files' => 'La descarga ZIP no puede superar 512 MB. Selecciona menos archivos.',
+                ]);
+            }
+
+            // Only flat filenames (no ZIP traversal); distinguish duplicates.
+            $name = basename(str_replace('\\', '/', $file->original_name));
+            $name = preg_replace('/[\x00-\x1F\x7F]/', '_', $name) ?: 'archivo';
+            $name = trim($name, ". \t\n\r\0\x0B") ?: 'archivo';
+            $base = pathinfo($name, PATHINFO_FILENAME) ?: 'archivo';
+            $extension = pathinfo($name, PATHINFO_EXTENSION);
+            $candidate = $name;
+            $suffix = 2;
+            while (isset($usedNames[mb_strtolower($candidate)])) {
+                $candidate = $base.' ('.$suffix++.')'.($extension !== '' ? '.'.$extension : '');
+            }
+            $usedNames[mb_strtolower($candidate)] = true;
+            $entries[] = [
+                'path' => Storage::disk('local')->path($file->disk_path),
+                'name' => $candidate,
+            ];
+        }
+
+        $temporary = tempnam(sys_get_temp_dir(), 'tickard_zip_');
+        abort_if($temporary === false, 500, 'No se pudo preparar la descarga.');
+
+        $archive = new \ZipArchive();
+        $opened = false;
+        try {
+            $opened = $archive->open($temporary, \ZipArchive::OVERWRITE) === true;
+            if (! $opened) {
+                abort(500, 'No se pudo crear el archivo ZIP.');
+            }
+            foreach ($entries as $entry) {
+                if (! $archive->addFile($entry['path'], $entry['name'])) {
+                    abort(500, 'No se pudo añadir un archivo al ZIP.');
+                }
+            }
+            if (! $archive->close()) {
+                $opened = false;
+                abort(500, 'No se pudo finalizar el ZIP.');
+            }
+            $opened = false;
+        } catch (\Throwable $exception) {
+            if ($opened) {
+                $archive->close();
+            }
+            @unlink($temporary);
+            throw $exception;
+        }
+
+        return response()->download(
+            $temporary,
+            'tickard-archivos-'.$project->id.'-'.now()->format('Ymd-His').'.zip',
+            [
+                'Content-Type' => 'application/zip',
+                'Cache-Control' => 'private, no-store',
+                'X-Content-Type-Options' => 'nosniff',
+            ]
+        )->deleteFileAfterSend(true);
     }
 
     public function store(Request $request, Project $project)

@@ -78,6 +78,43 @@ export async function downloadProtectedFile(url: string, filename: string): Prom
   window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1000)
 }
 
+export async function downloadProtectedArchive(
+  projectId: number,
+  files: { origin: 'general' | 'card'; id: number }[],
+): Promise<void> {
+  if (files.length < 2 || files.length > 200) {
+    throw new Error('Selecciona entre 2 y 200 archivos para descargar un ZIP.')
+  }
+
+  const headers = new Headers({ Accept: 'application/json, application/zip', 'Content-Type': 'application/json' })
+  const token = getToken()
+  if (token) headers.set('Authorization', `Bearer ${token}`)
+
+  const response = await fetch(`/api/projects/${projectId}/files/download`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ files }),
+    cache: 'no-store',
+  })
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({}))
+    const first = data?.errors && typeof data.errors === 'object'
+      ? Object.values(data.errors).flat().find((item) => typeof item === 'string')
+      : undefined
+    throw new Error(typeof first === 'string' ? first : data?.message ?? 'No se pudo generar la descarga ZIP.')
+  }
+
+  const archive = await response.blob()
+  const objectUrl = URL.createObjectURL(archive)
+  const link = document.createElement('a')
+  link.href = objectUrl
+  link.download = `tickard-archivos-${projectId}-${new Date().toISOString().slice(0, 10)}.zip`
+  document.body.appendChild(link)
+  link.click()
+  link.remove()
+  window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1000)
+}
+
 export async function openProtectedFile(url: string): Promise<void> {
   // Open synchronously before awaiting the authenticated fetch to avoid popup blockers.
   const tab = window.open('', '_blank')

@@ -47,6 +47,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::get('/projects/{project}/files', [ProjectFilesController::class, 'index']);
     Route::post('/projects/{project}/files', [ProjectFilesController::class, 'store']);
+    Route::post('/projects/{project}/files/download', [ProjectFilesController::class, 'downloadSelected']);
     Route::get('/project-files/{projectFile}/content', [ProjectFilesController::class, 'content']);
     Route::delete('/project-files/{projectFile}', [ProjectFilesController::class, 'destroy']);
     Route::get('/attachments/{attachment}/content', [ProjectFilesController::class, 'cardContent']);

@@ -16,7 +16,7 @@
 .viewSwitch svg { width:17px; height:17px; stroke:currentColor; stroke-width:1.7; stroke-linecap:round; fill:none }
 .viewSwitch button.activeView { background:var(--accent); color:var(--accent-ink) }
 .uploadButton,.openButton { display:inline-flex; justify-content:center; align-items:center; gap:9px; border:0; background:var(--accent); border-radius:9px; padding:10px 15px; color:var(--accent-ink); font-weight:700; font-size:13px; cursor:pointer }
-.uploadButton svg { height:17px; width:17px; fill:none; stroke:currentColor; stroke-width:1.9; stroke-linecap:round; stroke-linejoin:round }
+.uploadButton svg { height:17px; width:17px; fill:currentColor; stroke:none; flex-shrink:0 }
 .uploadButton:disabled { opacity:.6; cursor:progress }
 .tabs { display:flex; align-items:center; gap:7px; flex:0 0 auto; flex-wrap:nowrap; white-space:nowrap }
 .tabs button { display:inline-flex; align-items:center; gap:6px; padding:8px 11px; border:1px solid var(--line); background:var(--surface); border-radius:99px; color:var(--ink); font-size:12px; cursor:pointer }
@@ -28,6 +28,8 @@
 .bulkActions button { padding:5px 9px; border:1px solid var(--line); border-radius:7px; background:var(--surface); color:var(--ink); cursor:pointer; font-size:12px }
 .bulkActions button:disabled { opacity:.6; cursor:wait }
 .bulkActions button.bulkDelete { border-color:color-mix(in srgb,#b94b4b 35%,var(--line)); color:#a63131 }
+.bulkActions button.bulkDownload { display:inline-flex; align-items:center; gap:7px; background:var(--surface); border-color:var(--accent); color:var(--accent); font-weight:650 }
+.bulkDownload svg { width:16px; height:16px; flex-shrink:0; fill:currentColor; stroke:none }
 .body { display:grid; grid-template-columns:minmax(0, 1fr); gap:14px; flex:1 1 auto; min-width:0; min-height:0; overflow:hidden }
 .body.withPreview { grid-template-columns:minmax(0, 1fr) minmax(285px, 32%) }
 .fileSection { display:flex; flex-direction:column; flex:1 1 auto; min-width:0; min-height:0; overflow:hidden }
@@ -37,6 +39,10 @@
 .table th { position:sticky; top:0; z-index:1; padding:12px 10px; color:var(--muted); background:var(--canvas); font-weight:650; white-space:nowrap; border-bottom:1px solid var(--line) }
 .checkboxCell { width:38px; min-width:38px; max-width:38px; text-align:center; padding-left:10px !important; padding-right:6px !important }
 .checkboxCell input { width:16px; height:16px; vertical-align:middle; accent-color:var(--accent); cursor:pointer }
+.selectAllButton { display:inline-flex; align-items:center; justify-content:center; width:22px; height:22px; padding:1px; border:0; border-radius:4px; background:transparent; color:var(--accent); cursor:pointer }
+.selectAllButton:disabled { opacity:.4; cursor:not-allowed }
+.selectAllButton:focus-visible { outline:2px solid var(--accent); outline-offset:2px }
+.selectAllButton svg { display:block; width:18px; height:18px; fill:currentColor; stroke:none }
 .table th:nth-child(2) { padding-left:12px }
 .table td { padding:9px 10px; color:var(--muted); border-bottom:1px solid var(--line); vertical-align:middle; white-space:nowrap }
 .table tr.selectedRow { background:color-mix(in srgb,var(--accent) 10%,var(--surface)) }
@@ -70,7 +76,8 @@
 .noPreview { display:flex; flex-direction:column; gap:15px; align-items:center; padding:20px; text-align:center; color:var(--muted); font-size:12px }
 .noPreview .fileGlyph { transform:scale(2); margin:20px }
 .previewActions { display:flex; gap:7px; flex-wrap:wrap }
-.previewActions button { flex:1 1 auto; font-size:12px; padding:10px; white-space:nowrap }
+.previewActions button { display:inline-flex; align-items:center; justify-content:center; gap:7px; flex:1 1 auto; font-size:12px; padding:10px; white-space:nowrap }
+.previewActions button svg { display:block; width:15px; height:15px; fill:currentColor; stroke:none; flex-shrink:0 }
 .downloadButton { border:1px solid var(--line); border-radius:8px; background:var(--surface); color:var(--ink); cursor:pointer }
 .metadata { display:grid; grid-template-columns:100px minmax(0, 1fr); gap:11px 8px; border-top:1px solid var(--line); padding-top:15px; margin:0; font-size:12px }
 .metadata dt { color:var(--muted) }

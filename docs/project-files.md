@@ -8,6 +8,7 @@ La pestaña **Archivos** ofrece una vista unificada, sin duplicar los adjuntos y
 - **Adjuntos de Cards:** archivos existentes, referenciados desde sus Cards originales.
 - Búsqueda por nombre, descripción, tablero y Card; filtros por origen, tipo y tablero.
 - Lista y cuadrícula; vista previa autenticada de PDF, imágenes y texto; descarga del resto.
+- Selección múltiple desde la tabla o la cuadrícula; descargar uno conserva el archivo original y descargar varios genera un único ZIP con nombres desambiguados.
 - Un solo panel de filtros, siguiendo el patrón del Calendario/Kanban.
 - No hay carpetas, versiones, vídeos, audio ni archivos comprimidos en V1.
 
@@ -42,6 +43,15 @@ El backend valida las cuotas en una transacción, bloqueando al propietario dura
 - Eliminar un adjunto desde la biblioteca borra el mismo archivo de la Card original.
 
 Las descargas se sirven por rutas autenticadas y los archivos se guardan en el disco privado `local`. No se exponen URLs directas de almacenamiento público.
+
+## Descarga múltiple
+
+- `POST /api/projects/{project}/files/download`, autenticado con Sanctum.
+- Cuerpo JSON: `{"files":[{"origin":"general","id":1},{"origin":"card","id":2}]}`.
+- Archivos limitados al proyecto y a la visibilidad de sus Cards; no se admiten identificadores externos ni nombres que puedan salir del ZIP.
+- El resultado es un solo ZIP temporal, que se borra tras enviarse. Archivos con nombre repetido se renombran dentro del ZIP.
+- Máximo de **200 archivos y 512 MiB por ZIP** para evitar cargas excesivas; selección incompleta o inaccesible provoca error sin generar descarga parcial.
+- **Requiere la extensión `zip` de PHP** (`ZipArchive`). Si no está disponible, el servidor devuelve un error explicativo; las descargas individuales siguen funcionando.
 
 ## Puesta en marcha
 

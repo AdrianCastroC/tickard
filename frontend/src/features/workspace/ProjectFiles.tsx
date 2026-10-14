@@ -2,7 +2,8 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import { api, uploadFile, type Profile, type Project } from '../../api'
 import { Avatar } from '../../shared/ui'
 import { NavIcon } from '../../shared/icons'
-import { downloadProtectedFile, openProtectedFile, useProtectedPreview, useProtectedTextPreview } from '../../shared/protectedFiles'
+import { downloadProtectedArchive, downloadProtectedFile, openProtectedFile, useProtectedPreview, useProtectedTextPreview } from '../../shared/protectedFiles'
+import { FileActionIcon } from './ProjectFileIcons'
 import styles from './ProjectFiles.module.css'
 
 type ProjectFile = {
@@ -107,6 +108,7 @@ export function ProjectFiles({ project, profile }: { project: Project; profile: 
   const [data, setData] = useState<FilesResponse | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  const [downloading, setDownloading] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [selectedKey, setSelectedKey] = useState<string | null>(null)
   const [search, setSearch] = useState('')
@@ -189,16 +191,16 @@ export function ProjectFiles({ project, profile }: { project: Project; profile: 
     )
   }, [files, search, origin, kind, boardId])
   const allVisibleChecked = filtered.length > 0 && filtered.every((file) => checkedKeys.includes(file.key))
+  const partiallyVisibleChecked = !allVisibleChecked && checkedKeys.length > 0
   const checkedFiles = files.filter((file) => checkedKeys.includes(file.key))
   const checkedCount = checkedFiles.length
   function toggleChecked(key: string) {
     setCheckedKeys((current) => current.includes(key) ? current.filter((item) => item !== key) : [...current, key])
   }
   function toggleAllVisible() {
-    const visible = new Set(filtered.map((file) => file.key))
-    setCheckedKeys((current) => allVisibleChecked
-      ? current.filter((key) => !visible.has(key))
-      : [...new Set([...current, ...visible])])
+    // Clicking the header checkbox deselects everything if any file is
+    // selected, even when the selected file is hidden by the active filters.
+    setCheckedKeys((current) => current.length > 0 ? [] : filtered.map((file) => file.key))
   }
   const selected = files.find((file) => file.key === selectedKey) ?? null
   const canRemove = (file: ProjectFile) =>
@@ -262,6 +264,27 @@ export function ProjectFiles({ project, profile }: { project: Project; profile: 
     }
   }
 
+  async function downloadChecked() {
+    if (!checkedFiles.length || downloading) return
+    setDownloading(true)
+    setError(null)
+    try {
+      if (checkedFiles.length === 1) {
+        const file = checkedFiles[0]
+        await downloadProtectedFile(file.url, file.name)
+      } else {
+        await downloadProtectedArchive(
+          project.id,
+          checkedFiles.map(({ origin, id }) => ({ origin, id })),
+        )
+      }
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'No se pudieron descargar los archivos seleccionados.')
+    } finally {
+      setDownloading(false)
+    }
+  }
+
   async function download(file: ProjectFile) {
     setError(null)
     try { await downloadProtectedFile(file.url, file.name) }
@@ -319,14 +342,17 @@ export function ProjectFiles({ project, profile }: { project: Project; profile: 
         <button type="button" className={grid ? styles.activeView : ''} onClick={() => setGrid(true)} aria-label="Vista de cuadrícula" aria-pressed={grid}><NavIcon><rect x="3" y="3" width="7" height="7" /><rect x="14" y="3" width="7" height="7" /><rect x="3" y="14" width="7" height="7" /><rect x="14" y="14" width="7" height="7" /></NavIcon></button>
       </div>
       {data.can_upload && <><button className={styles.uploadButton} type="button" disabled={uploading} onClick={() => uploadRef.current?.click()}>
-        <NavIcon><path d="M12 16V3m-5 5 5-5 5 5M4 15v5h16v-5" /></NavIcon>{uploading ? 'Subiendo…' : 'Subir archivo'}
+        <FileActionIcon name="upload" />{uploading ? 'Subiendo…' : 'Subir archivo'}
       </button><input ref={uploadRef} type="file" multiple accept={ALLOWED.map((ext) => '.' + ext).join(',')} hidden onChange={(event) => void upload(event.target.files)} /></>}
     </div>
 
     {error && <div className={styles.error} role="alert">{error}<button type="button" onClick={() => setError(null)} aria-label="Cerrar aviso">×</button></div>}
     {checkedCount > 0 && <div className={styles.bulkActions} role="region" aria-label="Acciones sobre archivos seleccionados">
       <strong>{checkedCount} seleccionado{checkedCount === 1 ? '' : 's'}</strong>
-      <button type="button" onClick={() => setCheckedKeys([])} disabled={busy}>Deseleccionar</button>
+      <button type="button" className={styles.bulkDownload} disabled={busy || downloading} onClick={() => void downloadChecked()}>
+        <FileActionIcon name="download" />
+        {downloading ? 'Preparando descarga…' : `Descargar seleccionados (${checkedCount})`}
+      </button>
       {checkedFiles.some(canRemove) && <button type="button" className={styles.bulkDelete} disabled={busy} onClick={() => void removeChecked()}>
         {busy ? 'Eliminando…' : `Eliminar permitidos (${checkedFiles.filter(canRemove).length})`}
       </button>}
@@ -341,7 +367,20 @@ export function ProjectFiles({ project, profile }: { project: Project; profile: 
                 <FileTile file={file} selected={selectedKey === file.key} onSelect={() => setSelectedKey(file.key)} />
               </div>)}</div></div>
             : <div className={styles.listScroller}><table className={styles.table}>
-              <thead><tr><th className={styles.checkboxCell}><input type="checkbox" checked={allVisibleChecked} disabled={filtered.length === 0} aria-label="Seleccionar todos los archivos visibles" onChange={toggleAllVisible} /></th><th>Nombre</th><th>Origen</th><th>Tipo</th><th>Tamaño</th><th>Modificado</th></tr></thead>
+              <thead><tr><th className={styles.checkboxCell}>
+                <button type="button" className={styles.selectAllButton}
+                  disabled={filtered.length === 0 && checkedCount === 0}
+                  aria-pressed={allVisibleChecked}
+                  aria-label={checkedCount > 0 ? 'Deseleccionar todos los archivos' : 'Seleccionar todos los archivos visibles'}
+                  title={checkedCount > 0 ? 'Deseleccionar todos' : 'Seleccionar todos los visibles'}
+                  onClick={toggleAllVisible}>
+                  {partiallyVisibleChecked
+                    ? <FileActionIcon name="partial" />
+                    : allVisibleChecked
+                      ? <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="2" width="20" height="20" rx="4" fill="currentColor" /><path d="m6.5 12 3.5 3.5 7.5-8" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                      : <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="2" width="20" height="20" rx="4" fill="none" stroke="currentColor" strokeWidth="2" /></svg>}
+                </button>
+              </th><th>Nombre</th><th>Origen</th><th>Tipo</th><th>Tamaño</th><th>Modificado</th></tr></thead>
               <tbody>{filtered.map((file) => <tr key={file.key} className={selectedKey === file.key ? styles.selectedRow : ''}>
                 <td className={styles.checkboxCell}><input type="checkbox" checked={checkedKeys.includes(file.key)} aria-label={`Seleccionar ${file.name}`} onChange={() => toggleChecked(file.key)} /></td>
                 <td><button type="button" className={styles.fileNameButton} onClick={() => setSelectedKey(file.key)}>
@@ -362,8 +401,8 @@ export function ProjectFiles({ project, profile }: { project: Project; profile: 
         </div>
         <div className={styles.preview}><FilePreview key={selected.key} file={selected} /></div>
         <div className={styles.previewActions}>
-          {canOpenInBrowser(selected) && <button className={styles.openButton} type="button" onClick={() => void open(selected)}>Abrir en nueva pestaña</button>}
-          <button className={styles.downloadButton} type="button" onClick={() => void download(selected)}>↓ Descargar</button>
+          {canOpenInBrowser(selected) && <button className={styles.openButton} type="button" onClick={() => void open(selected)}><FileActionIcon name="external" />Abrir en nueva pestaña</button>}
+          <button className={styles.downloadButton} type="button" onClick={() => void download(selected)}><FileActionIcon name="download" />Descargar</button>
         </div>
         <dl className={styles.metadata}>
           <dt>Origen</dt><dd>{selected.origin === 'general' ? 'General' : 'Card'}</dd>
