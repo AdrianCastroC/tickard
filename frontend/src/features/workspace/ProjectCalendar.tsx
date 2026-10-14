@@ -397,7 +397,7 @@ export function ProjectCalendar({ project, profile }: { project: Project; profil
           <label><input type="checkbox" checked={includeUnassigned}
             onChange={(change) => setIncludeUnassigned(change.target.checked)} />Sin asignar</label>
         </div>
-      </div>
+      </div>}
       {project.role !== 'cliente' && <div className={styles.filterGroup}><strong>Eventos</strong><label className={styles.eventFilter}><input type="checkbox" checked={showEvents} onChange={() => setShowEvents((value) => !value)} /> Mostrar reuniones, citas y eventos</label></div>}
       <button className="ghost" type="button" onClick={() => { setHiddenBoards([]); setHiddenStates([]); setSelectedAssigneeIds([]); setIncludeUnassigned(false); setShowEvents(true) }}>Mostrar todos</button>
     </div>}
