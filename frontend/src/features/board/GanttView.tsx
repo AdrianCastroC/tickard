@@ -2258,7 +2258,7 @@ export function GanttView({ board, cards, canEdit, onOpen, onNavigateExternalCar
 
                   onOpen(item.card)
                 }}
-                onPointerDown={(event) => beginDrag(event, item, 'move')}
+                onPointerDown={canEdit ? (event) => beginDrag(event, item, 'move') : undefined}
                 onPointerEnter={(event) => updateHoveredCard(event, item.card)}
                 onPointerMove={(event) => updateHoveredCard(event, item.card)}
                 onPointerLeave={clearHoveredCard}
@@ -2348,7 +2348,7 @@ export function GanttView({ board, cards, canEdit, onOpen, onNavigateExternalCar
                 : undefined
               return (
                 <g key={dependency.id} className={`${styles.dependencyLineGroup} ${dependencyPopover?.dependency.id === dependency.id || focus?.dependencyId === dependency.id ? styles.dependencySelected : ''}`}>
-                  <path className={styles.dependencyHitArea} d={path} onClick={(event) => setDependencyPopover({ dependency, x: event.clientX, y: event.clientY })} aria-label={`Dependencia ${dependency.type.toUpperCase()}: ${predecessor.item.card.title} → ${successor.item.card.title}`} />
+                  {canEdit && <path className={styles.dependencyHitArea} d={path} onClick={(event) => setDependencyPopover({ dependency, x: event.clientX, y: event.clientY })} aria-label={`Dependencia ${dependency.type.toUpperCase()}: ${predecessor.item.card.title} → ${successor.item.card.title}`} />}
                   <path className={styles.dependencyLine} d={path} aria-hidden="true" />
                   {(dependency.type === 'ff' || dependency.type === 'sf') && targetBar && arrow && <path
                     d={`M ${targetBar.right + FF_FINISH_MARKER_OFFSET_PX} ${targetBar.top} V ${arrow.point.y + 5}`}
@@ -2375,9 +2375,9 @@ export function GanttView({ board, cards, canEdit, onOpen, onNavigateExternalCar
               const name = `${dependency.direction === 'incoming' ? dependency.title : cardRows.get(dependency.localCardId)?.item.card.title} → ${dependency.direction === 'outgoing' ? dependency.title : cardRows.get(dependency.localCardId)?.item.card.title}`
               return (
                 <g key={`external-${dependency.id}`} className={`${styles.dependencyLineGroup} ${dependencyPopover?.dependency.id === dependency.id || focus?.dependencyId === dependency.id ? styles.dependencySelected : ''}`}>
-                  <path className={styles.dependencyHitArea} d={path}
+                  {canEdit && <path className={styles.dependencyHitArea} d={path}
                     aria-label={`Dependencia externa ${dependency.type.toUpperCase()}: ${name}`}
-                    onClick={(event) => openExternalDependency(dependency, event.clientX, event.clientY)} />
+                    onClick={(event) => openExternalDependency(dependency, event.clientX, event.clientY)} />}
                   <path className={styles.dependencyLine} d={path} aria-hidden="true" />
                   {finishArrival && arrow && <path
                     className={styles.dependencyLine}
