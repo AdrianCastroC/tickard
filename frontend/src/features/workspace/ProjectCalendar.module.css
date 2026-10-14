@@ -98,14 +98,14 @@
 
 /* Assignment indicators: keep calendar events visually separate from Cards. */
 .assigneeAvatars { display:inline-flex;align-items:center;flex:0 0 auto;margin-left:auto;gap:2px;min-width:0 }
-.assigneeAvatar { display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:50%;overflow:hidden;background:var(--side);color:var(--ink);border:1px solid var(--surface);font-size:10px;font-weight:700 }
-.assigneeAvatar img { display:block;width:100%;height:100%;object-fit:cover }
+.assigneeAvatar { flex:0 0 auto;border:1px solid var(--surface);object-fit:cover }
+.assignedGroup { display:inline-flex;align-items:center;gap:6px;min-width:0;max-width:100% }
 .assigneeExtra { display:inline-flex;align-items:center;justify-content:center;font-size:10px;color:var(--muted);font-weight:700 }
 .assignedNames { display:block;max-width:100%;font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis }
 .unassigned { font-size:10px;color:var(--muted);white-space:nowrap }
-.agendaBoard { min-width:0 }
+.agendaBoard { min-width:0;display:flex;flex-direction:column;gap:4px }
 .dayDetailItem small .assignedNames { max-width:230px }
 @media(max-width:600px) {
-  .segment .assigneeAvatar { width:16px;height:16px;font-size:9px }
+  .segment .assigneeAvatar { max-width:16px;max-height:16px }
   .segment .assigneeExtra,.segment .unassigned { display:none }
 }

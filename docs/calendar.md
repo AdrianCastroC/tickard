@@ -76,3 +76,12 @@ y conectores con Google Calendar/Outlook. Ninguna se implementa todavía.
 - El Gantt y Kanban conservan sus endpoints y comportamientos anteriores.
 - Los eventos del proyecto mantienen su política de permisos independiente;
   no son Cards ni tienen asignados en esta versión.
+
+## Filtro compacto de usuarios (calendario)
+
+Los administradores globales y responsables disponen de un selector «Usuarios» en
+la barra de herramientas, con búsqueda de nombres, selección múltiple, fotos de
+perfil reutilizadas de las Cards y accesos rápidos «Todos» y «Solo yo».
+El selector permite incluir tareas sin asignar. No altera las citas y reuniones.
+Las miniaturas de asignados se representan mediante el mismo componente
+`Avatar` compartido con Kanban, respetando las fotografías cargadas.

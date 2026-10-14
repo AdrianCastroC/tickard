@@ -352,6 +352,7 @@ class ProjectsController extends ApiController
                         'id' => $member->user->id,
                         'name' => $member->user->name,
                         'role' => $member->role,
+                        'avatar_url' => $member->user->avatarUrl(),
                     ]
                 )
                 ->values(),

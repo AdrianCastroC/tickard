@@ -3,6 +3,8 @@ import { createPortal } from 'react-dom'
 import { api, ApiError, type BacklogResolution, type BoardPayload, type CalendarEvent, type Card, type Profile, type Project, type WorkflowState } from '../../api'
 import { BacklogResolutionModal } from '../board/BacklogResolutionModal'
 import { CardDrawer } from '../cards/CardDetail'
+import { Avatar } from '../../shared/ui'
+import { ProjectCalendarAssigneeFilter, type CalendarAssigneeOption } from './ProjectCalendarAssigneeFilter'
 import styles from './ProjectCalendar.module.css'
 
 type State = Exclude<WorkflowState, 'backlog'>
@@ -158,15 +160,15 @@ function assignmentNames(people: Card['assignees']): string {
 
 function AssignmentChips({ people, compact = false }: { people: Card['assignees']; compact?: boolean }) {
   if (!people?.length) return <span className={styles.unassigned} title="Sin asignar">Sin asignar</span>
-  if (!compact) return <span className={styles.assignedNames} title={assignmentNames(people)}>{assignmentNames(people)}</span>
-  return <span className={styles.assigneeAvatars} title={assignmentNames(people)}
-    aria-label={'Asignados: ' + assignmentNames(people)}>
-    {people.slice(0, 2).map((person) => <span className={styles.assigneeAvatar} key={person.id}>
-      {person.avatar_url
-        ? <img src={person.avatar_url} alt={person.name} loading="lazy" />
-        : <span aria-hidden="true">{person.name.trim().slice(0, 1).toLocaleUpperCase('es')}</span>}
-    </span>)}
-    {people.length > 2 && <span className={styles.assigneeExtra}>+{people.length - 2}</span>}
+  return <span className={compact ? styles.assigneeAvatars : styles.assignedGroup}
+    title={assignmentNames(people)} aria-label={'Asignados: ' + assignmentNames(people)}>
+    <span className={styles.assigneeAvatars}>
+      {people.slice(0, compact ? 2 : 3).map((person) =>
+        <Avatar key={person.id} id={person.id} name={person.name} src={person.avatar_url}
+          size={compact ? 20 : 24} className={styles.assigneeAvatar} />)}
+      {people.length > (compact ? 2 : 3) && <span className={styles.assigneeExtra}>+{people.length - (compact ? 2 : 3)}</span>}
+    </span>
+    {!compact && <span className={styles.assignedNames}>{assignmentNames(people)}</span>}
   </span>
 }
 
@@ -273,12 +275,20 @@ export function ProjectCalendar({ project, profile }: { project: Project; profil
   const allCards = useMemo(() => cardsFromBoards(boards ?? [], today), [boards, today])
   const assigneeOptions = useMemo(() => {
     if (!canViewAllTasks) return []
-    const people = new Map<number, { id: number; name: string }>()
+    const people = new Map<number, CalendarAssigneeOption>()
     for (const board of boards ?? []) {
-      for (const member of board.members) people.set(member.id, { id: member.id, name: member.name })
+      for (const member of board.members) people.set(member.id, {
+        id: member.id, name: member.name, avatar_url: member.avatar_url,
+      })
     }
     for (const item of allCards) {
-      for (const person of item.card?.assignees ?? []) people.set(person.id, { id: person.id, name: person.name })
+      for (const person of item.card?.assignees ?? []) {
+        const existing = people.get(person.id)
+        people.set(person.id, {
+          id: person.id, name: person.name,
+          avatar_url: person.avatar_url || existing?.avatar_url,
+        })
+      }
     }
     return [...people.values()].sort((a, b) => a.name.localeCompare(b.name, 'es'))
   }, [allCards, boards, canViewAllTasks])
@@ -372,7 +382,11 @@ export function ProjectCalendar({ project, profile }: { project: Project; profil
           <button type="button" className={mode === 'month' ? styles.active : undefined} aria-pressed={mode === 'month'} onClick={() => setMode('month')}>Mes</button>
           <button type="button" className={mode === 'agenda' ? styles.active : undefined} aria-pressed={mode === 'agenda'} onClick={() => setMode('agenda')}>Agenda</button>
         </div>
-        <button className={styles.filterButton} type="button" aria-expanded={filtersOpen} onClick={() => setFiltersOpen((open) => !open)}>Filtros{hiddenBoards.length + hiddenStates.length + (canViewAllTasks ? selectedAssigneeIds.length + Number(includeUnassigned) : 0) ? ' (' + (hiddenBoards.length + hiddenStates.length + (canViewAllTasks ? selectedAssigneeIds.length + Number(includeUnassigned) : 0)) + ')' : ''}</button>
+        {canViewAllTasks && <ProjectCalendarAssigneeFilter people={assigneeOptions}
+          selectedIds={selectedAssigneeIds} includeUnassigned={includeUnassigned}
+          currentUserId={profile.user.id} onSelectedIdsChange={setSelectedAssigneeIds}
+          onIncludeUnassignedChange={setIncludeUnassigned} />}
+        <button className={styles.filterButton} type="button" aria-expanded={filtersOpen} onClick={() => setFiltersOpen((open) => !open)}>Filtros{hiddenBoards.length + hiddenStates.length ? ' (' + (hiddenBoards.length + hiddenStates.length) + ')' : ''}</button>
         {(project.role === 'responsable' || project.role === 'editor') && <button className="primary" type="button" onClick={() => setEventModal('new')}>+ Nuevo evento</button>}
       </div>
     </div>
@@ -386,18 +400,7 @@ export function ProjectCalendar({ project, profile }: { project: Project; profil
       <div className={styles.filterGroup}><strong>Estados</strong><div className={styles.filterOptions}>
         {STATES.map((state) => <label key={state.value}><input type="checkbox" checked={!hiddenStates.includes(state.value)} onChange={() => setHiddenStates((current) => current.includes(state.value) ? current.filter((value) => value !== state.value) : [...current, state.value])} /><i className={styles.statusDot} style={{ background: state.fallback }} />{state.label}</label>)}
       </div></div>
-      {canViewAllTasks && <div className={styles.filterGroup}><strong>Usuarios asignados</strong>
-        <div className={styles.filterOptions}>
-          {assigneeOptions.map((person) => <label key={person.id}>
-            <input type="checkbox" checked={selectedAssigneeIds.includes(person.id)}
-              onChange={() => setSelectedAssigneeIds((current) => current.includes(person.id)
-                ? current.filter((id) => id !== person.id) : [...current, person.id])} />
-            {person.name}
-          </label>)}
-          <label><input type="checkbox" checked={includeUnassigned}
-            onChange={(change) => setIncludeUnassigned(change.target.checked)} />Sin asignar</label>
-        </div>
-      </div>}
+
       {project.role !== 'cliente' && <div className={styles.filterGroup}><strong>Eventos</strong><label className={styles.eventFilter}><input type="checkbox" checked={showEvents} onChange={() => setShowEvents((value) => !value)} /> Mostrar reuniones, citas y eventos</label></div>}
       <button className="ghost" type="button" onClick={() => { setHiddenBoards([]); setHiddenStates([]); setSelectedAssigneeIds([]); setIncludeUnassigned(false); setShowEvents(true) }}>Mostrar todos</button>
     </div>}

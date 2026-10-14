@@ -1,0 +1,29 @@
+.root { position:relative;z-index:15;min-width:0 }
+.trigger { display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:36px;max-width:240px;padding:7px 10px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink);cursor:pointer;font-size:12px }
+.trigger:hover { background:var(--canvas) }
+.triggerActive { border-color:var(--accent) }
+.triggerTitle { font-weight:700;white-space:nowrap }
+.allLabel,.selectedPreview { display:inline-flex;align-items:center;gap:4px;color:var(--muted);min-width:0;white-space:nowrap }
+.selectedPreview span:last-child { overflow:hidden;text-overflow:ellipsis }
+.previewAvatar { flex:0 0 auto;border:1px solid var(--surface);margin-left:-4px }
+.chevron { color:var(--muted);font-size:17px;line-height:1 }
+.popup { position:absolute;top:calc(100% + 8px);right:0;width:min(330px,calc(100vw - 32px));padding:12px;background:var(--surface);border:1px solid var(--line);border-radius:11px;box-shadow:0 12px 32px rgb(0 0 0 / 17%);color:var(--ink) }
+.popupHeader { display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px }
+.popupHeader strong { font-size:13px }
+.closeButton { border:0;background:transparent;color:var(--muted);cursor:pointer;font-size:22px;line-height:1 }
+.search { width:100%;min-height:36px;border:1px solid var(--line);border-radius:8px;background:var(--canvas);color:var(--ink);padding:7px 10px;font-size:13px }
+.quickActions { display:flex;justify-content:space-between;gap:8px;margin:9px 0 }
+.quickActions button { border:0;background:transparent;color:var(--accent);padding:5px 7px;cursor:pointer;font-size:12px;font-weight:600 }
+.quickActions button:hover { text-decoration:underline }
+.results { max-height:245px;overflow-y:auto;overscroll-behavior:contain;border-top:1px solid var(--line);border-bottom:1px solid var(--line) }
+.option { display:flex;align-items:center;gap:10px;min-height:42px;padding:5px 7px;cursor:pointer;font-size:12px }
+.option:hover { background:var(--canvas) }
+.avatar { flex:0 0 auto;border:1px solid var(--line) }
+.personName { flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap }
+.option input,.unassigned input { accent-color:var(--accent);flex:0 0 auto;width:15px;height:15px }
+.empty { padding:16px 4px;text-align:center;font-size:12px;color:var(--muted) }
+.unassigned { display:flex;align-items:center;justify-content:space-between;gap:9px;padding:10px 7px;font-size:12px;cursor:pointer }
+.footer { display:flex;align-items:center;justify-content:space-between;gap:9px;margin-top:6px }
+.footer span { color:var(--muted);font-size:11px }
+.footer button { border:0;border-radius:7px;background:var(--accent);color:var(--accent-ink);padding:7px 12px;font-size:12px;cursor:pointer }
+@media(max-width:550px) { .trigger { max-width:185px } .popup { right:0 } }
