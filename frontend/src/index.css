@@ -1511,15 +1511,6 @@ h1, h2, h3, p { margin: 0; }
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.card-modal .milestone-dependency-state {
-  flex: 0 0 auto;
-  color: var(--muted);
-  font-size: 12px;
-  white-space: nowrap;
-}
-.card-modal .milestone-dependency-state.is-complete {
-  color: #147a5f;
-}
 .card-modal .milestone-dependency-empty {
   color: var(--muted);
   font-size: 13px;
