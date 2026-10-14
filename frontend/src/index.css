@@ -2766,20 +2766,20 @@ h1, h2, h3, p { margin: 0; }
 .workspace.project-layout { gap: 18px; padding: 20px; }
 .workspace.project-layout > .workspace.board-embedded { padding: 0; }
 
-/* Kanban y Lista desplazan su contenido sin mover la cabecera de la página. */
-.frame:has(.board-embedded :is(.board, .board-list-scroll)) {
+/* Kanban, Lista y Tabla desplazan su contenido sin mover la cabecera de la página. */
+.frame:has(.board-embedded :is(.board, .board-list-scroll, .board-table-scroll)) {
   height: 100dvh;
   min-height: 0;
 }
-.main:has(.board-embedded :is(.board, .board-list-scroll)) {
+.main:has(.board-embedded :is(.board, .board-list-scroll, .board-table-scroll)) {
   min-height: 0;
   overflow: hidden;
 }
-.workspace.project-layout:has(> .workspace.board-embedded :is(.board, .board-list-scroll)) {
+.workspace.project-layout:has(> .workspace.board-embedded :is(.board, .board-list-scroll, .board-table-scroll)) {
   min-height: 0;
   overflow: hidden;
 }
-.workspace.board-embedded:has(> :is(.board, .board-list-scroll)) {
+.workspace.board-embedded:has(> :is(.board, .board-list-scroll, .board-table-scroll)) {
   min-height: 0;
   overflow: hidden;
 }

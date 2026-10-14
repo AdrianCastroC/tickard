@@ -7,7 +7,7 @@ import styles from './TableView.module.css'
 type Props = { board: BoardPayload; cards: BoardPayload['columns']; onOpen: (card: Card) => void }
 
 export function TableView({ board, cards, onOpen }: Props) {
-  return <div className={styles.scroll}><table className={styles.table}><thead><tr>
+  return <div className={`${styles.scroll} board-table-scroll`} role="region" aria-label="Tabla de tareas" tabIndex={0}><table className={styles.table}><thead><tr>
     <th>Tarea</th><th>Estado</th><th>Categoría</th><th>Responsable</th><th>Prioridad</th><th>Periodo</th><th>Etiquetas</th>
   </tr></thead><tbody>{cards.flatMap((column) => orderedColumnCards(column, board.categories ?? []).map((card) => {
     const category = board.categories?.find((item) => item.id === card.category_id)
