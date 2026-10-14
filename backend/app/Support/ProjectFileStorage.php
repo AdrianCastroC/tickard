@@ -3,6 +3,7 @@
 namespace App\Support;
 
 use App\Models\CardAttachment;
+use App\Models\User;
 use App\Models\Workspace;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
@@ -14,6 +15,9 @@ use Illuminate\Support\Str;
 class ProjectFileStorage
 {
     public const MAX_FILE_KB = 10240;
+    public const FREE_WORKSPACE_QUOTA_BYTES = 200 * 1024 * 1024;
+    public const WORKSPACE_QUOTA_BYTES = 2 * 1024 * 1024 * 1024;
+    public const PRO_ACCOUNT_QUOTA_BYTES = 20 * 1024 * 1024 * 1024;
 
     /** Only small, supported documents and images; the server detects the MIME. */
     public const EXTENSIONS = [
@@ -85,24 +89,92 @@ class ProjectFileStorage
         return (int) $projectFiles + (int) $cardFiles;
     }
 
+    /** Default quota for each Workspace, based on its owner's plan. */
     public static function limitBytes(Workspace $workspace): ?int
     {
-        // Plan quotas are per Workspace. Free/Base/Pro have no numeric
-        // storage allowance configured yet; Business can override it in DB.
-        if ($workspace->effectivePlan() !== \App\Models\User::PLAN_BUSINESS) {
-            return null;
-        }
+        return match ($workspace->effectivePlan()) {
+            User::PLAN_FREE => self::FREE_WORKSPACE_QUOTA_BYTES,
+            User::PLAN_BASE => self::WORKSPACE_QUOTA_BYTES,
+            User::PLAN_PRO => self::proWorkspaceLimitBytes($workspace),
+            User::PLAN_BUSINESS => self::businessLimitBytes($workspace),
+            default => self::FREE_WORKSPACE_QUOTA_BYTES,
+        };
+    }
+
+    /**
+     * Evenly divide the included 20 GiB between existing owned Workspaces.
+     * Calculated dynamically: adding/removing a Workspace redistributes the
+     * default share without storing or migrating individual allocations.
+     */
+    private static function proWorkspaceLimitBytes(Workspace $workspace): int
+    {
+        $count = max(1, (int) Workspace::query()
+            ->where('owner_id', $workspace->owner_id)
+            ->count());
+
+        return intdiv(self::PRO_ACCOUNT_QUOTA_BYTES, $count);
+    }
+
+    private static function businessLimitBytes(Workspace $workspace): ?int
+    {
         $limit = DB::table('workspace_plan_limits')
-            ->where('workspace_id', $workspace->id)->value('max_storage_mb');
+            ->where('workspace_id', $workspace->id)
+            ->value('max_storage_mb');
+
         return $limit === null ? null : (int) $limit * 1024 * 1024;
     }
 
+    /** Pro owners share a maximum of 20 GiB across all their own Workspaces. */
+    public static function accountLimitBytes(Workspace $workspace): ?int
+    {
+        return $workspace->effectivePlan() === User::PLAN_PRO
+            ? self::PRO_ACCOUNT_QUOTA_BYTES
+            : null;
+    }
+
+    public static function usedBytesForOwner(int $ownerId): int
+    {
+        $general = DB::table('project_files')
+            ->join('projects', 'projects.id', '=', 'project_files.project_id')
+            ->join('workspaces', 'workspaces.id', '=', 'projects.workspace_id')
+            ->where('workspaces.owner_id', $ownerId)
+            ->sum('project_files.size');
+
+        $attachments = DB::table('card_attachments')
+            ->join('cards', 'cards.id', '=', 'card_attachments.card_id')
+            ->join('boards', 'boards.id', '=', 'cards.board_id')
+            ->join('projects', 'projects.id', '=', 'boards.project_id')
+            ->join('workspaces', 'workspaces.id', '=', 'projects.workspace_id')
+            ->where('workspaces.owner_id', $ownerId)
+            ->sum('card_attachments.size');
+
+        return (int) $general + (int) $attachments;
+    }
+
+    /** Must run inside the upload transaction so row locks are held until commit. */
     public static function assertRoom(Workspace $workspace, int $additionalBytes): void
     {
+        // Synchronize quota checks across uploads to different Workspaces owned
+        // by the same user. Both upload controllers call this in a transaction.
+        // Lock the owner BEFORE any aggregate query to avoid stale snapshots.
+        $owner = User::query()->whereKey($workspace->owner_id)->lockForUpdate()->firstOrFail();
+        $workspace->setRelation('owner', $owner);
+
         $limit = self::limitBytes($workspace);
         if ($limit !== null && self::usedBytes($workspace) + $additionalBytes > $limit) {
             throw ValidationException::withMessages([
-                'file' => 'Se ha alcanzado el límite de almacenamiento del Workspace.',
+                'file' => 'Se ha alcanzado la cuota de almacenamiento de este Workspace.',
+            ]);
+        }
+
+        $accountLimit = self::accountLimitBytes($workspace);
+        if ($accountLimit === null) {
+            return;
+        }
+
+        if (self::usedBytesForOwner((int) $workspace->owner_id) + $additionalBytes > $accountLimit) {
+            throw ValidationException::withMessages([
+                'file' => 'La cuenta Pro ha alcanzado su límite total de 20 GB. Libera espacio en alguno de tus Workspaces.',
             ]);
         }
     }

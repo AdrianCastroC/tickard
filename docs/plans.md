@@ -47,6 +47,7 @@ Por tanto, deben distinguirse:
 
 - Máximo de **1 Workspace propio**.
 - Máximo de **3 proyectos por Workspace**.
+- Almacenamiento: **200 MB por Workspace**.
 - Incluye una cantidad limitada de miembros por Workspace.
 - Puede ampliar la capacidad de miembros mediante asientos adicionales cuando esta funcionalidad esté disponible.
 - Puede pertenecer como miembro a otros Workspaces.
@@ -59,6 +60,7 @@ Los Workspaces a los que el usuario pertenece como miembro no consumen su límit
 
 - Máximo de **5 Workspaces propios**.
 - Máximo de **10 proyectos por Workspace**.
+- Almacenamiento: **2 GB por Workspace**.
 - Incluye una cantidad de miembros por Workspace superior a Free.
 - Puede contratar asientos adicionales para Workspaces concretos.
 - Puede pertenecer como miembro a otros Workspaces.
@@ -71,6 +73,7 @@ El límite de Workspaces evita que la creación de nuevos espacios pueda utiliza
 
 - **Workspaces propios ilimitados**.
 - Máximo de **50 proyectos por Workspace**.
+- Almacenamiento: **20 GB totales por cuenta**, repartidos de forma equitativa entre los Workspaces propios existentes.
 - Incluye una cantidad de miembros por Workspace superior a Base.
 - Puede contratar asientos adicionales para Workspaces concretos.
 - Puede pertenecer como miembro a otros Workspaces.
@@ -431,7 +434,7 @@ Los Workspaces propios utilizan las capacidades correspondientes a ese plan.
 
 ### Los límites de recursos se aplican por Workspace
 
-Los límites de proyectos, miembros y otros recursos se calculan individualmente para cada Workspace.
+Los límites de proyectos y miembros se calculan individualmente para cada Workspace. El almacenamiento tiene **además** un límite compartido de 20 GB entre los Workspaces propios de una cuenta Pro.
 
 ### Los miembros consumen capacidad del Workspace
 
@@ -465,8 +468,8 @@ Las siguientes cuestiones todavía no están definidas y no deben asumirse hasta
 - facturación mensual o anual de los asientos adicionales;
 - tratamiento de los asientos durante upgrades y downgrades;
 - posibilidad de cancelar o reducir asientos adicionales;
-- límites de almacenamiento;
-- límites de archivos;
+- precio y condiciones de las ampliaciones de almacenamiento;
+- límites de archivos adicionales al máximo actual de 10 MB por archivo;
 - funcionalidades adicionales exclusivas de Base;
 - funcionalidades adicionales exclusivas de Pro;
 - características concretas de Business;
@@ -481,3 +484,25 @@ Las siguientes cuestiones todavía no están definidas y no deben asumirse hasta
 - restricciones adicionales aplicables cuando un Workspace supere temporalmente sus límites.
 
 Estas decisiones deberán documentarse cuando se definan y no deben inferirse durante la implementación.
+---
+
+## 14. Cuotas de almacenamiento
+
+El almacenamiento se calcula por el **plan del propietario** del Workspace, no por el plan de sus miembros.
+
+| Plan | Capacidad incluida por Workspace | Restricción adicional |
+|---|---:|---|
+| Free | 200 MB | Un Workspace propio |
+| Base | 2 GB | Máximo de cinco Workspaces propios |
+| Pro | **20 GB repartidos por defecto a partes iguales** | Máximo de **20 GB acumulados** en los Workspaces propios |
+| Business | Configurable | Según condiciones contratadas |
+
+- El límite individual se aplica a la suma de documentos generales y archivos adjuntos de las Cards de todos los proyectos de ese Workspace.
+- Pro conserva el derecho a crear Workspaces ilimitados, pero todos ellos comparten un máximo de 20 GB entre sí. Crear un undécimo Workspace **no aumenta** la capacidad incluida de la cuenta.
+- La capacidad Pro se divide automáticamente entre el número **real de Workspaces propios** del usuario: 1 = 20 GB, 2 = 10 GB cada uno, 4 = 5 GB, 10 = 2 GB, 20 = 1 GB. Al crear o borrar uno se recalcula la cuota de todos, sin borrar archivos, incluso si algún Workspace queda temporalmente por encima de su nueva capacidad.
+- El consumo de Workspaces compartidos con el usuario recae sobre sus propietarios; no se descuenta de la capacidad propia del miembro.
+- Cada nueva subida tiene también un máximo de 10 MB y solo admite los tipos autorizados en la sección Archivos.
+- La aplicación rechaza nuevas subidas que superarían la cuota del Workspace o el máximo total Pro, sin eliminar los archivos previamente existentes. Si un Workspace ya excede su cuota tras redistribuirla, se bloquean nuevas subidas hasta recuperar espacio.
+- Las ampliaciones de pago para Pro, la redistribución personalizada, las reservas de capacidad y su gestión desde Configuración del Workspace **son funcionalidades futuras**.
+
+A efectos técnicos, se usan unidades binarias: 200 MB = 200 × 1024² bytes, 2 GB = 2 × 1024³ bytes y 20 GB = 20 × 1024³ bytes.

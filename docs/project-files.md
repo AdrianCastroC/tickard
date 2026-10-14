@@ -17,7 +17,20 @@ Solo JPG/JPEG, PNG, WebP, PDF, DOCX, XLSX y TXT, con **10 MiB máximo por archiv
 
 El uso se agrega **por Workspace**, sumando archivos generales de sus proyectos y adjuntos de todas las Cards. La vista enseña el total del Workspace, no una cuota independiente por proyecto.
 
-El backend respeta `WorkspaceLimits::maxStorageMb()`: cuando el plan/configuración proporcione un límite se valida atómicamente y se muestra el porcentaje. Por ahora Free/Base/Pro no tienen cuotas numéricas definidas en `WorkspaceLimits`; **no se inventa una cifra ni un porcentaje**.
+La cuota depende del **plan del propietario** del Workspace:
+
+| Plan | Cuota por Workspace | Límite agregado para los Workspaces del mismo propietario |
+|---|---:|---:|
+| Free | 200 MB | Un Workspace propio |
+| Base | 2 GB | Hasta 5 Workspaces propios (10 GB como máximo si los usa todos) |
+| Pro | **20 GB divididos equitativamente** entre sus Workspaces propios | **20 GB totales** para la cuenta |
+| Business | Configurable | Según contrato |
+
+Los tamaños de almacenamiento se calculan usando MB/GiB binarios (200 × 1024² bytes, 2 × 1024³ bytes y 20 × 1024³ bytes). Los Workspaces de terceros en los que participas cuentan para la cuota del **propietario**, no para la tuya.
+
+Pro puede crear Workspaces ilimitados, pero sus **20 GB totales se reparten por defecto a partes iguales entre los Workspaces que realmente posea** (no según el máximo de su plan): 1 Workspace → 20 GB; 2 → 10 GB cada uno; 4 → 5 GB; 10 → 2 GB; 20 → 1 GB. El reparto se recalcula al crear o eliminar Workspaces, sin mover ni borrar archivos existentes. Si una redistribución deja un Workspace por encima de su cuota, conservará los archivos pero no podrá realizar nuevas subidas hasta disponer de espacio. La división usa bytes enteros, descartando los restos inferiores a 1 byte. En el futuro podrán comprarse ampliaciones y distribuir manualmente o reservar capacidad entre los Workspaces; **esa funcionalidad no se implementa todavía**.
+
+El backend valida las cuotas en una transacción, bloqueando al propietario durante la comprobación para evitar que dos subidas simultáneas en distintos Workspaces superen el total. El footer de Archivos muestra el porcentaje real utilizado por el Workspace y, en Pro, también el consumo de toda la cuenta. Si se reduce un plan o ya hay archivos por encima de la nueva cuota, estos se conservan y se impiden nuevas subidas hasta liberar capacidad.
 
 ## Permisos
 

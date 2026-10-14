@@ -35,6 +35,8 @@ class ProjectFilesController extends ApiController
             ->map(fn (CardAttachment $file) => ProjectFileStorage::presentCard($file));
 
         $workspace = $project->workspace()->with('owner')->firstOrFail();
+        $accountLimit = ProjectFileStorage::accountLimitBytes($workspace);
+
         return response()->json([
             'files' => $general->concat($attachments)->sortByDesc('created_at')->values(),
             'storage' => [
@@ -42,6 +44,9 @@ class ProjectFilesController extends ApiController
                 'workspace_name' => $workspace->name,
                 'used_bytes' => ProjectFileStorage::usedBytes($workspace),
                 'limit_bytes' => ProjectFileStorage::limitBytes($workspace),
+                'account_used_bytes' => $accountLimit !== null
+                    ? ProjectFileStorage::usedBytesForOwner((int) $workspace->owner_id) : null,
+                'account_limit_bytes' => $accountLimit,
             ],
             'can_upload' => ProjectAccess::canEditCards($request->user(), $project),
             'can_manage' => ProjectAccess::canManage($request->user(), $project),

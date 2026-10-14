@@ -25,7 +25,14 @@ type ProjectFile = {
 }
 type FilesResponse = {
   files: ProjectFile[]
-  storage: { workspace_id: number; workspace_name: string; used_bytes: number; limit_bytes: number | null }
+  storage: {
+    workspace_id: number
+    workspace_name: string
+    used_bytes: number
+    limit_bytes: number | null
+    account_used_bytes: number | null
+    account_limit_bytes: number | null
+  }
   can_upload: boolean
   can_manage: boolean
 }
@@ -35,8 +42,14 @@ const ALLOWED = ['jpg', 'jpeg', 'png', 'webp', 'pdf', 'docx', 'xlsx', 'txt']
 
 function sizeLabel(bytes: number) {
   if (bytes < 1024) return `${bytes} B`
-  if (bytes < 1024 ** 2) return `${(bytes / 1024).toFixed(1)} KB`
-  return `${(bytes / 1024 ** 2).toFixed(1)} MB`
+  const units = ['KB', 'MB', 'GB', 'TB'] as const
+  let amount = bytes / 1024
+  let unit = 0
+  while (amount >= 1024 && unit < units.length - 1) {
+    amount /= 1024
+    unit += 1
+  }
+  return `${Number.isInteger(amount) ? amount.toFixed(0) : amount.toFixed(1)} ${units[unit]}`
 }
 function fileKind(file: ProjectFile): Kind {
   if (['image/jpeg', 'image/png', 'image/webp', 'image/svg+xml'].includes(file.mime_type ?? '')
@@ -369,6 +382,11 @@ export function ProjectFiles({ project, profile }: { project: Project; profile: 
       <div className={styles.storageInfo}>
         <strong>Almacenamiento del Workspace</strong>
         <small>{storage.workspace_name}</small>
+        {storage.account_limit_bytes !== null && storage.account_used_bytes !== null && (
+          <small className={styles.accountStorage}>
+            Cuenta Pro: {sizeLabel(storage.account_used_bytes)} / {sizeLabel(storage.account_limit_bytes)} en todos tus Workspaces
+          </small>
+        )}
       </div>
       <div className={styles.storageTrack}
         role={percent !== null ? 'progressbar' : undefined}
