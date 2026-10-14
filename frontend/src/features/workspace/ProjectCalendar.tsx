@@ -430,7 +430,7 @@ export function ProjectCalendar({ project, profile }: { project: Project; profil
   if (error && !boards) return <section className="project-panel" role="alert"><p>No se pudo cargar el calendario: {error}</p><button className="ghost" type="button" onClick={() => setReloadKey((n) => n + 1)}>Reintentar</button></section>
 
 
-  return <section className={styles.root} aria-label={'Calendario del proyecto ' + project.name}>
+  return <section className={styles.root} data-calendar-mode={mode} aria-label={'Calendario del proyecto ' + project.name}>
     <div className={styles.toolbar}>
       <div className={styles.dateControls}>
         <button className="ghost" type="button" onClick={() => { setMonth(monthStart(today)); setSelectedDay(null) }}>Hoy</button>
@@ -541,7 +541,7 @@ export function ProjectCalendar({ project, profile }: { project: Project; profil
           {part.width >= 2 && part.item.boardName && !canViewAllTasks && <span className={styles.segmentBoard}>{part.item.boardName}</span>}
         </button>)}</div>
       </div>)}
-    </div> : <div className={styles.agenda}>
+    </div> : <div className={styles.agenda} role="region" aria-label="Agenda de tareas y eventos" tabIndex={0}>
       {monthItems.length === 0 ? <p className={styles.empty}>No hay tareas ni eventos programados en este mes con los filtros actuales.</p> :
         monthItems.map((item) => <button key={item.key + ':' + item.start} type="button" className={styles.agendaItem} style={colorStyle(item.color)} onClick={() => item.kind === 'event' ? setEventModal(item.event!) : openCard(item)}>
           <span className={styles.agendaDate}>{item.start === item.end ? item.start : item.start + ' — ' + item.end}</span>
