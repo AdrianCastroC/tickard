@@ -24,6 +24,7 @@ use App\Support\CardPresenter;
 use App\Support\MilestoneCompletionService;
 use App\Support\Notifier;
 use App\Support\ProjectAccess;
+use App\Support\ProjectFileStorage;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -225,42 +226,52 @@ public function destroyChecklistItem(Request $request, CardChecklistItem $item, 
 
 public function storeAttachment(Request $request, Card $card)
     {
-        abort_unless(ProjectAccess::canEditCards($request->user(), $card->board->project), 403);
-
+        $project = $card->board->project;
+        abort_unless(ProjectAccess::canEditCards($request->user(), $project), 403);
         $data = $request->validate([
-            'file' => ['required', 'file', 'max:20480'],
+            'file' => ['required', 'file', 'max:'.ProjectFileStorage::MAX_FILE_KB],
         ]);
 
-        /** @var \Illuminate\Http\UploadedFile $file */
         $file = $data['file'];
+        ProjectFileStorage::validateUpload($file);
         $safe = Str::slug(pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME)) ?: 'archivo';
-        $ext = $file->getClientOriginalExtension();
-        $name = $safe.($ext ? '.'.$ext : '');
-        $path = $file->storeAs(
-            'card-attachments/'.$card->id,
-            Str::uuid()->toString().'_'.$name,
-            'public'
-        );
+        $path = 'card-attachments/'.$card->id.'/'.Str::uuid().'_'.$safe.'.'.strtolower($file->getClientOriginalExtension());
+        $stored = false;
 
-        $attachment = $card->attachments()->create([
-            'user_id' => $request->user()->id,
-            'original_name' => $file->getClientOriginalName(),
-            'disk_path' => $path,
-            'mime_type' => $file->getClientMimeType(),
-            'size' => $file->getSize() ?: 0,
-        ]);
-
-        $card->board->touchRevision();
-
-        return response()->json(CardPresenter::attachment($attachment), 201);
+        try {
+            $attachment = DB::transaction(function () use ($request, $card, $project, $file, $path, &$stored) {
+                $workspace = \App\Models\Workspace::whereKey($project->workspace_id)->lockForUpdate()->firstOrFail();
+                ProjectFileStorage::assertRoom($workspace, $file->getSize() ?: 0);
+                $stored = $file->storeAs(dirname($path), basename($path), 'local') !== false;
+                abort_unless($stored, 500, 'No se pudo guardar el adjunto.');
+                $attachment = $card->attachments()->create([
+                    'user_id' => $request->user()->id,
+                    'original_name' => $file->getClientOriginalName(),
+                    'disk_path' => $path,
+                    'mime_type' => ProjectFileStorage::mime($file),
+                    'size' => $file->getSize() ?: 0,
+                ]);
+                $card->board->touchRevision();
+                return $attachment;
+            });
+            return response()->json(CardPresenter::attachment($attachment), 201);
+        } catch (\Throwable $exception) {
+            if ($stored) Storage::disk('local')->delete($path);
+            throw $exception;
+        }
     }
 
 public function destroyAttachment(Request $request, CardAttachment $attachment)
     {
-        abort_unless(ProjectAccess::canEditCards($request->user(), $attachment->card->board->project), 403);
+        $project = $attachment->card->board->project;
+        abort_unless(ProjectAccess::canEditCards($request->user(), $project), 403);
+        abort_unless(
+            ProjectAccess::canManage($request->user(), $project) || $attachment->user_id === $request->user()->id,
+            403
+        );
 
         $board = $attachment->card->board;
-        Storage::disk('public')->delete($attachment->disk_path);
+        Storage::disk('local')->delete($attachment->disk_path);
         $attachment->delete();
         $board->touchRevision();
 

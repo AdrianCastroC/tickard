@@ -13,6 +13,7 @@ use App\Support\CardDependencyService;
 use App\Support\CardBacklogService;
 use App\Support\MilestoneCompletionService;
 use App\Support\ProjectAccess;
+use App\Support\ProjectFileStorage;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -152,7 +153,9 @@ class CardsController extends ApiController
         }
 
         $board = $column->board;
+        $paths = ProjectFileStorage::pathsForColumn($column);
         $column->delete();
+        ProjectFileStorage::purgePaths($paths);
         $board->touchRevision();
 
         return response()->noContent();
@@ -551,7 +554,9 @@ class CardsController extends ApiController
     {
         abort_unless(ProjectAccess::canEditCards($request->user(), $card->board->project), 403);
         $board = $card->board;
+        $paths = $card->attachments()->pluck('disk_path')->all();
         $card->delete();
+        ProjectFileStorage::purgePaths($paths);
         $board->touchRevision();
 
         return response()->noContent();

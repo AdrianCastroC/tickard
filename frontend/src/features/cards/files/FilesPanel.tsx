@@ -2,6 +2,7 @@ import { useRef, useState } from 'react'
 import { api, uploadFile, type Attachment, type Card } from '../../../api'
 import { AttachmentIcon, PlusIcon, TrashIcon } from '../../../shared/icons'
 import { SectionToggle } from '../cardSectionUi'
+import { openProtectedFile, useProtectedPreview } from '../../../shared/protectedFiles'
 
 function formatFileSize(bytes: number) {
   if (!bytes || bytes < 0) return '0 B'
@@ -12,16 +13,22 @@ function formatFileSize(bytes: number) {
 
 
 
-export function FilesPanel({ card, editing, canEdit, dragProps, onChange, onRemove }: {
+function CardThumbnail({ file }: { file: Attachment }) {
+  const { src } = useProtectedPreview(file.is_image ? file.url : null)
+  return file.is_image && src ? <img src={src} alt="" /> : <span className="file-thumb-fallback"><AttachmentIcon /></span>
+}
+
+export function FilesPanel({ card, editing, canEdit, canManage, currentUserId, dragProps, onChange, onRemove }: {
   card: Card
   editing: boolean
   canEdit: boolean
+  canManage: boolean
+  currentUserId: number
   dragProps?: Record<string, unknown>
   onChange: () => Promise<void>
   onRemove?: () => Promise<void>
 }) {
   const attachments = card.attachments ?? []
-  void attachments
   const canUpload = canEdit && !editing
   const inputRef = useRef<HTMLInputElement>(null)
   const [dragging, setDragging] = useState(false)
@@ -90,18 +97,18 @@ export function FilesPanel({ card, editing, canEdit, dragProps, onChange, onRemo
             <div className="files-grid">
               {attachments.map((file) => (
                 <article className="file-card" key={file.id}>
-                  <a className="file-thumb" href={file.url} target="_blank" rel="noreferrer">
-                    {file.is_image ? (
-                      <img src={file.url} alt="" />
-                    ) : (
-                      <span className="file-thumb-fallback"><AttachmentIcon /></span>
-                    )}
+                  <a className="file-thumb" href={file.url}
+                    onClick={(event) => { event.preventDefault(); void openProtectedFile(file.url).catch((cause: unknown) => setError(cause instanceof Error ? cause.message : 'No se pudo abrir el archivo.')) }}>
+                    <CardThumbnail file={file} />
                   </a>
                   <div className="file-meta">
-                    <a href={file.url} target="_blank" rel="noreferrer" title={file.name}>{file.name}</a>
+                    <a href={file.url} title={file.name} onClick={(event) => {
+                      event.preventDefault()
+                      void openProtectedFile(file.url).catch((cause: unknown) => setError(cause instanceof Error ? cause.message : 'No se pudo abrir el archivo.'))
+                    }}>{file.name}</a>
                     <span className="muted">{formatFileSize(file.size)}</span>
                   </div>
-                  {canEdit && (
+                  {canEdit && (canManage || file.user_id === currentUserId) && (
                     <div className="file-menu">
                       <button
                         type="button"

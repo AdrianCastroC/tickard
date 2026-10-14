@@ -43,6 +43,7 @@ export type Attachment = {
   mime_type?: string | null
   size: number
   is_image: boolean
+  user_id?: number | null
 }
 
 export type CardProgress = {

@@ -449,6 +449,7 @@ class CardPresenter
             'mime_type' => $attachment->mime_type,
             'size' => (int) $attachment->size,
             'is_image' => $attachment->isImage(),
+            'user_id' => $attachment->user_id,
         ];
     }
 

@@ -360,6 +360,8 @@ export function CardDrawer({ card, mode, board, currentUser, canEdit, onClose, o
                               card={card}
                               editing={editing}
                               canEdit={canEdit}
+                               canManage={board.role === 'responsable'}
+                               currentUserId={currentUser.id}
                               dragProps={dragProps}
                               onChange={onChange}
                               onRemove={() => removeModule(module.id)}

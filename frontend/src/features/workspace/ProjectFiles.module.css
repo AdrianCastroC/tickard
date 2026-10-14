@@ -1,0 +1,95 @@
+.root { display:flex; flex-direction:column; min-width:0; gap:14px; color:var(--ink) }
+.toolbar { display:flex; align-items:center; gap:12px; flex-wrap:wrap; min-width:0; position:relative; }
+.toolbarSpacer { flex:1 1 auto }
+.search { display:flex; align-items:center; gap:10px; min-width:180px; flex:0 1 390px; height:38px; border:1px solid var(--line); border-radius:9px; padding:0 12px; background:var(--surface); color:var(--muted) }
+.search svg { width:18px; height:18px; flex-shrink:0; fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; }
+.search input { flex:1; width:100%; min-width:0; border:0; background:transparent; outline:0; color:var(--ink); font:inherit; font-size:13px }
+.filterAnchor { position:relative; flex:0 0 auto }
+.filters { position:absolute; z-index:25; top:calc(100% + 8px); left:0; display:flex; flex-direction:column; gap:15px; width:255px; padding:15px; border:1px solid var(--line); border-radius:12px; background:var(--surface); box-shadow:0 12px 32px rgb(12 36 32 / 15%) }
+.filtersHeading { display:flex; align-items:center; justify-content:space-between; gap:10px }
+.filtersHeading strong { font-size:15px }
+.filtersHeading button { font-size:12px; color:var(--accent); border:0; background:none; cursor:pointer }
+.filters label { display:flex; flex-direction:column; gap:7px; font-size:12px; font-weight:650; color:var(--muted) }
+.filters select { min-width:0; padding:9px 10px; border-radius:8px; border:1px solid var(--line); background:var(--canvas); color:var(--ink); font:inherit; font-size:13px; cursor:pointer }
+.applyFilters { border:0; border-radius:8px; padding:9px; background:var(--accent); color:var(--accent-ink); cursor:pointer; font-weight:650 }
+.viewSwitch { display:flex; gap:3px; align-items:center; padding:3px; border:1px solid var(--line); border-radius:9px; background:var(--canvas) }
+.viewSwitch button { display:grid; place-items:center; width:33px; height:32px; padding:5px; border:0; border-radius:7px; background:none; color:var(--muted); cursor:pointer }
+.viewSwitch svg { width:17px; height:17px; stroke:currentColor; stroke-width:1.7; stroke-linecap:round; fill:none }
+.viewSwitch button.activeView { background:var(--accent); color:var(--accent-ink) }
+.uploadButton,.openButton { display:inline-flex; justify-content:center; align-items:center; gap:9px; border:0; background:var(--accent); border-radius:9px; padding:10px 15px; color:var(--accent-ink); font-weight:700; font-size:13px; cursor:pointer }
+.uploadButton svg { height:17px; width:17px; fill:none; stroke:currentColor; stroke-width:1.9; stroke-linecap:round; stroke-linejoin:round }
+.uploadButton:disabled { opacity:.6; cursor:progress }
+.tabs { display:flex; align-items:center; gap:9px; flex-wrap:wrap }
+.tabs button { display:inline-flex; align-items:center; gap:7px; padding:8px 15px; border:1px solid var(--line); background:var(--surface); border-radius:99px; color:var(--ink); font-size:13px; cursor:pointer }
+.tabs span { font-size:11px; padding:1px 5px; border-radius:20px; background:var(--canvas); color:var(--muted) }
+.tabs button.tabActive { background:var(--accent); border-color:var(--accent); color:var(--accent-ink) }
+.tabs button.tabActive span { background:rgb(255 255 255 / 20%); color:inherit }
+.body { display:grid; grid-template-columns:minmax(0, 1fr); gap:14px; min-width:0; min-height:0 }
+.body.withPreview { grid-template-columns:minmax(0, 1fr) minmax(285px, 32%) }
+.fileSection { display:flex; flex-direction:column; gap:14px; min-width:0; min-height:0 }
+.listScroller { overflow-x:auto; min-width:0; flex:1 1 auto }
+.table { border-collapse:collapse; width:100%; font-size:12px; text-align:left }
+.table thead { background:var(--canvas) }
+.table th { padding:12px 10px; color:var(--muted); font-weight:650; white-space:nowrap; border-bottom:1px solid var(--line) }
+.table th:first-child { padding-left:14px }
+.table td { padding:9px 10px; color:var(--muted); border-bottom:1px solid var(--line); vertical-align:middle; white-space:nowrap }
+.table tr.selectedRow { background:color-mix(in srgb,var(--accent) 10%,var(--surface)) }
+.table tbody tr:hover { background:color-mix(in srgb,var(--accent) 6%,var(--surface)) }
+.fileNameButton { display:flex; align-items:center; gap:10px; min-width:200px; width:100%; max-width:360px; text-align:left; padding:0; border:0; background:transparent; cursor:pointer; color:var(--ink) }
+.fileNameButton > span:last-child { display:flex; flex-direction:column; min-width:0; gap:4px }
+.fileNameButton strong { max-width:270px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-weight:650; font-size:12px }
+.fileNameButton small { display:block; max-width:270px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:11px; color:var(--muted) }
+.fileGlyph { display:grid; flex:0 0 30px; position:relative; place-items:center; width:30px; height:36px; background:color-mix(in srgb,var(--accent) 15%,var(--surface)); color:var(--accent); border-radius:7px }
+.fileGlyph svg { width:21px; height:23px; stroke:currentColor; stroke-width:1.7; fill:none; stroke-linecap:round; stroke-linejoin:round }
+.fileGlyph small { position:absolute; bottom:1px; font-size:8px; font-weight:800; color:inherit }
+.fileGlyph.pdf { background:#fee6e6; color:#c82929 }
+.fileGlyph.image { background:#e2edff; color:#3576cc }
+.fileGlyph.document { background:#e1f5e8; color:#15864c }
+.fileGlyph.text { background:#edf1f3; color:#577081 }
+.originPill { border-radius:5px; padding:4px 8px; background:color-mix(in srgb,var(--accent) 13%,var(--surface)); color:var(--accent); font-size:11px; font-weight:650 }
+.originPill.cardOrigin { background:#eee9ff; color:#6d54b3 }
+.dateCell { display:flex; flex-direction:column; gap:4px }
+.dateCell small { font-size:10px; color:var(--muted) }
+.rowAction { border:0; background:transparent; padding:8px; color:var(--muted); cursor:pointer; font-size:18px }
+.rowAction:hover { color:var(--accent) }
+.details { display:flex; flex-direction:column; gap:13px; min-width:0; border:1px solid var(--line); border-radius:11px; padding:14px; background:var(--surface); align-self:start }
+.detailHeading { display:flex; align-items:center; gap:11px; min-width:0 }
+.detailHeading > div { flex:1; display:flex; flex-direction:column; min-width:0; gap:4px }
+.detailHeading strong { overflow:hidden; white-space:nowrap; text-overflow:ellipsis; font-size:13px; font-weight:700 }
+.detailHeading small { color:var(--muted); font-size:11px }
+.detailHeading button { border:0; background:none; color:var(--muted); font-size:21px; padding:3px; cursor:pointer }
+.preview { display:grid; place-items:center; height:315px; background:var(--canvas); border-radius:9px; overflow:hidden; border:1px solid var(--line) }
+.previewImage { display:block; max-height:100%; max-width:100%; object-fit:contain }
+.previewFrame { width:100%; height:100%; border:0; background:white }
+.previewMessage { margin:0; color:var(--muted); padding:15px; text-align:center; font-size:12px }
+.noPreview { display:flex; flex-direction:column; gap:15px; align-items:center; padding:20px; text-align:center; color:var(--muted); font-size:12px }
+.noPreview .fileGlyph { transform:scale(2); margin:20px }
+.previewActions { display:flex; gap:7px; flex-wrap:wrap }
+.previewActions button { flex:1 1 auto; font-size:12px; padding:10px; white-space:nowrap }
+.downloadButton { border:1px solid var(--line); border-radius:8px; background:var(--surface); color:var(--ink); cursor:pointer }
+.metadata { display:grid; grid-template-columns:100px minmax(0, 1fr); gap:11px 8px; border-top:1px solid var(--line); padding-top:15px; margin:0; font-size:12px }
+.metadata dt { color:var(--muted) }
+.metadata dd { margin:0; min-width:0; overflow-wrap:anywhere }
+.person { display:inline-flex; gap:7px; align-items:center }
+.deleteButton { align-self:flex-start; margin-top:4px; padding:8px 0; color:#c33; font-size:12px; border:0; background:none; cursor:pointer }
+.storage { display:flex; gap:18px; align-items:center; justify-content:space-between; padding:17px; border:1px solid var(--line); border-radius:11px; background:var(--canvas); min-width:0 }
+.storage > div:first-child { display:flex; flex-direction:column; gap:5px; white-space:nowrap }
+.storage strong { font-size:12px }
+.storage small { display:block; color:var(--muted); font-size:11px }
+.storageTrack { flex:1 1 100px; height:9px; background:var(--line); border-radius:99px; overflow:hidden }
+.storageTrack span { height:100%; display:block; background:var(--accent); border-radius:99px }
+.storageSize { display:flex; flex-direction:column; gap:5px; text-align:right; white-space:nowrap }
+.grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(145px,1fr)); gap:14px; min-width:0 }
+.tile { text-align:left; display:flex; flex-direction:column; gap:8px; min-width:0; border:1px solid var(--line); border-radius:10px; padding:10px; background:var(--surface); cursor:pointer; color:var(--ink) }
+.tile.selected { border-color:var(--accent); background:color-mix(in srgb,var(--accent) 8%,var(--surface)) }
+.tileImage { height:115px; background:var(--canvas); display:grid; place-items:center; overflow:hidden; border-radius:7px }
+.tileImage img { width:100%; height:100%; object-fit:contain }
+.tileImage .fileGlyph { transform:scale(1.8) }
+.tile strong { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:12px }
+.tile small { color:var(--muted) }
+.loading,.empty { display:grid; place-items:center; min-height:280px; text-align:center; color:var(--muted); font-size:14px }
+.error { display:flex; justify-content:space-between; align-items:center; gap:15px; border:1px solid color-mix(in srgb,#b43c3c 35%,var(--line)); padding:10px 14px; color:#a23c3c; border-radius:8px; font-size:12px }
+.error button { border:0; background:transparent; font-size:18px; color:inherit; cursor:pointer }
+@media(max-width:1080px) { .body.withPreview { grid-template-columns:minmax(0,1fr) minmax(245px,35%) } .table { min-width:620px } }
+@media(max-width:800px) { .body.withPreview { grid-template-columns:1fr } .details { width:100%; } .toolbarSpacer { flex-basis:20px } }
+@media(max-width:480px) { .toolbarSpacer { display:none } .search { flex:1 1 100% } .storage { flex-wrap:wrap } .storageTrack { order:3; flex-basis:100% } .tabs button { padding:7px 11px } }

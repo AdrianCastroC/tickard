@@ -8,6 +8,7 @@ use App\Http\Controllers\Api\CardDependenciesController;
 use App\Http\Controllers\Api\CardDetailsController;
 use App\Http\Controllers\Api\InvitationsController;
 use App\Http\Controllers\Api\ProjectsController;
+use App\Http\Controllers\Api\ProjectFilesController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\WorkspacesController;
 
@@ -43,6 +44,12 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::post('/projects', [ProjectsController::class, 'storeProject']);
     Route::delete('/projects/{project}', [ProjectsController::class, 'deleteProject']);
+
+    Route::get('/projects/{project}/files', [ProjectFilesController::class, 'index']);
+    Route::post('/projects/{project}/files', [ProjectFilesController::class, 'store']);
+    Route::get('/project-files/{projectFile}/content', [ProjectFilesController::class, 'content']);
+    Route::delete('/project-files/{projectFile}', [ProjectFilesController::class, 'destroy']);
+    Route::get('/attachments/{attachment}/content', [ProjectFilesController::class, 'cardContent']);
 
     Route::get('/projects/{project}/calendar-events', [CalendarEventsController::class, 'index']);
     Route::post('/projects/{project}/calendar-events', [CalendarEventsController::class, 'store']);

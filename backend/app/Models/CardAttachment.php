@@ -28,11 +28,11 @@ class CardAttachment extends Model
 
     public function url(): string
     {
-        return '/storage/'.$this->disk_path;
+        return '/api/attachments/'.$this->id.'/content';
     }
 
     public function isImage(): bool
     {
-        return str_starts_with((string) $this->mime_type, 'image/');
+        return in_array($this->mime_type, ['image/jpeg', 'image/png', 'image/webp'], true);
     }
 }

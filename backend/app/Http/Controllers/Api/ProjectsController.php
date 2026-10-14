@@ -15,6 +15,7 @@ use App\Models\Team;
 use App\Models\Workspace;
 use App\Support\CardPresenter;
 use App\Support\ProjectAccess;
+use App\Support\ProjectFileStorage;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
@@ -80,7 +81,9 @@ class ProjectsController extends ApiController
             'El nombre del proyecto no coincide.'
         );
 
+        $paths = ProjectFileStorage::pathsForProject($project);
         $project->delete();
+        ProjectFileStorage::purgePaths($paths);
 
         return response()->noContent();
     }
@@ -133,7 +136,9 @@ class ProjectsController extends ApiController
             );
         }
 
+        $paths = ProjectFileStorage::pathsForBoard($board);
         $board->delete();
+        ProjectFileStorage::purgePaths($paths);
 
         return response()->noContent();
     }
