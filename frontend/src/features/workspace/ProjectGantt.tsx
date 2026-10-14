@@ -74,7 +74,7 @@ export function ProjectGantt({ project, profile, onNavigateExternalCard }: Props
     // and navigation, rather than assuming their height is always the same.
     const resizeViewport = () => {
       const available = window.innerHeight - viewport.getBoundingClientRect().top - 20
-      viewport.style.maxHeight = `${Math.max(240, Math.floor(available))}px`
+      viewport.style.height = `${Math.max(240, Math.floor(available))}px`
     }
     resizeViewport()
     window.addEventListener('resize', resizeViewport)
