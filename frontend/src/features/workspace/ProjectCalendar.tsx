@@ -183,11 +183,21 @@ function makeWeek(days: string[], items: Item[]): Week {
 
 export function ProjectCalendar({ project, profile }: { project: Project; profile: Profile }) {
   const boardIds = project.boards.map((board) => board.id).join(',')
+  useEffect(() => {
+    const interval = window.setInterval(() => {
+      const actual = localToday()
+      setToday((current) => current === actual ? current : actual)
+    }, 60000)
+    return () => window.clearInterval(interval)
+  }, [])
+
+
   const [snapshot, setSnapshot] = useState<Snapshot | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [reloadKey, setReloadKey] = useState(0)
   const [month, setMonth] = useState(() => monthStart(localToday()))
+  const [today, setToday] = useState(localToday)
   const [mode, setMode] = useState<'month' | 'agenda'>('month')
   const [filtersOpen, setFiltersOpen] = useState(false)
   const [hiddenBoards, setHiddenBoards] = useState<number[]>([])
@@ -230,7 +240,6 @@ export function ProjectCalendar({ project, profile }: { project: Project; profil
   }, [load, project.id, boardIds, reloadKey])
 
   const boards = snapshot?.projectId === project.id && snapshot.boardIds === boardIds ? snapshot.boards : null
-  const today = localToday()
   const range = useMemo(() => monthDays(month), [month])
   const calendarFirst = range.weeks[0][0]
   const calendarLast = range.weeks[range.weeks.length - 1][6]
