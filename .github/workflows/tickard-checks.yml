@@ -1,0 +1,52 @@
+name: Tickard checks
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  frontend:
+    name: React / TypeScript
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install dependencies
+        run: npm ci
+      - name: TypeScript and production build
+        run: npm run build
+      - name: Lint
+        run: npm run lint
+
+  backend:
+    name: Laravel calendar feature tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: mbstring, xml, sqlite3, pdo_sqlite, fileinfo, intl
+          coverage: none
+      - name: Install dependencies
+        run: composer install --no-interaction --prefer-dist --no-progress
+      - name: Configure test application
+        run: |
+          cp .env.example .env
+          php artisan key:generate
+      - name: Test calendar permissions and events
+        run: php artisan test --filter='CalendarEventsTest|ProjectCalendarAssignmentsTest'
