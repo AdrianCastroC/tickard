@@ -472,6 +472,7 @@ function CalendarEventModal({ projectId, event, initialDay, canEdit, onClose, on
   }
 
   return <div className={styles.eventBackdrop} role="presentation">
+    <button className={styles.eventBackdropClose} type="button" aria-label="Cerrar ventana" disabled={saving} onClick={onClose} />
     <div className={styles.eventModal} role="dialog" aria-modal="true" aria-label={event ? 'Detalles del evento' : 'Nuevo evento'}>
       <div className={styles.eventModalHeader}>
         <h2>{event ? (canEdit ? 'Editar evento' : 'Detalles del evento') : 'Nuevo evento'}</h2>
