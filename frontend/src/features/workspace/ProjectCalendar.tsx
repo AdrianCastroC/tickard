@@ -472,7 +472,11 @@ export function ProjectCalendar({ project, profile }: { project: Project; profil
     {cardData && createPortal(<CardDrawer key={cardData.card.id} card={cardData.card} mode={editMode}
       board={cardData.board} currentUser={profile.user} canEdit={cardData.board.role === 'responsable' || cardData.board.role === 'editor'}
       onClose={() => setSelected(null)} onEdit={() => setEditMode('edit')} onView={() => setEditMode('view')}
-      onChange={refresh} onMove={moveCard} />, document.body)}
+      onChange={refresh} onMove={moveCard}
+      onOpenRelatedCard={(cardId, boardId) => {
+        setEditMode('view')
+        setSelected({ cardId, boardId })
+      }} />, document.body)}
     {pendingMove && createPortal(<BacklogResolutionModal resolution={pendingMove.resolution}
       onCancel={() => setPendingMove(null)} onConfirm={async (selectedCardIds, destinations) => {
         await api('/cards/' + pendingMove.cardId + '/move', {

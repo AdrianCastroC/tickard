@@ -162,7 +162,8 @@ export function ProjectGantt({ project, profile, onNavigateExternalCard }: Props
         onEdit={() => {}}
         onView={() => {}}
         onChange={refresh}
-        onMove={async () => {}} />,
+        onMove={async () => {}}
+        onOpenRelatedCard={(cardId, boardId) => setSelected({ cardId, boardId })} />,
       document.body,
     )}
   </section>

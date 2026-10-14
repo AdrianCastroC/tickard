@@ -59,6 +59,12 @@ export function BoardSurface({ state, filters, activeBoardId, project, profile, 
     if (!ganttFocus || activeBoardId === null || ganttFocus.boardId !== activeBoardId || view?.board.id !== activeBoardId) return
     if (handledGanttFocus.current === ganttFocus.requestId) return
     handledGanttFocus.current = ganttFocus.requestId
+    if (ganttFocus.openCard) {
+      const linkedCard = view.columns.flatMap((column) => column.cards)
+        .find((card) => card.id === ganttFocus.cardId)
+      if (linkedCard) setSelected({ card: linkedCard, mode: 'view' })
+      return
+    }
     if (viewMode !== 'gantt') {
       setViewModes((current) => ({ ...current, [activeBoardId]: 'gantt' }))
       localStorage.setItem(`tickard:board-view:${activeBoardId}`, 'gantt')
@@ -107,13 +113,23 @@ export function BoardSurface({ state, filters, activeBoardId, project, profile, 
       {viewMode === 'board' && <BoardPulse columns={view.columns} />}
     </div>}
     {createPortal(<>
-      {selected && view && openCard && <CardDrawer card={openCard} mode={selected.mode}
+      {selected && view && openCard && <CardDrawer key={openCard.id} card={openCard} mode={selected.mode}
         board={view} currentUser={profile.user} canEdit={canEdit}
         onClose={() => setSelected(null)}
         onEdit={() => setSelected({ card: openCard, mode: 'edit' })}
         onView={() => setSelected({ card: openCard, mode: 'view' })}
         onMove={move}
-        onChange={refresh} />}
+        onChange={refresh}
+        onOpenRelatedCard={(cardId, boardId, dependencyId) => {
+          const linked = boardId === view.board.id
+            ? view.columns.flatMap((column) => column.cards).find((card) => card.id === cardId)
+            : null
+          if (linked) {
+            setSelected({ card: linked, mode: 'view' })
+          } else {
+            onNavigateExternalCard({ boardId, cardId, dependencyId, openCard: true })
+          }
+        }} />}
       {pendingMove && <BacklogResolutionModal resolution={pendingMove.resolution}
         onCancel={() => setPendingMove(null)}
         onConfirm={confirmPendingMove} />}

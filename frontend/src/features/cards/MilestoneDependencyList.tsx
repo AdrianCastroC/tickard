@@ -22,7 +22,10 @@ function DependencyStatusIcon({ complete }: { complete: boolean }) {
 }
 
 /** Lista informativa, generada desde las Cards predecesoras. No crea ni edita checklists. */
-export function MilestoneDependencyList({ predecessors }: { predecessors: CardDependency[] }) {
+export function MilestoneDependencyList({ predecessors, onOpenCard }: {
+  predecessors: CardDependency[]
+  onOpenCard: (cardId: number, boardId: number, dependencyId: number) => void
+}) {
   const [collapsed, setCollapsed] = useState(false)
   const total = predecessors.length
   const done = predecessors.filter((dependency) => dependency.is_done === true).length
@@ -64,15 +67,22 @@ export function MilestoneDependencyList({ predecessors }: { predecessors: CardDe
               const complete = dependency.is_done === true
               return (
                 <li key={dependency.id} className="milestone-dependency-item">
-                  <DependencyStatusIcon complete={complete} />
-                  <div className="milestone-dependency-info">
-                    <span className="milestone-dependency-title">{dependency.title}</span>
-                    {dependency.board_name && (
-                      <span className="milestone-dependency-board" title={dependency.board_name}>
-                        {dependency.board_name}
-                      </span>
-                    )}
-                  </div>
+                  <button
+                    type="button"
+                    className="milestone-dependency-link"
+                    onClick={() => onOpenCard(dependency.card_id, dependency.board_id, dependency.id)}
+                    aria-label={`Abrir Card: ${dependency.title}`}
+                  >
+                    <DependencyStatusIcon complete={complete} />
+                    <span className="milestone-dependency-info">
+                      <span className="milestone-dependency-title">{dependency.title}</span>
+                      {dependency.board_name && (
+                        <span className="milestone-dependency-board" title={dependency.board_name}>
+                          {dependency.board_name}
+                        </span>
+                      )}
+                    </span>
+                  </button>
                 </li>
               )
             })}

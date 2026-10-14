@@ -55,7 +55,7 @@ function ColumnStatusIcon({ name, color = '#3b82f6' }: { name?: string; color?: 
 
 
 
-export function CardDrawer({ card, mode, board, currentUser, canEdit, onClose, onEdit, onView, onChange, onMove }: {
+export function CardDrawer({ card, mode, board, currentUser, canEdit, onClose, onEdit, onView, onChange, onMove, onOpenRelatedCard }: {
   card: Card
   mode: 'view' | 'edit'
   board: BoardPayload
@@ -66,6 +66,7 @@ export function CardDrawer({ card, mode, board, currentUser, canEdit, onClose, o
   onView: () => void
   onChange: () => Promise<void>
   onMove: (cardId: number, columnId: number, position: number) => Promise<void>
+  onOpenRelatedCard: (cardId: number, boardId: number, dependencyId: number) => void
 }) {
   const [title, setTitle] = useState(card.title)
   const [description, setDescription] = useState(card.description ?? '')
@@ -298,7 +299,10 @@ export function CardDrawer({ card, mode, board, currentUser, canEdit, onClose, o
               <SortableContext items={visibleModules.map((module) => module.id)} strategy={verticalListSortingStrategy}>
                 <div className="card-modules">
                   {card.is_milestone && card.dependencies && (
-                    <MilestoneDependencyList predecessors={card.dependencies?.predecessors ?? []} />
+                    <MilestoneDependencyList
+                      predecessors={card.dependencies?.predecessors ?? []}
+                      onOpenCard={onOpenRelatedCard}
+                    />
                   )}
                   {visibleModules.map((module) => (
                     <SortableModuleShell key={module.id} id={module.id} disabled={!editing}>

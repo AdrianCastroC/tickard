@@ -1370,6 +1370,7 @@ export type GanttDependencyNavigation = {
   boardId: number
   cardId: number
   dependencyId: number
+  openCard?: boolean
 }
 
 export type GanttCardFocus = GanttDependencyNavigation & { requestId: number }

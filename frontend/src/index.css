@@ -1472,15 +1472,32 @@ h1, h2, h3, p { margin: 0; }
   list-style: none;
 }
 .card-modal .milestone-dependency-item {
-  display: flex;
-  align-items: center;
-  gap: 12px;
   min-width: 0;
-  padding: 10px 0;
   border-bottom: 1px solid var(--line);
 }
 .card-modal .milestone-dependency-item:last-child {
   border-bottom: 0;
+}
+.card-modal .milestone-dependency-link {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-width: 0;
+  padding: 10px 6px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.card-modal .milestone-dependency-link:hover {
+  background: color-mix(in srgb, var(--accent) 8%, var(--surface));
+}
+.card-modal .milestone-dependency-link:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
 }
 .card-modal .milestone-dependency-icon {
   flex: 0 0 20px;
