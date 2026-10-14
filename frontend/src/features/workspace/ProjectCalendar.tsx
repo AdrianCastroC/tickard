@@ -1,18 +1,12 @@
 import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { createPortal } from 'react-dom'
-import { api, ApiError, type BacklogResolution, type BoardPayload, type Card, type Profile, type Project, type WorkflowState } from '../../api'
+import { api, ApiError, type BacklogResolution, type BoardPayload, type CalendarEvent, type Card, type Profile, type Project, type WorkflowState } from '../../api'
 import { BacklogResolutionModal } from '../board/BacklogResolutionModal'
 import { CardDrawer } from '../cards/CardDetail'
 import styles from './ProjectCalendar.module.css'
 
 type State = Exclude<WorkflowState, 'backlog'>
-type EventKind = 'meeting' | 'appointment' | 'other'
-type CalendarEvent = {
-  id: number; project_id: number; created_by: number | null; kind: EventKind
-  title: string; description: string | null; location: string | null
-  start_date: string; end_date: string; all_day: boolean
-  start_time: string | null; end_time: string | null
-}
+type EventKind = CalendarEvent['kind']
 type Item = {
   key: string; kind: 'card' | 'event'; card?: Card; event?: CalendarEvent
   boardId?: number; boardName: string; state?: State; color: string
