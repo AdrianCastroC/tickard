@@ -1419,32 +1419,106 @@ h1, h2, h3, p { margin: 0; }
 .card-modules .section-head {
   align-items: center;
 }
-.card-modal .milestone-dependency-list .check-main {
-  flex: 1 1 auto;
+.card-modal .milestone-dependency-header {
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.card-modal .milestone-dependency-header h3 {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
   min-width: 0;
 }
-.card-modal .milestone-dependency-list .check-toggle {
-  cursor: default;
-  pointer-events: none;
+.card-modal .milestone-dependency-auto {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 500;
 }
-.card-modal .milestone-dependency-list .check-meta { flex: 0 0 auto; }
-.card-modal .milestone-dependency-list .milestone-dependency-state {
+.card-modal .milestone-dependency-progress {
+  display: flex;
+  flex: 1 1 130px;
+  flex-direction: column;
+  gap: 5px;
+  max-width: 220px;
+  margin-left: auto;
+}
+.card-modal .milestone-dependency-count {
   color: var(--muted);
   font-size: 12px;
-  white-space: nowrap;
+  font-weight: 600;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
 }
-.card-modal .milestone-dependency-list .milestone-dependency-board {
-  max-width: 140px;
+.card-modal .milestone-dependency-track {
+  height: 5px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--line);
+}
+.card-modal .milestone-dependency-track > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: #147a5f;
+  transition: width 200ms ease;
+}
+.card-modal .milestone-dependency-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.card-modal .milestone-dependency-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--line);
+}
+.card-modal .milestone-dependency-item:last-child {
+  border-bottom: 0;
+}
+.card-modal .milestone-dependency-icon {
+  flex: 0 0 20px;
+  width: 20px;
+  height: 20px;
+  color: var(--muted);
+}
+.card-modal .milestone-dependency-icon.is-complete {
+  color: #147a5f;
+}
+.card-modal .milestone-dependency-info {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+.card-modal .milestone-dependency-title {
+  overflow-wrap: anywhere;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.3;
+}
+.card-modal .milestone-dependency-board {
   color: var(--muted);
   font-size: 12px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.card-modal .milestone-dependency-auto {
+.card-modal .milestone-dependency-state {
+  flex: 0 0 auto;
   color: var(--muted);
-  font-size: 11px;
-  font-weight: 500;
+  font-size: 12px;
+  white-space: nowrap;
+}
+.card-modal .milestone-dependency-state.is-complete {
+  color: #147a5f;
 }
 .card-modal .milestone-dependency-empty {
   color: var(--muted);
