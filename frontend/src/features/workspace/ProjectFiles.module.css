@@ -1,7 +1,6 @@
-.root { display:flex; flex-direction:column; min-width:0; gap:14px; color:var(--ink) }
-.toolbar { display:flex; align-items:center; gap:12px; flex-wrap:wrap; min-width:0; position:relative; }
-.toolbarSpacer { flex:1 1 auto }
-.search { display:flex; align-items:center; gap:10px; min-width:180px; flex:0 1 390px; height:38px; border:1px solid var(--line); border-radius:9px; padding:0 12px; background:var(--surface); color:var(--muted) }
+.root { display:flex; flex-direction:column; min-width:0; min-height:0; height:calc(100dvh - 280px); gap:14px; overflow:hidden; color:var(--ink) }
+.toolbar { display:flex; align-items:center; justify-content:space-between; gap:10px; flex:0 0 auto; flex-wrap:nowrap; min-width:0; position:relative; z-index:2; }
+.search { display:flex; align-items:center; gap:10px; min-width:150px; max-width:420px; flex:1 1 270px; margin-inline:auto; height:38px; border:1px solid var(--line); border-radius:9px; padding:0 12px; background:var(--surface); color:var(--muted) }
 .search svg { width:18px; height:18px; flex-shrink:0; fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; }
 .search input { flex:1; width:100%; min-width:0; border:0; background:transparent; outline:0; color:var(--ink); font:inherit; font-size:13px }
 .filterAnchor { position:relative; flex:0 0 auto }
@@ -19,18 +18,18 @@
 .uploadButton,.openButton { display:inline-flex; justify-content:center; align-items:center; gap:9px; border:0; background:var(--accent); border-radius:9px; padding:10px 15px; color:var(--accent-ink); font-weight:700; font-size:13px; cursor:pointer }
 .uploadButton svg { height:17px; width:17px; fill:none; stroke:currentColor; stroke-width:1.9; stroke-linecap:round; stroke-linejoin:round }
 .uploadButton:disabled { opacity:.6; cursor:progress }
-.tabs { display:flex; align-items:center; gap:9px; flex-wrap:wrap }
-.tabs button { display:inline-flex; align-items:center; gap:7px; padding:8px 15px; border:1px solid var(--line); background:var(--surface); border-radius:99px; color:var(--ink); font-size:13px; cursor:pointer }
+.tabs { display:flex; align-items:center; gap:7px; flex:0 0 auto; flex-wrap:nowrap; white-space:nowrap }
+.tabs button { display:inline-flex; align-items:center; gap:6px; padding:8px 11px; border:1px solid var(--line); background:var(--surface); border-radius:99px; color:var(--ink); font-size:12px; cursor:pointer }
 .tabs span { font-size:11px; padding:1px 5px; border-radius:20px; background:var(--canvas); color:var(--muted) }
 .tabs button.tabActive { background:var(--accent); border-color:var(--accent); color:var(--accent-ink) }
 .tabs button.tabActive span { background:rgb(255 255 255 / 20%); color:inherit }
-.body { display:grid; grid-template-columns:minmax(0, 1fr); gap:14px; min-width:0; min-height:0 }
+.body { display:grid; grid-template-columns:minmax(0, 1fr); gap:14px; flex:1 1 auto; min-width:0; min-height:0; overflow:hidden }
 .body.withPreview { grid-template-columns:minmax(0, 1fr) minmax(285px, 32%) }
-.fileSection { display:flex; flex-direction:column; gap:14px; min-width:0; min-height:0 }
-.listScroller { overflow-x:auto; min-width:0; flex:1 1 auto }
+.fileSection { display:flex; flex-direction:column; flex:1 1 auto; min-width:0; min-height:0; overflow:hidden }
+.listScroller,.gridScroller { flex:1 1 auto; min-width:0; min-height:0; overflow:auto; overscroll-behavior:contain; scrollbar-width:thin; scrollbar-color:color-mix(in srgb,var(--accent) 35%,var(--line)) transparent }
 .table { border-collapse:collapse; width:100%; font-size:12px; text-align:left }
 .table thead { background:var(--canvas) }
-.table th { padding:12px 10px; color:var(--muted); font-weight:650; white-space:nowrap; border-bottom:1px solid var(--line) }
+.table th { position:sticky; top:0; z-index:1; padding:12px 10px; color:var(--muted); background:var(--canvas); font-weight:650; white-space:nowrap; border-bottom:1px solid var(--line) }
 .table th:first-child { padding-left:14px }
 .table td { padding:9px 10px; color:var(--muted); border-bottom:1px solid var(--line); vertical-align:middle; white-space:nowrap }
 .table tr.selectedRow { background:color-mix(in srgb,var(--accent) 10%,var(--surface)) }
@@ -52,7 +51,7 @@
 .dateCell small { font-size:10px; color:var(--muted) }
 .rowAction { border:0; background:transparent; padding:8px; color:var(--muted); cursor:pointer; font-size:18px }
 .rowAction:hover { color:var(--accent) }
-.details { display:flex; flex-direction:column; gap:13px; min-width:0; border:1px solid var(--line); border-radius:11px; padding:14px; background:var(--surface); align-self:start }
+.details { display:flex; flex-direction:column; gap:13px; min-width:0; min-height:0; height:100%; box-sizing:border-box; overflow-y:auto; overscroll-behavior:contain; scrollbar-width:thin; border:1px solid var(--line); border-radius:11px; padding:14px; background:var(--surface); align-self:stretch }
 .detailHeading { display:flex; align-items:center; gap:11px; min-width:0 }
 .detailHeading > div { flex:1; display:flex; flex-direction:column; min-width:0; gap:4px }
 .detailHeading strong { overflow:hidden; white-space:nowrap; text-overflow:ellipsis; font-size:13px; font-weight:700 }
@@ -72,14 +71,15 @@
 .metadata dd { margin:0; min-width:0; overflow-wrap:anywhere }
 .person { display:inline-flex; gap:7px; align-items:center }
 .deleteButton { align-self:flex-start; margin-top:4px; padding:8px 0; color:#c33; font-size:12px; border:0; background:none; cursor:pointer }
-.storage { display:flex; gap:18px; align-items:center; justify-content:space-between; padding:17px; border:1px solid var(--line); border-radius:11px; background:var(--canvas); min-width:0 }
-.storage > div:first-child { display:flex; flex-direction:column; gap:5px; white-space:nowrap }
+.storage { display:grid; grid-template-columns:minmax(155px,auto) minmax(80px,1fr) minmax(140px,auto); gap:18px; align-items:center; flex:0 0 auto; width:100%; box-sizing:border-box; padding:14px 17px; border:1px solid var(--line); border-radius:11px; background:var(--canvas); min-width:0 }
+.storageInfo { display:flex; flex-direction:column; gap:5px; min-width:0 }
 .storage strong { font-size:12px }
 .storage small { display:block; color:var(--muted); font-size:11px }
-.storageTrack { flex:1 1 100px; height:9px; background:var(--line); border-radius:99px; overflow:hidden }
+.storageTrack { width:100%; height:10px; background:var(--line); border-radius:99px; overflow:hidden }
 .storageTrack span { height:100%; display:block; background:var(--accent); border-radius:99px }
-.storageSize { display:flex; flex-direction:column; gap:5px; text-align:right; white-space:nowrap }
-.grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(145px,1fr)); gap:14px; min-width:0 }
+.storageSize { display:flex; flex-direction:column; gap:4px; min-width:0; text-align:right; white-space:nowrap }
+.storagePercent { color:var(--muted); font-size:12px; font-weight:650 }
+.grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(145px,1fr)); gap:14px; min-width:0; align-content:start }
 .tile { text-align:left; display:flex; flex-direction:column; gap:8px; min-width:0; border:1px solid var(--line); border-radius:10px; padding:10px; background:var(--surface); cursor:pointer; color:var(--ink) }
 .tile.selected { border-color:var(--accent); background:color-mix(in srgb,var(--accent) 8%,var(--surface)) }
 .tileImage { height:115px; background:var(--canvas); display:grid; place-items:center; overflow:hidden; border-radius:7px }
@@ -88,8 +88,28 @@
 .tile strong { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:12px }
 .tile small { color:var(--muted) }
 .loading,.empty { display:grid; place-items:center; min-height:280px; text-align:center; color:var(--muted); font-size:14px }
+.fileSection > .empty { flex:1 1 auto; min-height:0 }
 .error { display:flex; justify-content:space-between; align-items:center; gap:15px; border:1px solid color-mix(in srgb,#b43c3c 35%,var(--line)); padding:10px 14px; color:#a23c3c; border-radius:8px; font-size:12px }
 .error button { border:0; background:transparent; font-size:18px; color:inherit; cursor:pointer }
-@media(max-width:1080px) { .body.withPreview { grid-template-columns:minmax(0,1fr) minmax(245px,35%) } .table { min-width:620px } }
-@media(max-width:800px) { .body.withPreview { grid-template-columns:1fr } .details { width:100%; } .toolbarSpacer { flex-basis:20px } }
-@media(max-width:480px) { .toolbarSpacer { display:none } .search { flex:1 1 100% } .storage { flex-wrap:wrap } .storageTrack { order:3; flex-basis:100% } .tabs button { padding:7px 11px } }
+@media(max-width:1080px) {
+  .body.withPreview { grid-template-columns:minmax(0,1fr) minmax(245px,35%) }
+  .table { min-width:620px }
+}
+@media(max-width:900px) {
+  .toolbar { flex-wrap:wrap; justify-content:flex-end }
+  .tabs { margin-right:auto }
+  .search { order:2; flex:1 1 100%; max-width:none; margin-inline:0 }
+  .filterAnchor,.viewSwitch,.uploadButton { order:1 }
+  .body.withPreview { grid-template-columns:1fr; grid-template-rows:minmax(0,1fr) minmax(0,45%) }
+  .details { width:100%; }
+}
+@media(max-width:480px) {
+  .toolbar { gap:8px }
+  .tabs { width:100%; justify-content:flex-start; gap:5px; overflow-x:auto }
+  .tabs button { padding:7px 9px; }
+  .search { min-width:0 }
+  .storage { grid-template-columns:minmax(0,1fr) auto; gap:9px 12px; padding:12px }
+  .storageTrack { grid-column:1 / -1; grid-row:2 }
+  .storageSize { text-align:right }
+  .storagePercent { font-size:11px }
+}

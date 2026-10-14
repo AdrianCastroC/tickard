@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { api, uploadFile, type Profile, type Project } from '../../api'
 import { Avatar } from '../../shared/ui'
 import { NavIcon } from '../../shared/icons'
@@ -91,6 +91,7 @@ export function ProjectFiles({ project, profile }: { project: Project; profile: 
   const [boardId, setBoardId] = useState<number | null>(null)
   const [filtersOpen, setFiltersOpen] = useState(false)
   const [grid, setGrid] = useState(false)
+  const viewportRef = useRef<HTMLElement>(null)
   const filterRef = useRef<HTMLDivElement>(null)
   const uploadRef = useRef<HTMLInputElement>(null)
 
@@ -130,6 +131,21 @@ export function ProjectFiles({ project, profile }: { project: Project; profile: 
       document.removeEventListener('keydown', escape)
     }
   }, [filtersOpen])
+
+  useLayoutEffect(() => {
+    const viewport = viewportRef.current
+    if (!viewport) return
+
+    // Like project Gantt and Calendar: fit beneath the real project header
+    // so the file list scrolls, not the entire application.
+    const resizeViewport = () => {
+      const available = window.innerHeight - viewport.getBoundingClientRect().top - 20
+      viewport.style.height = `${Math.max(240, Math.floor(available))}px`
+    }
+    resizeViewport()
+    window.addEventListener('resize', resizeViewport)
+    return () => window.removeEventListener('resize', resizeViewport)
+  }, [data !== null])
 
   const files = data?.files ?? []
   const countGeneral = files.filter((file) => file.origin === 'general').length
@@ -204,8 +220,14 @@ export function ProjectFiles({ project, profile }: { project: Project; profile: 
 
   const storage = data.storage
   const percent = storage.limit_bytes === null || storage.limit_bytes <= 0 ? null : Math.min(100, Math.round(storage.used_bytes / storage.limit_bytes * 100))
-  return <section className={styles.root} aria-label={`Archivos del proyecto ${project.name}`}>
+  return <section ref={viewportRef} className={styles.root} aria-label={`Archivos del proyecto ${project.name}`}>
     <div className={styles.toolbar}>
+      <div className={styles.tabs} role="group" aria-label="Origen de los archivos">
+        {([{ value: 'all', label: 'Todos', count: files.length }, { value: 'general', label: 'Generales', count: countGeneral }, { value: 'card', label: 'Adjuntos de Cards', count: countCard }] as const).map((tab) =>
+          <button type="button" key={tab.value} className={origin === tab.value ? styles.tabActive : ''} onClick={() => setOrigin(tab.value)} aria-pressed={origin === tab.value}>
+            {tab.label}<span>{tab.count}</span>
+          </button>)}
+      </div>
       <label className={styles.search}>
         <NavIcon><circle cx="10.8" cy="10.8" r="7.2" /><path d="m16 16 5 5" /></NavIcon>
         <input type="search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar archivos…" aria-label="Buscar archivos" />
@@ -234,7 +256,6 @@ export function ProjectFiles({ project, profile }: { project: Project; profile: 
           <button type="button" className={styles.applyFilters} onClick={() => setFiltersOpen(false)}>Aplicar</button>
         </div>}
       </div>
-      <div className={styles.toolbarSpacer} />
       <div className={styles.viewSwitch}>
         <button type="button" className={!grid ? styles.activeView : ''} onClick={() => setGrid(false)} aria-label="Vista de lista" aria-pressed={!grid}><NavIcon><path d="M8 6h13M8 12h13M8 18h13" /><path d="M3 6h1M3 12h1M3 18h1" /></NavIcon></button>
         <button type="button" className={grid ? styles.activeView : ''} onClick={() => setGrid(true)} aria-label="Vista de cuadrícula" aria-pressed={grid}><NavIcon><rect x="3" y="3" width="7" height="7" /><rect x="14" y="3" width="7" height="7" /><rect x="3" y="14" width="7" height="7" /><rect x="14" y="14" width="7" height="7" /></NavIcon></button>
@@ -245,18 +266,11 @@ export function ProjectFiles({ project, profile }: { project: Project; profile: 
     </div>
 
     {error && <div className={styles.error} role="alert">{error}<button type="button" onClick={() => setError(null)} aria-label="Cerrar aviso">×</button></div>}
-    <div className={styles.tabs} role="group" aria-label="Origen de los archivos">
-      {([{ value: 'all', label: 'Todos', count: files.length }, { value: 'general', label: 'Generales', count: countGeneral }, { value: 'card', label: 'Adjuntos de Cards', count: countCard }] as const).map((tab) =>
-        <button type="button" key={tab.value} className={origin === tab.value ? styles.tabActive : ''} onClick={() => setOrigin(tab.value)} aria-pressed={origin === tab.value}>
-          {tab.label}<span>{tab.count}</span>
-        </button>)}
-    </div>
-
     <div className={`${styles.body} ${selected ? styles.withPreview : ''}`}>
       <div className={styles.fileSection}>
         {filtered.length === 0 ? <div className={styles.empty}>No hay archivos que coincidan con los filtros.</div>
-          : grid ? <div className={styles.grid}>{filtered.map((file) =>
-              <FileTile key={file.key} file={file} selected={selectedKey === file.key} onSelect={() => setSelectedKey(file.key)} />)}</div>
+          : grid ? <div className={styles.gridScroller}><div className={styles.grid}>{filtered.map((file) =>
+              <FileTile key={file.key} file={file} selected={selectedKey === file.key} onSelect={() => setSelectedKey(file.key)} />)}</div></div>
             : <div className={styles.listScroller}><table className={styles.table}>
               <thead><tr><th>Nombre</th><th>Origen</th><th>Tipo</th><th>Tamaño</th><th>Modificado</th><th aria-label="Acciones" /></tr></thead>
               <tbody>{filtered.map((file) => <tr key={file.key} className={selectedKey === file.key ? styles.selectedRow : ''}>
@@ -269,11 +283,6 @@ export function ProjectFiles({ project, profile }: { project: Project; profile: 
                 <td><button className={styles.rowAction} title="Descargar" aria-label={`Descargar ${file.name}`} type="button" onClick={() => void download(file)}>↓</button></td>
               </tr>)}</tbody>
             </table></div>}
-        <div className={styles.storage}>
-          <div><strong>Almacenamiento del Workspace</strong><small>{storage.workspace_name}</small></div>
-          {percent !== null && <div className={styles.storageTrack} role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={percent} aria-label="Uso de almacenamiento"><span style={{ width: `${percent}%` }} /></div>}
-          <div className={styles.storageSize}><strong>{sizeLabel(storage.used_bytes)}{storage.limit_bytes !== null ? ` / ${sizeLabel(storage.limit_bytes)}` : ''}</strong><small>{percent !== null ? `${percent}% utilizado` : 'Total del Workspace'}</small></div>
-        </div>
       </div>
 
       {selected && <aside className={styles.details} aria-label={`Detalles de ${selected.name}`}>
@@ -300,5 +309,23 @@ export function ProjectFiles({ project, profile }: { project: Project; profile: 
         {canRemove(selected) && <button type="button" className={styles.deleteButton} disabled={busy} onClick={() => void remove(selected)}>{busy ? 'Eliminando…' : 'Eliminar archivo'}</button>}
       </aside>}
     </div>
+    <footer className={styles.storage} aria-label="Almacenamiento del Workspace">
+      <div className={styles.storageInfo}>
+        <strong>Almacenamiento del Workspace</strong>
+        <small>{storage.workspace_name}</small>
+      </div>
+      <div className={styles.storageTrack}
+        role={percent !== null ? 'progressbar' : undefined}
+        aria-valuemin={percent !== null ? 0 : undefined}
+        aria-valuemax={percent !== null ? 100 : undefined}
+        aria-valuenow={percent !== null ? percent : undefined}
+        aria-label={percent !== null ? 'Uso del almacenamiento del Workspace' : 'Cuota de almacenamiento no configurada'}>
+        {percent !== null && <span style={{ width: `${percent}%` }} />}
+      </div>
+      <div className={styles.storageSize}>
+        <strong>{sizeLabel(storage.used_bytes)}{storage.limit_bytes !== null ? ` / ${sizeLabel(storage.limit_bytes)}` : ''}</strong>
+        <span className={styles.storagePercent}>{percent !== null ? `${percent}% utilizado` : '—% · Sin cuota definida'}</span>
+      </div>
+    </footer>
   </section>
 }
