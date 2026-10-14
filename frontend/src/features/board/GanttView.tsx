@@ -1721,7 +1721,7 @@ export function GanttView({ board, cards, canEdit, onOpen, onNavigateExternalCar
   ])
 
   function beginDrag(event: ReactPointerEvent, item: GanttCard, mode: DragMode) {
-    if (!canEdit || !item.card.start_date || !item.card.due_date || !timelineGridRef.current) {
+    if (!canEdit || (item.card.is_milestone && mode !== 'move') || !item.card.start_date || !item.card.due_date || !timelineGridRef.current) {
       return
     }
 
@@ -2189,7 +2189,7 @@ export function GanttView({ board, cards, canEdit, onOpen, onNavigateExternalCar
             </div>
           )
             })}
-            {entries.flatMap(({ group, row: groupRow, collapsed: isCollapsed }) => isCollapsed ? [] : group.cards.map((item, index) => <button key={item.card.id} className={`${styles.leftCard} ${index % 2 === 1 ? styles.leftCardAlternate : ''}`} style={{ gridRow: groupRow + index + 1 }} type="button" onClick={() => onOpen(item.card)}><strong>{item.card.title}</strong>{visibility.start && <span>{compactDate(item.card.start_date)}</span>}{visibility.end && <span>{compactDate(item.card.due_date)}</span>}{visibility.progress && <span>{`${cardVisualProgress(item)}%`}</span>}</button>))}
+            {entries.flatMap(({ group, row: groupRow, collapsed: isCollapsed }) => isCollapsed ? [] : group.cards.map((item, index) => <button key={item.card.id} className={`${styles.leftCard} ${index % 2 === 1 ? styles.leftCardAlternate : ''}`} style={{ gridRow: groupRow + index + 1 }} type="button" onClick={() => onOpen(item.card)}><strong>{item.card.is_milestone ? '◆ ' : ''}{item.card.title}</strong>{visibility.start && <span>{compactDate(item.card.start_date)}</span>}{visibility.end && <span>{compactDate(item.card.due_date)}</span>}{visibility.progress && <span>{`${cardVisualProgress(item)}%`}</span>}</button>))}
           </>
         </div>
       )}
@@ -2236,18 +2236,20 @@ export function GanttView({ board, cards, canEdit, onOpen, onNavigateExternalCar
 
             const cardColor = item.card.color || item.column.color || 'var(--accent)'
             const progress = cardVisualProgress(item)
+            const isMilestone = item.card.is_milestone === true
             const preview = dragPreview?.cardId === item.card.id ? dragPreview : null
             const startDate = preview?.start ?? item.card.start_date!
             const dueDate = preview?.due ?? item.card.due_date!
             const cardStyle = {
               gridRow: groupRow + index + 1,
-              gridColumn: `${gridColumn(range.start, startDate)} / ${dateEndColumn(range.start, dueDate)}`,
+              gridColumn: `${gridColumn(range.start, isMilestone ? dueDate : startDate)} / ${dateEndColumn(range.start, dueDate)}`,
               '--card-color': cardColor,
               '--card-progress': `${progress}%`,
             } as CardBarStyle
 
             const cardClassName = [
               styles.cardBar,
+              isMilestone ? styles.milestoneBar : '',
               item.column.workflow_state === 'pending' ? styles.pendingBar : '',
               preview ? styles.dragging : '',
               dependencyCreation ? styles.dependencyCreating : '',
@@ -2256,13 +2258,13 @@ export function GanttView({ board, cards, canEdit, onOpen, onNavigateExternalCar
 
             const inReview = item.column.workflow_state === 'review'
             const isDone = item.column.workflow_state === 'done'
-            const cardLabel = inReview
-              ? `${item.card.title}, En revisión`
-              : isDone
-                ? `${item.card.title}, Completado`
-                : item.card.title
+            const statusLabel = inReview ? ', En revisión' : isDone ? ', Completado' : ''
+            const cardLabel = isMilestone
+              ? `Hito: ${item.card.title}, fecha objetivo ${compactDate(dueDate)}${statusLabel}`
+              : inReview ? `${item.card.title}, En revisión`
+                : isDone ? `${item.card.title}, Completado` : item.card.title
 
-            const dateLabel = `${compactDate(startDate)} — ${compactDate(dueDate)}`
+            const dateLabel = isMilestone ? compactDate(dueDate) : `${compactDate(startDate)} — ${compactDate(dueDate)}`
             const workflowLabel = item.column.workflow_state === 'in_progress'
               ? 'En progreso'
               : item.column.workflow_state === 'review'
@@ -2299,11 +2301,11 @@ export function GanttView({ board, cards, canEdit, onOpen, onNavigateExternalCar
                 aria-label={cardLabel}
               >
                 <span ref={(element) => { if (element) dependencyAnchorRefs.current.set(`${item.card.id}:start`, element); else dependencyAnchorRefs.current.delete(`${item.card.id}:start`) }} className={`${styles.dependencyConnector} ${styles.dependencyConnectorStart}`} data-dependency-connector="true" data-card-id={item.card.id} data-endpoint="start" data-readonly={!canEdit ? 'true' : undefined} data-target={dependencyCreation?.targetId === item.card.id && dependencyCreation.targetEndpoint === 'start' ? 'true' : undefined} onPointerDown={canEdit ? (event) => beginDependencyCreation(event, item.card.id, 'start') : undefined} role={canEdit ? 'button' : undefined} aria-hidden={!canEdit} aria-label={canEdit ? `Crear dependencia desde inicio de ${item.card.title}` : undefined} tabIndex={canEdit ? 0 : -1}><DependencyConnectorIcon /></span>
-                {canEdit && <span className={`${styles.resizeHandle} ${styles.resizeHandleStart}`} onPointerDown={(event) => beginDrag(event, item, 'resize-start')} aria-hidden="true" />}
+                {canEdit && !isMilestone && <span className={`${styles.resizeHandle} ${styles.resizeHandleStart}`} onPointerDown={(event) => beginDrag(event, item, 'resize-start')} aria-hidden="true" />}
                 {preview && <span className={styles.dragDates} aria-hidden="true">{dateLabel}</span>}
                 {inReview && <EyeIcon />}
                 {isDone && <DoneIcon />}
-                {canEdit && <span className={`${styles.resizeHandle} ${styles.resizeHandleEnd}`} onPointerDown={(event) => beginDrag(event, item, 'resize-end')} aria-hidden="true" />}
+                {canEdit && !isMilestone && <span className={`${styles.resizeHandle} ${styles.resizeHandleEnd}`} onPointerDown={(event) => beginDrag(event, item, 'resize-end')} aria-hidden="true" />}
                 <span ref={(element) => { if (element) dependencyAnchorRefs.current.set(`${item.card.id}:finish`, element); else dependencyAnchorRefs.current.delete(`${item.card.id}:finish`) }} className={`${styles.dependencyConnector} ${styles.dependencyConnectorEnd}`} data-dependency-connector="true" data-card-id={item.card.id} data-endpoint="finish" data-readonly={!canEdit ? 'true' : undefined} data-target={dependencyCreation?.targetId === item.card.id && dependencyCreation.targetEndpoint === 'finish' ? 'true' : undefined} onPointerDown={canEdit ? (event) => beginDependencyCreation(event, item.card.id, 'finish') : undefined} role={canEdit ? 'button' : undefined} aria-hidden={!canEdit} aria-label={canEdit ? `Crear dependencia desde fin de ${item.card.title}` : undefined} tabIndex={canEdit ? 0 : -1}><DependencyConnectorIcon /></span>
               </button>
             )
@@ -2329,7 +2331,7 @@ export function GanttView({ board, cards, canEdit, onOpen, onNavigateExternalCar
                 </span>}
                 <span className={styles.cardRowTail}>
                   <span className={styles.cardRowMeta} data-gantt-card-metadata="true">
-                    <span className={styles.cardRowName} title={item.card.title}>{item.card.title}</span>
+                    <span className={styles.cardRowName} title={item.card.title}>{item.card.is_milestone ? '◆ ' : ''}{item.card.title}</span>
                     {(item.card.assignees?.length ?? 0) > 0 && <span className={styles.cardRowAssignees}>
                       {item.card.assignees?.slice(0, 4).map((person) =>
                         <Avatar key={person.id} id={person.id} name={person.name} size={19} src={person.avatar_url} />

@@ -430,6 +430,37 @@
   cursor: pointer;
 }
 
+.cardBar.milestoneBar {
+  justify-self: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.cardBar.milestoneBar::before {
+  content: '';
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  border: 1px solid var(--card-color);
+  border-radius: 2px;
+  background: var(--card-color);
+  transform: rotate(45deg);
+  pointer-events: none;
+}
+
+.cardBar.milestoneBar > svg {
+  position: relative;
+  z-index: 1;
+  width: 12px;
+  height: 12px;
+  color: var(--accent-ink);
+}
+
 .cardBar:hover {
   filter: brightness(1.08);
 }

@@ -61,7 +61,7 @@ export type CardDependency = {
   preview?: CardDependencyPreview | null
 }
 
-export type CardDependencyPreview = Pick<Card, 'id' | 'title' | 'color' | 'is_internal' | 'teams' | 'labels' | 'assignees' | 'attachments' | 'progress'>
+export type CardDependencyPreview = Pick<Card, 'id' | 'title' | 'color' | 'is_internal' | 'is_milestone' | 'teams' | 'labels' | 'assignees' | 'attachments' | 'progress'>
 
 export type CardDependencies = {
   predecessors: CardDependency[]

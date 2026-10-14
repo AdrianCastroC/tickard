@@ -3,11 +3,15 @@ import { AttachmentIcon, VisibilityIcon } from '../../shared/icons'
 import { Avatar, cardStripeStyle } from '../../shared/ui'
 
 export type KanbanMiniCardProps = {
-  card: Pick<Card, 'title' | 'color' | 'is_internal' | 'teams' | 'labels' | 'assignees' | 'attachments' | 'progress'>
+  card: Pick<Card, 'title' | 'color' | 'is_internal' | 'is_milestone' | 'teams' | 'labels' | 'assignees' | 'attachments' | 'progress'>
   workflowLabel?: string
   dateLabel?: string
   progressLabel?: string
   className?: string
+}
+
+export function MilestoneIndicator() {
+  return <span className="card-milestone-indicator" title="Hito" aria-label="Hito">◆</span>
 }
 
 export function CardProgressBar({ progress }: { progress?: Card['progress'] }) {
@@ -53,7 +57,7 @@ export function KanbanMiniCard({ card, workflowLabel, dateLabel, progressLabel, 
           {hasAttachments && <CardAttachmentsIndicator card={card} />}
         </div>
       )}
-      <strong>{card.title}</strong>
+      <strong>{card.is_milestone && <MilestoneIndicator />}{card.title}</strong>
       <div className="meta">
         {card.teams?.map((team) => <span key={team.id} className="chip equipo">{team.name}</span>)}
         {card.labels?.map((item) => <span key={item.id} className={`chip ${item.tone}`}>{item.name}</span>)}

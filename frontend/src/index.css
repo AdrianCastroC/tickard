@@ -800,6 +800,7 @@ h1, h2, h3, p { margin: 0; }
 .card.is-draggable:active { cursor: grabbing; }
 .card.overlay { width: 230px; box-shadow: 0 8px 24px rgb(18 49 43 / 18%); cursor: grabbing; }
 .card strong { display: block; margin-bottom: 8px; font-weight: 500; padding-right: 52px; }
+.card-milestone-indicator { display: inline-block; margin-right: 6px; color: var(--card-stripe); font-size: 14px; line-height: 1; }
 .meta { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
 .card footer {
   margin-top: 8px;

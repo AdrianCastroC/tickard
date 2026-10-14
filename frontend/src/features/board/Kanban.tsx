@@ -7,7 +7,7 @@ import { api, type BoardCategory, type BoardPayload, type Card, type WorkflowSta
 import { Avatar, cardStripeStyle, DEFAULT_CARD_STRIPE, formatDate, formatDateLong, priorityLabel } from '../../shared/ui'
 import { ChevronIcon, DotsIcon, EditIcon, ExpandColumnIcon, CollapseColumnIcon, KanbanCategoryIcon, PaletteIcon, PinIcon, PlusIcon, PriorityBarsIcon, TrashIcon, UnpinIcon, VisibilityIcon, CalendarPickIcon } from '../../shared/icons'
 import { filteredBoardColumns, orderedColumnCards } from './boardUtils'
-import { CardAttachmentsIndicator, CardProgressBar, KanbanMiniCard } from './KanbanMiniCard'
+import { CardAttachmentsIndicator, CardProgressBar, KanbanMiniCard, MilestoneIndicator } from './KanbanMiniCard'
 function columnSortId(id: number) {
   return `column-${id}`
 }
@@ -991,7 +991,7 @@ export function SortableCard({ card, disabled, canEdit, onOpen, onEdit }: {
           )}
         </div>
       )}
-      <strong>{card.title}</strong>
+      <strong>{card.is_milestone && <MilestoneIndicator />}{card.title}</strong>
       <div className="meta">
         {card.teams?.map((team) => <span key={team.id} className="chip equipo">{team.name}</span>)}
         {card.labels?.map((item) => <span key={item.id} className={`chip ${item.tone}`}>{item.name}</span>)}

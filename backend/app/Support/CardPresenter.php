@@ -322,6 +322,7 @@ class CardPresenter
             'title' => $other->title,
             'color' => $other->color,
             'is_internal' => $other->is_internal,
+            'is_milestone' => (bool) $other->is_milestone,
             'teams' => $other->teams->map(fn ($team) => [
                 'id' => $team->id,
                 'name' => $team->name,
