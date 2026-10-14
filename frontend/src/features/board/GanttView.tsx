@@ -1405,6 +1405,7 @@ export function GanttView({ board, cards, canEdit, onOpen, onNavigateExternalCar
   const [dependencyCreation, setDependencyCreation] = useState<DependencyCreation | null>(null)
   const [hoveredCard, setHoveredCard] = useState<HoveredCard | null>(null)
   const suppressClickRef = useRef<number | null>(null)
+  const ganttRootRef = useRef<HTMLDivElement>(null)
   const timelineGridRef = useRef<HTMLDivElement>(null)
   const leftScrollRef = useRef<HTMLDivElement>(null)
   const timelineScrollRef = useRef<HTMLDivElement>(null)
@@ -1417,6 +1418,31 @@ export function GanttView({ board, cards, canEdit, onOpen, onNavigateExternalCar
   const toolbarRef = useRef<HTMLDivElement>(null)
   const leftToolbarRef = useRef<HTMLDivElement>(null)
   const [toolbarMinWidth, setToolbarMinWidth] = useState(0)
+  // In the global Gantt both panes scroll vertically. Restore horizontal
+  // wheel panning from anywhere inside it (including the left Card list).
+  // A native non-passive handler is needed to prevent the default Ctrl+wheel
+  // browser zoom and Shift+wheel scroll when we consume the gesture.
+  useEffect(() => {
+    const gantt = ganttRootRef.current
+    if (!projectBoards || !gantt) return
+
+    const onWheel = (event: WheelEvent) => {
+      if (!event.shiftKey && !event.ctrlKey) return
+      const timeline = timelineScrollRef.current
+      if (!timeline || timeline.scrollWidth <= timeline.clientWidth) return
+
+      // Browsers may convert Shift+wheel into deltaX before dispatch.
+      const delta = Math.abs(event.deltaX) > Math.abs(event.deltaY) ? event.deltaX : event.deltaY
+      if (!delta) return
+      const factor = event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? timeline.clientWidth : 1
+      event.preventDefault()
+      timeline.scrollLeft += delta * factor
+    }
+
+    gantt.addEventListener('wheel', onWheel, { passive: false })
+    return () => gantt.removeEventListener('wheel', onWheel)
+  }, [projectBoards])
+
   const collapsedStorageKey = projectBoards ? `tickard:gantt-project-collapsed:${board.board.project_id}` : `tickard:gantt-collapsed:${board.board.id}`
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>(() => {
     try {
@@ -2088,7 +2114,7 @@ export function GanttView({ board, cards, canEdit, onOpen, onNavigateExternalCar
   }, [dragPreview, dragState, onChange])
 
   return (
-    <div className={styles.gantt} data-zoom={zoom} data-project-gantt={Boolean(projectBoards)} data-left-collapsed={leftCollapsed} style={{ '--left-width': `${effectiveLeftWidth}px` } as CSSProperties}>
+    <div ref={ganttRootRef} className={styles.gantt} data-zoom={zoom} data-project-gantt={Boolean(projectBoards)} data-left-collapsed={leftCollapsed} style={{ '--left-width': `${effectiveLeftWidth}px` } as CSSProperties}>
       {dragError && <p className={styles.dragError} role="alert">{dragError}</p>}
       {unroutedDependencies.length > 0 && <div role="status" aria-live="polite" style={{
         position: 'absolute', top: 58, right: 10, zIndex: 8, padding: '5px 9px',
