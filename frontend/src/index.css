@@ -2812,6 +2812,13 @@ h1, h2, h3, p { margin: 0; }
   scrollbar-width: none;
   -ms-overflow-style: none;
 }
+/* Los grupos y las Cards mantienen su altura natural dentro del scroll. */
+.board .column-content > .category-group {
+  flex: 0 0 auto;
+}
+.board .column-content .category-group > .card {
+  flex-shrink: 0;
+}
 .board .column-content::-webkit-scrollbar {
   display: none;
 }
