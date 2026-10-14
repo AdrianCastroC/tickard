@@ -42,6 +42,11 @@ class Project extends Model
         return $this->hasMany(ProjectMember::class);
     }
 
+    public function calendarEvents(): HasMany
+    {
+        return $this->hasMany(CalendarEvent::class);
+    }
+
     public function boards(): HasMany
     {
         return $this->hasMany(Board::class)->orderBy('position');

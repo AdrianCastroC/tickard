@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\AdministrationController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\CardsController;
+use App\Http\Controllers\Api\CalendarEventsController;
 use App\Http\Controllers\Api\CardDependenciesController;
 use App\Http\Controllers\Api\CardDetailsController;
 use App\Http\Controllers\Api\InvitationsController;
@@ -42,6 +43,11 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::post('/projects', [ProjectsController::class, 'storeProject']);
     Route::delete('/projects/{project}', [ProjectsController::class, 'deleteProject']);
+
+    Route::get('/projects/{project}/calendar-events', [CalendarEventsController::class, 'index']);
+    Route::post('/projects/{project}/calendar-events', [CalendarEventsController::class, 'store']);
+    Route::patch('/calendar-events/{calendarEvent}', [CalendarEventsController::class, 'update']);
+    Route::delete('/calendar-events/{calendarEvent}', [CalendarEventsController::class, 'destroy']);
 
     Route::post('/projects/{project}/boards', [ProjectsController::class, 'storeBoard']);
     Route::delete('/boards/{board}', [ProjectsController::class, 'deleteBoard']);

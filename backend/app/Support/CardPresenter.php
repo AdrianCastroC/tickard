@@ -188,6 +188,7 @@ class CardPresenter
         if (! $client || $project->show_due_date) {
             $payload['start_date'] = $card->start_date?->toDateString();
             $payload['due_date'] = $card->due_date?->toDateString();
+            $payload['completed_at'] = $card->completed_at?->toIso8601String();
         }
         if (! $client || $project->show_assignee) {
             $payload['assignees'] = $card->assignees->map(fn ($person) => [
