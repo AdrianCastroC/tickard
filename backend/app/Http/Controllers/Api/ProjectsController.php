@@ -256,7 +256,13 @@ class ProjectsController extends ApiController
         // Project Gantt only needs scheduling fields. Avoid hydrating comments,
         // reactions, activities and full checklist payloads on every board.
         $compactGantt = $request->boolean('gantt');
-        $relations = $compactGantt ? [
+        $compactCalendar = $request->boolean('calendar');
+        // The calendar has a dedicated compact payload. Non-admins receive
+        // only Cards explicitly assigned to their user, never everyone else's.
+        $relations = $compactCalendar ? [
+            'creator',
+            'assignees',
+        ] : ($compactGantt ? [
             'creator',
             'assignees',
             'teams',
@@ -279,25 +285,30 @@ class ProjectsController extends ApiController
             'attachments',
             'predecessorDependencies.predecessor',
             'successorDependencies.successor',
-        ];
+        ]);
         $board->load([
             'categories',
             'columns.cards' => fn ($query) => $query
                 ->whereNull('archived_at')
+                ->when($compactCalendar && ! $request->user()->is_admin,
+                    fn ($scoped) => $scoped->whereHas('assignees',
+                        fn ($assigned) => $assigned->where('users.id', $request->user()->id)))
                 ->with($relations)
                 ->orderBy('position'),
         ]);
 
         $columns = $board->columns->map(
-            function (Column $column) use ($request, $project, $role, $compactGantt) {
+            function (Column $column) use ($request, $project, $role, $compactGantt, $compactCalendar) {
                 $cards = $column->cards
                     ->filter(
                         fn (Card $card) => $role !== 'cliente' || ! $card->is_internal
                     )
                     ->map(
-                        fn (Card $card) => $compactGantt
-                            ? CardPresenter::gantt($card, $request->user(), $project, $role)
-                            : CardPresenter::make($card, $request->user(), $project, $role)
+                        fn (Card $card) => $compactCalendar
+                            ? CardPresenter::calendar($card, $request->user(), $project, $role)
+                            : ($compactGantt
+                                ? CardPresenter::gantt($card, $request->user(), $project, $role)
+                                : CardPresenter::make($card, $request->user(), $project, $role))
                     )
                     ->values();
 

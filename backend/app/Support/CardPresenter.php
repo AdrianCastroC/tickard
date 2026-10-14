@@ -150,6 +150,46 @@ class CardPresenter
     }
 
     /**
+     * Minimal project calendar payload. In particular, it never exposes
+     * dependency previews or descriptions of Cards outside the user's scope.
+     */
+    public static function calendar(Card $card, User $user, Project $project, ?string $role): array
+    {
+        $creator = $card->creator;
+        abort_unless($creator, 500, 'La tarjeta no tiene autor.');
+
+        $payload = [
+            'id' => $card->id,
+            'column_id' => $card->column_id,
+            'category_id' => $card->category_id,
+            'title' => $card->title,
+            'position' => $card->position,
+            'color' => $card->color,
+            'creator' => [
+                'id' => $creator->id,
+                'name' => $creator->name,
+                'avatar_url' => $creator->avatarUrl(),
+            ],
+        ];
+
+        if ($role !== 'cliente' || $project->show_due_date) {
+            $payload['start_date'] = $card->start_date?->toDateString();
+            $payload['due_date'] = $card->due_date?->toDateString();
+            $payload['completed_at'] = $card->completed_at?->toIso8601String();
+        }
+
+        if ($role !== 'cliente' || $project->show_assignee) {
+            $payload['assignees'] = $card->assignees->map(fn (User $person) => [
+                'id' => $person->id,
+                'name' => $person->name,
+                'avatar_url' => $person->avatarUrl(),
+            ])->values();
+        }
+
+        return $payload;
+    }
+
+    /**
      * Scheduling-only view used for the project Gantt. The Card details are
      * fetched separately when the user opens a Card drawer.
      */

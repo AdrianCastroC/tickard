@@ -151,6 +151,25 @@ function sortEntries(a: Item, b: Item): number {
     || a.title.localeCompare(b.title)
 }
 
+
+function assignmentNames(people: Card['assignees']): string {
+  return people?.length ? people.map((person) => person.name).join(', ') : 'Sin asignar'
+}
+
+function AssignmentChips({ people, compact = false }: { people: Card['assignees']; compact?: boolean }) {
+  if (!people?.length) return <span className={styles.unassigned} title="Sin asignar">Sin asignar</span>
+  if (!compact) return <span className={styles.assignedNames} title={assignmentNames(people)}>{assignmentNames(people)}</span>
+  return <span className={styles.assigneeAvatars} title={assignmentNames(people)}
+    aria-label={'Asignados: ' + assignmentNames(people)}>
+    {people.slice(0, 2).map((person) => <span className={styles.assigneeAvatar} key={person.id}>
+      {person.avatar_url
+        ? <img src={person.avatar_url} alt={person.name} loading="lazy" />
+        : <span aria-hidden="true">{person.name.trim().slice(0, 1).toLocaleUpperCase('es')}</span>}
+    </span>)}
+    {people.length > 2 && <span className={styles.assigneeExtra}>+{people.length - 2}</span>}
+  </span>
+}
+
 function makeWeek(days: string[], items: Item[]): Week {
   const lanes: { start: string; end: string }[][] = []
   const segments: Segment[] = []
@@ -196,6 +215,8 @@ export function ProjectCalendar({ project, profile }: { project: Project; profil
   const [filtersOpen, setFiltersOpen] = useState(false)
   const [hiddenBoards, setHiddenBoards] = useState<number[]>([])
   const [hiddenStates, setHiddenStates] = useState<State[]>([])
+  const [selectedAssigneeIds, setSelectedAssigneeIds] = useState<number[]>([])
+  const [includeUnassigned, setIncludeUnassigned] = useState(false)
   const [selectedDay, setSelectedDay] = useState<string | null>(null)
   const [selected, setSelected] = useState<Selection | null>(null)
   const [detailBoard, setDetailBoard] = useState<BoardPayload | null>(null)
@@ -212,7 +233,7 @@ export function ProjectCalendar({ project, profile }: { project: Project; profil
 
   const load = useCallback(async () => {
     const ids = boardIds.split(',').filter(Boolean).map(Number)
-    return Promise.all(ids.map((id) => api<BoardPayload>('/boards/' + id + '?gantt=1')))
+    return Promise.all(ids.map((id) => api<BoardPayload>('/boards/' + id + '?calendar=1')))
   }, [boardIds])
 
   useEffect(() => {
@@ -248,11 +269,39 @@ export function ProjectCalendar({ project, profile }: { project: Project; profil
     return () => { alive = false }
   }, [project.id, project.role, calendarFirst, calendarLast, eventReload])
 
+  const isAdmin = profile.user.is_admin
   const allCards = useMemo(() => cardsFromBoards(boards ?? [], today), [boards, today])
+  const assigneeOptions = useMemo(() => {
+    if (!isAdmin) return []
+    const people = new Map<number, { id: number; name: string }>()
+    for (const board of boards ?? []) {
+      for (const member of board.members) people.set(member.id, { id: member.id, name: member.name })
+    }
+    for (const item of allCards) {
+      for (const person of item.card?.assignees ?? []) people.set(person.id, { id: person.id, name: person.name })
+    }
+    return [...people.values()].sort((a, b) => a.name.localeCompare(b.name, 'es'))
+  }, [allCards, boards, isAdmin])
   const items = useMemo(() => [
-    ...allCards.filter((item) => !hiddenBoards.includes(item.boardId!) && !hiddenStates.includes(item.state!)),
+    ...allCards.filter((item) => {
+      if (hiddenBoards.includes(item.boardId!) || hiddenStates.includes(item.state!)) return false
+      // Server-side scoping is authoritative; the client duplicates the check
+      // to prevent stale snapshots from displaying another person's Cards.
+      if (!isAdmin && !(item.card?.assignees ?? []).some((person) => person.id === profile.user.id)) {
+        // Client visibility settings can hide assignee details even for
+        // the current user. The backend already restricts these Cards.
+        if (project.role !== 'cliente') return false
+      }
+      if (isAdmin && (selectedAssigneeIds.length > 0 || includeUnassigned)) {
+        const assigned = item.card?.assignees ?? []
+        return selectedAssigneeIds.some((id) => assigned.some((person) => person.id === id))
+          || (includeUnassigned && assigned.length === 0)
+      }
+      return true
+    }),
     ...(showEvents ? eventsFromApi(events) : []),
-  ].sort(sortEntries), [allCards, hiddenBoards, hiddenStates, events, showEvents])
+  ].sort(sortEntries), [allCards, hiddenBoards, hiddenStates, events, showEvents, isAdmin,
+    profile.user.id, selectedAssigneeIds, includeUnassigned, project.role])
   const weeks = useMemo(() => range.weeks.map((days) => makeWeek(days, items)), [range, items])
   const monthItems = useMemo(() => items.filter((item) => item.start <= range.last && item.end >= range.first), [items, range])
   const dayItems = useMemo(() => selectedDay ? items.filter((item) => item.start <= selectedDay && item.end >= selectedDay) : [], [items, selectedDay])
@@ -323,7 +372,7 @@ export function ProjectCalendar({ project, profile }: { project: Project; profil
           <button type="button" className={mode === 'month' ? styles.active : undefined} aria-pressed={mode === 'month'} onClick={() => setMode('month')}>Mes</button>
           <button type="button" className={mode === 'agenda' ? styles.active : undefined} aria-pressed={mode === 'agenda'} onClick={() => setMode('agenda')}>Agenda</button>
         </div>
-        <button className={styles.filterButton} type="button" aria-expanded={filtersOpen} onClick={() => setFiltersOpen((open) => !open)}>Filtros{hiddenBoards.length + hiddenStates.length ? ' (' + (hiddenBoards.length + hiddenStates.length) + ')' : ''}</button>
+        <button className={styles.filterButton} type="button" aria-expanded={filtersOpen} onClick={() => setFiltersOpen((open) => !open)}>Filtros{hiddenBoards.length + hiddenStates.length + (isAdmin ? selectedAssigneeIds.length + Number(includeUnassigned) : 0) ? ' (' + (hiddenBoards.length + hiddenStates.length + (isAdmin ? selectedAssigneeIds.length + Number(includeUnassigned) : 0)) + ')' : ''}</button>
         {(project.role === 'responsable' || project.role === 'editor') && <button className="primary" type="button" onClick={() => setEventModal('new')}>+ Nuevo evento</button>}
       </div>
     </div>
@@ -337,8 +386,20 @@ export function ProjectCalendar({ project, profile }: { project: Project; profil
       <div className={styles.filterGroup}><strong>Estados</strong><div className={styles.filterOptions}>
         {STATES.map((state) => <label key={state.value}><input type="checkbox" checked={!hiddenStates.includes(state.value)} onChange={() => setHiddenStates((current) => current.includes(state.value) ? current.filter((value) => value !== state.value) : [...current, state.value])} /><i className={styles.statusDot} style={{ background: state.fallback }} />{state.label}</label>)}
       </div></div>
+      {isAdmin && <div className={styles.filterGroup}><strong>Usuarios asignados</strong>
+        <div className={styles.filterOptions}>
+          {assigneeOptions.map((person) => <label key={person.id}>
+            <input type="checkbox" checked={selectedAssigneeIds.includes(person.id)}
+              onChange={() => setSelectedAssigneeIds((current) => current.includes(person.id)
+                ? current.filter((id) => id !== person.id) : [...current, person.id])} />
+            {person.name}
+          </label>)}
+          <label><input type="checkbox" checked={includeUnassigned}
+            onChange={(change) => setIncludeUnassigned(change.target.checked)} />Sin asignar</label>
+        </div>
+      </div>
       {project.role !== 'cliente' && <div className={styles.filterGroup}><strong>Eventos</strong><label className={styles.eventFilter}><input type="checkbox" checked={showEvents} onChange={() => setShowEvents((value) => !value)} /> Mostrar reuniones, citas y eventos</label></div>}
-      <button className="ghost" type="button" onClick={() => { setHiddenBoards([]); setHiddenStates([]); setShowEvents(true) }}>Mostrar todos</button>
+      <button className="ghost" type="button" onClick={() => { setHiddenBoards([]); setHiddenStates([]); setSelectedAssigneeIds([]); setIncludeUnassigned(false); setShowEvents(true) }}>Mostrar todos</button>
     </div>}
 
     {mode === 'month' ? <div className={styles.calendar}>
@@ -357,10 +418,11 @@ export function ProjectCalendar({ project, profile }: { project: Project; profil
             width: String(part.width / 7 * 100) + '%',
             top: String(34 + part.lane * 29) + 'px',
           })}
-          title={part.item.badge + ' · ' + part.item.title + ' · ' + part.item.start + (part.item.start === part.item.end ? '' : ' — ' + part.item.end)}
+          title={part.item.badge + ' · ' + part.item.title + ' · ' + part.item.start + (part.item.start === part.item.end ? '' : ' — ' + part.item.end) + (isAdmin && part.item.kind === 'card' ? ' · ' + assignmentNames(part.item.card?.assignees) : '')}
           onClick={() => part.item.kind === 'event' ? setEventModal(part.item.event!) : openCard(part.item)}>
           <span className={styles.segmentTitle}>{part.item.badge} · {part.item.title}</span>
-          {part.width >= 2 && part.item.boardName && <span className={styles.segmentBoard}>{part.item.boardName}</span>}
+          {isAdmin && part.item.kind === 'card' && <AssignmentChips people={part.item.card?.assignees} compact />}
+          {part.width >= 2 && part.item.boardName && !isAdmin && <span className={styles.segmentBoard}>{part.item.boardName}</span>}
         </button>)}</div>
       </div>)}
     </div> : <div className={styles.agenda}>
@@ -368,7 +430,10 @@ export function ProjectCalendar({ project, profile }: { project: Project; profil
         monthItems.map((item) => <button key={item.key + ':' + item.start} type="button" className={styles.agendaItem} style={colorStyle(item.color)} onClick={() => item.kind === 'event' ? setEventModal(item.event!) : openCard(item)}>
           <span className={styles.agendaDate}>{item.start === item.end ? item.start : item.start + ' — ' + item.end}</span>
           <span className={styles.agendaTitle}>{item.title}</span>
-          <span className={styles.agendaBoard}>{item.boardName || (item.event && !item.event.all_day ? [item.event.start_time, item.event.end_time].filter(Boolean).join('–') : 'Todo el día')}</span>
+          <span className={styles.agendaBoard}>
+            <span>{item.boardName || (item.event && !item.event.all_day ? [item.event.start_time, item.event.end_time].filter(Boolean).join('–') : 'Todo el día')}</span>
+            {isAdmin && item.kind === 'card' && <AssignmentChips people={item.card?.assignees} />}
+          </span>
           <span className={styles.agendaStatus}>{item.badge}</span>
         </button>)}
     </div>}
@@ -376,7 +441,7 @@ export function ProjectCalendar({ project, profile }: { project: Project; profil
     {mode === 'month' && monthItems.length === 0 && <p className={styles.empty}>No hay tareas ni eventos programados en este mes con los filtros actuales.</p>}
     {mode === 'month' && selectedDay && <div className={styles.dayDetails}>
       <div className={styles.dayDetailsHeader}><strong>{prettyDay(selectedDay)}</strong><button type="button" aria-label="Cerrar tareas del día" onClick={() => setSelectedDay(null)}>×</button></div>
-      {dayItems.length ? dayItems.map((item) => <button className={styles.dayDetailItem} key={item.key + ':' + item.start} type="button" style={colorStyle(item.color)} onClick={() => item.kind === 'event' ? setEventModal(item.event!) : openCard(item)}><span>{item.badge} · {item.title}</span><small>{item.boardName}</small></button>) : <p className="muted">Sin tareas ni eventos programados.</p>}
+      {dayItems.length ? dayItems.map((item) => <button className={styles.dayDetailItem} key={item.key + ':' + item.start} type="button" style={colorStyle(item.color)} onClick={() => item.kind === 'event' ? setEventModal(item.event!) : openCard(item)}><span>{item.badge} · {item.title}</span><small>{item.boardName}{isAdmin && item.kind === 'card' && <AssignmentChips people={item.card?.assignees} />}</small></button>) : <p className="muted">Sin tareas ni eventos programados.</p>}
     </div>}
 
     {loading && boards && <p className={styles.refreshing} role="status">Actualizando calendario…</p>}

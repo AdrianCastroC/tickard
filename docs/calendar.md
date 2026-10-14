@@ -59,3 +59,19 @@ Ejecutar `php artisan migrate` en el directorio `backend` después de actualizar
 
 Invitaciones a asistentes, avisos, eventos recurrentes, disponibilidad, zonas horarias
 y conectores con Google Calendar/Outlook. Ninguna se implementa todavía.
+
+## Visibilidad de tareas según el usuario
+
+- **Administrador de Tickard** (`users.is_admin = true`): ve todas las Cards
+  que puede consultar en los tableros del proyecto, con sus usuarios asignados.
+  Puede filtrar por una o varias personas (coincidencia con cualquiera) y por
+  Cards sin asignación. Sin filtros seleccionados ve todas.
+- **Usuario no administrador**: en la vista Calendario recibe únicamente Cards
+  asignadas expresamente a su usuario, aunque sea responsable/editor/lector
+  del proyecto. Las Cards sin asignados no aparecen.
+- La API `GET /api/boards/{board}?calendar=1` limita las Cards mediante
+  `whereHas('assignees')` antes de serializarlas. No se hace depender la
+  seguridad del filtro del navegador; tampoco se incluyen previews de dependencias.
+- El Gantt y Kanban conservan sus endpoints y comportamientos anteriores.
+- Los eventos del proyecto mantienen su política de permisos independiente;
+  no son Cards ni tienen asignados en esta versión.
