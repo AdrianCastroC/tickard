@@ -149,6 +149,96 @@ class CardPresenter
         return $payload;
     }
 
+    /**
+     * Scheduling-only view used for the project Gantt. The Card details are
+     * fetched separately when the user opens a Card drawer.
+     */
+    public static function gantt(Card $card, User $user, Project $project, ?string $role): array
+    {
+        $client = $role === 'cliente';
+        $items = $card->modules->where('type', 'checklist')
+            ->flatMap(fn ($module) => $module->checklistItems);
+        if ($items->isEmpty()) {
+            $items = $card->checklistItems;
+        }
+        $total = $items->count();
+        $done = $items->where('is_done', true)->count();
+        $creator = $card->creator;
+        abort_unless($creator, 500, 'La tarjeta no tiene autor.');
+
+        $payload = [
+            'id' => $card->id,
+            'column_id' => $card->column_id,
+            'category_id' => $card->category_id,
+            'title' => $card->title,
+            'position' => $card->position,
+            'color' => $card->color,
+            'creator' => [
+                'id' => $creator->id,
+                'name' => $creator->name,
+                'avatar_url' => $creator->avatarUrl(),
+            ],
+            'progress' => [
+                'done' => $done,
+                'total' => $total,
+                'percent' => $total ? (int) round($done / $total * 100) : 0,
+            ],
+        ];
+
+        if (! $client || $project->show_due_date) {
+            $payload['start_date'] = $card->start_date?->toDateString();
+            $payload['due_date'] = $card->due_date?->toDateString();
+        }
+        if (! $client || $project->show_assignee) {
+            $payload['assignees'] = $card->assignees->map(fn ($person) => [
+                'id' => $person->id,
+                'name' => $person->name,
+                'avatar_url' => $person->avatarUrl(),
+            ])->values();
+            $payload['teams'] = $card->teams->map(fn ($team) => [
+                'id' => $team->id,
+                'name' => $team->name,
+            ])->values();
+        }
+        if (! $client || $project->show_labels) {
+            $payload['labels'] = $card->labels->map(fn ($label) => [
+                'id' => $label->id,
+                'name' => $label->name,
+                'tone' => $label->tone,
+            ])->values();
+        }
+
+        $attachments = self::attachments($card);
+        if (! $client || $attachments->isNotEmpty()) {
+            $payload['attachments'] = $attachments;
+        }
+
+        if (! $client) {
+            $payload['is_internal'] = $card->is_internal;
+            $payload['dependencies'] = [
+                'predecessors' => $card->successorDependencies->map(fn ($dependency) =>
+                    self::ganttDependency($dependency, $dependency->predecessor, $card))->values(),
+                'successors' => $card->predecessorDependencies->map(fn ($dependency) =>
+                    self::ganttDependency($dependency, $dependency->successor, $card))->values(),
+            ];
+        }
+
+        return $payload;
+    }
+
+    private static function ganttDependency($dependency, Card $other, Card $current): array
+    {
+        return [
+            'id' => $dependency->id,
+            'card_id' => $other->id,
+            'title' => $other->title,
+            'type' => $dependency->type,
+            'board_id' => $other->board_id,
+            'board_name' => $other->board_id !== $current->board_id ? $other->board?->name : null,
+            'preview' => null,
+        ];
+    }
+
     private static function dependency($dependency, Card $other, Card $current): array
     {
         $external = $other->board_id !== $current->board_id;
