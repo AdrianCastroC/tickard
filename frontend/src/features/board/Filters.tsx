@@ -1,4 +1,5 @@
 import { priorityLabel } from '../../shared/ui'
+import { SideSelect } from './Kanban'
 
 export function Filters(props: {
   clientView: boolean
@@ -21,38 +22,57 @@ export function Filters(props: {
   return (
     <form className="filters" onSubmit={(event) => event.preventDefault()}>
       {showAssignee && (
-        <label className="field">Persona
-          <select value={props.assignee} onChange={(event) => props.onAssignee(event.target.value)}>
-            <option value="">Cualquiera</option>
-            {props.members.map((member) => <option key={member.id} value={member.id}>{member.name}</option>)}
-          </select>
-        </label>
+        <div className="field" role="group" aria-label="Persona">
+          <span>Persona</span>
+          <SideSelect
+            value={props.assignee}
+            options={[
+              { value: '', label: 'Cualquiera' },
+              ...props.members.map((member) => ({ value: String(member.id), label: member.name })),
+            ]}
+            onChange={props.onAssignee}
+          />
+        </div>
       )}
       {showAssignee && props.teams.length > 0 && (
-        <label className="field">Equipo
-          <select value={props.teamId} onChange={(event) => props.onTeam(event.target.value)}>
-            <option value="">Cualquiera</option>
-            {props.teams.map((team) => <option key={team.id} value={team.id}>{team.name}</option>)}
-          </select>
-        </label>
+        <div className="field" role="group" aria-label="Equipo">
+          <span>Equipo</span>
+          <SideSelect
+            value={props.teamId}
+            options={[
+              { value: '', label: 'Cualquiera' },
+              ...props.teams.map((team) => ({ value: String(team.id), label: team.name })),
+            ]}
+            onChange={props.onTeam}
+          />
+        </div>
       )}
       {showLabels && (
-        <label className="field">Etiqueta
-          <select value={props.label} onChange={(event) => props.onLabel(event.target.value)}>
-            <option value="">Cualquiera</option>
-            {props.labels.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
-          </select>
-        </label>
+        <div className="field" role="group" aria-label="Etiqueta">
+          <span>Etiqueta</span>
+          <SideSelect
+            value={props.label}
+            options={[
+              { value: '', label: 'Cualquiera' },
+              ...props.labels.map((item) => ({ value: String(item.id), label: item.name })),
+            ]}
+            onChange={props.onLabel}
+          />
+        </div>
       )}
       {showPriority && (
-        <label className="field">Prioridad
-          <select value={props.priority} onChange={(event) => props.onPriority(event.target.value)}>
-            <option value="">Cualquiera</option>
-            {Object.entries(priorityLabel).map(([value, text]) => <option key={value} value={value}>{text}</option>)}
-          </select>
-        </label>
+        <div className="field" role="group" aria-label="Prioridad">
+          <span>Prioridad</span>
+          <SideSelect
+            value={props.priority}
+            options={[
+              { value: '', label: 'Cualquiera' },
+              ...Object.entries(priorityLabel).map(([value, label]) => ({ value, label })),
+            ]}
+            onChange={props.onPriority}
+          />
+        </div>
       )}
     </form>
   )
 }
-

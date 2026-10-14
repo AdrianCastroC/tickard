@@ -631,11 +631,38 @@ h1, h2, h3, p { margin: 0; }
   min-width: 0;
   font-weight: 600;
 }
-.board-filters-popover .filters select {
-  width: 100%;
-  min-width: 0;
-  color: var(--ink);
-  font-weight: 400;
+/* Reuse the rounded Card side selector rather than the browser's
+   unstyleable native select popup. Menus expand inside the panel so they
+   remain usable even when the viewport is short. */
+.board-filters-popover .filters .side-select {
+  margin-left: 0;
+  gap: 6px;
+}
+.board-filters-popover .filters .side-select-trigger {
+  min-height: 42px;
+  border-radius: 12px;
+  padding: 9px 12px;
+  background: color-mix(in srgb, var(--side) 48%, var(--surface));
+}
+.board-filters-popover .filters .side-select-main strong {
+  font-size: 14px;
+  font-weight: 500;
+}
+.board-filters-popover .filters .side-select-menu {
+  position: static;
+  max-height: min(192px, 35dvh);
+  margin-top: 2px;
+  border-radius: 12px;
+  box-shadow: 0 8px 22px rgb(12 36 32 / 12%);
+  scrollbar-width: thin;
+}
+.board-filters-popover .filters .side-select-menu button {
+  min-height: 36px;
+  border-radius: 9px;
+}
+.board-filters-popover .filters .side-select-menu button.on {
+  background: color-mix(in srgb, var(--accent) 15%, var(--surface));
+  color: var(--accent);
 }
 .board-filters-popover-foot {
   display: flex;
