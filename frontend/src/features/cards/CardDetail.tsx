@@ -253,25 +253,56 @@ export function CardDrawer({ card, mode, board, currentUser, canEdit, onClose, o
       <div className={`modal card-modal ${mode}`} style={cardStripeStyle(card.color)} onClick={(event) => event.stopPropagation()}>
         <div className="card-modal-body">
           <div className="card-modal-main">
+            <div className="card-modal-main-header">
+              {editing ? (
+                <input
+                  className="card-modal-title-input"
+                  value={title}
+                  onChange={(event) => setTitle(event.target.value)}
+                  placeholder="Título de la tarea"
+                />
+              ) : (
+                <div className="card-modal-title-row">
+                  <h2>{card.title}</h2>
+                  {card.is_internal === false && (
+                    <span className="card-public" title="No interna" aria-label="Tarjeta no interna">
+                      <VisibilityIcon />
+                    </span>
+                  )}
+                </div>
+              )}
+              {editing && (
+                <div className="card-modal-tools">
+                  <button
+                    className={`icon-close${card.is_internal === false ? ' is-public' : ''}`}
+                    type="button"
+                    aria-label="Visibilidad"
+                    title={card.is_internal === false ? 'Visible para el cliente' : 'Visibilidad'}
+                    onClick={() => setVisibilityOpen(true)}
+                  >
+                    <EyeSlashIcon />
+                  </button>
+                  <button
+                    className="icon-close color"
+                    type="button"
+                    aria-label="Color del borde"
+                    onClick={() => colorInputRef.current?.click()}
+                  >
+                    <PaletteIcon />
+                  </button>
+                  <input
+                    ref={colorInputRef}
+                    className="color-input"
+                    type="color"
+                    value={stripe}
+                    onChange={(event) => save({ color: event.target.value })}
+                    aria-hidden="true"
+                    tabIndex={-1}
+                  />
+                </div>
+              )}
+            </div>
             <div className="card-modal-main-scroll">
-            {editing ? (
-              <input
-                className="card-modal-title-input"
-                value={title}
-                onChange={(event) => setTitle(event.target.value)}
-                placeholder="Título de la tarea"
-              />
-            ) : (
-              <div className="card-modal-title-row">
-                <h2>{card.title}</h2>
-                {card.is_internal === false && (
-                  <span className="card-public" title="No interna" aria-label="Tarjeta no interna">
-                    <VisibilityIcon />
-                  </span>
-                )}
-              </div>
-            )}
-
             <section className={`card-modal-section${descCollapsed ? ' is-collapsed' : ''}`}>
               <div className="section-head">
                 <h3>
@@ -372,29 +403,31 @@ export function CardDrawer({ card, mode, board, currentUser, canEdit, onClose, o
           </div>
 
           <aside className="card-modal-side">
-            <div className="card-modal-side-scroll">
-            <div className={`side-toolbar${editing ? ' editing' : ''}`}>
-              {editing ? (
-                <button
-                  className="icon-close save"
-                  type="button"
-                  aria-label="Guardar"
-                  disabled={saving || !title.trim()}
-                  onClick={saveAll}
-                >
-                  <SaveIcon />
-                </button>
-              ) : (
-                canEdit && (
-                  <button className="icon-close" type="button" aria-label="Editar" onClick={onEdit}>
-                    <EditIcon />
+            <div className="card-modal-side-header">
+              <div className={`side-toolbar${editing ? ' editing' : ''}`}>
+                {editing ? (
+                  <button
+                    className="icon-close save"
+                    type="button"
+                    aria-label="Guardar"
+                    disabled={saving || !title.trim()}
+                    onClick={saveAll}
+                  >
+                    <SaveIcon />
                   </button>
-                )
-              )}
-              <button className="icon-close" type="button" aria-label="Cerrar" onClick={() => { void handleClose() }}>
-                <CloseIcon />
-              </button>
+                ) : (
+                  canEdit && (
+                    <button className="icon-close" type="button" aria-label="Editar" onClick={onEdit}>
+                      <EditIcon />
+                    </button>
+                  )
+                )}
+                <button className="icon-close" type="button" aria-label="Cerrar" onClick={() => { void handleClose() }}>
+                  <CloseIcon />
+                </button>
+              </div>
             </div>
+            <div className="card-modal-side-scroll">
             <div className="side-field">
               <span className="side-label"><StatusIcon /> Estado</span>
               {editing ? (
@@ -669,36 +702,6 @@ export function CardDrawer({ card, mode, board, currentUser, canEdit, onClose, o
               </div>
             )}
           </aside>
-          {editing && (
-            <div className="card-modal-tools">
-              <button
-                className={`icon-close${card.is_internal === false ? ' is-public' : ''}`}
-                type="button"
-                aria-label="Visibilidad"
-                title={card.is_internal === false ? 'Visible para el cliente' : 'Visibilidad'}
-                onClick={() => setVisibilityOpen(true)}
-              >
-                <EyeSlashIcon />
-              </button>
-              <button
-                className="icon-close color"
-                type="button"
-                aria-label="Color del borde"
-                onClick={() => colorInputRef.current?.click()}
-              >
-                <PaletteIcon />
-              </button>
-              <input
-                ref={colorInputRef}
-                className="color-input"
-                type="color"
-                value={stripe}
-                onChange={(event) => save({ color: event.target.value })}
-                aria-hidden="true"
-                tabIndex={-1}
-              />
-            </div>
-          )}
         </div>
       </div>
       {visibilityOpen && (
