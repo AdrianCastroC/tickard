@@ -11,6 +11,7 @@ use App\Models\User;
 use App\Support\Notifier;
 use App\Support\CardDependencyService;
 use App\Support\CardBacklogService;
+use App\Support\MilestoneCompletionService;
 use App\Support\ProjectAccess;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -39,7 +40,7 @@ class CardsController extends ApiController
         ], 201);
     }
 
-    public function updateColumn(Request $request, Column $column, CardDependencyService $dependencies)
+    public function updateColumn(Request $request, Column $column, CardDependencyService $dependencies, MilestoneCompletionService $milestones)
     {
         abort_unless(ProjectAccess::canManage($request->user(), $column->board->project), 403);
         $data = $request->validate([
@@ -76,6 +77,7 @@ class CardsController extends ApiController
         }
 
         $affectedBoardIds = [$board->id];
+        $previousWorkflowState = $column->workflow_state;
 
         DB::transaction(function () use ($column, $data, $board, $dependencies, &$affectedBoardIds) {
             $workflowStateChanged = array_key_exists('workflow_state', $data)
@@ -96,6 +98,10 @@ class CardsController extends ApiController
             }
         });
         $this->touchBoards($affectedBoardIds);
+        if ($previousWorkflowState !== 'done' && $column->workflow_state === 'done') {
+            $column->cards()->whereNull('archived_at')->get()
+                ->each(fn (Card $card) => $milestones->evaluateSuccessors($card, $request->user()->id));
+        }
 
         return response()->json([
             'id' => $column->id,
@@ -284,7 +290,7 @@ class CardsController extends ApiController
         return response()->json(['id' => $card->id], 201);
     }
 
-    public function updateCard(Request $request, Card $card, CardDependencyService $dependencies)
+    public function updateCard(Request $request, Card $card, CardDependencyService $dependencies, MilestoneCompletionService $milestones)
     {
         $project = $card->board->project;
         abort_unless(ProjectAccess::canEditCards($request->user(), $project), 403);
@@ -408,11 +414,14 @@ class CardsController extends ApiController
         }
 
         $this->touchBoards($affectedBoardIds);
+        if ($card->fresh()->is_milestone) {
+            $milestones->evaluate($card, $request->user()->id);
+        }
 
         return response()->noContent();
     }
 
-    public function moveCard(Request $request, Card $card, CardDependencyService $dependencies, CardBacklogService $backlog)
+    public function moveCard(Request $request, Card $card, CardDependencyService $dependencies, CardBacklogService $backlog, MilestoneCompletionService $milestones)
     {
         $project = $card->board->project;
         abort_unless(ProjectAccess::canEditCards($request->user(), $project), 403);
@@ -452,6 +461,7 @@ class CardsController extends ApiController
             }
         }
         $from = $card->column_id;
+        $previousWorkflowState = $card->column->workflow_state;
 
         $affectedBoardIds = [$card->board_id];
 
@@ -473,6 +483,9 @@ class CardsController extends ApiController
             }
         });
         $this->touchBoards($affectedBoardIds);
+        if ($previousWorkflowState !== 'done' && $column->workflow_state === 'done') {
+            $milestones->evaluateSuccessors($card, $request->user()->id);
+        }
 
         return response()->noContent();
     }

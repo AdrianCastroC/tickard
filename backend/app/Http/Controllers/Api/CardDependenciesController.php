@@ -6,6 +6,7 @@ use App\Models\Card;
 use App\Models\CardDependency;
 use App\Models\Board;
 use App\Support\CardDependencyService;
+use App\Support\MilestoneCompletionService;
 use App\Support\ProjectAccess;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -13,7 +14,7 @@ use Illuminate\Validation\Rule;
 
 class CardDependenciesController extends ApiController
 {
-    public function store(Request $request, Card $card, CardDependencyService $service)
+    public function store(Request $request, Card $card, CardDependencyService $service, MilestoneCompletionService $milestones)
     {
         abort_unless(ProjectAccess::canEditCards($request->user(), $card->board->project), 403);
         $data = $request->validate(['successor_card_id' => ['required', 'integer'], 'type' => ['sometimes', Rule::in(CardDependencyService::TYPES)]]);
@@ -29,6 +30,7 @@ class CardDependenciesController extends ApiController
             );
         }
         $this->touchBoards($affectedBoardIds);
+        $milestones->evaluate($successor, $request->user()->id);
         return response()->json($this->payload($dependency->fresh(['predecessor', 'successor'])), 201);
     }
 
@@ -48,15 +50,17 @@ class CardDependenciesController extends ApiController
         return response()->json($this->payload($dependency->fresh(['predecessor', 'successor'])));
     }
 
-    public function destroy(Request $request, CardDependency $dependency)
+    public function destroy(Request $request, CardDependency $dependency, MilestoneCompletionService $milestones)
     {
         abort_unless(ProjectAccess::canEditCards($request->user(), $dependency->predecessor->board->project), 403);
+        $successor = $dependency->successor;
         $boardIds = [
             $dependency->predecessor->board_id,
-            $dependency->successor->board_id,
+            $successor->board_id,
         ];
         $dependency->delete();
         $this->touchBoards($boardIds);
+        $milestones->evaluate($successor, $request->user()->id);
         return response()->noContent();
     }
 

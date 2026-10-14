@@ -76,7 +76,7 @@ export function CreateCardModal({ board, column, onClose, onCreated }: {
         {isMilestone ? (
           <>
             <label className="field">Fecha objetivo<input type="date" required value={due ?? ''} onChange={(event) => setDue(event.target.value || null)} /></label>
-            <label className="row"><input type="checkbox" checked={milestoneAutoComplete} onChange={(event) => setMilestoneAutoComplete(event.target.checked)} /> Finalización automática (próxima fase)</label>
+            <label className="row"><input type="checkbox" checked={milestoneAutoComplete} onChange={(event) => setMilestoneAutoComplete(event.target.checked)} /> Completar automáticamente al cumplir los requisitos</label>
           </>
         ) : (
           <label className="field">Periodo

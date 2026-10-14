@@ -414,11 +414,19 @@ export function CardDrawer({ card, mode, board, currentUser, canEdit, onClose, o
                     <label className="field">Fecha objetivo<input type="date" value={milestoneDate} onChange={(event) => setMilestoneDate(event.target.value)} /></label>
                   )}
                   {card.is_milestone && (
-                    <label className="row"><input type="checkbox" checked={card.milestone_auto_complete !== false} onChange={(event) => { void save({ milestone_auto_complete: event.target.checked }) }} /> Finalización automática (próxima fase)</label>
+                    <label className="row"><input type="checkbox" checked={card.milestone_auto_complete !== false} onChange={(event) => { void save({ milestone_auto_complete: event.target.checked }) }} /> Completar automáticamente al cumplir los requisitos</label>
                   )}
                   {milestoneError && <span className="error">{milestoneError}</span>}
                 </>
               ) : <div className="side-value"><strong>{card.is_milestone ? 'Sí' : 'No'}</strong></div>}
+              {card.is_milestone && card.milestone_requirements?.regressed && (
+                <p className="error" role="status">
+                  El hito ya se alcanzó, pero algunas dependencias o checklists han dejado de cumplirse. No se reabre automáticamente.
+                </p>
+              )}
+              {card.is_milestone && card.milestone_auto_complete === false && card.milestone_requirements?.ready && board.columns.find((column) => column.id === card.column_id)?.workflow_state !== 'done' && (
+                <p className="muted" role="status">Requisitos cumplidos. Pendiente de confirmación manual.</p>
+              )}
             </div>
             <div className="side-field">
               <span className="side-label"><PriorityIcon /> Prioridad</span>

@@ -88,6 +88,7 @@ export type Card = {
   is_internal?: boolean
   is_milestone?: boolean
   milestone_auto_complete?: boolean
+  milestone_requirements?: { ready: boolean; regressed: boolean }
   description?: string
   start_date?: string | null
   due_date?: string | null

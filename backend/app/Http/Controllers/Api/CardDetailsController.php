@@ -21,6 +21,7 @@ use App\Models\ProjectMember;
 use App\Models\Team;
 use App\Models\User;
 use App\Support\CardPresenter;
+use App\Support\MilestoneCompletionService;
 use App\Support\Notifier;
 use App\Support\ProjectAccess;
 use Illuminate\Http\Request;
@@ -78,12 +79,14 @@ public function updateModule(Request $request, CardModule $module)
         return response()->json(CardPresenter::module($module));
     }
 
-public function destroyModule(Request $request, CardModule $module)
+public function destroyModule(Request $request, CardModule $module, MilestoneCompletionService $milestones)
     {
         abort_unless(ProjectAccess::canEditCards($request->user(), $module->card->board->project), 403);
-        $board = $module->card->board;
+        $card = $module->card;
+        $board = $card->board;
         $module->delete();
         $board->touchRevision();
+        $milestones->evaluate($card, $request->user()->id);
 
         return response()->noContent();
     }
@@ -130,7 +133,7 @@ public function storeChecklistItem(Request $request, Card $card)
         return response()->json(CardPresenter::checklistItem($item), 201);
     }
 
-public function updateChecklistItem(Request $request, CardChecklistItem $item)
+public function updateChecklistItem(Request $request, CardChecklistItem $item, MilestoneCompletionService $milestones)
     {
         $project = $item->card->board->project;
         abort_unless(ProjectAccess::canEditCards($request->user(), $project), 403);
@@ -178,6 +181,9 @@ public function updateChecklistItem(Request $request, CardChecklistItem $item)
 
         $item->load('assignees');
         $item->card->board->touchRevision();
+        if (array_key_exists('is_done', $data)) {
+            $milestones->evaluate($item->card, $request->user()->id);
+        }
 
         return response()->json(CardPresenter::checklistItem($item));
     }
@@ -205,12 +211,14 @@ public function reorderChecklist(Request $request, Card $card)
         return response()->json(['ok' => true]);
     }
 
-public function destroyChecklistItem(Request $request, CardChecklistItem $item)
+public function destroyChecklistItem(Request $request, CardChecklistItem $item, MilestoneCompletionService $milestones)
     {
         abort_unless(ProjectAccess::canEditCards($request->user(), $item->card->board->project), 403);
-        $board = $item->card->board;
+        $card = $item->card;
+        $board = $card->board;
         $item->delete();
         $board->touchRevision();
+        $milestones->evaluate($card, $request->user()->id);
 
         return response()->noContent();
     }

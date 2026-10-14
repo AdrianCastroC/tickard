@@ -93,6 +93,20 @@ class CardPresenter
                 ))->values(),
             ];
 
+            if ($card->is_milestone) {
+                $dependencyCount = $card->successorDependencies->count();
+                $dependenciesDone = $card->successorDependencies
+                    ->filter(fn ($dependency) => $dependency->predecessor?->column?->workflow_state === 'done')
+                    ->count();
+                $hasRequirements = $dependencyCount + $total > 0;
+                $ready = $hasRequirements && $dependenciesDone === $dependencyCount && $done === $total;
+
+                $payload['milestone_requirements'] = [
+                    'ready' => $ready,
+                    'regressed' => $hasRequirements && $card->column?->workflow_state === 'done' && ! $ready,
+                ];
+            }
+
             return $payload;
         }
 
