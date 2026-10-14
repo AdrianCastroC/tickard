@@ -253,40 +253,51 @@ class ProjectsController extends ApiController
 
         abort_unless($role, 403);
 
+        // Project Gantt only needs scheduling fields. Avoid hydrating comments,
+        // reactions, activities and full checklist payloads on every board.
+        $compactGantt = $request->boolean('gantt');
+        $relations = $compactGantt ? [
+            'creator',
+            'assignees',
+            'teams',
+            'labels',
+            'attachments',
+            'checklistItems',
+            'modules.checklistItems',
+            'predecessorDependencies.predecessor.board',
+            'successorDependencies.successor.board',
+        ] : [
+            'creator',
+            'assignees',
+            'teams.members',
+            'labels',
+            'comments.user',
+            'comments.reactions',
+            'activities.user',
+            'checklistItems.assignees',
+            'modules.checklistItems.assignees',
+            'attachments',
+            'predecessorDependencies.predecessor',
+            'successorDependencies.successor',
+        ];
         $board->load([
             'categories',
             'columns.cards' => fn ($query) => $query
                 ->whereNull('archived_at')
-                ->with([
-                    'creator',
-                    'assignees',
-                    'teams.members',
-                    'labels',
-                    'comments.user',
-                    'comments.reactions',
-                    'activities.user',
-                    'checklistItems.assignees',
-                    'modules.checklistItems.assignees',
-                    'attachments',
-                    'predecessorDependencies.predecessor',
-                    'successorDependencies.successor',
-                ])
+                ->with($relations)
                 ->orderBy('position'),
         ]);
 
         $columns = $board->columns->map(
-            function (Column $column) use ($request, $project, $role) {
+            function (Column $column) use ($request, $project, $role, $compactGantt) {
                 $cards = $column->cards
                     ->filter(
                         fn (Card $card) => $role !== 'cliente' || ! $card->is_internal
                     )
                     ->map(
-                        fn (Card $card) => CardPresenter::make(
-                            $card,
-                            $request->user(),
-                            $project,
-                            $role
-                        )
+                        fn (Card $card) => $compactGantt
+                            ? CardPresenter::gantt($card, $request->user(), $project, $role)
+                            : CardPresenter::make($card, $request->user(), $project, $role)
                     )
                     ->values();
 
