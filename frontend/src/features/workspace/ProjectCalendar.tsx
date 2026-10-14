@@ -216,6 +216,7 @@ export function ProjectCalendar({ project, profile }: { project: Project; profil
   const [month, setMonth] = useState(() => monthStart(localToday()))
   const [today, setToday] = useState(localToday)
   const [mode, setMode] = useState<'month' | 'agenda'>('month')
+  const agendaRef = useRef<HTMLDivElement>(null)
   const [filtersOpen, setFiltersOpen] = useState(false)
   const filterButtonRef = useRef<HTMLButtonElement>(null)
   const filterPopoverRef = useRef<HTMLDivElement>(null)
@@ -237,6 +238,24 @@ export function ProjectCalendar({ project, profile }: { project: Project; profil
   const [eventReload, setEventReload] = useState(0)
   const [eventModal, setEventModal] = useState<CalendarEvent | 'new' | null>(null)
   const [showEvents, setShowEvents] = useState(true)
+
+  // Like the project Gantt, only the Agenda list occupies the available
+  // viewport space. The project header and calendar toolbar stay outside it.
+  useLayoutEffect(() => {
+    if (mode !== 'agenda') return
+    const agenda = agendaRef.current
+    if (!agenda) return
+
+    const resizeAgenda = () => {
+      const available = window.innerHeight - agenda.getBoundingClientRect().top - 20
+      const height = `${Math.max(100, Math.floor(available))}px`
+      if (agenda.style.height !== height) agenda.style.height = height
+    }
+
+    resizeAgenda()
+    window.addEventListener('resize', resizeAgenda)
+    return () => window.removeEventListener('resize', resizeAgenda)
+  }, [mode, loading, eventError, error])
 
   // Match the board filter popover: float left of the trigger, aligned at
   // its top edge, without pushing the calendar or clipping in scroll panes.
@@ -430,7 +449,7 @@ export function ProjectCalendar({ project, profile }: { project: Project; profil
   if (error && !boards) return <section className="project-panel" role="alert"><p>No se pudo cargar el calendario: {error}</p><button className="ghost" type="button" onClick={() => setReloadKey((n) => n + 1)}>Reintentar</button></section>
 
 
-  return <section className={styles.root} data-calendar-mode={mode} aria-label={'Calendario del proyecto ' + project.name}>
+  return <section className={styles.root} aria-label={'Calendario del proyecto ' + project.name}>
     <div className={styles.toolbar}>
       <div className={styles.dateControls}>
         <button className="ghost" type="button" onClick={() => { setMonth(monthStart(today)); setSelectedDay(null) }}>Hoy</button>
@@ -541,7 +560,7 @@ export function ProjectCalendar({ project, profile }: { project: Project; profil
           {part.width >= 2 && part.item.boardName && !canViewAllTasks && <span className={styles.segmentBoard}>{part.item.boardName}</span>}
         </button>)}</div>
       </div>)}
-    </div> : <div className={styles.agenda} role="region" aria-label="Agenda de tareas y eventos" tabIndex={0}>
+    </div> : <div ref={agendaRef} className={styles.agenda} role="region" aria-label="Agenda de tareas y eventos" tabIndex={0}>
       {monthItems.length === 0 ? <p className={styles.empty}>No hay tareas ni eventos programados en este mes con los filtros actuales.</p> :
         monthItems.map((item) => <button key={item.key + ':' + item.start} type="button" className={styles.agendaItem} style={colorStyle(item.color)} onClick={() => item.kind === 'event' ? setEventModal(item.event!) : openCard(item)}>
           <span className={styles.agendaDate}>{item.start === item.end ? item.start : item.start + ' — ' + item.end}</span>
