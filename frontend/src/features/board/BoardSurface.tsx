@@ -39,6 +39,7 @@ export function BoardSurface({ state, filters, activeBoardId, project, profile, 
   const [showConfig, setShowConfig] = useState(false)
   const [viewModes, setViewModes] = useState<Record<number, BoardViewMode>>({})
   const handledGanttFocus = useRef<number | null>(null)
+  const filterButtonRef = useRef<HTMLButtonElement>(null)
   const canEdit = view?.role === 'responsable' || view?.role === 'editor'
   const canManage = view?.role === 'responsable'
   const clientView = view?.role === 'cliente'
@@ -81,10 +82,18 @@ export function BoardSurface({ state, filters, activeBoardId, project, profile, 
     <BoardHeader show={Boolean(view || activeBoardId)}
       title={view?.board.name || project?.boards.find((item) => item.id === activeBoardId)?.name}
       subtitle={view?.board.project_name || project?.name}
-      canEdit={canEdit} backlog={backlog} filtersActive={filters.active} filtersOpen={filters.open}
-      viewMode={viewMode} onViewModeChange={changeViewMode}
+      canEdit={canEdit} backlog={backlog} filtersActive={filters.active} filtersOpen={Boolean(view && filters.open)}
+      filterButtonRef={filterButtonRef} viewMode={viewMode} onViewModeChange={changeViewMode}
       onToggleFilters={() => filters.setOpen((current) => !current)} onAdd={setCreateColumn} />
-    <FiltersBar open={Boolean(view && filters.open)} clientView={clientView}
+    <FiltersBar open={Boolean(view && filters.open)} active={filters.active}
+      anchorRef={filterButtonRef} onClose={() => filters.setOpen(false)}
+      onClear={() => {
+        filters.setAssignee('')
+        filters.setTeamId('')
+        filters.setLabel('')
+        filters.setPriority('')
+      }}
+      clientView={clientView}
       visibility={view?.visibility ?? {}} members={view?.members ?? []} labels={view?.labels ?? []}
       assignee={filters.assignee} teamId={filters.teamId} teams={view?.teams ?? []}
       label={filters.label} priority={filters.priority}
