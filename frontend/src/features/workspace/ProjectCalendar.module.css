@@ -1,33 +1,68 @@
 .root { display:flex;flex-direction:column;min-width:0;gap:12px;color:var(--ink) }
-/* Loading skeleton keeps the calendar's usual geometry while board data arrives. */
-.loading { display:flex;flex-direction:column;gap:12px;min-width:0 }
-.loadingToolbar { display:flex;align-items:center;gap:10px;min-height:36px }
-.loadingToolbar .loadingBlock:nth-child(1) { width:62px;height:32px }
+/* Recognizable month preview behind the centered loading indicator. */
+.loadingToolbar {
+  display: flex;
+  align-items: center;
+  flex: 0 0 36px;
+  gap: 10px;
+  padding: 0 3px;
+}
+.loadingToolbar .loadingBlock:nth-child(1) { width: 62px; height: 32px }
 .loadingToolbar .loadingBlock:nth-child(2),
-.loadingToolbar .loadingBlock:nth-child(3) { width:36px;height:32px }
-.loadingToolbar .loadingBlock:nth-child(4) { width:154px;height:24px;margin-left:8px }
-.loadingBlock,.loadingTask {
-  display:block;flex:0 0 auto;border-radius:7px;
-  background:color-mix(in srgb,var(--line) 65%,var(--surface));
-  animation:project-calendar-loading-pulse 1.4s ease-in-out infinite alternate;
+.loadingToolbar .loadingBlock:nth-child(3) { width: 36px; height: 32px }
+.loadingToolbar .loadingBlock:nth-child(4) { width: 154px; height: 24px; margin-left: 8px }
+.loadingBlock, .loadingTask, .loadingTaskShort {
+  display: block;
+  flex: 0 0 auto;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--line) 72%, var(--surface));
 }
-.loadingCalendar { overflow:hidden;border:1px solid var(--line);border-radius:10px;background:var(--surface) }
-.loadingWeekdays { display:grid;grid-template-columns:repeat(7,minmax(0,1fr));border-bottom:1px solid var(--line);background:var(--canvas) }
-.loadingWeekdays span { padding:10px 4px;text-align:center;font-size:12px;color:var(--muted) }
-.loadingWeek { display:grid;grid-template-columns:repeat(7,minmax(0,1fr));height:112px;border-bottom:1px solid var(--line) }
-.loadingWeek:last-child { border-bottom:0 }
-.loadingDay { min-width:0;padding:10px 8px;border-right:1px solid var(--line) }
-.loadingDay:last-child { border-right:0 }
-.loadingDay .loadingBlock { width:20px;height:13px }
-.loadingTask { width:min(88%,120px);height:22px;margin-top:18px }
-@keyframes project-calendar-loading-pulse { to { opacity:.42 } }
-@media(prefers-reduced-motion:reduce) {
-  .loadingBlock,.loadingTask { animation:none }
+.loadingCalendar {
+  display: grid;
+  grid-template-rows: 34px repeat(5, minmax(0, 1fr));
+  min-height: 0;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface);
 }
-@media(max-width:600px) {
-  .loadingWeek { height:88px }
-  .loadingDay { padding:8px 4px }
-  .loadingTask { margin-top:14px }
+.loadingWeekdays {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  border-bottom: 1px solid var(--line);
+  background: var(--canvas);
+}
+.loadingWeekdays span { padding: 8px 4px; text-align: center; font-size: 12px; color: var(--muted) }
+.loadingWeek {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  min-height: 0;
+  border-bottom: 1px solid var(--line);
+}
+.loadingWeek:last-child { border-bottom: 0 }
+.loadingDay { min-width: 0; padding: 10px 8px; border-right: 1px solid var(--line) }
+.loadingDay:last-child { border-right: 0 }
+.loadingDay .loadingBlock { width: 20px; height: 13px }
+.loadingTask {
+  width: min(88%, 134px);
+  height: 20px;
+  margin-top: 13px;
+  background: color-mix(in srgb, var(--accent) 28%, var(--surface));
+}
+.loadingTaskAlternate {
+  width: min(74%, 112px);
+  background: color-mix(in srgb, #719be2 32%, var(--surface));
+}
+.loadingTaskShort {
+  width: min(56%, 88px);
+  height: 15px;
+  margin-top: 6px;
+  background: color-mix(in srgb, #c6a1dc 34%, var(--surface));
+}
+@media (max-width: 600px) {
+  .loadingDay { padding: 8px 4px }
+  .loadingTask { height: 15px; margin-top: 12px }
+  .loadingTaskShort { height: 12px }
 }
 .toolbar { display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:14px }
 .dateControls,.toolbarRight { display:flex;align-items:center;gap:8px }

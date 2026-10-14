@@ -3086,15 +3086,24 @@ h1, h2, h3, p { margin: 0; }
 .project-gantt-skeleton {
   display: grid;
   grid-template-columns: minmax(180px, 340px) minmax(0, 1fr);
+  width: 100%;
+  height: 100%;
+  min-height: 0;
   overflow: hidden;
-  border: 1px solid var(--line);
-  border-radius: 12px;
   background: var(--surface);
 }
 .project-gantt-skeleton-left, .project-gantt-skeleton-right {
   display: grid;
-  grid-template-rows: 30px 26px repeat(9, 30px);
+  grid-template-rows: 30px 26px repeat(16, minmax(0, 1fr));
   min-width: 0;
+  min-height: 0;
+}
+.project-gantt-skeleton-right {
+  background-image: repeating-linear-gradient(
+    90deg,
+    transparent 0 92px,
+    color-mix(in srgb, var(--line) 65%, transparent) 92px 93px
+  );
 }
 .project-gantt-skeleton-left { border-right: 1px solid var(--line); }
 .project-gantt-skeleton-header {
@@ -3114,16 +3123,20 @@ h1, h2, h3, p { margin: 0; }
 .project-gantt-skeleton-row::before, .project-gantt-skeleton-row i {
   display: block;
   height: 11px;
-  border-radius: 4px;
-  background: color-mix(in srgb, var(--accent) 18%, var(--canvas));
-  animation: project-gantt-pulse 1.4s ease-in-out infinite alternate;
+  border-radius: 5px;
+  background: color-mix(in srgb, var(--accent) 23%, var(--canvas));
 }
 .project-gantt-skeleton-row::before { content: ''; width: 58%; }
 .project-gantt-skeleton-right .project-gantt-skeleton-row::before { display: none; }
-.project-gantt-skeleton-row i { height: 13px; }
-@keyframes project-gantt-pulse { to { opacity: .42; } }
-@media (prefers-reduced-motion: reduce) {
-  .project-gantt-skeleton-row::before, .project-gantt-skeleton-row i { animation: none; }
+.project-gantt-skeleton-row i { height: 15px; background: color-mix(in srgb, var(--accent) 38%, var(--surface)); }
+.project-gantt-skeleton-right .project-gantt-skeleton-row:nth-child(5n + 2) i {
+  background: color-mix(in srgb, #77a1dc 40%, var(--surface));
+}
+.project-gantt-skeleton-right .project-gantt-skeleton-row:nth-child(5n + 3) i {
+  background: color-mix(in srgb, #d8ac78 40%, var(--surface));
+}
+.project-gantt-skeleton-right .project-gantt-skeleton-row:nth-child(5n + 4) i {
+  background: color-mix(in srgb, #b19adc 38%, var(--surface));
 }
 .project-gantt-viewport {
   min-width: 0;

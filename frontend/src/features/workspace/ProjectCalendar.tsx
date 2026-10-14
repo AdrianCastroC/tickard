@@ -8,6 +8,7 @@ import { NavIcon, CloseIcon } from '../../shared/icons'
 import { ProjectCalendarAssigneeFilter, type CalendarAssigneeOption } from './ProjectCalendarAssigneeFilter'
 import { ProjectCalendarMultiFilter } from './ProjectCalendarMultiFilter'
 import { ProjectLoadingIndicator } from './ProjectLoadingIndicator'
+import { ProjectContentLoading } from './ProjectContentLoading'
 import styles from './ProjectCalendar.module.css'
 
 type State = Exclude<WorkflowState, 'backlog'>
@@ -463,15 +464,17 @@ export function ProjectCalendar({ project, profile }: { project: Project; profil
     + (project.role !== 'cliente' && !showEvents ? 1 : 0)
 
   if (loading && !boards) return (
-    <section className={styles.loading} aria-label="Cargando calendario del proyecto">
-      <ProjectLoadingIndicator label="Cargando calendario del proyecto…" />
-      <div className={styles.loadingToolbar} aria-hidden="true">
+    <ProjectContentLoading
+      title="Cargando calendario"
+      description="Preparando tareas, eventos y planificación del proyecto…"
+    >
+      <div className={styles.loadingToolbar}>
         <span className={styles.loadingBlock} />
         <span className={styles.loadingBlock} />
         <span className={styles.loadingBlock} />
         <span className={styles.loadingBlock} />
       </div>
-      <div className={styles.loadingCalendar} aria-hidden="true">
+      <div className={styles.loadingCalendar}>
         <div className={styles.loadingWeekdays}>
           {WEEKDAYS.map((day) => <span key={day}>{day}</span>)}
         </div>
@@ -480,13 +483,16 @@ export function ProjectCalendar({ project, profile }: { project: Project; profil
             {Array.from({ length: 7 }, (_, col) => (
               <div className={styles.loadingDay} key={col}>
                 <span className={styles.loadingBlock} />
-                {(row + col) % 3 === 0 && <span className={styles.loadingTask} />}
+                {(row + col) % 4 !== 1 && (
+                  <span className={`${styles.loadingTask} ${(row + col) % 3 === 0 ? styles.loadingTaskAlternate : ''}`} />
+                )}
+                {(row * 2 + col) % 5 === 0 && <span className={styles.loadingTaskShort} />}
               </div>
             ))}
           </div>
         ))}
       </div>
-    </section>
+    </ProjectContentLoading>
   )
   if (error && !boards) return <section className="project-panel" role="alert"><p>No se pudo cargar el calendario: {error}</p><button className="ghost" type="button" onClick={() => setReloadKey((n) => n + 1)}>Reintentar</button></section>
 
