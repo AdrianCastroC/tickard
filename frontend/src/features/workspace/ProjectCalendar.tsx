@@ -6,6 +6,7 @@ import { CardDrawer } from '../cards/CardDetail'
 import { Avatar } from '../../shared/ui'
 import { NavIcon, CloseIcon } from '../../shared/icons'
 import { ProjectCalendarAssigneeFilter, type CalendarAssigneeOption } from './ProjectCalendarAssigneeFilter'
+import { ProjectCalendarMultiFilter } from './ProjectCalendarMultiFilter'
 import styles from './ProjectCalendar.module.css'
 
 type State = Exclude<WorkflowState, 'backlog'>
@@ -438,10 +439,6 @@ export function ProjectCalendar({ project, profile }: { project: Project; profil
         <h2>{prettyMonth(month)}</h2>
       </div>
       <div className={styles.toolbarRight}>
-        <div className={styles.modeSwitch} aria-label="Vistas de calendario">
-          <button type="button" className={mode === 'month' ? styles.active : undefined} aria-pressed={mode === 'month'} onClick={() => setMode('month')}>Mes</button>
-          <button type="button" className={mode === 'agenda' ? styles.active : undefined} aria-pressed={mode === 'agenda'} onClick={() => setMode('agenda')}>Agenda</button>
-        </div>
         <button
           ref={filterButtonRef}
           className={`icon-button board-filter-trigger${filtersOpen || activeFilterCount > 0 ? ' on' : ''}`}
@@ -456,6 +453,10 @@ export function ProjectCalendar({ project, profile }: { project: Project; profil
           <NavIcon><path d="M4 6h16M7 12h10M10 18h4" /></NavIcon>
           {activeFilterCount > 0 && <span className="board-filter-active-dot" aria-hidden="true" />}
         </button>
+        <div className={styles.modeSwitch} aria-label="Vistas de calendario">
+          <button type="button" className={mode === 'month' ? styles.active : undefined} aria-pressed={mode === 'month'} onClick={() => setMode('month')}>Mes</button>
+          <button type="button" className={mode === 'agenda' ? styles.active : undefined} aria-pressed={mode === 'agenda'} onClick={() => setMode('agenda')}>Agenda</button>
+        </div>
         {(project.role === 'responsable' || project.role === 'editor') && <button className="primary" type="button" onClick={() => setEventModal('new')}>+ Nuevo evento</button>}
       </div>
     </div>
@@ -476,12 +477,24 @@ export function ProjectCalendar({ project, profile }: { project: Project; profil
           <button className="icon-close" type="button" aria-label="Cerrar filtros" onClick={() => setFiltersOpen(false)}><CloseIcon /></button>
         </div>
         <div className={styles.filters}>
-          <div className={styles.filterGroup}><strong>Tableros</strong><div className={styles.filterOptions}>
-            {boards.map((board) => <label key={board.board.id}><input type="checkbox" checked={!hiddenBoards.includes(board.board.id)} onChange={() => setHiddenBoards((current) => current.includes(board.board.id) ? current.filter((id) => id !== board.board.id) : [...current, board.board.id])} />{board.board.name}</label>)}
-          </div></div>
-          <div className={styles.filterGroup}><strong>Estados</strong><div className={styles.filterOptions}>
-            {STATES.map((state) => <label key={state.value}><input type="checkbox" checked={!hiddenStates.includes(state.value)} onChange={() => setHiddenStates((current) => current.includes(state.value) ? current.filter((value) => value !== state.value) : [...current, state.value])} /><i className={styles.statusDot} style={{ background: state.fallback }} />{state.label}</label>)}
-          </div></div>
+          <div className={styles.filterGroup}>
+            <strong>Tableros</strong>
+            <ProjectCalendarMultiFilter
+              label="Tableros"
+              options={boards.map((board) => ({ value: board.board.id, label: board.board.name }))}
+              hidden={hiddenBoards}
+              onHiddenChange={setHiddenBoards}
+            />
+          </div>
+          <div className={styles.filterGroup}>
+            <strong>Estados</strong>
+            <ProjectCalendarMultiFilter
+              label="Estados"
+              options={STATES.map((state) => ({ value: state.value, label: state.label, color: state.fallback }))}
+              hidden={hiddenStates}
+              onHiddenChange={setHiddenStates}
+            />
+          </div>
           {canViewAllTasks && <div className={styles.filterGroup}>
             <strong>Usuarios asignados</strong>
             <ProjectCalendarAssigneeFilter people={assigneeOptions}
