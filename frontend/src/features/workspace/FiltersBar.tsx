@@ -29,12 +29,10 @@ export function FiltersBar({ open, active, anchorRef, onClose, onClear, ...props
       const height = popover.offsetHeight
       const gap = 8
       const margin = 12
-      const left = Math.max(margin, Math.min(rect.right - width, window.innerWidth - width - margin))
-      const below = rect.bottom + gap
-      const above = rect.top - height - gap
-      const top = below + height > window.innerHeight - margin && above >= margin
-        ? above
-        : Math.max(margin, Math.min(below, window.innerHeight - height - margin))
+      // Place the popover to the left of the filter button, top-aligned.
+      // Keep it inside the viewport if available space is limited.
+      const left = Math.max(margin, Math.min(rect.left - width - gap, window.innerWidth - width - margin))
+      const top = Math.max(margin, Math.min(rect.top, window.innerHeight - height - margin))
 
       setPosition((current) => current?.top === top && current?.left === left ? current : { top, left })
     }
