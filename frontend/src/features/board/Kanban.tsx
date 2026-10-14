@@ -395,6 +395,7 @@ export function ColumnView({ column, categories, canEdit, canManage, pinned, onT
   const [error, setError] = useState('')
   const menuRef = useRef<HTMLDivElement>(null)
   const colorInputRef = useRef<HTMLInputElement>(null)
+  const scrollContentRef = useRef<HTMLDivElement>(null)
   const columnColor = column.color || DEFAULT_CARD_STRIPE
   const canDrag = canManage && !renaming
 
@@ -482,6 +483,12 @@ export function ColumnView({ column, categories, canEdit, canManage, pinned, onT
       <section
       className={`column${isDragging ? ' dragging' : ''}${collapsed ? ' is-collapsed' : ''}${column.color ? ' has-color' : ''}${pinned ? ' is-pinned' : ''}`}
       ref={setNodeRef}
+      onWheel={(event) => {
+        // También funciona al usar la rueda sobre la cabecera o el botón fijo.
+        const scroller = scrollContentRef.current
+        if (!scroller || scroller.contains(event.target as Node) || Math.abs(event.deltaY) <= Math.abs(event.deltaX)) return
+        scroller.scrollTop += event.deltaY
+      }}
       style={{
         transform: CSS.Transform.toString(transform),
         transition,
@@ -638,32 +645,37 @@ export function ColumnView({ column, categories, canEdit, canManage, pinned, onT
       </header>
       {!collapsed && (
         <>
-          <CategoryGroup
-            columnId={column.id}
-            categoryKey="none"
-            cards={uncategorized}
-            renderCard={renderCard}
-            active={dropCategoryKey === 'none'}
-          />
-          {categories.map((category) => {
-            const cards = column.cards.filter((card) => card.category_id === category.id)
-            const key = String(category.id)
-            if (cards.length === 0 && dropCategoryKey !== key) return null
-            return (
-              <CategoryGroup
-                key={category.id}
-                columnId={column.id}
-                categoryKey={key}
-                label={cards.length > 0 ? category.name : undefined}
-                cards={cards}
-                renderCard={renderCard}
-                active={dropCategoryKey === key}
-              />
-            )
-          })}
-          {canEdit
-            ? <button className="add-card" type="button" onClick={onAdd}><PlusIcon /> Añadir tarea</button>
-            : column.cards.length === 0 && <p className="muted">Sin tarjetas</p>}
+          <div ref={scrollContentRef} className="column-content" role="group" aria-label={`Tarjetas de ${column.name}`} tabIndex={0}>
+            <CategoryGroup
+              columnId={column.id}
+              categoryKey="none"
+              cards={uncategorized}
+              renderCard={renderCard}
+              active={dropCategoryKey === 'none'}
+            />
+            {categories.map((category) => {
+              const cards = column.cards.filter((card) => card.category_id === category.id)
+              const key = String(category.id)
+              if (cards.length === 0 && dropCategoryKey !== key) return null
+              return (
+                <CategoryGroup
+                  key={category.id}
+                  columnId={column.id}
+                  categoryKey={key}
+                  label={cards.length > 0 ? category.name : undefined}
+                  cards={cards}
+                  renderCard={renderCard}
+                  active={dropCategoryKey === key}
+                />
+              )
+            })}
+            {!canEdit && column.cards.length === 0 && <p className="muted">Sin tarjetas</p>}
+          </div>
+          {canEdit && (
+            <div className="column-footer">
+              <button className="add-card" type="button" onClick={onAdd}><PlusIcon /> Añadir tarea</button>
+            </div>
+          )}
         </>
       )}
       </section>
