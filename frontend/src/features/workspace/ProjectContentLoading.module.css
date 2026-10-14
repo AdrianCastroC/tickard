@@ -6,8 +6,6 @@
   height: clamp(360px, calc(100dvh - 255px), 860px);
   min-width: 0;
   overflow: hidden;
-  border: 1px solid var(--line);
-  border-radius: 12px;
   background: var(--surface);
 }
 .preview {
@@ -74,7 +72,8 @@
   opacity: .22;
   transform: scale(.48);
   animation: project-dot-pulse 1.2s linear infinite;
-  animation-delay: calc(var(--dot-index) * -100ms);
+  /* Stagger forwards around the circle: clockwise from the top dot. */
+  animation-delay: calc(var(--dot-index) * 100ms);
 }
 .title {
   margin: 0;
