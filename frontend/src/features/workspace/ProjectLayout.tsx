@@ -26,4 +26,4 @@ export function ProjectLayout({ project, board, context = 'project', projectView
 }
 
 function Placeholder({ title }: { title: string }) { return <section className="project-panel project-placeholder"><h2>{title}</h2><p className="muted">Esta sección estará disponible próximamente.</p></section> }
-function itemsLabel(view: ProjectView) { return view === 'gantt' ? 'Gantt' : view === 'calendar' ? 'Calendario' : view === 'files' ? 'Archivos' : 'Equipo' }
+function itemsLabel(view: ProjectView) { return view === 'gantt' ? 'Gantt' : view === 'calendar' ? 'Calendario' : view === 'files' ? 'Archivos' : 'Personal' }
