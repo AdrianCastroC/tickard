@@ -105,7 +105,27 @@ export function ProjectGantt({ project, profile, onNavigateExternalCard }: Props
     return () => window.removeEventListener('resize', resizeViewport)
   }, [boards?.length])
 
-  if (loading && !boards) return <section className="project-panel" role="status">Cargando Gantt de todos los tableros…</section>
+  if (loading && !boards) return <section className="project-gantt-loading" role="status" aria-live="polite" aria-label="Cargando Gantt del proyecto">
+    <p>Cargando Gantt del proyecto…</p>
+    <div className="project-gantt-skeleton" aria-hidden="true">
+      <div className="project-gantt-skeleton-left">
+        <span className="project-gantt-skeleton-header" />
+        <span className="project-gantt-skeleton-header" />
+        {Array.from({ length: 9 }, (_, index) => (
+          <span key={index} className={index % 4 === 0 ? 'project-gantt-skeleton-group' : 'project-gantt-skeleton-row'} />
+        ))}
+      </div>
+      <div className="project-gantt-skeleton-right">
+        <span className="project-gantt-skeleton-header" />
+        <span className="project-gantt-skeleton-header" />
+        {Array.from({ length: 9 }, (_, index) => (
+          <span key={index} className={index % 4 === 0 ? 'project-gantt-skeleton-group' : 'project-gantt-skeleton-row'}>
+            {index % 4 !== 0 && <i style={{ width: `${24 + index * 6}%` }} />}
+          </span>
+        ))}
+      </div>
+    </div>
+  </section>
   if (error) return <section className="project-panel" role="alert">
     <p>No se pudo cargar el Gantt del proyecto: {error}</p>
     <button type="button" className="ghost" onClick={() => setRefreshKey((value) => value + 1)}>Reintentar</button>
