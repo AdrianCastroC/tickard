@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { api, ApiError, type BacklogResolution, type BoardPayload, type Project, type Profile } from '../../api'
 import { CardDrawer } from '../cards/CardDetail'
@@ -19,6 +19,7 @@ export function ProjectGantt({ project, profile, onNavigateExternalCard }: Props
   const [error, setError] = useState<string | null>(null)
   const [selected, setSelected] = useState<{ cardId: number; mode: 'view' | 'edit' } | null>(null)
   const [refreshKey, setRefreshKey] = useState(0)
+  const ganttViewportRef = useRef<HTMLDivElement>(null)
   const [pendingMove, setPendingMove] = useState<{
     cardId: number; columnId: number; position: number; resolution: BacklogResolution
   } | null>(null)
@@ -64,9 +65,21 @@ export function ProjectGantt({ project, profile, onNavigateExternalCard }: Props
   }, [load, project.id, boardIds])
 
   const canEdit = boards?.every((board) => board.role === 'responsable' || board.role === 'editor') ?? false
-  const totalCards = columns.reduce((total, column) => total + column.cards.length, 0)
-  const plannedCards = columns.reduce((total, column) =>
-    total + (column.workflow_state === 'backlog' ? 0 : column.cards.filter((card) => card.start_date && card.due_date).length), 0)
+
+  useLayoutEffect(() => {
+    const viewport = ganttViewportRef.current
+    if (!viewport) return
+
+    // Fit the scroll area into the space left below the actual project header
+    // and navigation, rather than assuming their height is always the same.
+    const resizeViewport = () => {
+      const available = window.innerHeight - viewport.getBoundingClientRect().top - 20
+      viewport.style.maxHeight = `${Math.max(240, Math.floor(available))}px`
+    }
+    resizeViewport()
+    window.addEventListener('resize', resizeViewport)
+    return () => window.removeEventListener('resize', resizeViewport)
+  }, [boards?.length])
 
   if (loading && !boards) return <section className="project-panel" role="status">Cargando Gantt de todos los tableros…</section>
   if (error) return <section className="project-panel" role="alert">
@@ -75,19 +88,8 @@ export function ProjectGantt({ project, profile, onNavigateExternalCard }: Props
   </section>
   if (!boards?.length) return <section className="project-panel"><p>Este proyecto todavía no tiene tableros.</p></section>
 
-  return <section aria-label={`Gantt del proyecto ${project.name}`} style={{ display: 'grid', gap: 12, minWidth: 0, minHeight: 500 }}>
-    <div className="project-panel" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap', padding: '12px 16px' }}>
-      <div>
-        <strong>Gantt del proyecto · {project.name}</strong>
-        <p className="muted" style={{ margin: '4px 0 0' }}>
-          {boards.length} tableros · {totalCards} Cards · {plannedCards} planificadas
-        </p>
-      </div>
-      <button type="button" className="ghost" onClick={() => setRefreshKey((value) => value + 1)} disabled={loading}>
-        {loading ? 'Actualizando…' : 'Actualizar'}
-      </button>
-    </div>
-    <div style={{ minWidth: 0, minHeight: 440 }}>
+  return <section className="project-gantt" aria-label={`Gantt del proyecto ${project.name}`}>
+    <div ref={ganttViewportRef} className="project-gantt-viewport" tabIndex={0} aria-label="Área desplazable del Gantt del proyecto">
       <GanttView key={`project-${project.id}`}
         board={boards[0]} cards={columns} projectBoards={boards}
         canEdit={canEdit}
