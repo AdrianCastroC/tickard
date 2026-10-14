@@ -62,13 +62,14 @@ y conectores con Google Calendar/Outlook. Ninguna se implementa todavía.
 
 ## Visibilidad de tareas según el usuario
 
-- **Administrador de Tickard** (`users.is_admin = true`): ve todas las Cards
-  que puede consultar en los tableros del proyecto, con sus usuarios asignados.
-  Puede filtrar por una o varias personas (coincidencia con cualquiera) y por
-  Cards sin asignación. Sin filtros seleccionados ve todas.
-- **Usuario no administrador**: en la vista Calendario recibe únicamente Cards
-  asignadas expresamente a su usuario, aunque sea responsable/editor/lector
-  del proyecto. Las Cards sin asignados no aparecen.
+- **Administrador de Tickard** (`users.is_admin = true`) y **responsable del
+  proyecto** (`role = responsable`): ven todas las Cards consultables de ese
+  proyecto, incluidos los elementos sin asignación. Pueden filtrar por una o
+  varias personas (coincidencia con cualquiera) y por Cards sin asignar.
+  Ser responsable basta; no se necesita el indicador global `is_admin`.
+- **Editor, lector o cliente sin rol de responsable**: en el Calendario reciben
+  únicamente Cards asignadas expresamente a su usuario. Las Cards sin asignados
+  no aparecen. El calendario sigue respetando las reglas de visibilidad del cliente.
 - La API `GET /api/boards/{board}?calendar=1` limita las Cards mediante
   `whereHas('assignees')` antes de serializarlas. No se hace depender la
   seguridad del filtro del navegador; tampoco se incluyen previews de dependencias.

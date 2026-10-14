@@ -85,12 +85,42 @@ class ProjectCalendarAssignmentsTest extends TestCase
         $this->assertSame([], $unassigned['assignees']);
     }
 
-    public function test_non_admin_creator_does_not_see_unassigned_cards(): void
+    public function test_project_responsable_can_see_every_card_without_global_admin_flag(): void
     {
-        [$admin, , , $board] = $this->project();
-        $creator = User::factory()->create(['is_admin' => false]);
-        ProjectMember::create(['project_id' => $board->project_id, 'user_id' => $creator->id, 'role' => 'responsable']);
-        $this->actingAs($creator)->getJson("/api/boards/{$board->id}?calendar=1")
+        [, , $colleague, $board] = $this->project();
+        $responsable = User::factory()->create(['is_admin' => false]);
+        ProjectMember::create(['project_id' => $board->project_id, 'user_id' => $responsable->id, 'role' => 'responsable']);
+
+        $data = $this->actingAs($responsable)->getJson("/api/boards/{$board->id}?calendar=1")
+            ->assertOk()->assertJsonPath('role', 'responsable')
+            ->assertJsonCount(4, 'columns.0.cards')
+            ->json();
+
+        $shared = collect($data['columns'][0]['cards'])->firstWhere('title', 'Compartida');
+        $this->assertCount(2, $shared['assignees']);
+        $this->assertContains($colleague->id, collect($shared['assignees'])->pluck('id')->all());
+        $unassigned = collect($data['columns'][0]['cards'])->firstWhere('title', 'Sin asignar');
+        $this->assertSame([], $unassigned['assignees']);
+    }
+
+    public function test_non_admin_editor_without_assignments_sees_no_cards(): void
+    {
+        [, , , $board] = $this->project();
+        $editor = User::factory()->create(['is_admin' => false]);
+        ProjectMember::create(['project_id' => $board->project_id, 'user_id' => $editor->id, 'role' => 'editor']);
+        $this->actingAs($editor)->getJson("/api/boards/{$board->id}?calendar=1")
             ->assertOk()->assertJsonCount(0, 'columns.0.cards');
+    }
+
+    public function test_non_admin_reader_sees_only_own_assigned_cards(): void
+    {
+        [, , $reader, $board] = $this->project();
+        $data = $this->actingAs($reader)->getJson("/api/boards/{$board->id}?calendar=1")
+            ->assertOk()->assertJsonCount(2, 'columns.0.cards')->json();
+
+        $this->assertEqualsCanonicalizing(
+            ['Compartida', 'De otro'],
+            collect($data['columns'][0]['cards'])->pluck('title')->all()
+        );
     }
 }

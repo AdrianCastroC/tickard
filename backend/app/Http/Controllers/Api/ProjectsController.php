@@ -258,7 +258,8 @@ class ProjectsController extends ApiController
         $compactGantt = $request->boolean('gantt');
         $compactCalendar = $request->boolean('calendar');
         // The calendar has a dedicated compact payload. Non-admins receive
-        // only Cards explicitly assigned to their user, never everyone else's.
+        // only Cards explicitly assigned to their user. Project responsables
+        // can see the entire project even without a global admin flag.
         $relations = $compactCalendar ? [
             'creator',
             'assignees',
@@ -290,7 +291,7 @@ class ProjectsController extends ApiController
             'categories',
             'columns.cards' => fn ($query) => $query
                 ->whereNull('archived_at')
-                ->when($compactCalendar && ! $request->user()->is_admin,
+                ->when($compactCalendar && ! $request->user()->is_admin && $role !== 'responsable',
                     fn ($scoped) => $scoped->whereHas('assignees',
                         fn ($assigned) => $assigned->where('users.id', $request->user()->id)))
                 ->with($relations)
