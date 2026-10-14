@@ -66,7 +66,13 @@ class ProjectCalendarAssignmentsTest extends TestCase
         $this->assertArrayNotHasKey('dependencies', $data['columns'][0]['cards'][0]);
         $this->assertArrayNotHasKey('comments', $data['columns'][0]['cards'][0]);
 
-        // This scoping is only for the calendar. Kanban remains unchanged.
+        // This scoping is only for the calendar: the existing full Kanban
+        // and project Gantt responses must continue returning all four Cards.
+        $this->actingAs($editor)->getJson("/api/boards/{$board->id}")
+            ->assertOk()->assertJsonCount(4, 'columns.0.cards');
+        $this->actingAs($editor)->getJson("/api/boards/{$board->id}?gantt=1")
+            ->assertOk()->assertJsonCount(4, 'columns.0.cards');
+        // Calendar semantics take priority when both flags are present.
         $this->actingAs($editor)->getJson("/api/boards/{$board->id}?calendar=1&gantt=1")
             ->assertOk()->assertJsonCount(2, 'columns.0.cards');
     }
