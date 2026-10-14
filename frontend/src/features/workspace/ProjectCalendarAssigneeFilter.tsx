@@ -15,11 +15,12 @@ type Props = {
   onSelectedIdsChange: (ids: number[]) => void
   onIncludeUnassignedChange: (value: boolean) => void
   currentUserId: number
+  embedded?: boolean
 }
 
 export function ProjectCalendarAssigneeFilter({
   people, selectedIds, includeUnassigned, onSelectedIdsChange,
-  onIncludeUnassignedChange, currentUserId,
+  onIncludeUnassignedChange, currentUserId, embedded = false,
 }: Props) {
   const [open, setOpen] = useState(false)
   const [search, setSearch] = useState('')
@@ -73,7 +74,7 @@ export function ProjectCalendarAssigneeFilter({
     onIncludeUnassignedChange(false)
   }
 
-  return <div className={styles.root} ref={rootRef}>
+  return <div className={embedded ? `${styles.root} ${styles.embedded}` : styles.root} ref={rootRef}>
     <button type="button" className={[styles.trigger, hasSelection ? styles.triggerActive : ''].filter(Boolean).join(' ')}
       aria-label="Filtrar por usuarios asignados" aria-expanded={open} aria-controls={filterId} aria-haspopup="true"
       onClick={() => setOpen((previous) => !previous)}>

@@ -1,9 +1,10 @@
-import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { createPortal } from 'react-dom'
 import { api, ApiError, type BacklogResolution, type BoardPayload, type CalendarEvent, type Card, type Profile, type Project, type WorkflowState } from '../../api'
 import { BacklogResolutionModal } from '../board/BacklogResolutionModal'
 import { CardDrawer } from '../cards/CardDetail'
 import { Avatar } from '../../shared/ui'
+import { NavIcon, CloseIcon } from '../../shared/icons'
 import { ProjectCalendarAssigneeFilter, type CalendarAssigneeOption } from './ProjectCalendarAssigneeFilter'
 import styles from './ProjectCalendar.module.css'
 
@@ -215,6 +216,9 @@ export function ProjectCalendar({ project, profile }: { project: Project; profil
   const [today, setToday] = useState(localToday)
   const [mode, setMode] = useState<'month' | 'agenda'>('month')
   const [filtersOpen, setFiltersOpen] = useState(false)
+  const filterButtonRef = useRef<HTMLButtonElement>(null)
+  const filterPopoverRef = useRef<HTMLDivElement>(null)
+  const [filterPosition, setFilterPosition] = useState<{ top: number; left: number } | null>(null)
   const [hiddenBoards, setHiddenBoards] = useState<number[]>([])
   const [hiddenStates, setHiddenStates] = useState<State[]>([])
   const [selectedAssigneeIds, setSelectedAssigneeIds] = useState<number[]>([])
@@ -232,6 +236,57 @@ export function ProjectCalendar({ project, profile }: { project: Project; profil
   const [eventReload, setEventReload] = useState(0)
   const [eventModal, setEventModal] = useState<CalendarEvent | 'new' | null>(null)
   const [showEvents, setShowEvents] = useState(true)
+
+  // Match the board filter popover: float left of the trigger, aligned at
+  // its top edge, without pushing the calendar or clipping in scroll panes.
+  useLayoutEffect(() => {
+    if (!filtersOpen) return
+
+    const reposition = () => {
+      const anchor = filterButtonRef.current
+      const popover = filterPopoverRef.current
+      if (!anchor || !popover) return
+      const rect = anchor.getBoundingClientRect()
+      const width = popover.offsetWidth
+      const height = popover.offsetHeight
+      const margin = 12
+      const gap = 8
+      const left = Math.max(margin, Math.min(rect.left - width - gap, window.innerWidth - width - margin))
+      const top = Math.max(margin, Math.min(rect.top, window.innerHeight - height - margin))
+      setFilterPosition((current) => current?.left === left && current?.top === top ? current : { left, top })
+    }
+
+    reposition()
+    window.addEventListener('resize', reposition)
+    window.addEventListener('scroll', reposition, true)
+    const observer = new ResizeObserver(reposition)
+    if (filterPopoverRef.current) observer.observe(filterPopoverRef.current)
+    return () => {
+      window.removeEventListener('resize', reposition)
+      window.removeEventListener('scroll', reposition, true)
+      observer.disconnect()
+    }
+  }, [filtersOpen])
+
+  useEffect(() => {
+    if (!filtersOpen) return
+    const outside = (event: PointerEvent) => {
+      if (!(event.target instanceof Node)) return
+      if (filterButtonRef.current?.contains(event.target) || filterPopoverRef.current?.contains(event.target)) return
+      setFiltersOpen(false)
+    }
+    const escape = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return
+      setFiltersOpen(false)
+      filterButtonRef.current?.focus()
+    }
+    document.addEventListener('pointerdown', outside)
+    document.addEventListener('keydown', escape)
+    return () => {
+      document.removeEventListener('pointerdown', outside)
+      document.removeEventListener('keydown', escape)
+    }
+  }, [filtersOpen])
 
   const load = useCallback(async () => {
     const ids = boardIds.split(',').filter(Boolean).map(Number)
@@ -387,8 +442,19 @@ export function ProjectCalendar({ project, profile }: { project: Project; profil
           <button type="button" className={mode === 'month' ? styles.active : undefined} aria-pressed={mode === 'month'} onClick={() => setMode('month')}>Mes</button>
           <button type="button" className={mode === 'agenda' ? styles.active : undefined} aria-pressed={mode === 'agenda'} onClick={() => setMode('agenda')}>Agenda</button>
         </div>
-        <button className={styles.filterButton} type="button" aria-expanded={filtersOpen} onClick={() => setFiltersOpen((open) => !open)}>
-          Filtros{activeFilterCount > 0 ? ' (' + activeFilterCount + ')' : ''}
+        <button
+          ref={filterButtonRef}
+          className={`icon-button board-filter-trigger${filtersOpen || activeFilterCount > 0 ? ' on' : ''}`}
+          type="button"
+          aria-label={activeFilterCount > 0 ? `Filtros del calendario: ${activeFilterCount} activos` : 'Filtros del calendario'}
+          aria-haspopup="dialog"
+          aria-expanded={filtersOpen}
+          aria-controls={filtersOpen ? 'calendar-filters-popover' : undefined}
+          title="Filtros"
+          onClick={() => setFiltersOpen((open) => !open)}
+        >
+          <NavIcon><path d="M4 6h16M7 12h10M10 18h4" /></NavIcon>
+          {activeFilterCount > 0 && <span className="board-filter-active-dot" aria-hidden="true" />}
         </button>
         {(project.role === 'responsable' || project.role === 'editor') && <button className="primary" type="button" onClick={() => setEventModal('new')}>+ Nuevo evento</button>}
       </div>
@@ -396,24 +462,48 @@ export function ProjectCalendar({ project, profile }: { project: Project; profil
 
     {eventError && <div className={styles.inlineError} role="alert">No se pudieron cargar los eventos: {eventError}. <button type="button" onClick={() => setEventReload((n) => n + 1)}>Reintentar</button></div>}
     {error && <div className={styles.inlineError} role="alert">No se pudieron actualizar las Cards: {error}. <button type="button" onClick={() => setReloadKey((n) => n + 1)}>Reintentar</button></div>}
-    {filtersOpen && <div className={styles.filters}>
-      <div className={styles.filterGroup}><strong>Tableros</strong><div className={styles.filterOptions}>
-        {boards.map((board) => <label key={board.board.id}><input type="checkbox" checked={!hiddenBoards.includes(board.board.id)} onChange={() => setHiddenBoards((current) => current.includes(board.board.id) ? current.filter((id) => id !== board.board.id) : [...current, board.board.id])} />{board.board.name}</label>)}
-      </div></div>
-      <div className={styles.filterGroup}><strong>Estados</strong><div className={styles.filterOptions}>
-        {STATES.map((state) => <label key={state.value}><input type="checkbox" checked={!hiddenStates.includes(state.value)} onChange={() => setHiddenStates((current) => current.includes(state.value) ? current.filter((value) => value !== state.value) : [...current, state.value])} /><i className={styles.statusDot} style={{ background: state.fallback }} />{state.label}</label>)}
-      </div></div>
-      {canViewAllTasks && <div className={styles.filterGroup}>
-        <strong>Usuarios asignados</strong>
-        <ProjectCalendarAssigneeFilter people={assigneeOptions}
-          selectedIds={selectedAssigneeIds} includeUnassigned={includeUnassigned}
-          currentUserId={profile.user.id} onSelectedIdsChange={setSelectedAssigneeIds}
-          onIncludeUnassignedChange={setIncludeUnassigned} />
-      </div>}
-
-      {project.role !== 'cliente' && <div className={styles.filterGroup}><strong>Eventos</strong><label className={styles.eventFilter}><input type="checkbox" checked={showEvents} onChange={() => setShowEvents((value) => !value)} /> Mostrar reuniones, citas y eventos</label></div>}
-      <button className="ghost" type="button" onClick={() => { setHiddenBoards([]); setHiddenStates([]); setSelectedAssigneeIds([]); setIncludeUnassigned(false); setShowEvents(true) }}>Mostrar todos</button>
-    </div>}
+    {filtersOpen && createPortal(
+      <div
+        ref={filterPopoverRef}
+        id="calendar-filters-popover"
+        className={`board-filters-popover ${styles.filtersPopover}`}
+        role="dialog"
+        aria-labelledby="calendar-filters-title"
+        style={filterPosition ? { top: filterPosition.top, left: filterPosition.left } : { top: 0, left: 0, visibility: 'hidden' }}
+      >
+        <div className="board-filters-popover-head">
+          <strong id="calendar-filters-title">Filtros</strong>
+          <button className="icon-close" type="button" aria-label="Cerrar filtros" onClick={() => setFiltersOpen(false)}><CloseIcon /></button>
+        </div>
+        <div className={styles.filters}>
+          <div className={styles.filterGroup}><strong>Tableros</strong><div className={styles.filterOptions}>
+            {boards.map((board) => <label key={board.board.id}><input type="checkbox" checked={!hiddenBoards.includes(board.board.id)} onChange={() => setHiddenBoards((current) => current.includes(board.board.id) ? current.filter((id) => id !== board.board.id) : [...current, board.board.id])} />{board.board.name}</label>)}
+          </div></div>
+          <div className={styles.filterGroup}><strong>Estados</strong><div className={styles.filterOptions}>
+            {STATES.map((state) => <label key={state.value}><input type="checkbox" checked={!hiddenStates.includes(state.value)} onChange={() => setHiddenStates((current) => current.includes(state.value) ? current.filter((value) => value !== state.value) : [...current, state.value])} /><i className={styles.statusDot} style={{ background: state.fallback }} />{state.label}</label>)}
+          </div></div>
+          {canViewAllTasks && <div className={styles.filterGroup}>
+            <strong>Usuarios asignados</strong>
+            <ProjectCalendarAssigneeFilter people={assigneeOptions}
+              embedded
+              selectedIds={selectedAssigneeIds} includeUnassigned={includeUnassigned}
+              currentUserId={profile.user.id} onSelectedIdsChange={setSelectedAssigneeIds}
+              onIncludeUnassignedChange={setIncludeUnassigned} />
+          </div>}
+          {project.role !== 'cliente' && <div className={styles.filterGroup}>
+            <strong>Eventos</strong>
+            <label className={styles.eventFilter}><input type="checkbox" checked={showEvents} onChange={() => setShowEvents((value) => !value)} /> Mostrar reuniones, citas y eventos</label>
+          </div>}
+        </div>
+        <div className="board-filters-popover-foot">
+          <button className="ghost" type="button" disabled={activeFilterCount === 0}
+            onClick={() => { setHiddenBoards([]); setHiddenStates([]); setSelectedAssigneeIds([]); setIncludeUnassigned(false); setShowEvents(true) }}>
+            Limpiar filtros
+          </button>
+        </div>
+      </div>,
+      document.body,
+    )}
 
     {mode === 'month' ? <div className={styles.calendar}>
       <div className={styles.weekdayRow}>{WEEKDAYS.map((name) => <div key={name}>{name}</div>)}</div>

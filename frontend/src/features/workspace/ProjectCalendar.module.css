@@ -2,19 +2,39 @@
 .toolbar { display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:14px }
 .dateControls,.toolbarRight { display:flex;align-items:center;gap:8px }
 .dateControls h2 { margin-left:12px;font-size:20px;font-weight:700;letter-spacing:-.025em;white-space:nowrap }
-.squareButton,.filterButton { border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:8px;min-height:34px;cursor:pointer }
+.squareButton { border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:8px;min-height:34px;cursor:pointer }
 .squareButton { width:34px;font-size:24px;line-height:1 }
-.squareButton:hover,.filterButton:hover { background:var(--canvas) }
-.filterButton { padding:7px 12px;white-space:nowrap }
+.squareButton:hover { background:var(--canvas) }
 .modeSwitch { display:inline-flex;gap:2px;background:var(--canvas);border:1px solid var(--line);border-radius:9px;padding:3px }
 .modeSwitch button { min-width:64px;padding:7px 13px;border:0;border-radius:6px;background:transparent;color:var(--muted);cursor:pointer }
 .modeSwitch button.active { background:var(--accent);color:var(--accent-ink) }
-.filters { display:flex;align-items:flex-start;flex-wrap:wrap;gap:22px;padding:14px;border:1px solid var(--line);border-radius:10px;background:var(--surface) }
-.filterGroup { display:flex;flex-direction:column;min-width:0;gap:10px }
-.filterGroup strong { font-size:13px }
-.filterOptions { display:flex;flex-wrap:wrap;gap:10px 14px }
-.filterOptions label { display:inline-flex;align-items:center;gap:6px;font-size:12px;max-width:260px }
-.filterOptions input { accent-color:var(--accent) }
+/* Same floating filter panel as the board views; scrolling stays functional
+   without visible scrollbar tracks, including embedded user selections. */
+.filtersPopover {
+  width: min(360px, calc(100vw - 24px));
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.filtersPopover * {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.filtersPopover::-webkit-scrollbar,
+.filtersPopover *::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
+.filters { display:flex;flex-direction:column;gap:14px;padding:14px 16px }
+.filterGroup { display:flex;flex-direction:column;min-width:0;gap:8px;padding-bottom:13px;border-bottom:1px solid var(--line) }
+.filterGroup:last-child { padding-bottom:0;border-bottom:0 }
+.filterGroup strong { font-size:13px;font-weight:700;color:var(--ink) }
+.filterOptions { display:flex;flex-direction:column;gap:3px }
+.filterOptions label { display:flex;align-items:center;gap:10px;min-width:0;padding:8px 10px;border-radius:9px;font-size:13px;cursor:pointer;overflow-wrap:anywhere }
+.filterOptions label:hover { background:var(--canvas) }
+.filterOptions input { flex:0 0 auto;accent-color:var(--accent);width:15px;height:15px }
+.filterGroup .eventFilter { display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:9px;cursor:pointer }
+.filterGroup .eventFilter:hover { background:var(--canvas) }
 .statusDot { display:inline-block;width:8px;height:8px;flex:0 0 auto;border-radius:50% }
 .calendar,.agenda { border:1px solid var(--line);border-radius:10px;background:var(--surface);overflow:hidden }
 .weekdayRow { display:grid;grid-template-columns:repeat(7,minmax(0,1fr));background:var(--canvas);border-bottom:1px solid var(--line) }

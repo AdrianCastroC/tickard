@@ -27,3 +27,34 @@
 .footer span { color:var(--muted);font-size:11px }
 .footer button { border:0;border-radius:7px;background:var(--accent);color:var(--accent-ink);padding:7px 12px;font-size:12px;cursor:pointer }
 @media(max-width:550px) { .trigger { width:185px } .popup { left:0 } }
+
+
+/* Inline variant for the floating calendar filter panel. This avoids
+   clipping the user picker inside the popover's scrolling viewport. */
+.embedded { width:100%;z-index:auto }
+.embedded .trigger {
+  width:100%;
+  min-height:42px;
+  border-radius:12px;
+  padding:9px 12px;
+  background:color-mix(in srgb,var(--side) 48%,var(--surface));
+  font-size:14px;
+}
+.embedded .trigger[aria-expanded='true'] {
+  border-color:color-mix(in srgb,var(--accent) 35%,var(--line));
+}
+.embedded .chevron { transition:transform .15s ease }
+.embedded .trigger[aria-expanded='true'] .chevron { transform:rotate(180deg) }
+.embedded .popup {
+  position:static;
+  width:100%;
+  box-sizing:border-box;
+  margin-top:6px;
+  border-radius:12px;
+  padding:10px;
+  box-shadow:0 8px 22px rgb(12 36 32 / 12%);
+}
+.embedded .results { max-height:180px;scrollbar-width:none;-ms-overflow-style:none }
+.embedded .results::-webkit-scrollbar { display:none;width:0;height:0 }
+.embedded .option { border-radius:8px }
+.embedded .option input { accent-color:var(--accent) }
