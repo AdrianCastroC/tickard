@@ -86,6 +86,8 @@ class ProjectCalendarAssignmentsTest extends TestCase
         $shared = collect($data['columns'][0]['cards'])->firstWhere('title', 'Compartida');
         $this->assertCount(2, $shared['assignees']);
         $this->assertContains($colleague->id, collect($shared['assignees'])->pluck('id')->all());
+        $this->assertArrayHasKey('avatar_url', $shared['assignees'][0]);
+        $this->assertArrayHasKey('avatar_url', $data['members'][0]);
 
         $unassigned = collect($data['columns'][0]['cards'])->firstWhere('title', 'Sin asignar');
         $this->assertSame([], $unassigned['assignees']);

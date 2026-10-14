@@ -28,7 +28,7 @@ export function ProjectCalendarAssigneeFilter({
   const searchRef = useRef<HTMLInputElement>(null)
   const hasSelection = selectedIds.length > 0 || includeUnassigned
   const selectedPeople = useMemo(() => {
-    const index = new Map(people.map((person) => [person.id, person]))
+    const index = new Map<number, CalendarAssigneeOption>(people.map((person) => [person.id, person]))
     return selectedIds.map((id) => index.get(id)).filter((person): person is CalendarAssigneeOption => !!person)
   }, [people, selectedIds])
   const results = useMemo(() => {
