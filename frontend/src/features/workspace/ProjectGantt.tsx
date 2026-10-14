@@ -1,8 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { api, ApiError, type BacklogResolution, type BoardPayload, type Project, type Profile } from '../../api'
+import { api, type BoardPayload, type Project, type Profile } from '../../api'
 import { CardDrawer } from '../cards/CardDetail'
-import { BacklogResolutionModal } from '../board/BacklogResolutionModal'
 import { GanttView, type GanttDependencyNavigation } from '../board/GanttView'
 
 type ProjectSnapshot = { projectId: number; boardIds: string; boards: BoardPayload[] }
@@ -17,15 +16,12 @@ export function ProjectGantt({ project, profile, onNavigateExternalCard }: Props
   const [snapshot, setSnapshot] = useState<ProjectSnapshot | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [selected, setSelected] = useState<{ cardId: number; boardId: number; mode: 'view' | 'edit' } | null>(null)
+  const [selected, setSelected] = useState<{ cardId: number; boardId: number } | null>(null)
   const [detailBoard, setDetailBoard] = useState<BoardPayload | null>(null)
   const [detailError, setDetailError] = useState<string | null>(null)
   const [detailLoading, setDetailLoading] = useState(false)
   const [refreshKey, setRefreshKey] = useState(0)
   const ganttViewportRef = useRef<HTMLDivElement>(null)
-  const [pendingMove, setPendingMove] = useState<{
-    cardId: number; columnId: number; position: number; resolution: BacklogResolution
-  } | null>(null)
   const load = useCallback(async () => {
     // Reuse the existing authenticated board endpoint: role, client visibility
     // and CardPresenter filtering are applied to every board by the backend.
@@ -94,8 +90,6 @@ export function ProjectGantt({ project, profile, onNavigateExternalCard }: Props
     if (detailed) setDetailBoard(detailed)
   }, [load, project.id, boardIds, selected?.boardId])
 
-  const canEdit = boards?.every((board) => board.role === 'responsable' || board.role === 'editor') ?? false
-
   useLayoutEffect(() => {
     const viewport = ganttViewportRef.current
     if (!viewport) return
@@ -122,11 +116,11 @@ export function ProjectGantt({ project, profile, onNavigateExternalCard }: Props
     <div ref={ganttViewportRef} className="project-gantt-viewport" tabIndex={0} aria-label="Área desplazable del Gantt del proyecto">
       <GanttView key={`project-${project.id}`}
         board={boards[0]} cards={columns} projectBoards={boards}
-        canEdit={canEdit}
+        canEdit={false}
         onOpen={(card) => {
           const source = boards.find((payload) => payload.columns.some((column) =>
             column.cards.some((item) => item.id === card.id)))
-          if (source) setSelected({ cardId: card.id, boardId: source.board.id, mode: 'view' })
+          if (source) setSelected({ cardId: card.id, boardId: source.board.id })
         }}
         onNavigateExternalCard={onNavigateExternalCard}
         onChange={refresh} />
@@ -141,45 +135,14 @@ export function ProjectGantt({ project, profile, onNavigateExternalCard }: Props
       document.body,
     )}
     {cardData && createPortal(
-      <CardDrawer key={cardData.card.id} card={cardData.card} mode={selected!.mode}
+      <CardDrawer key={cardData.card.id} card={cardData.card} mode="view"
         board={cardData.board} currentUser={profile.user}
-        canEdit={cardData.board.role === 'responsable' || cardData.board.role === 'editor'}
+        canEdit={false}
         onClose={() => setSelected(null)}
-        onEdit={() => setSelected({ cardId: cardData.card.id, boardId: cardData.board.board.id, mode: 'edit' })}
-        onView={() => setSelected({ cardId: cardData.card.id, boardId: cardData.board.board.id, mode: 'view' })}
+        onEdit={() => {}}
+        onView={() => {}}
         onChange={refresh}
-        onMove={async (cardId, columnId, position) => {
-          try {
-            await api(`/cards/${cardId}/move`, { method: 'POST', body: JSON.stringify({ column_id: columnId, position }) })
-            await refresh()
-          } catch (cause) {
-            if (cause instanceof ApiError && cause.status === 409 && cause.code === 'backlog_dependencies') {
-              const resolution = (cause.data as { resolution?: BacklogResolution }).resolution
-              if (resolution) {
-                setPendingMove({ cardId, columnId, position, resolution })
-                return
-              }
-            }
-            throw cause
-          }
-        }} />,
-      document.body,
-    )}
-    {pendingMove && createPortal(
-      <BacklogResolutionModal resolution={pendingMove.resolution}
-        onCancel={() => setPendingMove(null)}
-        onConfirm={async (selectedCardIds, destinations) => {
-          await api(`/cards/${pendingMove.cardId}/move`, {
-            method: 'POST',
-            body: JSON.stringify({
-              column_id: pendingMove.columnId,
-              position: pendingMove.position,
-              backlog_resolution: { selected_card_ids: selectedCardIds, destinations },
-            }),
-          })
-          setPendingMove(null)
-          await refresh()
-        }} />,
+        onMove={async () => {}} />,
       document.body,
     )}
   </section>
