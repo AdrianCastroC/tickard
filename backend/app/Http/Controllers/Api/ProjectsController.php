@@ -284,8 +284,8 @@ class ProjectsController extends ApiController
             'checklistItems.assignees',
             'modules.checklistItems.assignees',
             'attachments',
-            'predecessorDependencies.predecessor',
-            'successorDependencies.successor',
+            'predecessorDependencies.predecessor.column',
+            'successorDependencies.successor.column',
         ]);
         $board->load([
             'categories',

@@ -58,6 +58,8 @@ export type CardDependency = {
   type: 'fs' | 'ss' | 'ff' | 'sf'
   board_id: number
   board_name: string | null
+  workflow_state?: WorkflowState | null
+  is_done?: boolean
   preview?: CardDependencyPreview | null
 }
 

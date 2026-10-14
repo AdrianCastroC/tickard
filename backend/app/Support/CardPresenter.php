@@ -105,6 +105,15 @@ class CardPresenter
                     'ready' => $ready,
                     'regressed' => $hasRequirements && $card->column?->workflow_state === 'done' && ! $ready,
                 ];
+
+                // Incluye requisitos derivados, sin duplicarlos como checklistItems.
+                $requirementsTotal = $total + $dependencyCount;
+                $requirementsDone = $done + $dependenciesDone;
+                $payload['progress'] = [
+                    'done' => $requirementsDone,
+                    'total' => $requirementsTotal,
+                    'percent' => $requirementsTotal ? (int) round($requirementsDone / $requirementsTotal * 100) : 0,
+                ];
             }
 
             return $payload;
@@ -311,6 +320,8 @@ class CardPresenter
             'type' => $dependency->type,
             'board_id' => $other->board_id,
             'board_name' => $external ? $other->board->name : null,
+            'workflow_state' => $other->column?->workflow_state,
+            'is_done' => $other->column?->workflow_state === 'done',
             'preview' => $external ? self::dependencyPreview($other) : null,
         ];
     }

@@ -10,6 +10,7 @@ import { CalendarIcon, SectionToggle } from './cardSectionUi'
 import { FilesPanel } from './files/FilesPanel'
 import { CommentsPanel } from './comments/CommentsPanel'
 import { ChecklistPanel } from './checklist/ChecklistPanel'
+import { MilestoneDependencyChecklist } from './checklist/MilestoneDependencyChecklist'
 import { SortableModuleShell } from './modules/SortableModuleShell'
 import { DateTimePicker, formatStartedAt } from './DateTimePicker'
 
@@ -296,6 +297,9 @@ export function CardDrawer({ card, mode, board, currentUser, canEdit, onClose, o
             <DndContext sensors={moduleSensors} collisionDetection={closestCorners} onDragEnd={onModuleDragEnd}>
               <SortableContext items={visibleModules.map((module) => module.id)} strategy={verticalListSortingStrategy}>
                 <div className="card-modules">
+                  {card.is_milestone && card.dependencies && (
+                    <MilestoneDependencyChecklist predecessors={card.dependencies?.predecessors ?? []} />
+                  )}
                   {visibleModules.map((module) => (
                     <SortableModuleShell key={module.id} id={module.id} disabled={!editing}>
                       {(dragProps) => {
