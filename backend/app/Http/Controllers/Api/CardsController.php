@@ -50,6 +50,11 @@ class CardsController extends ApiController
         abort_unless($data !== [], 422);
         $board = $column->board;
 
+        if (($data['workflow_state'] ?? $column->workflow_state) === 'backlog'
+            && $column->workflow_state !== 'backlog'
+            && $column->cards()->whereNull('archived_at')->where('is_milestone', true)->exists()) {
+            throw ValidationException::withMessages(['workflow_state' => 'La columna contiene hitos. Muévelos antes de convertirla en Backlog.']);
+        }
         if (($data['workflow_state'] ?? null) === 'backlog' && $column->workflow_state !== 'backlog') {
             $hasDependencies = $column->cards()->whereNull('archived_at')->where(function ($query) {
                 $query->whereHas('predecessorDependencies')->orWhereHas('successorDependencies');
@@ -202,6 +207,8 @@ class CardsController extends ApiController
             'start_date' => ['nullable', 'date'],
             'due_date' => ['nullable', 'date'],
             'priority' => ['sometimes', Rule::in(['baja', 'media', 'alta', 'urgente'])],
+            'is_milestone' => ['sometimes', 'boolean'],
+            'milestone_auto_complete' => ['sometimes', 'boolean'],
             'color' => ['sometimes', 'nullable', 'string', 'regex:/^#[0-9A-Fa-f]{6}$/'],
             'assignee_ids' => ['sometimes', 'array'],
             'assignee_ids.*' => ['integer'],
@@ -212,6 +219,17 @@ class CardsController extends ApiController
         ]);
 
         $column = Column::where('board_id', $board->id)->findOrFail($data['column_id']);
+        $isMilestone = (bool) ($data['is_milestone'] ?? false);
+        if ($isMilestone) {
+            if (empty($data['due_date'])) {
+                throw ValidationException::withMessages(['due_date' => 'Un hito necesita una fecha objetivo.']);
+            }
+            $column = $board->columns()->where('workflow_state', 'in_progress')->orderBy('position')->first();
+            if (! $column) {
+                throw ValidationException::withMessages(['is_milestone' => 'El tablero necesita una columna En progreso.']);
+            }
+            $data['start_date'] = $data['due_date'];
+        }
         if ($column->workflow_state === 'backlog' && $this->hasPlannedDates($data)) {
             throw ValidationException::withMessages([
                 'start_date' => 'Las tarjetas en backlog no pueden tener fechas planificadas.',
@@ -239,6 +257,8 @@ class CardsController extends ApiController
             'completed_at' => in_array($column->workflow_state, ['review', 'done'], true) ? now() : null,
             'position' => $position,
             'is_internal' => true,
+            'is_milestone' => $isMilestone,
+            'milestone_auto_complete' => (bool) ($data['milestone_auto_complete'] ?? true),
             'priority' => $data['priority'] ?? 'media',
             'color' => $data['color'] ?? null,
             'created_by' => $request->user()->id,
@@ -277,6 +297,8 @@ class CardsController extends ApiController
             'started_at' => ['sometimes', 'nullable', 'date'],
             'completed_at' => ['sometimes', 'nullable', 'date'],
             'priority' => ['sometimes', Rule::in(['baja', 'media', 'alta', 'urgente'])],
+            'is_milestone' => ['sometimes', 'boolean'],
+            'milestone_auto_complete' => ['sometimes', 'boolean'],
             'is_internal' => ['sometimes', 'boolean'],
             'category_id' => ['sometimes', 'nullable', 'integer'],
             'color' => ['sometimes', 'nullable', 'string', 'regex:/^#[0-9A-Fa-f]{6}$/'],
@@ -288,10 +310,26 @@ class CardsController extends ApiController
             'label_ids.*' => ['integer'],
         ]);
 
-        if ($card->column->workflow_state === 'backlog' && $this->hasPlannedDates($data)) {
-            throw ValidationException::withMessages([
-                'start_date' => 'Las tarjetas en backlog no pueden tener fechas planificadas.',
-            ]);
+        $isMilestone = (bool) ($data['is_milestone'] ?? $card->is_milestone);
+        $becomingMilestone = $isMilestone && ! $card->is_milestone;
+        $progressColumn = null;
+        if ($isMilestone) {
+            $dueDate = array_key_exists('due_date', $data) ? $data['due_date'] : $card->due_date?->toDateString();
+            if (! $dueDate) {
+                throw ValidationException::withMessages(['due_date' => 'Un hito necesita una fecha objetivo.']);
+            }
+            if ($becomingMilestone || array_key_exists('due_date', $data) || array_key_exists('start_date', $data)) {
+                $data['start_date'] = $dueDate;
+            }
+            if ($becomingMilestone) {
+                $progressColumn = $card->board->columns()->where('workflow_state', 'in_progress')->orderBy('position')->first();
+                if (! $progressColumn) {
+                    throw ValidationException::withMessages(['is_milestone' => 'El tablero necesita una columna En progreso.']);
+                }
+            }
+        }
+        if ($card->column->workflow_state === 'backlog' && ! $becomingMilestone && $this->hasPlannedDates($data)) {
+            throw ValidationException::withMessages(['start_date' => 'Las tarjetas en backlog no pueden tener fechas planificadas.']);
         }
 
         $previous = $card->assignees()->pluck('users.id');
@@ -300,7 +338,15 @@ class CardsController extends ApiController
             array_key_exists('due_date', $data) ? $data['due_date'] : $card->due_date?->toDateString()
         );
         $fields = collect($data)->except(['assignee_ids', 'team_ids', 'label_ids', 'category_id'])->all();
-        if ($card->column->workflow_state === 'backlog') {
+        if ($becomingMilestone) {
+            $fields['started_at'] = $card->started_at ?? now();
+            $fields['completed_at'] = null;
+            if ($progressColumn->id !== $card->column_id) {
+                $fields['column_id'] = $progressColumn->id;
+                $fields['position'] = Card::where('column_id', $progressColumn->id)->whereNull('archived_at')->count();
+            }
+        }
+        if ($card->column->workflow_state === 'backlog' && ! $becomingMilestone) {
             $fields['start_date'] = null;
             $fields['due_date'] = null;
         }
@@ -313,7 +359,19 @@ class CardsController extends ApiController
                 $fields['category_id'] = $categoryId;
             }
         }
-        $card->update($fields);
+        DB::transaction(function () use ($card, $fields, $becomingMilestone, $progressColumn, $request): void {
+            $oldColumnId = $card->column_id;
+            $card->update($fields);
+            if ($becomingMilestone && $progressColumn && $oldColumnId !== $progressColumn->id) {
+                $this->resequence($progressColumn->id, $card, $card->position);
+                $this->resequence($oldColumnId, null, 0);
+                $card->activities()->create([
+                    'user_id' => $request->user()->id,
+                    'type' => 'moved',
+                    'meta' => ['column' => $progressColumn->name],
+                ]);
+            }
+        });
         $affectedBoardIds = [$card->board_id];
         if (array_key_exists('start_date', $data) || array_key_exists('due_date', $data)) {
             $affectedBoardIds = array_merge($affectedBoardIds, $dependencies->propagate($card->fresh()));
@@ -375,6 +433,9 @@ class CardsController extends ApiController
         ]);
 
         $column = Column::where('board_id', $card->board_id)->findOrFail($data['column_id']);
+        if ($card->is_milestone && $column->workflow_state === 'backlog') {
+            throw ValidationException::withMessages(['column_id' => 'Desmarca el hito antes de mover la Card a Backlog.']);
+        }
         if ($column->workflow_state === 'backlog') {
             if ($backlog->hasDependencies($card) && ! array_key_exists('backlog_resolution', $data)) {
                 return response()->json([

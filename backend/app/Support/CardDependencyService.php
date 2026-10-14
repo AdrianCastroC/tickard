@@ -63,6 +63,9 @@ class CardDependencyService
     {
         $successor->refresh();
 
+        // Mantener la fecha comprometida del hito aunque se retrasen sus dependencias.
+        if ($successor->is_milestone) return false;
+
         if (! $successor->start_date || ! $successor->due_date) {
             return false;
         }

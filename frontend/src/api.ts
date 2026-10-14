@@ -86,6 +86,8 @@ export type Card = {
   title: string
   position: number
   is_internal?: boolean
+  is_milestone?: boolean
+  milestone_auto_complete?: boolean
   description?: string
   start_date?: string | null
   due_date?: string | null

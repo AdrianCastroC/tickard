@@ -28,6 +28,8 @@ class CardPresenter
             'title' => $card->title,
             'position' => $card->position,
             'color' => $card->color,
+            'is_milestone' => (bool) $card->is_milestone,
+            'milestone_auto_complete' => (bool) $card->milestone_auto_complete,
             'progress' => [
                 'done' => $done,
                 'total' => $total,
@@ -165,6 +167,8 @@ class CardPresenter
             'title' => $card->title,
             'position' => $card->position,
             'color' => $card->color,
+            'is_milestone' => (bool) $card->is_milestone,
+            'milestone_auto_complete' => (bool) $card->milestone_auto_complete,
             'creator' => [
                 'id' => $creator->id,
                 'name' => $creator->name,
@@ -213,6 +217,8 @@ class CardPresenter
             'title' => $card->title,
             'position' => $card->position,
             'color' => $card->color,
+            'is_milestone' => (bool) $card->is_milestone,
+            'milestone_auto_complete' => (bool) $card->milestone_auto_complete,
             'creator' => [
                 'id' => $creator->id,
                 'name' => $creator->name,

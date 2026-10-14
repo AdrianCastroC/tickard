@@ -22,6 +22,8 @@ class Card extends Model
         'priority',
         'color',
         'is_internal',
+        'is_milestone',
+        'milestone_auto_complete',
         'position',
         'archived_at',
         'created_by',
@@ -35,6 +37,8 @@ class Card extends Model
             'started_at' => 'datetime',
             'completed_at' => 'datetime',
             'is_internal' => 'boolean',
+            'is_milestone' => 'boolean',
+            'milestone_auto_complete' => 'boolean',
             'archived_at' => 'datetime',
         ];
     }

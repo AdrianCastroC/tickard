@@ -69,6 +69,8 @@ export function CardDrawer({ card, mode, board, currentUser, canEdit, onClose, o
   const [title, setTitle] = useState(card.title)
   const [description, setDescription] = useState(card.description ?? '')
   const [saving, setSaving] = useState(false)
+  const [milestoneDate, setMilestoneDate] = useState(card.due_date ?? '')
+  const [milestoneError, setMilestoneError] = useState('')
   const [pickingAssignees, setPickingAssignees] = useState(false)
   const [pickingLabels, setPickingLabels] = useState(false)
   const [pickingTeams, setPickingTeams] = useState(false)
@@ -107,6 +109,11 @@ export function CardDrawer({ card, mode, board, currentUser, canEdit, onClose, o
   }, [card.id, card.title, card.description])
 
   useEffect(() => {
+    setMilestoneDate(card.due_date ?? '')
+    setMilestoneError('')
+  }, [card.id, card.due_date])
+
+  useEffect(() => {
     setComments(card.comments ?? [])
   }, [card.id, card.comments])
 
@@ -129,6 +136,19 @@ export function CardDrawer({ card, mode, board, currentUser, canEdit, onClose, o
   async function save(patch: Record<string, unknown>) {
     await api(`/cards/${card.id}`, { method: 'PATCH', body: JSON.stringify(patch) })
     await onChange()
+  }
+
+  async function toggleMilestone(next: boolean) {
+    setMilestoneError('')
+    if (next && !milestoneDate) {
+      setMilestoneError('Selecciona una fecha objetivo.')
+      return
+    }
+    try {
+      await save(next ? { is_milestone: true, due_date: milestoneDate } : { is_milestone: false })
+    } catch (error) {
+      setMilestoneError(error instanceof Error ? error.message : 'No se pudo modificar el hito.')
+    }
   }
 
   async function discardUnsavedModules() {
@@ -386,6 +406,21 @@ export function CardDrawer({ card, mode, board, currentUser, canEdit, onClose, o
             </div>
 
             <div className="side-field">
+              <span className="side-label">◆ Hito</span>
+              {editing ? (
+                <>
+                  <label className="row"><input type="checkbox" checked={Boolean(card.is_milestone)} onChange={(event) => { void toggleMilestone(event.target.checked) }} /> Es un hito</label>
+                  {!card.is_milestone && !card.due_date && (
+                    <label className="field">Fecha objetivo<input type="date" value={milestoneDate} onChange={(event) => setMilestoneDate(event.target.value)} /></label>
+                  )}
+                  {card.is_milestone && (
+                    <label className="row"><input type="checkbox" checked={card.milestone_auto_complete !== false} onChange={(event) => { void save({ milestone_auto_complete: event.target.checked }) }} /> Finalización automática (próxima fase)</label>
+                  )}
+                  {milestoneError && <span className="error">{milestoneError}</span>}
+                </>
+              ) : <div className="side-value"><strong>{card.is_milestone ? 'Sí' : 'No'}</strong></div>}
+            </div>
+            <div className="side-field">
               <span className="side-label"><PriorityIcon /> Prioridad</span>
               {editing ? (
                 <PriorityPicker
@@ -475,9 +510,11 @@ export function CardDrawer({ card, mode, board, currentUser, canEdit, onClose, o
             </div>
 
             <div className="side-field">
-              <span className="side-label"><CalendarIcon /> Periodo</span>
+              <span className="side-label"><CalendarIcon /> {card.is_milestone ? 'Fecha objetivo' : 'Periodo'}</span>
               {editing ? (
-                isBacklog ? <span className="muted">Disponible cuando la tarea salga de backlog.</span> : <DateRangePicker start={card.start_date} end={card.due_date} onChange={(start, due) => save({ start_date: start, due_date: due })} />
+                isBacklog ? <span className="muted">Disponible cuando la tarea salga de backlog.</span> : card.is_milestone ? (
+                  <input type="date" aria-label="Fecha objetivo del hito" value={card.due_date ?? ''} onChange={(event) => { if (event.target.value) void save({ due_date: event.target.value }) }} />
+                ) : <DateRangePicker start={card.start_date} end={card.due_date} onChange={(start, due) => save({ start_date: start, due_date: due })} />
               ) : (
                 <div className="side-value"><strong>{isBacklog ? 'Disponible al salir de backlog' : formatDateRange(card.start_date, card.due_date)}</strong></div>
               )}

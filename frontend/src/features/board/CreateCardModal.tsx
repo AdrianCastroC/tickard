@@ -14,6 +14,8 @@ export function CreateCardModal({ board, column, onClose, onCreated }: {
   const [start, setStart] = useState<string | null>(null)
   const [due, setDue] = useState<string | null>(null)
   const [priority, setPriority] = useState('media')
+  const [isMilestone, setIsMilestone] = useState(false)
+  const [milestoneAutoComplete, setMilestoneAutoComplete] = useState(true)
   const [assignees, setAssignees] = useState<string[]>([])
   const [teams, setTeams] = useState<string[]>([])
   const [categoryId, setCategoryId] = useState('')
@@ -28,6 +30,10 @@ export function CreateCardModal({ board, column, onClose, onCreated }: {
       setError('Escribe un título.')
       return
     }
+    if (isMilestone && !due) {
+      setError('Selecciona la fecha objetivo del hito.')
+      return
+    }
     try {
       await api(`/boards/${board.board.id}/cards`, {
         method: 'POST',
@@ -36,9 +42,11 @@ export function CreateCardModal({ board, column, onClose, onCreated }: {
           category_id: categoryId ? Number(categoryId) : null,
           title: title.trim(),
           description,
-          start_date: start,
+          start_date: isMilestone ? due : start,
           due_date: due,
           priority,
+          is_milestone: isMilestone,
+          milestone_auto_complete: milestoneAutoComplete,
           assignee_ids: assignees.map(Number),
           team_ids: teams.map(Number),
         }),
@@ -53,7 +61,7 @@ export function CreateCardModal({ board, column, onClose, onCreated }: {
     <div className="modal-back" onClick={onClose}>
       <form className="modal" onClick={(event) => event.stopPropagation()} onSubmit={submit}>
         <h2>Nueva tarjeta</h2>
-        <p className="muted">Se añade a {column.name}.</p>
+        <p className="muted">{isMilestone ? "Se añadirá a En progreso." : `Se añade a ${column.name}.`}</p>
         <label className="field">Título<input value={title} onChange={(event) => setTitle(event.target.value)} /></label>
         <label className="field">Descripción<textarea value={description} onChange={(event) => setDescription(event.target.value)} rows={3} /></label>
         {categories.length > 0 && (
@@ -64,9 +72,17 @@ export function CreateCardModal({ board, column, onClose, onCreated }: {
             </select>
           </label>
         )}
-        <label className="field">Periodo
-          {isBacklog ? <span className="muted">Disponible cuando la tarea salga de backlog.</span> : <DateRangePicker start={start} end={due} onChange={(nextStart, nextDue) => { setStart(nextStart); setDue(nextDue) }} />}
-        </label>
+        <label className="row"><input type="checkbox" checked={isMilestone} onChange={(event) => setIsMilestone(event.target.checked)} /> Es un hito</label>
+        {isMilestone ? (
+          <>
+            <label className="field">Fecha objetivo<input type="date" required value={due ?? ''} onChange={(event) => setDue(event.target.value || null)} /></label>
+            <label className="row"><input type="checkbox" checked={milestoneAutoComplete} onChange={(event) => setMilestoneAutoComplete(event.target.checked)} /> Finalización automática (próxima fase)</label>
+          </>
+        ) : (
+          <label className="field">Periodo
+            {isBacklog ? <span className="muted">Disponible cuando la tarea salga de backlog.</span> : <DateRangePicker start={start} end={due} onChange={(nextStart, nextDue) => { setStart(nextStart); setDue(nextDue) }} />}
+          </label>
+        )
         <label className="field">Prioridad
           <select value={priority} onChange={(event) => setPriority(event.target.value)}>
             {Object.entries(priorityLabel).map(([value, text]) => <option key={value} value={value}>{text}</option>)}
