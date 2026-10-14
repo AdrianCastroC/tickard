@@ -64,7 +64,9 @@ export function FilesPanel({ card, editing, canEdit, dragProps, onChange, onRemo
             collapsed={collapsed}
             onToggle={() => setCollapsed((open) => !open)}
           />
-          Archivos
+          <button type="button" className="module-section-title-btn" aria-expanded={!collapsed} onClick={() => setCollapsed((open) => !open)}>
+            Archivos
+          </button>
           {attachments.length > 0 && <span className="checklist-progress">({attachments.length})</span>}
         </h3>
         {editing && onRemove && (

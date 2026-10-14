@@ -191,7 +191,9 @@ export function CommentsPanel({ card, board, currentUser, editing, comments, onC
                                   collapsed={commentsCollapsed}
                                   onToggle={() => setCommentsCollapsed((open) => !open)}
                                 />
-                                Comentarios
+                                <button type="button" className="module-section-title-btn" aria-expanded={!commentsCollapsed} onClick={() => setCommentsCollapsed((open) => !open)}>
+                                  Comentarios
+                                </button>
                                 {commentCount > 0 && <span className="checklist-progress">({commentCount})</span>}
                               </h3>
                               {editing && (

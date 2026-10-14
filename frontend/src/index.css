@@ -912,8 +912,8 @@ h1, h2, h3, p { margin: 0; }
 .modal-back { display: grid; place-items: center; padding: 24px; }
 .modal { width: min(480px, 100%); background: var(--surface); border-radius: 12px; padding: 20px; display: flex; flex-direction: column; gap: 12px; }
 .modal.card-modal {
-  width: min(980px, calc(100vw - 32px));
-  height: min(720px, calc(100dvh - 96px));
+  width: min(1000px, calc(100vw - 32px));
+  height: min(900px, calc(100dvh - 48px));
   max-height: calc(100dvh - 48px);
   min-height: 0;
   overflow: hidden;
@@ -1118,7 +1118,6 @@ h1, h2, h3, p { margin: 0; }
   min-width: 0;
   padding: 20px 18px 14px 28px;
   background: var(--surface);
-  border-bottom: 1px solid var(--line);
 }
 .card-modal-main-header > .card-modal-title-row,
 .card-modal-main-header > .card-modal-title-input {
@@ -1135,9 +1134,8 @@ h1, h2, h3, p { margin: 0; }
   gap: 22px;
   padding: 18px 20px 24px 28px;
   overscroll-behavior-y: contain;
-  scrollbar-width: thin;
-  scrollbar-color: var(--accent) color-mix(in srgb, var(--line) 30%, transparent);
-  scrollbar-gutter: stable;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
 }
 .card-modal-main-scroll > *,
 .card-modal-side-scroll > * {
@@ -1563,25 +1561,46 @@ h1, h2, h3, p { margin: 0; }
 .card-modules .section-head.is-module-drag input {
   cursor: pointer;
 }
-.card-modules .section-head.is-module-drag .module-title-btn:not(:disabled) {
-  cursor: text;
-}
-.module-title-btn {
+.module-section-title-btn {
   border: 0;
   background: transparent;
   padding: 0;
   margin: 0;
   font: inherit;
-  font-weight: 700;
+  font-weight: inherit;
   color: inherit;
-  cursor: text;
+  cursor: pointer;
   text-align: left;
 }
-.module-title-btn:disabled {
-  cursor: default;
+.module-section-title-btn:hover {
+  color: var(--accent);
 }
-.module-title-btn:not(:disabled):hover {
-  color: #147a5f;
+.module-section-title-btn:focus-visible,
+.module-rename-btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+  border-radius: 3px;
+}
+.module-rename-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  border: 0;
+  padding: 3px;
+  margin: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+}
+.module-rename-btn:hover {
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+}
+.module-rename-btn svg {
+  width: 15px;
+  height: 15px;
 }
 .module-title-input {
   border: 1px solid var(--line);
@@ -2486,7 +2505,6 @@ h1, h2, h3, p { margin: 0; }
   flex: 0 0 auto;
   padding: 12px 18px 8px;
   background: #eaf7f1;
-  border-bottom: 1px solid var(--line);
 }
 .card-modal-side-scroll {
   flex: 1 1 auto;
@@ -2496,26 +2514,14 @@ h1, h2, h3, p { margin: 0; }
   display: flex;
   flex-direction: column;
   gap: 18px;
-  padding: 14px 10px 16px 18px;
+  padding: 14px 18px 16px;
   overscroll-behavior-y: contain;
-  scrollbar-width: thin;
-  scrollbar-color: var(--accent) color-mix(in srgb, var(--line) 30%, transparent);
-  scrollbar-gutter: stable;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
 }
 .card-modal-main-scroll::-webkit-scrollbar,
 .card-modal-side-scroll::-webkit-scrollbar {
-  width: 9px;
-}
-.card-modal-main-scroll::-webkit-scrollbar-thumb,
-.card-modal-side-scroll::-webkit-scrollbar-thumb {
-  border: 2px solid transparent;
-  border-radius: 999px;
-  background: var(--accent);
-  background-clip: padding-box;
-}
-.card-modal-main-scroll::-webkit-scrollbar-track,
-.card-modal-side-scroll::-webkit-scrollbar-track {
-  background: color-mix(in srgb, var(--line) 30%, transparent);
+  display: none;
 }
 .side-toolbar {
   display: flex;

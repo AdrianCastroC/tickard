@@ -40,7 +40,9 @@ export function MilestoneDependencyList({ predecessors, onOpenCard }: {
             collapsed={collapsed}
             onToggle={() => setCollapsed((value) => !value)}
           />
-          Cards necesarias para el hito
+          <button type="button" className="module-section-title-btn" aria-expanded={!collapsed} onClick={() => setCollapsed((open) => !open)}>
+            Cards necesarias para el hito
+          </button>
           <span className="milestone-dependency-auto">Automático · solo lectura</span>
         </h3>
         {total > 0 && (

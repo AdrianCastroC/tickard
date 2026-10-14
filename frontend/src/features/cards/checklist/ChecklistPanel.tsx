@@ -4,7 +4,7 @@ import { SortableContext, arrayMove, useSortable, verticalListSortingStrategy } 
 import { CSS } from '@dnd-kit/utilities'
 import { api, type Card, type CardModule, type ChecklistItem, type Person } from '../../../api'
 import { Avatar, formatDate } from '../../../shared/ui'
-import { CheckOffIcon, CheckOnIcon, ChecklistIcon, DotsIcon, GripIcon, PlusIcon, TrashIcon, UserPlusIcon } from '../../../shared/icons'
+import { CheckOffIcon, CheckOnIcon, ChecklistIcon, DotsIcon, EditIcon, GripIcon, PlusIcon, TrashIcon, UserPlusIcon } from '../../../shared/icons'
 import { parseDateKey, toDateKey } from '../../board'
 import { CalendarIcon, SectionToggle } from '../cardSectionUi'
 
@@ -363,14 +363,27 @@ export function ChecklistPanel({ card, module, editing, canEdit, members, dragPr
               }}
             />
           ) : (
-            <button
-              type="button"
-              className="module-title-btn"
-              disabled={!editing}
-              onClick={() => editing && setRenaming(true)}
-            >
-              {title}
-            </button>
+            <>
+              <button
+                type="button"
+                className="module-section-title-btn"
+                aria-expanded={!collapsed}
+                onClick={() => setCollapsed((open) => !open)}
+              >
+                {title}
+              </button>
+              {editing && (
+                <button
+                  type="button"
+                  className="module-rename-btn"
+                  aria-label={`Renombrar ${title}`}
+                  title="Renombrar módulo"
+                  onClick={() => setRenaming(true)}
+                >
+                  <EditIcon />
+                </button>
+              )}
+            </>
           )}
           {' '}
           {editing && (

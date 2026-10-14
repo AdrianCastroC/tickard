@@ -312,7 +312,9 @@ export function CardDrawer({ card, mode, board, currentUser, canEdit, onClose, o
                     collapsed={descCollapsed}
                     onToggle={() => setDescCollapsed((open) => !open)}
                   />
-                  Descripción
+                  <button type="button" className="module-section-title-btn" aria-expanded={!descCollapsed} onClick={() => setDescCollapsed((open) => !open)}>
+                    Descripción
+                  </button>
                 </h3>
               </div>
               {!descCollapsed && (
