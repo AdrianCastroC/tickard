@@ -1,0 +1,73 @@
+.root { display:flex;flex-direction:column;min-width:0;gap:12px;color:var(--ink) }
+.toolbar { display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:14px }
+.dateControls,.toolbarRight { display:flex;align-items:center;gap:8px }
+.dateControls h2 { margin-left:12px;font-size:20px;font-weight:700;letter-spacing:-.025em;white-space:nowrap }
+.squareButton,.filterButton { border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:8px;min-height:34px;cursor:pointer }
+.squareButton { width:34px;font-size:24px;line-height:1 }
+.squareButton:hover,.filterButton:hover { background:var(--canvas) }
+.filterButton { padding:7px 12px;white-space:nowrap }
+.modeSwitch { display:inline-flex;gap:2px;background:var(--canvas);border:1px solid var(--line);border-radius:9px;padding:3px }
+.modeSwitch button { min-width:64px;padding:7px 13px;border:0;border-radius:6px;background:transparent;color:var(--muted);cursor:pointer }
+.modeSwitch button.active { background:var(--accent);color:var(--accent-ink) }
+.filters { display:flex;align-items:flex-start;flex-wrap:wrap;gap:22px;padding:14px;border:1px solid var(--line);border-radius:10px;background:var(--surface) }
+.filterGroup { display:flex;flex-direction:column;min-width:0;gap:10px }
+.filterGroup strong { font-size:13px }
+.filterOptions { display:flex;flex-wrap:wrap;gap:10px 14px }
+.filterOptions label { display:inline-flex;align-items:center;gap:6px;font-size:12px;max-width:260px }
+.filterOptions input { accent-color:var(--accent) }
+.statusDot { display:inline-block;width:8px;height:8px;flex:0 0 auto;border-radius:50% }
+.calendar,.agenda { border:1px solid var(--line);border-radius:10px;background:var(--surface);overflow:hidden }
+.weekdayRow { display:grid;grid-template-columns:repeat(7,minmax(0,1fr));background:var(--canvas);border-bottom:1px solid var(--line) }
+.weekdayRow>div { padding:11px 4px;font-size:12px;text-align:center;color:var(--muted) }
+.week { height:156px;position:relative;border-bottom:1px solid var(--line) }
+.week:last-child { border-bottom:0 }
+.daysGrid { display:grid;grid-template-columns:repeat(7,minmax(0,1fr));height:100% }
+.dayCell { position:relative;min-width:0;border-right:1px solid var(--line) }
+.dayCell:last-child { border-right:0 }
+.dayCell.outside { background:color-mix(in srgb,var(--canvas) 42%,var(--surface)) }
+.dayCell.today { background:color-mix(in srgb,var(--accent) 7%,var(--surface)) }
+.dayNumber { border:0;border-radius:7px;background:transparent;padding:4px 8px;margin:4px;color:var(--ink);font-size:12px;cursor:pointer }
+.outside .dayNumber { color:var(--muted);opacity:.6 }
+.today .dayNumber { background:var(--accent);color:var(--accent-ink);font-weight:700 }
+.dayNumber:hover { outline:1px solid var(--line) }
+.segments { position:absolute;inset:0;pointer-events:none }
+.segment { position:absolute;z-index:1;pointer-events:auto;min-width:0;height:25px;padding:3px 8px;border:0;border-left:4px solid var(--calendar-color);border-radius:5px;background:color-mix(in srgb,var(--calendar-color) 18%,var(--surface));color:var(--ink);display:flex;align-items:center;gap:8px;cursor:pointer;text-align:left;overflow:hidden }
+.segment:hover { z-index:3;filter:brightness(.96);box-shadow:0 1px 4px rgb(0 0 0 / 12%) }
+.segment.continuesBefore { border-top-left-radius:0;border-bottom-left-radius:0;border-left:0 }
+.segment.continuesAfter { border-top-right-radius:0;border-bottom-right-radius:0 }
+.segmentTitle { display:block;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;font-weight:600 }
+.segmentBoard { margin-left:auto;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--muted);font-size:10px;max-width:42%;flex-shrink:0 }
+.moreButton { position:absolute;bottom:6px;left:5px;max-width:calc(100% - 10px);border:0;border-radius:4px;padding:3px 5px;background:var(--canvas);color:var(--muted);font-size:11px;cursor:pointer;overflow:hidden;text-overflow:ellipsis;white-space:nowrap }
+.moreButton:hover { color:var(--accent) }
+.agenda { display:flex;flex-direction:column }
+.agendaItem { width:100%;border:0;border-bottom:1px solid var(--line);border-left:4px solid var(--calendar-color);background:var(--surface);text-align:left;display:grid;grid-template-columns:minmax(160px,1fr) minmax(180px,2fr) minmax(100px,1fr) 100px;align-items:center;padding:13px 14px;gap:14px;cursor:pointer }
+.agendaItem:last-child { border-bottom:0 }
+.agendaItem:hover { background:var(--canvas) }
+.agendaDate,.agendaBoard,.agendaStatus { font-size:12px;color:var(--muted) }
+.agendaTitle { font-size:13px;font-weight:600 }
+.agendaStatus { text-align:right }
+.empty { padding:22px;color:var(--muted);font-size:13px }
+.dayDetails { display:flex;flex-direction:column;gap:7px;padding:12px;border:1px solid var(--line);border-radius:10px;background:var(--surface) }
+.dayDetailsHeader { display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;text-transform:capitalize }
+.dayDetailsHeader button { border:0;background:transparent;font-size:24px;color:var(--muted);cursor:pointer }
+.dayDetailItem { width:100%;min-width:0;background:color-mix(in srgb,var(--calendar-color) 12%,var(--surface));border:0;border-left:3px solid var(--calendar-color);border-radius:6px;padding:8px 10px;display:flex;align-items:center;justify-content:space-between;gap:12px;text-align:left;cursor:pointer }
+.dayDetailItem small { color:var(--muted) }
+.refreshing { font-size:12px;color:var(--muted) }
+.inlineError { border:1px solid var(--line);background:var(--canvas);border-radius:8px;padding:8px 12px }
+.inlineError button { border:0;color:var(--accent);background:none;text-decoration:underline;cursor:pointer }
+@media(max-width:900px) {
+.toolbarRight { flex-wrap:wrap }
+.week { height:148px }
+.segment { padding:3px 4px }
+.segmentBoard { display:none }
+.agendaItem { grid-template-columns:1fr 2fr;gap:4px 12px }
+.agendaStatus { text-align:left }
+}
+@media(max-width:600px) {
+.dateControls h2 { font-size:17px;margin-left:3px }
+.week { height:140px }
+.segmentTitle { font-size:10px }
+.dayNumber { padding:3px 5px;margin:2px }
+.moreButton { font-size:10px }
+.weekdayRow>div { padding:9px 2px }
+}
