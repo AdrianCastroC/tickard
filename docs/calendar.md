@@ -79,8 +79,8 @@ y conectores con Google Calendar/Outlook. Ninguna se implementa todavía.
 
 ## Filtro compacto de usuarios (calendario)
 
-Los administradores globales y responsables disponen de un selector «Usuarios» en
-la barra de herramientas, con búsqueda de nombres, selección múltiple, fotos de
+Los administradores globales y responsables disponen de un selector «Usuarios asignados» dentro
+del panel «Filtros», con búsqueda de nombres, selección múltiple, fotos de
 perfil reutilizadas de las Cards y accesos rápidos «Todos» y «Solo yo».
 El selector permite incluir tareas sin asignar. No altera las citas y reuniones.
 Las miniaturas de asignados se representan mediante el mismo componente

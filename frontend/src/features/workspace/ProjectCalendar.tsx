@@ -365,6 +365,11 @@ export function ProjectCalendar({ project, profile }: { project: Project; profil
     }
   }
 
+  // Show all applied filters even when their controls are collapsed.
+  const activeFilterCount = hiddenBoards.length + hiddenStates.length
+    + (canViewAllTasks ? selectedAssigneeIds.length + Number(includeUnassigned) : 0)
+    + (project.role !== 'cliente' && !showEvents ? 1 : 0)
+
   if (loading && !boards) return <section className="project-panel" role="status">Cargando calendario del proyecto…</section>
   if (error && !boards) return <section className="project-panel" role="alert"><p>No se pudo cargar el calendario: {error}</p><button className="ghost" type="button" onClick={() => setReloadKey((n) => n + 1)}>Reintentar</button></section>
 
@@ -382,11 +387,9 @@ export function ProjectCalendar({ project, profile }: { project: Project; profil
           <button type="button" className={mode === 'month' ? styles.active : undefined} aria-pressed={mode === 'month'} onClick={() => setMode('month')}>Mes</button>
           <button type="button" className={mode === 'agenda' ? styles.active : undefined} aria-pressed={mode === 'agenda'} onClick={() => setMode('agenda')}>Agenda</button>
         </div>
-        {canViewAllTasks && <ProjectCalendarAssigneeFilter people={assigneeOptions}
-          selectedIds={selectedAssigneeIds} includeUnassigned={includeUnassigned}
-          currentUserId={profile.user.id} onSelectedIdsChange={setSelectedAssigneeIds}
-          onIncludeUnassignedChange={setIncludeUnassigned} />}
-        <button className={styles.filterButton} type="button" aria-expanded={filtersOpen} onClick={() => setFiltersOpen((open) => !open)}>Filtros{hiddenBoards.length + hiddenStates.length ? ' (' + (hiddenBoards.length + hiddenStates.length) + ')' : ''}</button>
+        <button className={styles.filterButton} type="button" aria-expanded={filtersOpen} onClick={() => setFiltersOpen((open) => !open)}>
+          Filtros{activeFilterCount > 0 ? ' (' + activeFilterCount + ')' : ''}
+        </button>
         {(project.role === 'responsable' || project.role === 'editor') && <button className="primary" type="button" onClick={() => setEventModal('new')}>+ Nuevo evento</button>}
       </div>
     </div>
@@ -400,6 +403,13 @@ export function ProjectCalendar({ project, profile }: { project: Project; profil
       <div className={styles.filterGroup}><strong>Estados</strong><div className={styles.filterOptions}>
         {STATES.map((state) => <label key={state.value}><input type="checkbox" checked={!hiddenStates.includes(state.value)} onChange={() => setHiddenStates((current) => current.includes(state.value) ? current.filter((value) => value !== state.value) : [...current, state.value])} /><i className={styles.statusDot} style={{ background: state.fallback }} />{state.label}</label>)}
       </div></div>
+      {canViewAllTasks && <div className={styles.filterGroup}>
+        <strong>Usuarios asignados</strong>
+        <ProjectCalendarAssigneeFilter people={assigneeOptions}
+          selectedIds={selectedAssigneeIds} includeUnassigned={includeUnassigned}
+          currentUserId={profile.user.id} onSelectedIdsChange={setSelectedAssigneeIds}
+          onIncludeUnassignedChange={setIncludeUnassigned} />
+      </div>}
 
       {project.role !== 'cliente' && <div className={styles.filterGroup}><strong>Eventos</strong><label className={styles.eventFilter}><input type="checkbox" checked={showEvents} onChange={() => setShowEvents((value) => !value)} /> Mostrar reuniones, citas y eventos</label></div>}
       <button className="ghost" type="button" onClick={() => { setHiddenBoards([]); setHiddenStates([]); setSelectedAssigneeIds([]); setIncludeUnassigned(false); setShowEvents(true) }}>Mostrar todos</button>

@@ -75,16 +75,15 @@ export function ProjectCalendarAssigneeFilter({
 
   return <div className={styles.root} ref={rootRef}>
     <button type="button" className={[styles.trigger, hasSelection ? styles.triggerActive : ''].filter(Boolean).join(' ')}
-      aria-expanded={open} aria-controls={filterId} aria-haspopup="true"
+      aria-label="Filtrar por usuarios asignados" aria-expanded={open} aria-controls={filterId} aria-haspopup="true"
       onClick={() => setOpen((previous) => !previous)}>
-      <span className={styles.triggerTitle}>Usuarios</span>
       {hasSelection ? <span className={styles.selectedPreview}>
         {selectedPeople.slice(0, 3).map((person) =>
           <Avatar key={person.id} id={person.id} name={person.name} src={person.avatar_url}
             size={20} className={styles.previewAvatar} />)}
         <span>{selectedIds.length + Number(includeUnassigned)} seleccionado{selectedIds.length + Number(includeUnassigned) === 1 ? '' : 's'}</span>
       </span> : <span className={styles.allLabel}>Todos</span>}
-      <span className={styles.chevron} aria-hidden="true">⌄</span>
+      <span className={styles.chevron} aria-hidden="true">▾</span>
     </button>
     {open && <div className={styles.popup} id={filterId}>
       <div className={styles.popupHeader}>
