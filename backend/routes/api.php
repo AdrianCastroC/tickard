@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\CalendarEventsController;
 use App\Http\Controllers\Api\CardDependenciesController;
 use App\Http\Controllers\Api\CardDetailsController;
 use App\Http\Controllers\Api\InvitationsController;
+use App\Http\Controllers\Api\WorkspaceInvitationsController;
 use App\Http\Controllers\Api\ProjectsController;
 use App\Http\Controllers\Api\ProjectFilesController;
 use App\Http\Controllers\Api\ProjectPersonnelController;
@@ -18,10 +19,15 @@ use App\Http\Controllers\Api\WorkspacesController;
 Route::post('/login', [AuthController::class, 'login']);
 Route::post('/register', [AuthController::class, 'register']);
 Route::get('/invitations/{token}', [InvitationsController::class, 'showInvitation']);
-Route::post('/invitations/{token}/accept', [InvitationsController::class, 'acceptInvitation']);
+Route::get('/workspace-invitations/{token}', [WorkspaceInvitationsController::class, 'show']);
 
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
+    Route::post('/invitations/{token}/accept', [InvitationsController::class, 'acceptInvitation']);
+    Route::post('/workspace-invitations/{token}/accept', [WorkspaceInvitationsController::class, 'accept']);
+    Route::get('/workspaces/{workspace}/members-invitations', [WorkspaceInvitationsController::class, 'index']);
+    Route::post('/workspaces/{workspace}/invitations', [WorkspaceInvitationsController::class, 'store']);
+    Route::delete('/workspaces/{workspace}/invitations/{invitation}', [WorkspaceInvitationsController::class, 'destroy']);
     Route::get('/me', [AuthController::class, 'me']);
     Route::patch('/me', [AuthController::class, 'updateMe']);
     Route::post('/me/avatar', [AuthController::class, 'updateAvatar']);

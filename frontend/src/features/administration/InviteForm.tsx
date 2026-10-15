@@ -1,30 +1,9 @@
-import { type FormEvent, useState } from 'react'
-import { api } from '../../api'
-
-export function InviteForm({ projectId }: { projectId: number }) {
-  const [link, setLink] = useState('')
-  async function submit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-    const form = new FormData(event.currentTarget)
-    const result = await api<{ link: string }>(`/projects/${projectId}/invitations`, {
-      method: 'POST',
-      body: JSON.stringify({ email: form.get('email'), name: form.get('name'), role: form.get('role') }),
-    })
-    setLink(result.link)
-  }
-  return (
-    <form onSubmit={submit} className="field">
-      <h2>Invitar</h2>
-      <input name="name" placeholder="Nombre" />
-      <input name="email" type="email" placeholder="Correo" required />
-      <select name="role" defaultValue="editor">
-        <option value="responsable">Responsable</option>
-        <option value="editor">Editor</option>
-        <option value="lector">Lector</option>
-        <option value="cliente">Cliente</option>
-      </select>
-      <button className="primary" type="submit">Enviar invitación</button>
-      {link && <p>Enlace: {link}</p>}
-    </form>
-  )
+export function InviteForm(_props: { projectId: number }) {
+  return <section className="field">
+    <h2>Incorporar personas</h2>
+    <p className="muted">Las invitaciones ahora se gestionan desde el Workspace.
+      Accede a la vista general del Workspace, abre «Miembros e invitaciones»
+      e incorpora al usuario. Después podrás asignarlo a este proyecto desde
+      la pestaña Personal.</p>
+  </section>
 }

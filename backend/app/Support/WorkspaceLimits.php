@@ -9,37 +9,32 @@ class WorkspaceLimits
 {
     public static function maxProjects(Workspace $workspace): ?int
     {
-        return match ($workspace->plan) {
-            Workspace::PLAN_FREE => 3,
-            Workspace::PLAN_BASE => 10,
-            Workspace::PLAN_PRO => 50,
-            Workspace::PLAN_BUSINESS => $workspace->planLimits?->max_projects,
+        return match ($workspace->effectivePlan()) {
+            User::PLAN_FREE => 3,
+            User::PLAN_BASE => 10,
+            User::PLAN_PRO => 50,
+            User::PLAN_BUSINESS => $workspace->planLimits?->max_projects,
             default => 3,
         };
     }
 
     public static function maxMembers(Workspace $workspace): ?int
     {
-        return match ($workspace->plan) {
-            Workspace::PLAN_FREE,
-            Workspace::PLAN_BASE,
-            Workspace::PLAN_PRO => null,
-
-            Workspace::PLAN_BUSINESS => $workspace->planLimits?->max_members,
-
-            default => null,
+        $included = match ($workspace->effectivePlan()) {
+            User::PLAN_FREE => 3,
+            User::PLAN_BASE => 10,
+            User::PLAN_PRO => 30,
+            User::PLAN_BUSINESS => $workspace->planLimits?->max_members,
+            default => 3,
         };
+
+        return $included === null ? null : $included + $workspace->extra_seats;
     }
 
     public static function maxStorageMb(Workspace $workspace): ?int
     {
-        return match ($workspace->plan) {
-            Workspace::PLAN_FREE,
-            Workspace::PLAN_BASE,
-            Workspace::PLAN_PRO => null,
-
-            Workspace::PLAN_BUSINESS => $workspace->planLimits?->max_storage_mb,
-
+        return match ($workspace->effectivePlan()) {
+            User::PLAN_BUSINESS => $workspace->planLimits?->max_storage_mb,
             default => null,
         };
     }
@@ -48,11 +43,14 @@ class WorkspaceLimits
     {
         $limit = self::maxProjects($workspace);
 
-        if ($limit === null) {
-            return true;
-        }
+        return $limit === null || $workspace->projects()->count() < $limit;
+    }
 
-        return $workspace->projects()->count() < $limit;
+    public static function canAddMember(Workspace $workspace): bool
+    {
+        $limit = self::maxMembers($workspace);
+
+        return $limit === null || $workspace->memberships()->count() < $limit;
     }
 
     public static function maxOwnedWorkspaces(User $user): ?int
@@ -60,8 +58,7 @@ class WorkspaceLimits
         return match ($user->plan) {
             User::PLAN_FREE => 1,
             User::PLAN_BASE => 5,
-            User::PLAN_PRO => null,
-            User::PLAN_BUSINESS => null,
+            User::PLAN_PRO, User::PLAN_BUSINESS => null,
             default => 1,
         };
     }
@@ -70,10 +67,6 @@ class WorkspaceLimits
     {
         $limit = self::maxOwnedWorkspaces($user);
 
-        if ($limit === null) {
-            return true;
-        }
-
-        return $user->ownedWorkspaces()->count() < $limit;
+        return $limit === null || $user->ownedWorkspaces()->count() < $limit;
     }
 }

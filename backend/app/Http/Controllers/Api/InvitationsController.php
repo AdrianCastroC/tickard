@@ -2,85 +2,59 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Http\Controllers\Api\ApiController;
-use App\Models\AppNotification;
-use App\Models\Board;
-use App\Models\BoardCategory;
-use App\Models\Card;
-use App\Models\CardAttachment;
-use App\Models\CardChecklistItem;
-use App\Models\CardModule;
-use App\Models\ClientCompany;
-use App\Models\Column;
-use App\Models\Comment;
-use App\Models\Department;
 use App\Models\Invitation;
-use App\Models\Label;
 use App\Models\Project;
 use App\Models\ProjectMember;
-use App\Models\Team;
-use App\Models\User;
-use App\Support\CardPresenter;
-use App\Support\Notifier;
-use App\Support\ProjectAccess;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
-use Illuminate\Validation\Rule;
-use Illuminate\Validation\ValidationException;
 
 class InvitationsController extends ApiController
 {
-public function showInvitation(string $token)
+    // Legacy project invitation links are still readable, but new invitations
+    // should be issued at Workspace level, then assign project membership.
+    public function invite(Request $request, Project $project)
     {
-        $invitation = Invitation::with('project.clientCompany')->where('token', $token)->whereNull('accepted_at')->firstOrFail();
-
-        return [
-            'email' => $invitation->email,
-            'name' => $invitation->name,
-            'role' => $invitation->role,
-            'project' => $invitation->project->name,
-            'client' => $invitation->project->clientCompany->name,
-        ];
+        abort(422, 'Invita primero al usuario desde Miembros e invitaciones del Workspace.');
     }
 
-public function acceptInvitation(Request $request, string $token)
+    public function showInvitation(string $token)
     {
-        $invitation = Invitation::with('project')->where('token', $token)->whereNull('accepted_at')->firstOrFail();
-        $data = $request->validate([
-            'name' => ['required', 'string', 'max:120'],
-            'password' => ['required', 'string', 'min:8'],
+        $invitation = Invitation::with('project.clientCompany')
+            ->where('token', $token)->whereNull('accepted_at')->firstOrFail();
+
+        abort_if(! $invitation->project, 410, 'Esta invitación ya no está disponible.');
+
+        return response()->json([
+            'kind' => 'project',
+            'email' => $invitation->email,
+            'project' => $invitation->project->name,
+            'client' => $invitation->project->clientCompany?->name,
         ]);
+    }
 
-        $user = DB::transaction(function () use ($invitation, $data) {
-            $user = User::firstOrCreate(
-                ['email' => $invitation->email],
-                [
-                    'name' => $data['name'],
-                    'password' => $data['password'],
-                    'client_company_id' => $invitation->role === 'cliente' ? $invitation->project->client_company_id : null,
-                ],
-            );
+    public function acceptInvitation(Request $request, string $token)
+    {
+        // Never set the existing account's name or password from an invitation.
+        // Require the user to authenticate independently with the invited email.
+        $user = $request->user();
+        $projectId = DB::transaction(function () use ($token, $user) {
+            $invitation = Invitation::with('project')->where('token', $token)
+                ->whereNull('accepted_at')->lockForUpdate()->firstOrFail();
+            abort_unless(Str::lower(trim($user->email)) === Str::lower(trim($invitation->email)),
+                403, 'Debes iniciar sesión con la cuenta del correo invitado.');
+            abort_if(! $invitation->project, 410);
 
-            if (! $user->wasRecentlyCreated) {
-                $user->update(['name' => $data['name'], 'password' => $data['password']]);
-            }
-
-            ProjectMember::updateOrCreate(
+            // Project access is independent of the Workspace's membership.
+            // Existing legacy invites may be for external client roles.
+            ProjectMember::firstOrCreate(
                 ['project_id' => $invitation->project_id, 'user_id' => $user->id],
-                ['role' => $invitation->role],
+                ['role' => $invitation->role]
             );
-
             $invitation->update(['accepted_at' => now()]);
-
-            return $user;
+            return $invitation->project_id;
         });
 
-        return [
-            'token' => $user->createToken('api')->plainTextToken,
-            'user' => $this->profile($user),
-        ];
+        return response()->json(['project_id' => $projectId]);
     }
 }

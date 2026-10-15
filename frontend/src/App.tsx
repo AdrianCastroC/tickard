@@ -11,8 +11,10 @@ export default function App() {
     return () => window.removeEventListener('popstate', onPop)
   }, [])
 
-  const invite = path.match(/^\/invitar\/([^/]+)/)
-  if (invite) return <Invite token={invite[1]} />
+  const workspaceInvite = path.match(/^\/invitar\/workspace\/([^/]+)\/?$/)
+  if (workspaceInvite) return <Invite token={workspaceInvite[1]} kind="workspace" />
+  const invite = path.match(/^\/invitar\/([^/]+)\/?$/)
+  if (invite) return <Invite token={invite[1]} kind="project" />
   if (!getToken() || path === '/login') return <Login />
   return <Workspace />
 }
