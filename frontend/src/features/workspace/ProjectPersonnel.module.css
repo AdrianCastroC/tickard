@@ -32,8 +32,14 @@
 .modalPrimary { display:inline-flex; justify-content:center; align-items:center; gap:7px; align-self:center; padding:11px 15px; border:0; border-radius:9px; background:var(--accent); color:var(--accent-ink); cursor:pointer; white-space:nowrap; font-weight:700; font-size:12px }
 .workspaceBody { display:grid; grid-template-columns:minmax(0,1fr); flex:1 1 auto; gap:13px; min-height:0; min-width:0; overflow:hidden }
 .workspaceBody.hasDetails { grid-template-columns:minmax(0,1fr) minmax(300px,31%) }
-.primaryColumn { display:flex; flex-direction:column; min-height:0; min-width:0; gap:12px; overflow:hidden }
-.tableScroll { flex:1 1 auto; min-height:0; min-width:0; overflow:auto; overscroll-behavior:contain; scrollbar-width:thin; border:1px solid var(--line); border-radius:10px; background:var(--surface) }
+.primaryColumn { display:flex; flex-direction:column; min-height:0; min-width:0; gap:0; overflow:hidden }
+.resizeDivider { display:flex; align-items:center; justify-content:center; position:relative; flex:0 0 12px; height:12px; min-height:12px; width:100%; cursor:row-resize; touch-action:none; user-select:none; outline-offset:-2px }
+.resizeDivider::before { content:""; position:absolute; width:100%; height:1px; background:var(--line); opacity:.65 }
+.resizeGrip { position:relative; width:44px; height:4px; border-radius:5px; background:color-mix(in srgb,var(--muted) 40%,var(--line)); transition:background .15s ease }
+.resizeDivider:hover .resizeGrip,.resizeDivider:focus-visible .resizeGrip,.resizeDivider:active .resizeGrip { background:var(--accent) }
+.resizeDivider:focus-visible { outline:2px solid var(--accent); border-radius:5px }
+
+.tableScroll { flex:1 1 auto; min-height:160px; min-width:0; overflow:auto; overscroll-behavior:contain; scrollbar-width:none; border:1px solid var(--line); border-radius:10px; background:var(--surface) }
 .table { width:100%; border-spacing:0; border-collapse:separate; font-size:12px; text-align:left }
 .table th { position:sticky; top:0; z-index:1; background:var(--canvas); border-bottom:1px solid var(--line); padding:12px 11px; font-size:11px; color:var(--muted); font-weight:700; white-space:nowrap }
 .sortButton { display:inline-flex; align-items:center; gap:7px; border:0; padding:0; background:transparent; color:inherit; font:inherit; font-weight:inherit; white-space:nowrap; cursor:pointer }
@@ -71,11 +77,11 @@
 .progressTrack,.loadTrack { display:block; position:relative; flex:1 1 auto; min-width:42px; height:9px; background:var(--line); border-radius:20px; overflow:hidden }
 .progressTrack i,.loadTrack i { display:block; height:100%; background:var(--accent); border-radius:20px }
 .loadTrack i { background:#80aafb }
-.chartPanel { display:flex; flex:0 0 clamp(150px,24%,240px); flex-direction:column; min-height:0; gap:9px; border:1px solid var(--line); border-radius:10px; padding:13px 15px; background:var(--surface) }
+.chartPanel { display:flex; flex:0 0 var(--personnel-chart-height,24%); flex-direction:column; min-height:96px; box-sizing:border-box; gap:9px; border:1px solid var(--line); border-radius:10px; padding:13px 15px; background:var(--surface) }
 .chartHeading { display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:5px }
 .chartHeading strong { font-size:12px }
 .chartHeading small { font-size:10px; color:var(--muted) }
-.chartScroll { flex:1 1 auto; overflow:auto; min-height:0; scrollbar-width:thin }
+.chartScroll { flex:1 1 auto; overflow:auto; min-height:0; scrollbar-width:none }
 .chartRows { display:flex; flex-direction:column; gap:7px }
 .chartRow { display:grid; grid-template-columns:120px minmax(0,1fr) 24px; align-items:center; gap:8px; font-size:10px }
 .chartRow > span { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--muted) }
@@ -93,7 +99,8 @@
 .detailTabs,.modalTabs { display:flex; gap:5px; border-bottom:1px solid var(--line); padding:0 12px }
 .detailTabs button,.modalTabs button { border:0; border-bottom:2px solid transparent; background:transparent; padding:11px 10px; color:var(--muted); cursor:pointer; font-size:11px }
 .detailTabs .currentTab,.modalTabs .currentTab { border-bottom-color:var(--accent); color:var(--accent); font-weight:700 }
-.detailScroll { flex:1 1 auto; min-height:0; overflow:auto; overscroll-behavior:contain; padding:14px; scrollbar-width:thin }
+.detailScroll { flex:1 1 auto; min-height:0; overflow:auto; overscroll-behavior:contain; padding:14px; scrollbar-width:none }
+.tableScroll::-webkit-scrollbar,.chartScroll::-webkit-scrollbar,.detailScroll::-webkit-scrollbar { display:none; width:0; height:0 }
 .infoRow { display:flex; gap:10px; justify-content:space-between; padding:7px 0; border-bottom:1px solid var(--line); font-size:11px }
 .infoRow span { color:var(--muted) }
 .infoRow strong { font-weight:600; text-align:right; overflow-wrap:anywhere }
@@ -151,5 +158,5 @@
   .summary::-webkit-scrollbar { display:none }
   .toolbarActions { flex:1 1 100%; min-width:0 }
 }
-@media(max-width:900px) { .workspaceBody.hasDetails { grid-template-columns:1fr; grid-template-rows:minmax(0,1fr) minmax(0,44%) } .chartPanel { display:none } }
+@media(max-width:900px) { .workspaceBody.hasDetails { grid-template-columns:1fr; grid-template-rows:minmax(0,1fr) minmax(0,44%) } .chartPanel,.resizeDivider { display:none } .tableScroll { min-height:0 } }
 @media(max-width:570px) { .summaryCard { padding-inline:8px } .summaryCard strong { font-size:14px } .summaryCard small { font-size:9px } .summaryIcon { flex-basis:26px; width:26px; height:26px } .filterPopover { right:-45px } .modalBackdrop { padding:5px } .manageMembers > div { flex-wrap:wrap } }

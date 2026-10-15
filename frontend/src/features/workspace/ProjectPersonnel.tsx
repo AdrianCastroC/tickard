@@ -1,5 +1,5 @@
 import { cachedProjectRequest } from '../../shared/projectRequestCache'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent } from 'react'
 import { api, type Profile, type Project, type Role } from '../../api'
 import { Avatar } from '../../shared/ui'
 import { NavIcon } from '../../shared/icons'
@@ -47,6 +47,9 @@ const SORT_COLUMNS: { key: SortKey; label: string; sortName: string }[] = [
   { key: 'load', label: 'Carga relativa', sortName: 'carga' },
 ]
 const memberCollator = new Intl.Collator('es', { sensitivity: 'base', numeric: true })
+const DIVIDER_HEIGHT = 12
+const MIN_TABLE_HEIGHT = 160
+const MIN_CHART_HEIGHT = 96
 const STATE_KEYS: StateKey[] = ['pending', 'in_progress', 'review', 'done', 'backlog']
 const STATE_NAMES: Record<StateKey, string> = {
   backlog: 'Backlog', pending: 'Pendientes', in_progress: 'En progreso',
@@ -133,6 +136,65 @@ export function ProjectPersonnel({ project, profile }: { project: Project; profi
   const filtersRef = useRef<HTMLDivElement>(null)
   const filterButtonRef = useRef<HTMLButtonElement>(null)
   const viewportRef = useRef<HTMLElement>(null)
+  const primaryColumnRef = useRef<HTMLDivElement>(null)
+  const chartPanelRef = useRef<HTMLDivElement>(null)
+  const splitStorageKey = `tickard:personnel:chart-ratio:${project.id}`
+  const [chartRatio, setChartRatio] = useState(() => {
+    try {
+      const stored = Number(localStorage.getItem(splitStorageKey))
+      return Number.isFinite(stored) && stored >= 0.12 && stored <= 0.75 ? stored : 0.24
+    } catch {
+      return 0.24
+    }
+  })
+  const chartRatioRef = useRef(chartRatio)
+  const splitDragRef = useRef<{ id: number; startY: number; startHeight: number } | null>(null)
+
+  function setChartHeight(requested: number) {
+    const parentHeight = primaryColumnRef.current?.getBoundingClientRect().height ?? 0
+    if (!parentHeight) return
+    const maxHeight = Math.max(MIN_CHART_HEIGHT, parentHeight - DIVIDER_HEIGHT - MIN_TABLE_HEIGHT)
+    const height = Math.max(MIN_CHART_HEIGHT, Math.min(maxHeight, requested))
+    const next = height / parentHeight
+    chartRatioRef.current = next
+    setChartRatio(next)
+  }
+
+  function persistChartHeight() {
+    try { localStorage.setItem(splitStorageKey, String(chartRatioRef.current)) }
+    catch { /* Optional preference: continue working without browser storage. */ }
+  }
+
+  function onSplitPointerDown(event: ReactPointerEvent<HTMLDivElement>) {
+    if (event.button !== 0) return
+    const chart = chartPanelRef.current
+    if (!chart) return
+    splitDragRef.current = { id: event.pointerId, startY: event.clientY, startHeight: chart.getBoundingClientRect().height }
+    event.currentTarget.setPointerCapture(event.pointerId)
+    event.preventDefault()
+  }
+
+  function onSplitPointerMove(event: ReactPointerEvent<HTMLDivElement>) {
+    const drag = splitDragRef.current
+    if (!drag || drag.id !== event.pointerId) return
+    // Moving the separator up expands the chart below, and vice versa.
+    setChartHeight(drag.startHeight + drag.startY - event.clientY)
+  }
+
+  function finishSplitDrag(event: ReactPointerEvent<HTMLDivElement>) {
+    if (splitDragRef.current?.id !== event.pointerId) return
+    splitDragRef.current = null
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId)
+    persistChartHeight()
+  }
+
+  function onSplitKeyDown(event: ReactKeyboardEvent<HTMLDivElement>) {
+    if (event.key !== 'ArrowUp' && event.key !== 'ArrowDown') return
+    event.preventDefault()
+    const currentHeight = chartPanelRef.current?.getBoundingClientRect().height ?? 0
+    setChartHeight(currentHeight + (event.key === 'ArrowUp' ? 1 : -1) * (event.shiftKey ? 48 : 24))
+    persistChartHeight()
+  }
 
   const refresh = useCallback(async () => {
     const payload = await api<PersonnelData>(`/projects/${project.id}/personnel`)
@@ -299,7 +361,8 @@ export function ProjectPersonnel({ project, profile }: { project: Project; profi
     </div>
 
     <div className={`${styles.workspaceBody} ${selected ? styles.hasDetails : ''}`}>
-      <div className={styles.primaryColumn}>
+      <div ref={primaryColumnRef} className={styles.primaryColumn}
+        style={{ '--personnel-chart-height': `${chartRatio * 100}%` } as CSSProperties}>
         <div className={styles.tableScroll}>
           <table className={styles.table}>
             <thead><tr>{SORT_COLUMNS.map((column) => {
@@ -335,7 +398,18 @@ export function ProjectPersonnel({ project, profile }: { project: Project; profi
           </table>
           {filtered.length === 0 && <div className={styles.empty}>No hay miembros que coincidan con los filtros.</div>}
         </div>
-        <div className={styles.chartPanel}>
+        <div className={styles.resizeDivider} role="separator" tabIndex={0}
+          aria-label="Ajustar altura de la tabla y el gráfico"
+          aria-orientation="horizontal" aria-valuemin={12} aria-valuemax={75}
+          aria-valuenow={Math.round(chartRatio * 100)}
+          aria-valuetext={`Gráfico: ${Math.round(chartRatio * 100)} % de la altura`}
+          title="Arrastra para ajustar el espacio de la tabla y del gráfico. Usa las flechas para ajustar con el teclado."
+          onPointerDown={onSplitPointerDown} onPointerMove={onSplitPointerMove}
+          onPointerUp={finishSplitDrag} onPointerCancel={finishSplitDrag}
+          onLostPointerCapture={finishSplitDrag} onKeyDown={onSplitKeyDown}>
+          <span className={styles.resizeGrip} aria-hidden="true" />
+        </div>
+        <div ref={chartPanelRef} className={styles.chartPanel}>
           <div className={styles.chartHeading}><strong>Distribución de tareas por persona</strong><small>Por estado · cantidad de Cards asignadas</small></div>
           <div className={styles.chartScroll}><div className={styles.chartRows}>
             {ordered.map((person) => <div className={styles.chartRow} key={person.id}>
