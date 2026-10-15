@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { api, type Profile, type Project, type Role } from '../../api'
 import { Avatar } from '../../shared/ui'
 import styles from './ProjectPersonnel.module.css'
+import { ProjectSectionLoading } from './ProjectSectionLoading'
 
 type StateKey = 'backlog' | 'pending' | 'in_progress' | 'review' | 'done'
 type Stats = Record<StateKey | 'total' | 'overdue', number>
@@ -18,7 +19,7 @@ type Assignment = {
   updated_at: string | null
 }
 type Member = {
-  id: number; name: string; email: string | null; avatar_url: string | null; role: Role
+  id: number; name: string; email: string | null; avatar_url: string | null; role: Role; is_workspace_owner: boolean
   teams: Group[]; departments: Group[]; stats: Stats; tasks: Assignment[]
 }
 type PersonnelData = {
@@ -139,11 +140,12 @@ export function ProjectPersonnel({ project, profile }: { project: Project; profi
   const maxAssigned = Math.max(1, ...members.map((person) => person.stats.total))
   const selected = members.find((person) => person.id === selectedId) ?? null
   const summary = data?.summary
-  const client = project.role === 'cliente'
+  const client = project.role === 'cliente' && !data?.can_manage
 
-  if (!data) return <section className="project-panel" role={error ? 'alert' : 'status'}>
-    <p>{error ?? 'Cargando personal y carga de trabajo…'}</p>
-    {error && <button type="button" onClick={() => setReload((old) => old + 1)}>Reintentar</button>}
+  if (!data && !error) return <ProjectSectionLoading section="personnel" />
+  if (!data) return <section className="project-panel" role="alert">
+    <p>{error}</p>
+    <button type="button" onClick={() => setReload((old) => old + 1)}>Reintentar</button>
   </section>
 
   return <section ref={viewportRef} className={styles.root} aria-label="Personal del proyecto">
@@ -190,9 +192,9 @@ export function ProjectPersonnel({ project, profile }: { project: Project; profi
               return <tr key={person.id} className={selectedId === person.id ? styles.selectedRow : ''}>
                 <td><button type="button" className={styles.memberButton} onClick={() => { setSelectedId(person.id); setDetailTab('summary') }}>
                   <Avatar id={person.id} name={person.name} src={person.avatar_url} size={34}/>
-                  <span><strong>{person.name}{person.id === profile.user.id ? ' (Tú)' : ''}</strong><small>{person.email ?? roleName(person.role)}</small></span>
+                  <span><strong>{person.name}{person.id === profile.user.id ? ' (Tú)' : ''}</strong><small>{person.is_workspace_owner ? 'Propietario del Workspace' : (person.email ?? roleName(person.role))}</small></span>
                 </button></td>
-                <td><span className={`${styles.roleTag} ${person.role === 'responsable' ? styles.responsible : ''}`}>{roleName(person.role)}</span></td>
+                <td><span className={`${styles.roleTag} ${person.role === 'responsable' ? styles.responsible : ''}`}>{person.is_workspace_owner ? 'Owner' : roleName(person.role)}</span></td>
                 <td title={initials(person.departments)}>{initials(person.departments)}</td>
                 <td title={initials(person.teams)}>{initials(person.teams)}</td>
                 <td><div className={styles.assignedBar}><StatusBar stats={person.stats} compact /><small>{person.stats.total} tareas</small></div></td>
@@ -217,7 +219,7 @@ export function ProjectPersonnel({ project, profile }: { project: Project; profi
       {selected && <aside className={styles.details}>
         <div className={styles.personHeading}>
           <Avatar id={selected.id} name={selected.name} src={selected.avatar_url} size={52}/>
-          <div><strong>{selected.name}</strong><span className={styles.roleTag}>{roleName(selected.role)}</span></div>
+          <div><strong>{selected.name}</strong><span className={styles.roleTag}>{selected.is_workspace_owner ? 'Propietario del Workspace' : roleName(selected.role)}</span></div>
           <button type="button" aria-label="Cerrar detalle" className={styles.closeDetail} onClick={() => setSelectedId(null)}><MiniIcon name="close" /></button>
         </div>
         <div className={styles.detailTabs}>
@@ -372,10 +374,10 @@ function ManagementModal({ project, data, onClose, onChanged }: { project: Proje
         <div className={styles.manageMembers}>{data.members.map((member) => <div key={member.id}>
           <Avatar id={member.id} name={member.name} src={member.avatar_url} size={28}/>
           <span>{member.name}</span>
-          <select aria-label={`Rol de ${member.name}`} disabled={busy} value={member.role} onChange={(event) => void changeRole(member,event.target.value as Role)}>
+          <select aria-label={`Rol de ${member.name}`} disabled={busy || member.is_workspace_owner} value={member.role} onChange={(event) => void changeRole(member,event.target.value as Role)}>
             {ROLES.map((item) => <option key={item.key} value={item.key}>{item.name}</option>)}
           </select>
-          <button type="button" disabled={busy} aria-label={`Retirar a ${member.name}`} onClick={() => void removeMember(member)}>Retirar</button>
+          <button type="button" disabled={busy || member.is_workspace_owner} aria-label={`Retirar a ${member.name}`} onClick={() => void removeMember(member)}>Retirar</button>
         </div>)}</div>
       </div>}
       {tab === 'invite' && <form className={styles.modalContent} onSubmit={(event) => {event.preventDefault();void invite()}}>

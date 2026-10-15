@@ -6,7 +6,7 @@ La pestaña **Personal** es distinta de **Personal** en el menú lateral del Wor
 
 - Personal del Workspace: crear y mantener departamentos y equipos, definir sus miembros.
 - Personal del proyecto: consultar **miembros de ese proyecto**, sus asignaciones y carga de trabajo; vincular equipos al proyecto.
-- Administrador global y **responsable**: ver y gestionar membresías, roles, equipos e invitaciones.
+- Administrador global, **propietario del Workspace** y **responsable**: ver y gestionar membresías, roles, equipos e invitaciones. El owner obtiene permiso efectivo de responsable sin necesitar membresía en cada proyecto.
 - Editor y lector: consultar personal, progreso y asignaciones del proyecto, sin operaciones de gestión.
 - Cliente: ver **solo su propia ficha** y sus Cards asignadas que no sean internas. No recibe el directorio interno, correos del resto, otros miembros, equipos o departamentos.
 
@@ -38,7 +38,7 @@ Las altas o bajas posteriores de una persona en la composición de un equipo del
 
 También se pueden añadir directamente usuarios internos que ya sean miembros del Workspace, cambiar roles, retirar usuarios (se limpian sus asignaciones a Cards del proyecto), e invitar mediante el mecanismo de invitaciones existente.
 
-No se puede quitar ni degradar al último responsable registrado en el proyecto.
+No se puede quitar ni degradar al último responsable registrado en el proyecto. Si el owner del Workspace figura entre los miembros del proyecto, se identifica como **Propietario del Workspace** y no puede cambiarse su rol ni retirarlo desde esa vista. El owner no se cuenta como trabajador ni se le atribuyen Cards automáticamente por ser propietario.
 
 ## API
 
@@ -62,3 +62,7 @@ php artisan test --filter=ProjectPersonnelTest
 ```
 
 La interfaz reemplaza el placeholder de `ProjectLayout` en la pestaña `team`, manteniendo la etiqueta visible **Personal**.
+
+## Estados de carga
+
+La carga inicial de Personal reutiliza el componente `ProjectContentLoading` y el mismo spinner de 12 puntos verdes que Gantt y Calendario, con una vista previa esquemática del panel desenfocada. Archivos también comparte ese componente, pero presenta su propio esqueleto de listado, detalle y pie de almacenamiento. Los errores conservan un botón de reintento.

@@ -5,6 +5,7 @@ import { NavIcon } from '../../shared/icons'
 import { downloadProtectedArchive, downloadProtectedFile, openProtectedFile, useProtectedPreview, useProtectedTextPreview } from '../../shared/protectedFiles'
 import { FileActionIcon } from './ProjectFileIcons'
 import styles from './ProjectFiles.module.css'
+import { ProjectSectionLoading } from './ProjectSectionLoading'
 
 type ProjectFile = {
   key: string
@@ -296,7 +297,7 @@ export function ProjectFiles({ project, profile }: { project: Project; profile: 
     catch (cause) { setError(cause instanceof Error ? cause.message : 'No se pudo abrir el archivo.') }
   }
 
-  if (!data && !error) return <section className={styles.loading} role="status">Cargando archivos del proyecto…</section>
+  if (!data && !error) return <ProjectSectionLoading section="files" />
   if (!data) return <section className="project-panel" role="alert">{error} <button type="button" onClick={() => window.location.reload()}>Reintentar</button></section>
 
   const storage = data.storage

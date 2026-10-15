@@ -74,7 +74,7 @@ class ProjectPersonnelController extends ApiController
         };
 
         $people = $memberships->map(function (ProjectMember $membership) use (
-            $assignments, $teams, $departments, $countStates, $today, $client
+            $assignments, $teams, $departments, $countStates, $today, $client, $project
         ) {
             $user = $membership->user;
             $assigned = $assignments->where('user_id', $user->id)->unique('id')->values();
@@ -88,7 +88,8 @@ class ProjectPersonnelController extends ApiController
                 'name' => $user->name,
                 'email' => $client ? null : $user->email,
                 'avatar_url' => $user->avatarUrl(),
-                'role' => $membership->role,
+                'role' => (int) $project->workspace->owner_id === (int) $user->id ? 'responsable' : $membership->role,
+                'is_workspace_owner' => (int) $project->workspace->owner_id === (int) $user->id,
                 'teams' => $client ? [] : $teams->filter(fn ($team) =>
                     $team->members->contains('id', $user->id)
                 )->map(fn ($team) => ['id' => $team->id, 'name' => $team->name])->values(),
@@ -171,6 +172,8 @@ class ProjectPersonnelController extends ApiController
     {
         $this->authorizeManage($request, $project);
         $data = $request->validate(['role' => ['required', Rule::in(self::ROLES)]]);
+        abort_if(ProjectAccess::isWorkspaceOwner($user, $project), 403,
+            'El propietario del Workspace no puede perder su rol desde un proyecto.');
         $member = $project->members()->where('user_id', $user->id)->firstOrFail();
         if ($member->role === 'responsable' && $data['role'] !== 'responsable') {
             $this->ensureOtherResponsible($project, $member->id);
@@ -183,6 +186,8 @@ class ProjectPersonnelController extends ApiController
     public function removeMember(Request $request, Project $project, User $user)
     {
         $this->authorizeManage($request, $project);
+        abort_if(ProjectAccess::isWorkspaceOwner($user, $project), 403,
+            'El propietario del Workspace no puede perder su rol desde un proyecto.');
         $member = $project->members()->where('user_id', $user->id)->firstOrFail();
         if ($member->role === 'responsable') {
             $this->ensureOtherResponsible($project, $member->id);

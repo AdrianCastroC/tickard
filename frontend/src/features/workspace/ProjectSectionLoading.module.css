@@ -1,0 +1,55 @@
+.skeleton { display:flex; flex-direction:column; flex:1; gap:13px; height:100%; min-height:0; box-sizing:border-box; color:var(--muted) }
+.skeleton i,.skeleton b,.skeleton span { box-sizing:border-box }
+.skeleton i { display:block; height:12px; border-radius:5px; background:var(--line) }
+.stats { display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); gap:9px; flex:0 0 auto }
+.stat { display:flex; align-items:center; gap:10px; min-width:0; height:80px; padding:12px; border:1px solid var(--line); border-radius:10px; background:var(--surface) }
+.statIcon { flex:0 0 35px; width:35px; height:35px; border-radius:10px; background:color-mix(in srgb,var(--accent) 14%,var(--surface)) }
+.statLines { display:flex; flex:1; flex-direction:column; gap:6px; min-width:0 }
+.statLines i:first-child { width:72%; height:8px }
+.statLines i:nth-child(2) { width:48%; height:16px }
+.statLines i:last-child { width:58%; height:7px }
+.toolbar { display:flex; align-items:center; gap:10px; padding:7px; border:1px solid var(--line); border-radius:9px; background:var(--surface); flex:0 0 auto; height:52px }
+.toolbar .pill { width:58px; height:28px; border-radius:20px }
+.toolbar .pillLong { width:110px; height:28px; border-radius:20px }
+.toolbar .search { margin-left:auto; flex:1; max-width:420px; height:32px; border-radius:7px }
+.toolbar .filter { width:45px; height:30px; flex:0 0 45px; border-radius:7px }
+.toolbar .action { width:100px; height:32px; flex:0 0 100px; border-radius:7px; background:color-mix(in srgb,var(--accent) 35%,var(--surface)) }
+.body { display:grid; grid-template-columns:minmax(0,1fr) minmax(245px,30%); gap:13px; flex:1; min-height:0 }
+.left { display:flex; flex-direction:column; overflow:hidden; min-height:0; border:1px solid var(--line); border-radius:10px; background:var(--surface) }
+.head,.row { display:grid; grid-template-columns:minmax(100px,2fr) 1fr 1fr minmax(65px,1fr); align-items:center; gap:13px; height:42px; padding:0 15px; border-bottom:1px solid var(--line) }
+.head { background:var(--canvas); flex:0 0 42px }
+.head i { height:9px; width:60% }
+.head .name { width:48% }
+.rows { flex:1; overflow:hidden }
+.row { height:44px }
+.row > i { width:62%; height:11px }
+.row > i.line { height:9px; width:86%; background:color-mix(in srgb,var(--accent) 26%,var(--line)) }
+.rowName { display:flex; align-items:center; gap:9px; min-width:0 }
+.rowName b { width:25px; height:25px; flex:0 0 25px; border-radius:7px; background:color-mix(in srgb,var(--accent) 20%,var(--line)) }
+.rowName i { flex:0 1 auto; height:10px }
+.details { display:flex; flex-direction:column; min-width:0; min-height:0; gap:14px; padding:15px; border:1px solid var(--line); border-radius:10px; background:var(--surface) }
+.detailHead { display:flex; gap:12px; align-items:center }
+.detailHead b { width:42px; height:42px; border-radius:9px; flex:0 0 42px; background:color-mix(in srgb,var(--accent) 20%,var(--line)) }
+.detailHead span { display:flex; flex:1; flex-direction:column; gap:8px }
+.detailHead i:first-child { width:70% }
+.detailHead i:last-child { width:40%; height:9px }
+.detailTabs { display:flex; gap:10px; padding-bottom:12px; border-bottom:1px solid var(--line) }
+.detailTabs i { width:22%; height:9px }
+.preview { display:flex; flex:1; flex-direction:column; align-items:stretch; gap:15px; padding:15px; border-radius:9px; background:var(--canvas); overflow:hidden }
+.fileShape { width:74px; height:90px; margin:15px auto 18px; border:8px solid var(--line); border-radius:6px }
+.preview .previewLine { width:78%; height:10px }
+.preview .previewLine:last-child { width:60% }
+.detailStats { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:7px }
+.detailStats i { height:45px; border-radius:7px }
+.detailAction { align-self:center; width:85%; height:32px !important; flex:0 0 32px }
+.footer { display:flex; align-items:center; gap:20px; padding:13px 17px; border:1px solid var(--line); border-radius:10px; background:var(--canvas); flex:0 0 auto }
+.footer i:first-child { width:145px; height:11px }
+.footer span { flex:1; height:9px; border-radius:10px; background:color-mix(in srgb,var(--accent) 25%,var(--line)) }
+.footer i:last-child { width:90px; height:11px }
+.chart { display:flex; flex:0 0 140px; flex-direction:column; gap:12px; padding:15px; border-top:1px solid var(--line) }
+.chart .chartTitle { width:180px }
+.chartRow { display:flex; gap:15px; align-items:center }
+.chartRow > i { width:90px; height:8px }
+.chartRow > span { height:11px; border-radius:8px; background:color-mix(in srgb,var(--accent) 28%,var(--line)) }
+@media(max-width:950px) { .stats { grid-template-columns:repeat(3,minmax(0,1fr)) } .details { display:none } .body { grid-template-columns:1fr } .stat { height:65px } }
+@media(max-width:600px) { .stats { grid-template-columns:repeat(2,minmax(0,1fr)) } .toolbar .pill,.toolbar .pillLong { display:none } .toolbar .filter { width:32px; flex-basis:32px } .toolbar .action { width:64px; flex-basis:64px } .row { height:36px } }

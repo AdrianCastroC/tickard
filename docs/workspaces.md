@@ -125,6 +125,8 @@ Como mínimo existe el concepto de:
 
 El propietario es el usuario responsable del Workspace.
 
+Su rol `owner` está en el nivel del Workspace, **no** es un quinto rol de proyecto. Dispone de permisos efectivos de `responsable` en todos sus proyectos aunque no figure en `project_members`, y puede gestionar sus miembros y recursos. No se puede degradar ni retirar su participación desde la gestión de un proyecto. La propiedad del Workspace solo podrá transferirse mediante un procedimiento específico futuro.
+
 Un usuario también puede pertenecer como miembro a Workspaces propiedad de otras personas.
 
 Por ejemplo, Luis podría tener acceso a:
