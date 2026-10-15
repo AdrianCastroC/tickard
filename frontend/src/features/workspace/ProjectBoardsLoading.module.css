@@ -1,0 +1,34 @@
+.skeleton { display:flex; flex:1 1 auto; flex-direction:column; gap:14px; box-sizing:border-box; width:100%; height:100%; min-width:0; min-height:0; overflow:hidden }
+.skeleton i,.skeleton span { box-sizing:border-box }
+.skeleton i { display:block; border-radius:5px; background:var(--line) }
+.toolbar { display:flex; flex:0 0 51px; justify-content:space-between; align-items:center; gap:20px; width:100% }
+.heading { display:flex; flex-direction:column; gap:8px; width:220px; min-width:0 }
+.heading i:first-child { width:110px; height:18px }
+.heading i:last-child { width:200px; max-width:100%; height:9px }
+.actions { display:flex; align-items:center; justify-content:flex-end; gap:10px; flex:1 1 auto; min-width:0 }
+.actions i { height:34px; border-radius:8px }
+.actions i:first-child { width:min(260px,35%); margin-left:auto }
+.actions i:nth-child(2) { width:145px }
+.actions i:nth-child(3) { width:75px }
+.actions i:last-child { width:108px; background:color-mix(in srgb,var(--accent) 22%,var(--line)) }
+.cards { display:grid; flex:1 1 auto; grid-template-columns:repeat(3,minmax(0,1fr)); grid-auto-rows:265px; align-content:start; gap:12px; min-width:0; min-height:0; overflow:hidden }
+.card { display:flex; flex-direction:column; gap:14px; box-sizing:border-box; min-width:0; min-height:0; padding:13px; border:1px solid var(--line); border-radius:12px; background:var(--surface) }
+.cardHead { display:flex; gap:11px; min-width:0; align-items:center }
+.number { display:block; flex:0 0 42px; width:42px; height:42px; border-radius:9px; background:color-mix(in srgb,var(--accent) 16%,var(--surface)) }
+.cardTitle { display:flex; flex:1; flex-direction:column; gap:8px; min-width:0 }
+.cardTitle i:first-child { width:80%; height:12px }
+.cardTitle i:last-child { width:48%; height:8px }
+.date { width:45%; height:10px; margin-left:53px }
+.body { display:flex; align-items:center; justify-content:space-between; gap:14px; flex:1; min-height:0 }
+.donut { display:grid; place-items:center; margin:auto; flex:0 0 110px; width:110px; height:110px; border:13px solid color-mix(in srgb,var(--accent) 18%,var(--line)); border-radius:50% }
+.donut span { display:block; width:34px; height:14px; border-radius:4px; background:var(--line) }
+.legend { display:flex; flex:0 0 104px; flex-direction:column; align-items:flex-end; gap:6px }
+.state { height:15px; max-width:100%; border-radius:15px !important; background:color-mix(in srgb,var(--accent) 18%,var(--line)) !important }
+.state:nth-child(odd) { background:var(--line) !important }
+.footer { display:flex; align-items:center; justify-content:space-between; margin-top:auto; gap:7px; min-height:25px }
+.people { display:flex; align-items:center }
+.people i { width:24px; height:24px; border-radius:50%; border:2px solid var(--surface); background:color-mix(in srgb,var(--accent) 15%,var(--line)); margin-right:-6px }
+.updated { width:86px; height:9px }
+@media(max-width:1450px) { .cards { grid-template-columns:repeat(2,minmax(0,1fr)) } }
+@media(max-width:940px) { .cards { grid-template-columns:minmax(0,1fr) } .actions i:nth-child(2),.actions i:nth-child(3) { display:none } }
+@media(max-width:550px) { .toolbar { gap:10px } .actions i:first-child { display:none } .heading { width:55% } .card { padding:11px } .body { gap:8px } }

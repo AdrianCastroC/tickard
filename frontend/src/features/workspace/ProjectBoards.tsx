@@ -3,6 +3,7 @@ import { api, type Project, type WorkflowState } from '../../api'
 import { Avatar } from '../../shared/ui'
 import { NavIcon, PlusIcon } from '../../shared/icons'
 import { cachedProjectRequest } from '../../shared/projectRequestCache'
+import { ProjectBoardsLoading } from './ProjectBoardsLoading'
 import styles from './ProjectBoards.module.css'
 
 type BoardColumnSummary = {
@@ -234,6 +235,8 @@ export function ProjectBoards({ project, onBoardSelect, onRefresh }: {
   }
 
 
+  if (loading && !data) return <ProjectBoardsLoading count={project.boards.length} />
+
   return <section className={styles.root} aria-label="Tableros del proyecto">
     <div className={styles.toolbar}>
       <div className={styles.title}><h2>Tableros</h2><small>Gestiona y visualiza el progreso de los tableros · {data?.boards.length ?? project.boards.length} en el proyecto</small></div>
@@ -269,10 +272,6 @@ export function ProjectBoards({ project, onBoardSelect, onRefresh }: {
       </div>
     </div>
     {error && <div role="alert" className={styles.error}>{error} <button type="button" onClick={() => setReload((n) => n + 1)}>Reintentar</button></div>}
-    {loading && <div className={styles.grid} aria-label="Cargando tableros">
-      {Array.from({ length: Math.min(project.boards.length || 3, 6) }, (_, i) =>
-        <div key={i} className={styles.skeleton} aria-hidden="true"/>)}
-    </div>}
     {!loading && data && <div className={layout === 'grid' ? styles.grid : styles.list}>
       {filtered.map((board, index) => <Card key={board.id} board={board} index={index}
         layout={layout} onOpen={() => onBoardSelect(board.id)} />)}

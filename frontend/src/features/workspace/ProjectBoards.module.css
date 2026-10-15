@@ -56,8 +56,6 @@
 .empty { grid-column:1/-1; color:var(--muted); font-size:13px; padding:45px 15px; text-align:center }
 .error { padding:11px 13px; border:1px solid #dca1a1; border-radius:9px; font-size:12px; color:#af4d4d }
 .error button { border:0; padding:3px; background:transparent; color:inherit; text-decoration:underline; cursor:pointer }
-.skeleton { height:224px; border:1px solid var(--line); border-radius:12px; background:linear-gradient(100deg,var(--surface) 20%,var(--canvas) 40%,var(--surface) 60%); background-size:200% 100%; animation:board-skeleton 1.4s ease-in-out infinite }
-@keyframes board-skeleton { to { background-position-x:-200% } }
 .modalBackdrop { position:fixed; inset:0; z-index:1000; display:grid; place-items:center; padding:15px; background:rgb(12 36 32 / 45%) }
 .modal { display:flex; flex-direction:column; gap:18px; min-width:0; width:min(430px,100%); padding:22px; border:1px solid var(--line); border-radius:14px; background:var(--surface); box-shadow:0 20px 55px rgb(0 0 0 / 17%) }
 .modal h3 { margin:0; font-size:18px }
@@ -90,4 +88,4 @@
   .sortSelect select { flex:1; width:100% }
   .addButton { padding-inline:10px }
 }
-@media (prefers-reduced-motion:reduce) { .card,.skeleton { animation:none; transition:none } }
+@media (prefers-reduced-motion:reduce) { .card { animation:none; transition:none } }
