@@ -56,103 +56,48 @@ function dateRange(board: BoardSummary) {
 }
 
 
-type DiagramEntry = {
-  column: BoardColumnSummary
-  percent: number
-  color: string
-  anchorAngle: number
-  side: 'left' | 'right'
-}
-
-function diagramEntries(board: BoardSummary): DiagramEntry[] {
-  let current = -90
-  const angleWhenEmpty: Record<WorkflowState, number> = {
-    backlog: -140, pending: -45, in_progress: 0, review: 45, done: 150,
-  }
-  return board.columns.map((column) => {
-    const percent = board.total ? column.count / board.total * 100 : 0
-    const angle = percent
-      ? current + (percent / 100 * 360 / 2)
-      : angleWhenEmpty[column.workflow_state]
-    current += percent / 100 * 360
-    return {
-      column, percent,
-      color: column.color ?? fallbackColors[column.workflow_state],
-      anchorAngle: angle,
-      side: column.workflow_state === 'backlog' || column.workflow_state === 'done' ? 'left' : 'right',
+// Match each segment to its real column, ordered as on the board (Backlog
+// always first). The legend is adjacent to the chart, never connected by lines.
+function orderedColumns(board: BoardSummary) {
+  return [...board.columns].sort((a, b) => {
+    if ((a.workflow_state === 'backlog') !== (b.workflow_state === 'backlog')) {
+      return a.workflow_state === 'backlog' ? -1 : 1
     }
+    return a.position - b.position || a.id - b.id
   })
 }
 
-function readableColor(color: string) {
-  const hex = color.startsWith('#') ? color.slice(1) : ''
-  const expanded = hex.length === 3 ? hex.split('').map((c) => c + c).join('') : hex
-  if (!/^[0-9a-fA-F]{6}$/.test(expanded)) return '#ffffff'
-  const values = [0, 2, 4].map((i) => parseInt(expanded.slice(i, i + 2), 16) / 255)
-  const linear = values.map((value) => value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4)
-  return linear[0] * 0.2126 + linear[1] * 0.7152 + linear[2] * 0.0722 > 0.44 ? '#1d3432' : '#ffffff'
+function distributionGradient(board: BoardSummary) {
+  if (!board.total) return 'var(--line)'
+  let end = 0
+  const stops = orderedColumns(board)
+    .filter((column) => column.count > 0)
+    .map((column) => {
+      const start = end
+      end = Math.min(100, end + column.count / board.total * 100)
+      return `${column.color ?? fallbackColors[column.workflow_state]} ${start.toFixed(4)}% ${end.toFixed(4)}%`
+    })
+  return stops.length ? `conic-gradient(${stops.join(', ')})` : 'var(--line)'
 }
 
 function DonutDistribution({ board }: { board: BoardSummary }) {
-  const entries = diagramEntries(board)
-  const left = entries.filter((entry) => entry.side === 'left')
-  const right = entries.filter((entry) => entry.side === 'right')
-  // Draw inside a fixed, compact viewBox. The entire diagram scales as a
-  // single element so labels and connectors cannot outgrow the card.
-  const height = Math.max(224, Math.max(left.length, right.length) * 36 + 40)
-  const cx = 320
-  const cy = height / 2
-  const r = 72
-  const ringWidth = 28
-  const circumference = 2 * Math.PI * r
-  const labelHeight = 24
-  const yFor = (index: number, count: number) => (
-    cy + (index - (count - 1) / 2) * Math.min(49, (height - 42) / Math.max(count, 1))
-  )
-  let offset = 0
-  const segmentCircles = entries.filter(({ column }) => column.count > 0).map((entry) => {
-    const arc = entry.percent / 100 * circumference
-    const result = <circle key={entry.column.id} cx={cx} cy={cy} r={r} fill="none" stroke={entry.color}
-      strokeWidth={ringWidth} strokeDasharray={`${arc} ${circumference - arc}`}
-      strokeDashoffset={-offset} transform={`rotate(-90 ${cx} ${cy})`}>
-      <title>{`${entry.column.name}: ${columnPercent(entry.column.count, board.total)} % (${entry.column.count} tareas)`}</title>
-    </circle>
-    offset += arc
-    return result
-  })
-  const connectors = (side: 'left' | 'right', list: DiagramEntry[]) => list.map((entry, i) => {
-    const rad = entry.anchorAngle * Math.PI / 180
-    const x = cx + (r + ringWidth / 2) * Math.cos(rad)
-    const y = cy + (r + ringWidth / 2) * Math.sin(rad)
-    const targetY = yFor(i, list.length)
-    const xEdge = side === 'left' ? 201 : 439
-    const elbow = side === 'left' ? 215 : 425
-    const pillX = side === 'left' ? 10 : 453
-    return <g key={entry.column.id}>
-      <path d={`M ${x} ${y} L ${elbow} ${targetY} L ${xEdge} ${targetY}`}
-        fill="none" stroke={entry.color} strokeWidth="1.3" strokeLinejoin="round" opacity=".8"/>
-      <circle cx={x} cy={y} r="3.5" fill={entry.color} stroke="var(--surface)" strokeWidth="1.7"/>
-      <circle cx={xEdge} cy={targetY} r="3.2" fill={entry.color}/>
-      <foreignObject x={pillX} y={targetY - labelHeight / 2} width="174" height={labelHeight}>
-        <div className={styles.diagramLabel} title={`${entry.column.name}: ${entry.column.count} tareas (${columnPercent(entry.column.count, board.total)} %)`}
-          style={{ backgroundColor: entry.color, color: readableColor(entry.color) }}>
-          <span>{entry.column.name}</span>
-          <strong>{columnPercent(entry.column.count, board.total)} %</strong>
-        </div>
-      </foreignObject>
-    </g>
-  })
-  return <div className={styles.diagram} aria-label={distributionDescription(board)}>
-    <svg viewBox={`0 0 640 ${height}`} role="img" aria-label={distributionDescription(board)}
-      preserveAspectRatio="xMidYMid meet">
-      <circle cx={cx} cy={cy} r={r} stroke="var(--line)" strokeWidth={ringWidth} fill="none"/>
-      {segmentCircles}
-      <circle cx={cx} cy={cy} r="59" fill="var(--surface)"/>
-      <text x={cx} y={cy + 1} textAnchor="middle" dominantBaseline="middle" className={styles.diagramTotal}>{board.total}</text>
-      <text x={cx} y={cy + 25} textAnchor="middle" className={styles.diagramCaption}>tareas</text>
-      {connectors('left', left)}
-      {connectors('right', right)}
-    </svg>
+  return <div className={styles.diagram}>
+    <div className={styles.donut} role="img" aria-label={distributionDescription(board)}
+      title={distributionDescription(board)} style={{ background: distributionGradient(board) }}>
+      <span className={styles.donutCenter}>
+        <strong>{board.total}</strong>
+        <small>tareas</small>
+      </span>
+    </div>
+    <div className={styles.diagramLegend} aria-label="Distribución por columnas">
+      {orderedColumns(board).map((column) =>
+        <div key={column.id} className={styles.legendRow}
+          title={`${column.name}: ${column.count} tareas (${columnPercent(column.count, board.total)}% del total)`}>
+          <span className={styles.legendDot} style={{ background: column.color ?? fallbackColors[column.workflow_state] }} />
+          <span className={styles.legendName}>{column.name}</span>
+          <strong className={styles.legendPercent}>{columnPercent(column.count, board.total)}%</strong>
+        </div>)}
+    </div>
   </div>
 }
 
