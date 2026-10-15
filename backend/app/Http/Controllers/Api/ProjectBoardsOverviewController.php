@@ -83,8 +83,8 @@ class ProjectBoardsOverviewController extends ApiController
                         'total' => (int) ($stats?->total ?? 0),
                         'completed' => (int) ($stats?->completed ?? 0),
                         'overdue' => (int) ($stats?->overdue ?? 0),
-                        'start_date' => $stats?->start_date,
-                        'end_date' => $stats?->end_date,
+                        'start_date' => $stats?->start_date ? substr($stats->start_date, 0, 10) : null,
+                        'end_date' => $stats?->end_date ? substr($stats->end_date, 0, 10) : null,
                         'updated_at' => $lastUpdate,
                         'member_count' => $assigned->count(),
                         'members' => $assigned->take(4)->map(function ($id) use ($users) {
