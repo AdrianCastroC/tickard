@@ -60,6 +60,8 @@ class ProjectDashboardTest extends TestCase
             ->assertJsonPath('summary.pending', 1)
             ->assertJsonPath('summary.backlog', 1)
             ->assertJsonPath('summary.start_date', '2026-10-01')
+            ->assertJsonMissingPath('upcoming')
+            ->assertJsonMissingPath('overdue_tasks')
             ->assertJsonPath('summary.end_date', '2026-11-10')
             ->assertJsonPath('boards.0.total', 3)
             ->assertJsonPath('columns.1.name', 'Preparado')

@@ -90,25 +90,6 @@ class ProjectDashboardController extends ApiController
                 'due_date' => substr($item->due_date, 0, 10),
             ]);
 
-        $upcoming = $cards()->whereNotNull('cards.due_date')->where('cards.due_date', '>=', $today)
-            ->whereNotIn('columns.workflow_state', ['done', 'backlog'])
-            ->select('cards.id', 'cards.title', 'cards.due_date',
-                'boards.id as board_id', 'boards.name as board_name')
-            ->orderBy('cards.due_date')->orderBy('cards.id')->limit(5)->get()
-            ->map(fn ($item) => [
-                'id' => $item->id, 'title' => $item->title, 'board_id' => $item->board_id,
-                'board_name' => $item->board_name, 'due_date' => substr($item->due_date, 0, 10),
-            ]);
-        $overdueTasks = $cards()->whereNotNull('cards.due_date')->where('cards.due_date', '<', $today)
-            ->whereNotIn('columns.workflow_state', ['done', 'backlog'])
-            ->select('cards.id', 'cards.title', 'cards.due_date',
-                'boards.id as board_id', 'boards.name as board_name')
-            ->orderBy('cards.due_date')->orderBy('cards.id')->limit(5)->get()
-            ->map(fn ($item) => [
-                'id' => $item->id, 'title' => $item->title, 'board_id' => $item->board_id,
-                'board_name' => $item->board_name, 'due_date' => substr($item->due_date, 0, 10),
-            ]);
-
         // Workspace owners can act as project responsibles without being in
         // project_members; include them in the team metric when appropriate.
         $people = $project->members()->with('user:id,name,avatar_path')
@@ -170,8 +151,6 @@ class ProjectDashboardController extends ApiController
             'columns' => $distribution,
             'boards' => $boards,
             'milestones' => $milestones,
-            'upcoming' => $upcoming,
-            'overdue_tasks' => $overdueTasks,
             'activity' => $recent,
         ]);
     }
