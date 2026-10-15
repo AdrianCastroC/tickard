@@ -38,13 +38,11 @@
 .donutCenter { display:flex; align-items:center; flex-direction:column; justify-content:center; gap:2px; width:72%; height:72%; box-sizing:border-box; border-radius:50%; background:var(--surface); color:var(--ink); }
 .donutCenter strong { font-size:24px; line-height:1.05; font-weight:800; font-variant-numeric:tabular-nums; }
 .donutCenter small { font-size:11px; line-height:1; color:var(--muted); }
-.diagramLegend { display:flex; flex:1 1 0; flex-direction:column; justify-content:center; gap:3px; min-width:0; max-height:100%; overflow-y:auto; overscroll-behavior:contain; scrollbar-width:none; }
+.diagramLegend { display:flex; flex:1 1 0; flex-direction:column; justify-content:center; gap:5px; min-width:0; max-height:100%; overflow-y:auto; overscroll-behavior:contain; scrollbar-width:none; }
 .diagramLegend::-webkit-scrollbar { display:none; width:0; height:0; }
-.legendRow { display:flex; align-items:center; gap:6px; min-width:0; min-height:21px; padding:2px 4px; border-radius:5px; font-size:11px; line-height:1.2; }
-.legendRow:hover { background:color-mix(in srgb,var(--accent) 5%,var(--surface)); }
-.legendDot { display:block; flex:0 0 8px; height:8px; width:8px; border-radius:50%; }
-.legendName { flex:1 1 0; min-width:0; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; color:var(--muted); }
-.legendPercent { flex:0 0 auto; text-align:right; min-width:29px; color:var(--ink); font-size:11px; font-weight:750; font-variant-numeric:tabular-nums; }
+.legendPill { box-sizing:border-box; display:flex; align-items:center; justify-content:space-between; width:100%; min-width:0; min-height:25px; gap:8px; padding:4px 10px; border-radius:999px; font-size:11px; line-height:1.2; font-weight:600; }
+.legendPillName { flex:1 1 auto; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.legendPillPercent { flex:0 0 auto; font-size:11px; font-weight:800; font-variant-numeric:tabular-nums; white-space:nowrap; }
 .cardList .diagram { width:min(420px,100%); margin-inline:auto; }
 
 .footer { display:flex; flex:0 0 auto; align-items:center; justify-content:space-between; min-height:28px; gap:8px; margin-top:auto }
@@ -85,7 +83,8 @@
   .diagram { gap:9px; }
   .donut { flex-basis:104px; width:104px; height:104px; }
   .donutCenter strong { font-size:21px; }
-  .legendRow { font-size:10px; }
+  .legendPill { font-size:10px; min-height:24px; padding-inline:7px; }
+  .legendPillPercent { font-size:10px; }
   .sortSelect { flex:1 1 145px }
   .sortSelect select { flex:1; width:100% }
   .addButton { padding-inline:10px }

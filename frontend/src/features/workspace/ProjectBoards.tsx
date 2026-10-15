@@ -80,6 +80,19 @@ function distributionGradient(board: BoardSummary) {
   return stops.length ? `conic-gradient(${stops.join(', ')})` : 'var(--line)'
 }
 
+// Ensure custom column backgrounds always have legible text.
+function readableColor(color: string) {
+  const hex = color.trim().replace(/^#/, '')
+  const normalized = /^[0-9a-f]{3}$/i.test(hex)
+    ? hex.split('').map((digit) => digit + digit).join('')
+    : hex
+  if (!/^[0-9a-f]{6}$/i.test(normalized)) return '#ffffff'
+  const rgb = [0, 2, 4].map((index) => parseInt(normalized.slice(index, index + 2), 16) / 255)
+  const linear = rgb.map((value) => value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4)
+  const luminance = linear[0] * 0.2126 + linear[1] * 0.7152 + linear[2] * 0.0722
+  return luminance > 0.42 ? '#1b3430' : '#ffffff'
+}
+
 function DonutDistribution({ board }: { board: BoardSummary }) {
   return <div className={styles.diagram}>
     <div className={styles.donut} role="img" aria-label={distributionDescription(board)}
@@ -90,13 +103,15 @@ function DonutDistribution({ board }: { board: BoardSummary }) {
       </span>
     </div>
     <div className={styles.diagramLegend} aria-label="Distribución por columnas">
-      {orderedColumns(board).map((column) =>
-        <div key={column.id} className={styles.legendRow}
+      {orderedColumns(board).map((column) => {
+        const background = column.color ?? fallbackColors[column.workflow_state]
+        return <div key={column.id} className={styles.legendPill}
+          style={{ backgroundColor: background, color: readableColor(background) }}
           title={`${column.name}: ${column.count} tareas (${columnPercent(column.count, board.total)}% del total)`}>
-          <span className={styles.legendDot} style={{ background: column.color ?? fallbackColors[column.workflow_state] }} />
-          <span className={styles.legendName}>{column.name}</span>
-          <strong className={styles.legendPercent}>{columnPercent(column.count, board.total)}%</strong>
-        </div>)}
+          <span className={styles.legendPillName}>{column.name}</span>
+          <strong className={styles.legendPillPercent}>{columnPercent(column.count, board.total)}%</strong>
+        </div>
+      })}
     </div>
   </div>
 }
