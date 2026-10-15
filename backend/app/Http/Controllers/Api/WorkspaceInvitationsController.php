@@ -95,8 +95,9 @@ class WorkspaceInvitationsController extends ApiController
         if (filter_var($value, FILTER_VALIDATE_EMAIL)) {
             return User::whereRaw('LOWER(email) = ?', [Str::lower($value)])->first();
         }
-        if (! preg_match('/^@?([a-z0-9_-]{1,30})#([1-9][0-9]{5})$/i', $value, $match)) return null;
-        $user = User::where('public_id', $match[2])->first();
+        // The public discriminator is users.id, padded to at least 5 digits.
+        if (! preg_match('/^@?([a-z0-9_-]{1,30})#([0-9]{5,})$/i', $value, $match)) return null;
+        $user = User::find((int) $match[2]);
         return $user && Str::lower($user->publicHandle()) === Str::lower(ltrim($value, '@')) ? $user : null;
     }
 

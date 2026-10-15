@@ -72,7 +72,7 @@ export function WorkspaceInvitations({ workspaceId, workspaceName, projectId, on
         <form onSubmit={e=>void send(e)} className={styles.form}>
           <label>Destinatarios (varios separados por coma o línea)
             <textarea value={input} onChange={e=>setInput(e.target.value)} rows={4} required
-              placeholder={'maria#123456, pedro@empresa.com\nsofia#654321'} disabled={busy}
+              placeholder={'maria#00003, pedro@empresa.com\nsofia#00017'} disabled={busy}
               style={{width:'100%',resize:'vertical',padding:'10px',borderRadius:8,background:'var(--surface)',color:'var(--ink)',border:'1px solid var(--line)'}}/>
           </label>
           {projectId&&<label>Rol que tendrán al aceptar

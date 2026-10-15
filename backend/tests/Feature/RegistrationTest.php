@@ -29,8 +29,7 @@ class RegistrationTest extends TestCase
         $this->assertSame('Ada', $user->first_name);
         $this->assertSame('Lovelace', $user->last_name);
         $this->assertSame('ada', $user->nickname);
-        $this->assertMatchesRegularExpression('/^[1-9][0-9]{5}$/', $user->public_id);
-        $this->assertSame('ada#'.$user->public_id, $user->publicHandle());
+        $this->assertSame('ada#'.str_pad((string) $user->id, 5, '0', STR_PAD_LEFT), $user->publicHandle());
         $this->assertFalse($user->is_admin);
         $this->assertNull($user->client_company_id);
         $this->assertTrue(Hash::check('secret123', $user->password));
@@ -104,18 +103,21 @@ class RegistrationTest extends TestCase
         ]))->assertUnprocessable()->assertJsonValidationErrors('first_name');
     }
 
-    public function test_public_codes_are_fixed_length_unique_and_not_database_ids(): void
+    public function test_handles_use_unique_primary_keys_padded_to_five_digits(): void
     {
         $one = User::factory()->create(['name' => 'Ana Ruiz']);
         $two = User::factory()->create(['name' => 'Ana Soto']);
         $this->assertSame('Ana', $one->first_name);
         $this->assertSame('Ruiz', $one->last_name);
         $this->assertSame('Ana Soto', $two->name);
-        $this->assertSame(6, strlen($one->public_id));
-        $this->assertNotSame($one->public_id, $two->public_id);
-        $this->assertNotSame((string) $one->id, $one->public_id);
+        $this->assertSame('ana#'.str_pad((string) $one->id, 5, '0', STR_PAD_LEFT), $one->publicHandle());
+        $this->assertSame('ana#'.str_pad((string) $two->id, 5, '0', STR_PAD_LEFT), $two->publicHandle());
         $this->assertNotSame($one->publicHandle(), $two->publicHandle());
-        $this->assertDatabaseHas('users', ['id' => $two->id, 'public_id' => $two->public_id]);
+        $this->assertDatabaseHas('users', ['id' => $two->id]);
+        // The padding is a minimum width, never a truncation of larger IDs.
+        $example = new User(['nickname' => 'ana']);
+        $example->id = 100000;
+        $this->assertSame('ana#100000', $example->publicHandle());
     }
 
 }

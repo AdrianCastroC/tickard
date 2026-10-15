@@ -4,7 +4,7 @@
 
 Invitaciones **solo para cuentas Tickard registradas**, identificadas por correo o identificador público `nick#ID`. No hay listas de amigos, enlaces compartibles, invitaciones a cuentas inexistentes ni SMTP.
 
-El identificador se muestra en **Perfil**. La tabla `users` tiene `first_name` obligatorio, `last_name` opcional, `nickname` editable y `public_id` fijo de **seis dígitos**, independiente de la clave primaria interna e indexado con `UNIQUE`. El handle `nickname#public_id` siempre es único porque su sufijo lo es. Al registrarse, el nickname se crea a partir del **nombre**, nunca de los apellidos. El campo legado `name` conserva el nombre completo para las vistas existentes.\n\nLa migración separa el nombre completo de los usuarios existentes, preserva nicknames personalizados y asigna códigos públicos distintos a los registros existentes.
+El identificador se muestra en **Perfil**. La tabla `users` tiene `first_name` obligatorio, `last_name` opcional y `nickname` editable. El handle es `nickname#ID`: el sufijo corresponde al **ID real de la tabla `users`**, completado con ceros a la izquierda hasta un **mínimo de 5 dígitos** (`ana#00001`, `maria#00125`, `juan#100000`). No se trunca si el ID supera las cinco cifras. La clave primaria `users.id` ya es única; por lo tanto, también lo es la combinación `nickname#ID` sin necesidad de otro índice.\n\nEl nickname de registro se obtiene únicamente del primer nombre. El campo `name` conserva el nombre completo para las vistas existentes. Una migración posterior elimina la antigua columna `public_id`, que contenía códigos independientes desde 100000, pero **mantiene todos los usuarios y sus IDs reales**.
 
 ## Dos destinos, mismo flujo
 
@@ -30,10 +30,10 @@ La migración revoca las invitaciones por correo o enlace de la implementación 
 Autenticadas con Sanctum:
 
 - `GET /api/workspaces/{workspace}/members-invitations` — vista del propietario.
-- `POST /api/workspaces/{workspace}/invitations` — cuerpo `{"recipients":["nick#123456","usuario@example.com"]}`.
+- `POST /api/workspaces/{workspace}/invitations` — cuerpo `{"recipients":["nick#00042","usuario@example.com"]}`.
 - `POST /api/workspaces/{workspace}/invitations/delete` — cuerpo `{"ids":[1,2]}`.
 - `GET /api/projects/{project}/invitations` — listado autorizado.
-- `POST /api/projects/{project}/invitations` — `{"recipients":["nick#123456"],"role":"editor"}`.
+- `POST /api/projects/{project}/invitations` — `{"recipients":["nick#00042"],"role":"editor"}`.
 - `POST /api/projects/{project}/invitations/delete` — `{"ids":[1,2]}`.
 - `GET /api/my/invitations` — recibidas, para cualquier usuario autenticado.
 - `POST /api/my/invitations/{invitation}/respond` — `{"action":"accept"}` o `{"action":"reject"}`.

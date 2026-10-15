@@ -26,8 +26,8 @@ class User extends Authenticatable
     public const PLAN_BUSINESS = 'business';
 
     /**
-     * Every user gets a stable six-digit public discriminator, separate from
-     * the database primary key. A unique DB index enforces uniqueness.
+     * The public suffix is the users.id primary key, padded to at least
+     * five digits. The database already guarantees its uniqueness.
      */
     protected static function booted(): void
     {
@@ -45,18 +45,6 @@ class User extends Authenticatable
             }
         });
 
-        static::creating(function (self $user): void {
-            if ($user->public_id) return;
-
-            for ($attempt = 0; $attempt < 50; $attempt++) {
-                $candidate = (string) random_int(100000, 999999);
-                if (! self::where('public_id', $candidate)->exists()) {
-                    $user->public_id = $candidate;
-                    return;
-                }
-            }
-            throw new \RuntimeException('No se pudo asignar un identificador público único.');
-        });
     }
 
     public static function splitName(?string $name): array
@@ -122,7 +110,7 @@ class User extends Authenticatable
     {
         $nick = \Illuminate\Support\Str::slug($this->nickname ?: $this->name, '-');
 
-        return ($nick ?: 'usuario').'#'.$this->public_id;
+        return ($nick ?: 'usuario').'#'.str_pad((string) $this->id, 5, '0', STR_PAD_LEFT);
     }
 
     public function avatarUrl(): ?string
@@ -137,7 +125,6 @@ class User extends Authenticatable
             'name' => $this->name,
             'first_name' => $this->first_name,
             'last_name' => $this->last_name,
-            'public_id' => $this->public_id,
             'nickname' => $this->nickname,
             'handle' => $this->publicHandle(),
             'email' => $this->email,
