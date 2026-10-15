@@ -6,33 +6,40 @@ export function useBoard(activeId: number | null, selection: number) {
   const [data, setData] = useState<BoardPayload | null>(null)
   const [selected, setSelected] = useState<{ card: Card; mode: 'view' | 'edit' } | null>(null)
   const [pendingMove, setPendingMove] = useState<{ cardId: number; columnId: number; position: number; resolution: BacklogResolution } | null>(null)
-  const scope = useRef<{ id: number; selection: number; disposed: boolean } | null>(null)
+  const scope = useRef<{ id: number; selection: number; disposed: boolean; controller: AbortController; pending: number } | null>(null)
 
   const refresh = useCallback(async () => {
     const request = scope.current
     if (!activeId || !request || request.disposed || request.id !== activeId || request.selection !== selection) return
-    const next = await api<BoardPayload>(`/boards/${activeId}`)
-    if (request.disposed || scope.current !== request || next.board.id !== activeId) return
-    setData(next)
-    setSelected((current) => {
-      if (!current) return null
-      const card = next.columns.flatMap((column) => column.cards).find((card) => card.id === current.card.id)
-      return card ? { card, mode: current.mode } : null
-    })
+    request.pending++
+    try {
+      const next = await api<BoardPayload>(`/boards/${activeId}`, { signal: request.controller.signal })
+      if (request.disposed || scope.current !== request || next.board.id !== activeId) return
+      setData(next)
+      setSelected((current) => {
+        if (!current) return null
+        const card = next.columns.flatMap((column) => column.cards).find((card) => card.id === current.card.id)
+        return card ? { card, mode: current.mode } : null
+      })
+    } finally {
+      request.pending--
+    }
   }, [activeId, selection])
 
   useEffect(() => {
     if (!activeId) return
-    const request = { id: activeId, selection, disposed: false }
+    const request = { id: activeId, selection, disposed: false, controller: new AbortController(), pending: 0 }
     scope.current = request
     void refresh().catch(() => undefined)
     const timer = window.setInterval(() => {
-      api<BoardPayload>(`/boards/${activeId}`).then((next) => {
+      if (document.hidden || request.pending > 0) return
+      request.pending++
+      api<BoardPayload>(`/boards/${activeId}`, { signal: request.controller.signal }).then((next) => {
         if (request.disposed || scope.current !== request || next.board.id !== activeId) return
         setData((current) => current?.board.id === activeId && next.revision <= current.revision ? current : next)
-      }).catch(() => undefined)
+      }).catch(() => undefined).finally(() => { request.pending-- })
     }, 4000)
-    return () => { request.disposed = true; window.clearInterval(timer) }
+    return () => { request.disposed = true; request.controller.abort(); window.clearInterval(timer) }
   }, [activeId, selection, refresh])
 
   const board = data?.board.id === activeId ? data : null

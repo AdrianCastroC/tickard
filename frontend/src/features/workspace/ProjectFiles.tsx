@@ -1,3 +1,4 @@
+import { cachedProjectRequest } from '../../shared/projectRequestCache'
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { api, uploadFile, type Profile, type Project } from '../../api'
 import { Avatar } from '../../shared/ui'
@@ -132,18 +133,20 @@ export function ProjectFiles({ project, profile }: { project: Project; profile: 
 
   useEffect(() => {
     let active = true
+    const controller = new AbortController()
     setData(null)
     setError(null)
     setSelectedKey(null)
     setCheckedKeys([])
-    void api<FilesResponse>(`/projects/${project.id}/files`).then((result) => {
+    const path = `/projects/${project.id}/files`
+    void cachedProjectRequest(path, (signal) => api<FilesResponse>(path, { signal }), controller.signal).then((result) => {
       if (!active) return
       setData(result)
       setSelectedKey(result.files[0]?.key ?? null)
     }).catch((cause: unknown) => {
       if (active) setError(cause instanceof Error ? cause.message : 'No se pudieron cargar los archivos.')
     })
-    return () => { active = false }
+    return () => { active = false; controller.abort() }
   }, [project.id])
 
   useEffect(() => {

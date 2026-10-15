@@ -1,3 +1,4 @@
+import { cachedProjectRequest } from '../../shared/projectRequestCache'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { api, type Profile, type Project, type Role } from '../../api'
 import { Avatar } from '../../shared/ui'
@@ -107,17 +108,19 @@ export function ProjectPersonnel({ project, profile }: { project: Project; profi
 
   useEffect(() => {
     let active = true
+    const controller = new AbortController()
     setData(null)
     setError(null)
     setSelectedId(null)
-    void api<PersonnelData>(`/projects/${project.id}/personnel`).then((payload) => {
+    const path = `/projects/${project.id}/personnel`
+    void cachedProjectRequest(path, (signal) => api<PersonnelData>(path, { signal }), controller.signal).then((payload) => {
       if (!active) return
       setData(payload)
       setSelectedId(payload.members[0]?.id ?? null)
     }).catch((cause: unknown) => {
       if (active) setError(cause instanceof Error ? cause.message : 'No se pudo cargar Personal.')
     })
-    return () => { active = false }
+    return () => { active = false; controller.abort() }
   }, [project.id, reload])
 
   useEffect(() => {

@@ -1,3 +1,4 @@
+import { cachedProjectRequest, invalidateProjectRequestCache } from '../../shared/projectRequestCache'
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { api, type BoardPayload, type Project, type Profile } from '../../api'
@@ -25,20 +26,27 @@ export function ProjectGantt({ project, profile, onNavigateExternalCard }: Props
   const [detailLoading, setDetailLoading] = useState(false)
   const [refreshKey, setRefreshKey] = useState(0)
   const ganttViewportRef = useRef<HTMLDivElement>(null)
-  const load = useCallback(async () => {
-    // Reuse the existing authenticated board endpoint: role, client visibility
-    // and CardPresenter filtering are applied to every board by the backend.
+  const load = useCallback(async (signal?: AbortSignal, fresh = false) => {
+    // Keep the existing server permission checks for every board.
     const ids = boardIds.split(',').filter(Boolean).map(Number)
-    return Promise.all(ids.map((id) => api<BoardPayload>(`/boards/${id}?gantt=1`)))
+    return Promise.all(ids.map((id) => {
+      const path = `/boards/${id}?gantt=1`
+      if (fresh) {
+        invalidateProjectRequestCache(path)
+        return api<BoardPayload>(path, { signal })
+      }
+      return cachedProjectRequest(path, (requestSignal) => api<BoardPayload>(path, { signal: requestSignal }), signal)
+    }))
   }, [boardIds])
 
   useEffect(() => {
     let alive = true
+    const controller = new AbortController()
     setLoading(true)
     setError(null)
     setSelected(null)
     setDetailBoard(null)
-    void load().then((boards) => {
+    void load(controller.signal).then((boards) => {
       if (!alive) return
       setSnapshot({ projectId: project.id, boardIds, boards })
       setLoading(false)
@@ -47,7 +55,7 @@ export function ProjectGantt({ project, profile, onNavigateExternalCard }: Props
       setLoading(false)
       setError(cause instanceof Error ? cause.message : 'No se pudieron cargar los tableros.')
     })
-    return () => { alive = false }
+    return () => { alive = false; controller.abort() }
   }, [load, project.id, boardIds, refreshKey])
 
   const boards = snapshot?.projectId === project.id && snapshot.boardIds === boardIds
@@ -62,10 +70,11 @@ export function ProjectGantt({ project, profile, onNavigateExternalCard }: Props
       return
     }
     let alive = true
+    const controller = new AbortController()
     setDetailLoading(true)
     setDetailError(null)
     setDetailBoard(null)
-    void api<BoardPayload>(`/boards/${selected.boardId}`).then((payload) => {
+    void api<BoardPayload>(`/boards/${selected.boardId}`, { signal: controller.signal }).then((payload) => {
       if (!alive) return
       setDetailBoard(payload)
       setDetailLoading(false)
@@ -74,7 +83,7 @@ export function ProjectGantt({ project, profile, onNavigateExternalCard }: Props
       setDetailLoading(false)
       setDetailError(cause instanceof Error ? cause.message : 'No se pudo abrir la Card.')
     })
-    return () => { alive = false }
+    return () => { alive = false; controller.abort() }
   }, [selected?.boardId, selected?.cardId])
 
   const cardData = useMemo(() => {
@@ -88,7 +97,7 @@ export function ProjectGantt({ project, profile, onNavigateExternalCard }: Props
     setRefreshing(true)
     try {
       const [next, detailed] = await Promise.all([
-        load(),
+        load(undefined, true),
         selected ? api<BoardPayload>(`/boards/${selected.boardId}`) : Promise.resolve(null),
       ])
       setSnapshot({ projectId: project.id, boardIds, boards: next })

@@ -1,3 +1,4 @@
+import { clearProjectRequestCache } from './shared/projectRequestCache'
 export type Role = 'responsable' | 'editor' | 'lector' | 'cliente'
 
 export type Person = { id: number; name: string; role?: Role; avatar_url?: string | null }
@@ -231,6 +232,7 @@ export function getToken() {
 }
 
 export function setToken(token: string | null) {
+  clearProjectRequestCache()
   if (token) localStorage.setItem(tokenKey, token)
   else localStorage.removeItem(tokenKey)
 }
@@ -245,7 +247,11 @@ export async function api<T>(path: string, options: RequestInit = {}): Promise<T
   if (token) headers.set('Authorization', `Bearer ${token}`)
 
   const response = await fetch(`/api${path}`, { ...options, headers })
-  if (response.status === 204) return undefined as T
+  const isMutation = options.method !== undefined && !['GET', 'HEAD', 'OPTIONS'].includes(options.method.toUpperCase())
+  if (response.status === 204) {
+    if (isMutation) clearProjectRequestCache()
+    return undefined as T
+  }
   const data = await response.json().catch(() => ({}))
   if (!response.ok) {
     const fromErrors = data?.errors && typeof data.errors === 'object'
@@ -254,6 +260,7 @@ export async function api<T>(path: string, options: RequestInit = {}): Promise<T
     const message = fromErrors || data?.message || 'No se pudo completar la acción.'
     throw new ApiError(message, response.status, data)
   }
+  if (isMutation) clearProjectRequestCache()
   return data as T
 }
 

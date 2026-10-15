@@ -1,3 +1,4 @@
+import { cachedProjectRequest, invalidateProjectRequestCache } from '../../shared/projectRequestCache'
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { createPortal } from 'react-dom'
 import { api, ApiError, type BacklogResolution, type BoardPayload, type CalendarEvent, type Card, type Profile, type Project, type WorkflowState } from '../../api'
@@ -312,18 +313,26 @@ export function ProjectCalendar({ project, profile }: { project: Project; profil
     }
   }, [filtersOpen])
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (signal?: AbortSignal, fresh = false) => {
     const ids = boardIds.split(',').filter(Boolean).map(Number)
-    return Promise.all(ids.map((id) => api<BoardPayload>('/boards/' + id + '?calendar=1')))
+    return Promise.all(ids.map((id) => {
+      const path = '/boards/' + id + '?calendar=1'
+      if (fresh) {
+        invalidateProjectRequestCache(path)
+        return api<BoardPayload>(path, { signal })
+      }
+      return cachedProjectRequest(path, (requestSignal) => api<BoardPayload>(path, { signal: requestSignal }), signal)
+    }))
   }, [boardIds])
 
   useEffect(() => {
     let alive = true
+    const controller = new AbortController()
     setLoading(true)
     setError(null)
     setSelected(null)
     setDetailBoard(null)
-    void load().then((boards) => {
+    void load(controller.signal).then((boards) => {
       if (!alive) return
       setSnapshot({ projectId: project.id, boardIds, boards })
       setLoading(false)
@@ -332,7 +341,7 @@ export function ProjectCalendar({ project, profile }: { project: Project; profil
       setLoading(false)
       setError(cause instanceof Error ? cause.message : 'No se pudo cargar el calendario.')
     })
-    return () => { alive = false }
+    return () => { alive = false; controller.abort() }
   }, [load, project.id, boardIds, reloadKey])
 
   const boards = snapshot?.projectId === project.id && snapshot.boardIds === boardIds ? snapshot.boards : null
@@ -343,9 +352,12 @@ export function ProjectCalendar({ project, profile }: { project: Project; profil
   useEffect(() => {
     if (project.role === 'cliente') { setEvents([]); setEventLoading(false); return }
     let alive = true
+    const controller = new AbortController()
     setEventLoading(true)
     setEventError(null)
-    void api<CalendarEvent[]>('/projects/' + project.id + '/calendar-events?start_date=' + calendarFirst + '&end_date=' + calendarLast)
+    const path = '/projects/' + project.id + '/calendar-events?start_date=' + calendarFirst + '&end_date=' + calendarLast
+    if (eventReload) invalidateProjectRequestCache(path)
+    void cachedProjectRequest(path, (signal) => api<CalendarEvent[]>(path, { signal }), controller.signal)
       .then((loaded) => {
         if (!alive) return
         setEvents(loaded)
@@ -356,7 +368,7 @@ export function ProjectCalendar({ project, profile }: { project: Project; profil
         setEventError(cause instanceof Error ? cause.message : 'No se pudieron cargar los eventos.')
         setEventLoading(false)
       })
-    return () => { alive = false }
+    return () => { alive = false; controller.abort() }
   }, [project.id, project.role, calendarFirst, calendarLast, eventReload])
 
   const canViewAllTasks = profile.user.is_admin || project.role === 'responsable'
@@ -407,10 +419,11 @@ export function ProjectCalendar({ project, profile }: { project: Project; profil
   useEffect(() => {
     if (!selected) { setDetailBoard(null); setDetailLoading(false); return }
     let alive = true
+    const controller = new AbortController()
     setDetailLoading(true)
     setDetailError(null)
     setDetailBoard(null)
-    void api<BoardPayload>('/boards/' + selected.boardId).then((board) => {
+    void api<BoardPayload>('/boards/' + selected.boardId, { signal: controller.signal }).then((board) => {
       if (!alive) return
       setDetailBoard(board)
       setDetailLoading(false)
@@ -419,7 +432,7 @@ export function ProjectCalendar({ project, profile }: { project: Project; profil
       setDetailLoading(false)
       setDetailError(cause instanceof Error ? cause.message : 'No se pudo abrir la Card.')
     })
-    return () => { alive = false }
+    return () => { alive = false; controller.abort() }
   }, [selected?.cardId, selected?.boardId, detailRetry])
 
   const cardData = useMemo(() => {
@@ -431,7 +444,7 @@ export function ProjectCalendar({ project, profile }: { project: Project; profil
   const refresh = useCallback(async () => {
     setRefreshing(true)
     try {
-      const next = await load()
+      const next = await load(undefined, true)
       setSnapshot({ projectId: project.id, boardIds, boards: next })
       if (selected) setDetailBoard(await api<BoardPayload>('/boards/' + selected.boardId))
     } finally {
@@ -548,7 +561,7 @@ export function ProjectCalendar({ project, profile }: { project: Project; profil
             <strong>Tableros</strong>
             <ProjectCalendarMultiFilter
               label="Tableros"
-              options={boards.map((board) => ({ value: board.board.id, label: board.board.name }))}
+              options={(boards ?? []).map((board) => ({ value: board.board.id, label: board.board.name }))}
               hidden={hiddenBoards}
               onHiddenChange={setHiddenBoards}
             />

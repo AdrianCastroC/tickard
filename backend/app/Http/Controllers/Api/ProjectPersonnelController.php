@@ -58,6 +58,8 @@ class ProjectPersonnelController extends ApiController
 
         $today = now()->toDateString();
         $tasks = $assignments->unique('id')->values();
+        // Group assignments once instead of rescanning them for every user.
+        $assignedByUser = $assignments->filter(fn ($row) => $row->user_id !== null)->groupBy('user_id');
         $countStates = function ($items) use ($today) {
             return [
                 'total' => $items->count(),
@@ -74,10 +76,10 @@ class ProjectPersonnelController extends ApiController
         };
 
         $people = $memberships->map(function (ProjectMember $membership) use (
-            $assignments, $teams, $departments, $countStates, $today, $client, $project
+            $assignedByUser, $teams, $departments, $countStates, $today, $client, $project
         ) {
             $user = $membership->user;
-            $assigned = $assignments->where('user_id', $user->id)->unique('id')->values();
+            $assigned = ($assignedByUser->get($user->id) ?? collect())->unique('id')->values();
             $ordered = $assigned->sortBy(fn ($row) => [
                 $row->due_date === null ? 1 : 0,
                 $row->due_date ?? '9999-12-31',
