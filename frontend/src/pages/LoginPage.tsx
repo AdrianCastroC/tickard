@@ -19,7 +19,8 @@ export function Login() {
   const [mode, setMode] = useState<AuthMode>('login')
   const [email, setEmail] = useState('ana@gestor.test')
   const [password, setPassword] = useState('password')
-  const [name, setName] = useState('')
+  const [firstName, setFirstName] = useState('')
+  const [lastName, setLastName] = useState('')
   const [confirmation, setConfirmation] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
@@ -34,7 +35,7 @@ export function Login() {
     }
     setIsSubmitting(true)
     try {
-      const result = await api<{ token: string; user: Profile }>(mode === 'login' ? '/login' : '/register', { method: 'POST', body: JSON.stringify(mode === 'login' ? { email, password } : { name, email, password, password_confirmation: confirmation }) })
+      const result = await api<{ token: string; user: Profile }>(mode === 'login' ? '/login' : '/register', { method: 'POST', body: JSON.stringify(mode === 'login' ? { email, password } : { first_name: firstName.trim(), last_name: lastName.trim() || null, email, password, password_confirmation: confirmation }) })
       setToken(result.token)
       window.location.href = '/'
     } catch (caught) {
@@ -55,7 +56,10 @@ export function Login() {
       <form className="auth-card" onSubmit={submit} aria-busy={isSubmitting}>
         <div className="auth-tabs" role="tablist" aria-label="Acceso"><button type="button" className={mode === 'login' ? 'active' : ''} onClick={() => { setMode('login'); setError('') }}>Iniciar sesión</button><button type="button" className={mode === 'register' ? 'active' : ''} onClick={() => { setMode('register'); setError('') }}>Crear cuenta</button></div>
         <div className="auth-heading"><h2>{mode === 'login' ? 'Bienvenido' : 'Crea tu cuenta'}</h2><p>{mode === 'login' ? 'Accede a tu cuenta de Tickard' : 'Empieza a organizarte con Tickard'}</p></div>
-        {mode === 'register' && <label className="auth-field"><span>Nombre</span><input value={name} onChange={(event) => setName(event.target.value)} type="text" placeholder="Tu nombre" /></label>}
+        {mode === 'register' && <>
+          <label className="auth-field"><span>Nombre</span><input value={firstName} onChange={(event) => setFirstName(event.target.value)} type="text" autoComplete="given-name" placeholder="Tu nombre" required maxLength={120} /></label>
+          <label className="auth-field"><span>Apellidos (opcional)</span><input value={lastName} onChange={(event) => setLastName(event.target.value)} type="text" autoComplete="family-name" placeholder="Tus apellidos" maxLength={120} /></label>
+        </>}
         <label className="auth-field"><span aria-hidden="true">✉</span><input value={email} onChange={(event) => setEmail(event.target.value)} type="email" placeholder="Correo electrónico" /></label>
         <label className="auth-field"><span aria-hidden="true">♙</span><input value={password} onChange={(event) => setPassword(event.target.value)} type={showPassword ? 'text' : 'password'} placeholder="Contraseña" /><button className="auth-eye" type="button" aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'} onClick={() => setShowPassword((visible) => !visible)}><LoginEyeIcon visible={showPassword} /></button></label>
         {mode === 'register' && <label className="auth-field"><span aria-hidden="true">♙</span><input value={confirmation} onChange={(event) => setConfirmation(event.target.value)} type={showPassword ? 'text' : 'password'} placeholder="Confirmar contraseña" /><button className="auth-eye" type="button" aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'} onClick={() => setShowPassword((visible) => !visible)}><LoginEyeIcon visible={showPassword} /></button></label>}

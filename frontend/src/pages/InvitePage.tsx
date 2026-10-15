@@ -10,7 +10,8 @@ export function Invite({ token, kind = 'project' }: Props) {
   const [authed, setAuthed] = useState(Boolean(getToken()))
   const [account, setAccount] = useState('')
   const [email, setEmail] = useState('')
-  const [name, setName] = useState('')
+  const [firstName, setFirstName] = useState('')
+  const [lastName, setLastName] = useState('')
   const [password, setPassword] = useState('')
   const [confirmation, setConfirmation] = useState('')
   const [busy, setBusy] = useState(false)
@@ -62,7 +63,7 @@ export function Invite({ token, kind = 'project' }: Props) {
         const result = await api<{ token: string; user: Profile }>(mode === 'register' ? '/register' : '/login', {
           method:'POST',
           body:JSON.stringify(mode === 'register'
-            ? { name, email, password, password_confirmation: confirmation }
+            ? { first_name: firstName.trim(), last_name: lastName.trim() || null, email, password, password_confirmation: confirmation }
             : { email, password }),
         })
         setToken(result.token)
@@ -101,7 +102,10 @@ export function Invite({ token, kind = 'project' }: Props) {
               <button type="button" className={mode === 'login' ? 'active' : ''} onClick={() => { setMode('login'); setError('') }}>Iniciar sesión</button>
               <button type="button" className={mode === 'register' ? 'active' : ''} onClick={() => { setMode('register'); setError('') }}>Crear cuenta</button>
             </div>
-            {mode === 'register' && <label className="auth-field"><span>Nombre</span><input value={name} onChange={event => setName(event.target.value)} required placeholder="Tu nombre"/></label>}
+            {mode === 'register' && <>
+              <label className="auth-field"><span>Nombre</span><input value={firstName} onChange={event => setFirstName(event.target.value)} required placeholder="Tu nombre" autoComplete="given-name" maxLength={120}/></label>
+              <label className="auth-field"><span>Apellidos (opcional)</span><input value={lastName} onChange={event => setLastName(event.target.value)} placeholder="Tus apellidos" autoComplete="family-name" maxLength={120}/></label>
+            </>}
             <label className="auth-field"><span>Correo</span><input type="email" required value={email} onChange={event => setEmail(event.target.value)} placeholder="Correo electrónico"/></label>
             <label className="auth-field"><span>Contraseña</span><input type="password" required minLength={8} value={password} onChange={event => setPassword(event.target.value)} placeholder="Contraseña"/></label>
             {mode === 'register' && <label className="auth-field"><span>Repetir contraseña</span><input type="password" required minLength={8} value={confirmation} onChange={event => setConfirmation(event.target.value)} placeholder="Repetir contraseña"/></label>}

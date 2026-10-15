@@ -9,7 +9,8 @@ type Props = { profile: Profile; workspaceId: number | null; onProfile: (value: 
 export function ProfileSection({ profile, workspaceId, onProfile, onAvatar }: Props) {
   const mePath = workspaceId ? `/me?workspace_id=${workspaceId}` : '/me'
   const avatarRef = useRef<HTMLInputElement>(null)
-  const [name, setName] = useState(profile.user.name)
+  const [firstName, setFirstName] = useState(profile.user.first_name)
+  const [lastName, setLastName] = useState(profile.user.last_name ?? '')
   const [nickname, setNickname] = useState(profile.user.nickname ?? '')
   const [currentPassword, setCurrentPassword] = useState('')
   const [newPassword, setNewPassword] = useState('')
@@ -18,13 +19,14 @@ export function ProfileSection({ profile, workspaceId, onProfile, onAvatar }: Pr
   const [info, setInfo] = useState('')
   const [saving, setSaving] = useState(false)
 
-  useEffect(() => setName(profile.user.name), [profile.user.name])
+  useEffect(() => setFirstName(profile.user.first_name), [profile.user.first_name])
+  useEffect(() => setLastName(profile.user.last_name ?? ''), [profile.user.last_name])
   useEffect(() => setNickname(profile.user.nickname ?? ''), [profile.user.nickname])
 
   async function saveProfile(event: FormEvent) {
     event.preventDefault(); setError(''); setInfo('')
-    const nextName = name.trim()
-    if (!nextName) { setError('El nombre no puede estar vacío.'); return }
+    const nextFirstName = firstName.trim()
+    if (!nextFirstName) { setError('El nombre no puede estar vacío.'); return }
     if (newPassword || confirmPassword || currentPassword) {
       if (!currentPassword) { setError('Indica tu contraseña actual.'); return }
       if (newPassword.length < 8) { setError('La nueva contraseña debe tener al menos 8 caracteres.'); return }
@@ -32,7 +34,7 @@ export function ProfileSection({ profile, workspaceId, onProfile, onAvatar }: Pr
     }
     setSaving(true)
     try {
-      const body: Record<string, string> = { name: nextName, nickname: nickname.trim().toLowerCase() }
+      const body: Record<string, string | null> = { first_name: nextFirstName, last_name: lastName.trim() || null, nickname: nickname.trim().toLowerCase() }
       if (newPassword) { body.current_password = currentPassword; body.password = newPassword; body.password_confirmation = confirmPassword }
       const next = await api<Profile>(mePath, { method: 'PATCH', body: JSON.stringify(body) })
       onProfile(next); setCurrentPassword(''); setNewPassword(''); setConfirmPassword('')
@@ -41,7 +43,7 @@ export function ProfileSection({ profile, workspaceId, onProfile, onAvatar }: Pr
     finally { setSaving(false) }
   }
 
-  const hasChanges = name.trim() !== profile.user.name || nickname.trim() !== (profile.user.nickname ?? '') || Boolean(currentPassword || newPassword || confirmPassword)
+  const hasChanges = firstName.trim() !== profile.user.first_name || lastName.trim() !== (profile.user.last_name ?? '') || nickname.trim() !== (profile.user.nickname ?? '') || Boolean(currentPassword || newPassword || confirmPassword)
   return <form className={`${styles.modalBody} ${styles.profileBody}`} onSubmit={saveProfile}>
     <div className={styles.identity}>
       <button type="button" className="account-avatar account-avatar-lg" aria-label="Cambiar foto de perfil" title="Cambiar foto de perfil" onClick={() => avatarRef.current?.click()}>
@@ -51,7 +53,8 @@ export function ProfileSection({ profile, workspaceId, onProfile, onAvatar }: Pr
       <input ref={avatarRef} type="file" accept="image/*" hidden onChange={(event) => { const file = event.target.files?.[0]; event.target.value = ''; if (file) void onAvatar(file) }} />
       <div><strong>{profile.user.name}</strong><p className="muted">{profile.user.email} · {profile.user.handle}</p><em className="account-plan">{profile.user.is_admin ? 'Administrador' : profile.user.client_company ? 'Cliente' : 'Miembro'}</em></div>
     </div>
-    <label className="field">Nombre<input value={name} onChange={(event) => setName(event.target.value)} autoComplete="name" /></label>
+    <label className="field">Nombre<input value={firstName} onChange={(event) => setFirstName(event.target.value)} autoComplete="given-name" required maxLength={120} /></label>
+    <label className="field">Apellidos (opcional)<input value={lastName} onChange={(event) => setLastName(event.target.value)} autoComplete="family-name" maxLength={120} /></label>
     <label className="field">Identificador público
       <input value={profile.user.handle} readOnly onFocus={event => event.currentTarget.select()} title="Comparte este identificador para que puedan invitarte"/>
     </label>

@@ -58,15 +58,17 @@ class AuthController extends ApiController
     public function register(Request $request)
     {
         $data = $request->validate([
-            'name' => ['required', 'string', 'max:120'],
+            'first_name' => ['required', 'string', 'max:120'],
+            'last_name' => ['nullable', 'string', 'max:120'],
             'email' => ['required', 'email', 'unique:users,email'],
             'password' => ['required', 'string', 'min:8', 'confirmed'],
         ]);
 
         $user = DB::transaction(function () use ($data) {
             $user = User::create([
-                'name' => $data['name'],
-                'nickname' => substr(\Illuminate\Support\Str::slug($data['name'], '-'), 0, 30) ?: 'usuario',
+                'first_name' => trim($data['first_name']),
+                'last_name' => trim($data['last_name'] ?? '') ?: null,
+                'nickname' => User::defaultNickname($data['first_name']),
                 'email' => $data['email'],
                 'password' => $data['password'],
             ]);
@@ -101,7 +103,8 @@ class AuthController extends ApiController
     public function updateMe(Request $request)
     {
         $data = $request->validate([
-            'name' => ['sometimes', 'string', 'max:120'],
+            'first_name' => ['sometimes', 'required', 'string', 'max:120'],
+            'last_name' => ['sometimes', 'nullable', 'string', 'max:120'],
             'nickname' => ['sometimes', 'required', 'string', 'regex:/^[a-z0-9_-]{3,30}$/'],
             'theme' => ['sometimes', Rule::in(['light', 'dark', 'system'])],
             'notify_in_app' => ['sometimes', 'boolean'],

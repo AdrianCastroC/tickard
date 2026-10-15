@@ -33,7 +33,7 @@ class WorkspaceInvitationsTest extends TestCase
         $a = User::factory()->create(['email' => 'uno@example.com', 'nickname' => 'uno']);
         $b = User::factory()->create(['email' => 'dos@example.com', 'nickname' => 'dos']);
 
-        $this->assertSame('dos#'.$b->id, $b->publicHandle());
+        $this->assertSame('dos#'.$b->public_id, $b->publicHandle());
         $response = $this->actingAs($owner)->postJson("/api/workspaces/{$workspace->id}/invitations", [
             'recipients' => ['UNO@example.com', $b->publicHandle(), 'desconocido@example.com', $a->publicHandle()],
         ])->assertCreated()->assertJsonCount(2, 'created')->assertJsonCount(1, 'errors');
@@ -157,7 +157,25 @@ class WorkspaceInvitationsTest extends TestCase
     {
         $user = User::factory()->create(['name' => 'María', 'nickname' => 'maria']);
         $this->actingAs($user)->patchJson('/api/me', ['nickname' => 'maria-dev'])
-            ->assertOk()->assertJsonPath('user.handle', 'maria-dev#'.$user->id);
+            ->assertOk()->assertJsonPath('user.handle', 'maria-dev#'.$user->public_id);
         $this->assertSame($user->id, $user->fresh()->id);
+        $this->assertSame($user->public_id, $user->fresh()->public_id);
+        $this->assertSame('María', $user->fresh()->first_name);
     }
+    public function test_invites_lookup_the_new_public_code_not_the_primary_key(): void
+    {
+        [$owner, $workspace] = $this->fixture();
+        $recipient = User::factory()->create(['first_name' => 'Adrián', 'last_name' => 'Castro']);
+        $this->assertMatchesRegularExpression('/^adrian#[1-9][0-9]{5}$/', $recipient->publicHandle());
+
+        $this->actingAs($owner)->postJson("/api/workspaces/{$workspace->id}/invitations", [
+            'recipients' => ['adrian#'.$recipient->id, $recipient->publicHandle()],
+        ])->assertCreated()->assertJsonCount(1, 'created')->assertJsonCount(1, 'errors')
+            ->assertJsonPath('errors.0.reason', 'Usuario no encontrado');
+
+        $this->assertDatabaseHas('workspace_invitations', [
+            'workspace_id' => $workspace->id, 'recipient_user_id' => $recipient->id,
+        ]);
+    }
+
 }

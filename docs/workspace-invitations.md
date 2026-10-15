@@ -4,7 +4,7 @@
 
 Invitaciones **solo para cuentas Tickard registradas**, identificadas por correo o identificador público `nick#ID`. No hay listas de amigos, enlaces compartibles, invitaciones a cuentas inexistentes ni SMTP.
 
-El identificador se muestra en **Perfil**; el nickname es editable y el sufijo numérico corresponde al identificador permanente del usuario. No tiene que ser único el nickname: el conjunto sí lo es.
+El identificador se muestra en **Perfil**. La tabla `users` tiene `first_name` obligatorio, `last_name` opcional, `nickname` editable y `public_id` fijo de **seis dígitos**, independiente de la clave primaria interna e indexado con `UNIQUE`. El handle `nickname#public_id` siempre es único porque su sufijo lo es. Al registrarse, el nickname se crea a partir del **nombre**, nunca de los apellidos. El campo legado `name` conserva el nombre completo para las vistas existentes.\n\nLa migración separa el nombre completo de los usuarios existentes, preserva nicknames personalizados y asigna códigos públicos distintos a los registros existentes.
 
 ## Dos destinos, mismo flujo
 
@@ -30,10 +30,10 @@ La migración revoca las invitaciones por correo o enlace de la implementación 
 Autenticadas con Sanctum:
 
 - `GET /api/workspaces/{workspace}/members-invitations` — vista del propietario.
-- `POST /api/workspaces/{workspace}/invitations` — cuerpo `{"recipients":["nick#42","usuario@example.com"]}`.
+- `POST /api/workspaces/{workspace}/invitations` — cuerpo `{"recipients":["nick#123456","usuario@example.com"]}`.
 - `POST /api/workspaces/{workspace}/invitations/delete` — cuerpo `{"ids":[1,2]}`.
 - `GET /api/projects/{project}/invitations` — listado autorizado.
-- `POST /api/projects/{project}/invitations` — `{"recipients":["nick#42"],"role":"editor"}`.
+- `POST /api/projects/{project}/invitations` — `{"recipients":["nick#123456"],"role":"editor"}`.
 - `POST /api/projects/{project}/invitations/delete` — `{"ids":[1,2]}`.
 - `GET /api/my/invitations` — recibidas, para cualquier usuario autenticado.
 - `POST /api/my/invitations/{invitation}/respond` — `{"action":"accept"}` o `{"action":"reject"}`.

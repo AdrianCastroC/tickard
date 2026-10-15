@@ -209,17 +209,19 @@ class NebulaMobileDemoSeeder extends Seeder
         ];
 
         foreach ($definitions as $key => [$name, $email]) {
+            [$firstName, $lastName] = User::splitName($name);
             $user = User::firstOrCreate(
                 ['email' => $email],
                 [
-                    'name' => $name,
+                    'first_name' => $firstName,
+                    'last_name' => $lastName,
                     'password' => 'password',
                     'plan' => User::PLAN_BASE,
                 ],
             );
 
-            if ($user->name !== $name) {
-                $user->update(['name' => $name]);
+            if ($user->first_name !== $firstName || $user->last_name !== $lastName) {
+                $user->update(['first_name' => $firstName, 'last_name' => $lastName]);
             }
 
             $this->people[$key] = $user;
