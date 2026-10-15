@@ -10,6 +10,7 @@ use App\Http\Controllers\Api\InvitationsController;
 use App\Http\Controllers\Api\ProjectsController;
 use App\Http\Controllers\Api\ProjectFilesController;
 use App\Http\Controllers\Api\ProjectPersonnelController;
+use App\Http\Controllers\Api\ProjectBoardsOverviewController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\WorkspacesController;
 
@@ -46,6 +47,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/projects', [ProjectsController::class, 'storeProject']);
     Route::delete('/projects/{project}', [ProjectsController::class, 'deleteProject']);
 
+    Route::get('/projects/{project}/boards/overview', [ProjectBoardsOverviewController::class, 'index']);
     Route::get('/projects/{project}/personnel', [ProjectPersonnelController::class, 'index']);
     Route::post('/projects/{project}/personnel/members', [ProjectPersonnelController::class, 'addMember']);
     Route::patch('/projects/{project}/personnel/members/{user}', [ProjectPersonnelController::class, 'updateMember']);

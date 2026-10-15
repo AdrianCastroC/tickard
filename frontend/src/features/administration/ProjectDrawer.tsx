@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { api, type BoardPayload } from '../../api'
 import { InviteForm } from './InviteForm'
 
-export function ProjectDrawer({ board, onClose, onChange }: { board: BoardPayload; onClose: () => void; onChange: () => Promise<void> }) {
+export function ProjectDrawer({ board, onClose, onChange, embedded = false }: { board: BoardPayload; onClose: () => void; onChange: () => Promise<void>; embedded?: boolean }) {
   const [visibility, setVisibility] = useState(board.visibility)
   const fields = [
     ['description', 'Descripción'],
@@ -14,8 +14,8 @@ export function ProjectDrawer({ board, onClose, onChange }: { board: BoardPayloa
   ] as const
 
   return (
-    <div className="drawer-back" onClick={onClose}>
-      <aside className="drawer" onClick={(event) => event.stopPropagation()}>
+    <div className={embedded ? "project-settings-inline" : "drawer-back"} onClick={embedded ? undefined : onClose}>
+      <aside className={embedded ? "project-settings-body" : "drawer"} onClick={(event) => event.stopPropagation()}>
         <h2>Qué ve el cliente</h2>
         {fields.map(([key, label]) => (
           <label key={key} className="row">

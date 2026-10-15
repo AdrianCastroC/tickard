@@ -2,7 +2,7 @@ import { cachedProjectRequest } from '../../shared/projectRequestCache'
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { api, uploadFile, type Profile, type Project } from '../../api'
 import { Avatar } from '../../shared/ui'
-import { NavIcon } from '../../shared/icons'
+import { FilterFunnelIcon, NavIcon } from '../../shared/icons'
 import { downloadProtectedArchive, downloadProtectedFile, openProtectedFile, useProtectedPreview, useProtectedTextPreview } from '../../shared/protectedFiles'
 import { FileActionIcon } from './ProjectFileIcons'
 import styles from './ProjectFiles.module.css'
@@ -321,7 +321,7 @@ export function ProjectFiles({ project, profile }: { project: Project; profile: 
         <button type="button" className={`icon-button board-filter-trigger${filtersOpen || activeCount ? ' on' : ''}`}
           aria-label={activeCount ? `Filtros de archivos: ${activeCount} activos` : 'Filtros de archivos'}
           aria-expanded={filtersOpen} aria-haspopup="dialog" onClick={() => setFiltersOpen((value) => !value)}>
-          <NavIcon><path d="M4 6h16M7 12h10M10 18h4" /></NavIcon>
+          <FilterFunnelIcon />
           {activeCount > 0 && <span className="board-filter-active-dot" aria-hidden="true" />}
         </button>
         {filtersOpen && <div className={styles.filters} role="dialog" aria-label="Filtros de archivos">

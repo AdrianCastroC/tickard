@@ -2,7 +2,7 @@ import { cachedProjectRequest } from '../../shared/projectRequestCache'
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent } from 'react'
 import { api, type Profile, type Project, type Role } from '../../api'
 import { Avatar } from '../../shared/ui'
-import { NavIcon } from '../../shared/icons'
+import { FilterFunnelIcon } from '../../shared/icons'
 import styles from './ProjectPersonnel.module.css'
 import { ProjectSectionLoading } from './ProjectSectionLoading'
 
@@ -364,7 +364,7 @@ export function ProjectPersonnel({ project, profile }: { project: Project; profi
             title="Filtros" aria-haspopup="dialog" aria-expanded={filtersOpen}
             aria-controls={filtersOpen ? 'personnel-filters' : undefined}
             onClick={() => setFiltersOpen((open) => !open)}>
-            <NavIcon><path d="M4 6h16M7 12h10M10 18h4" /></NavIcon>
+            <FilterFunnelIcon />
             {activeFilterCount > 0 && <span className="board-filter-active-dot" aria-hidden="true" />}
           </button>
           {filtersOpen && <div id="personnel-filters" className={styles.filterPopover} role="dialog" aria-label="Filtros de personal">

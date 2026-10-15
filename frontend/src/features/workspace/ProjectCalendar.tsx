@@ -5,7 +5,7 @@ import { api, ApiError, type BacklogResolution, type BoardPayload, type Calendar
 import { BacklogResolutionModal } from '../board/BacklogResolutionModal'
 import { CardDrawer } from '../cards/CardDetail'
 import { Avatar } from '../../shared/ui'
-import { NavIcon, CloseIcon } from '../../shared/icons'
+import { FilterFunnelIcon, CloseIcon } from '../../shared/icons'
 import { ProjectCalendarAssigneeFilter, type CalendarAssigneeOption } from './ProjectCalendarAssigneeFilter'
 import { ProjectCalendarMultiFilter } from './ProjectCalendarMultiFilter'
 import { ProjectLoadingIndicator } from './ProjectLoadingIndicator'
@@ -530,7 +530,7 @@ export function ProjectCalendar({ project, profile }: { project: Project; profil
           title="Filtros"
           onClick={() => setFiltersOpen((open) => !open)}
         >
-          <NavIcon><path d="M4 6h16M7 12h10M10 18h4" /></NavIcon>
+          <FilterFunnelIcon />
           {activeFilterCount > 0 && <span className="board-filter-active-dot" aria-hidden="true" />}
         </button>
         <div className={styles.modeSwitch} aria-label="Vistas de calendario">

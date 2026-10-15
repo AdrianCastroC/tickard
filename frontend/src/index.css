@@ -3539,3 +3539,14 @@ h1, h2, h3, p { margin: 0; }
   padding: 4px 0;
   color: var(--accent);
 }
+
+/* Project settings are a full-page section reached through the header gear. */
+.project-settings-button svg { display:block; width:17px; height:17px; fill:currentColor; stroke:none; }
+.project-settings-button.on { color:var(--accent); border-color:var(--accent); background:color-mix(in srgb,var(--accent) 10%,var(--surface)); }
+.project-settings-view { display:flex; flex-direction:column; align-items:flex-start; gap:16px; }
+.project-settings-view h2 { margin:0; }
+.project-settings-inline { width:100%; }
+.project-settings-body { display:flex; flex-direction:column; gap:15px; width:min(720px,100%); }
+.project-settings-body h2 { font-size:15px; margin:4px 0 2px; }
+.project-settings-body .row { padding:8px 12px; border:1px solid var(--line); border-radius:8px; background:var(--canvas); cursor:pointer; }
+.project-settings-body .notes li { font-size:12px; }

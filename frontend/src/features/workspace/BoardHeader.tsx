@@ -1,5 +1,5 @@
 import type { RefObject } from 'react'
-import { NavIcon, PlusIcon } from '../../shared/icons'
+import { FilterFunnelIcon, PlusIcon } from '../../shared/icons'
 import { BoardViews, type BoardViewMode } from './BoardViews'
 
 type Props = {
@@ -41,7 +41,7 @@ export function BoardHeader({
             title="Filtros"
             onClick={onToggleFilters}
           >
-            <NavIcon><path d="M4 6h16M7 12h10M10 18h4" /></NavIcon>
+            <FilterFunnelIcon />
             {filtersActive && <span className="board-filter-active-dot" aria-hidden="true" />}
           </button>
           {canEdit && backlog && (

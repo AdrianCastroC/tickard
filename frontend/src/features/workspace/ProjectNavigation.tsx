@@ -1,3 +1,3 @@
 export type ProjectView = 'overview' | 'boards' | 'gantt' | 'calendar' | 'files' | 'team' | 'settings'
-export const PROJECT_VIEWS: [ProjectView, string][] = [['overview', 'Vista general'], ['boards', 'Tableros'], ['gantt', 'Gantt'], ['calendar', 'Calendario'], ['files', 'Archivos'], ['team', 'Personal'], ['settings', 'Configuración']]
+export const PROJECT_VIEWS: [ProjectView, string][] = [['overview', 'Vista general'], ['boards', 'Tableros'], ['gantt', 'Gantt'], ['calendar', 'Calendario'], ['files', 'Archivos'], ['team', 'Personal']]
 export function ProjectNavigation({ value, onChange }: { value: ProjectView; onChange: (value: ProjectView) => void }) { return <nav className="project-surface-nav" aria-label="Navegación del proyecto">{PROJECT_VIEWS.map(([key, label]) => <button key={key} className={value === key ? 'on' : undefined} type="button" onClick={() => onChange(key)}>{label}</button>)}</nav> }
