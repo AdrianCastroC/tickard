@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from
 import { api, type Project, type WorkflowState } from '../../api'
 import { Avatar } from '../../shared/ui'
 import { NavIcon } from '../../shared/icons'
+import type { GanttDependencyNavigation } from '../board/GanttView'
 import { cachedProjectRequest } from '../../shared/projectRequestCache'
 import { ProjectContentLoading } from './ProjectContentLoading'
 import styles from './ProjectDashboard.module.css'
@@ -30,7 +31,7 @@ type Dashboard = {
   milestones: Milestone[]
   activity: Activity[]
 }
-type Props = { project: Project; onOpenGantt: () => void; onOpenPersonnel: () => void; onBoardSelect: (id: number) => void }
+type Props = { project: Project; onOpenGantt: () => void; onOpenPersonnel: () => void; onBoardSelect: (id: number) => void; onOpenCard: (card: GanttDependencyNavigation) => void }
 
 const WORKFLOW_ORDER: Record<WorkflowState, number> = { backlog: 0, pending: 1, in_progress: 2, review: 3, done: 4 }
 const DAY_MS = 86400000
@@ -194,7 +195,7 @@ function LoadingPreview() {
     <div className={styles.middle}>{Array.from({ length:3 },(_,i)=><div key={i} className={styles.placeholder}/>)}</div>
     <div className={styles.bottom}><div className={styles.placeholder}/><div className={styles.placeholder}/></div></div>
 }
-export function ProjectSurface({ project, onOpenGantt, onOpenPersonnel, onBoardSelect }: Props) {
+export function ProjectSurface({ project, onOpenGantt, onOpenPersonnel, onBoardSelect, onOpenCard }: Props) {
   const [data, setData] = useState<Dashboard | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -261,7 +262,8 @@ export function ProjectSurface({ project, onOpenGantt, onOpenPersonnel, onBoardS
       <section className={`${styles.panel} ${styles.milestonePanel}`}>
         <div className={styles.panelHead}><h2>Hitos próximos</h2><button type="button" onClick={onOpenGantt}>Ver Gantt</button></div>
         <div className={styles.milestoneList}>{milestones.slice(0, 4).map((item) => <button type="button" key={item.id}
-          className={styles.milestone} onClick={() => onBoardSelect(item.board_id)} title={item.board_name}>
+          className={styles.milestone} onClick={() => onOpenCard({ boardId: item.board_id, cardId: item.id, openCard: true })}
+          title={`Abrir «${item.title}» en ${item.board_name}`}>
           <span className={styles.milestoneGlyph} style={{ '--milestone-color': COLORS[item.state] } as CSSProperties}>◆</span>
           <span className={styles.milestoneName}>{item.title}</span>
           <time>{formatDate(item.due_date)}</time><span className={styles.milestoneState}>{stateName(item.state)}</span>
@@ -275,7 +277,8 @@ export function ProjectSurface({ project, onOpenGantt, onOpenPersonnel, onBoardS
       <section className={`${styles.panel} ${styles.updatesPanel}`}>
         <div className={styles.panelHead}><h2>Actividad reciente</h2></div>
         <div className={styles.activityList}>{data.activity.map((entry) => <button type="button" className={styles.activity}
-          key={entry.id} onClick={() => onBoardSelect(entry.board_id)} title={entry.board_name}>
+          key={entry.id} onClick={() => onOpenCard({ boardId: entry.board_id, cardId: entry.card_id, openCard: true })}
+          title={`Abrir «${entry.card_title}» en ${entry.board_name}`}>
           <span className={styles.activityAvatar}><Avatar id={entry.user_id ?? 0} name={entry.user_name} src={entry.avatar_url} size={26}/></span>
           <span className={styles.activityText}><strong>{entry.user_name}</strong> {activityVerb(entry.type)} una tarea
             <small>{entry.card_title} · {entry.board_name}</small></span>

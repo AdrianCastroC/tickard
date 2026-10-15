@@ -46,7 +46,8 @@ export function ProjectLayout({
 
   const projectContent = <>
     {projectView === 'overview' && <ProjectSurface key={project.id} project={project} onOpenGantt={() => changeView('gantt')}
-      onOpenPersonnel={() => changeView('team')} onBoardSelect={onBoardSelect}/>}
+      onOpenPersonnel={() => changeView('team')} onBoardSelect={onBoardSelect}
+      onOpenCard={onNavigateExternalCard}/>}
     {projectView === 'boards' && <ProjectBoards key={project.id} project={project}
       onBoardSelect={onBoardSelect} onRefresh={onRefresh}/>}
     {projectView === 'gantt' && profile && <ProjectGantt project={project} profile={profile} onNavigateExternalCard={onNavigateExternalCard}/>}

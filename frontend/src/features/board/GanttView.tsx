@@ -1369,7 +1369,7 @@ function weekSpans(days: Day[]) {
 export type GanttDependencyNavigation = {
   boardId: number
   cardId: number
-  dependencyId: number
+  dependencyId?: number
   openCard?: boolean
 }
 
