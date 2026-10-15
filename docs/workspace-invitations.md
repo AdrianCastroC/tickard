@@ -1,65 +1,53 @@
-# Tickard — Invitaciones al Workspace (V1)
+# Tickard V1 — Invitaciones entre usuarios
 
-## Jerarquía
+## Alcance
 
-La cuenta personal es independiente de los Workspaces. Pertenecer a un Workspace **no da acceso automático a sus proyectos**. Una vez incorporado, el responsable concede acceso a cada proyecto desde **Personal**.
+Invitaciones **solo para cuentas Tickard registradas**, identificadas por correo o identificador público `nick#ID`. No hay listas de amigos, enlaces compartibles, invitaciones a cuentas inexistentes ni SMTP.
 
-En V1 solo el **propietario** crea, consulta o cancela invitaciones del Workspace. Las nuevas personas entran con rol **member**; **owner** nunca se asigna por invitación.
+El identificador se muestra en **Perfil**; el nickname es editable y el sufijo numérico corresponde al identificador permanente del usuario. No tiene que ser único el nickname: el conjunto sí lo es.
 
-## Métodos
+## Dos destinos, mismo flujo
 
-### Correo electrónico
+- **Workspace → Vista general → Miembros e invitaciones:** solo el propietario puede invitar. Al aceptar, el usuario pasa a ser miembro del Workspace sin acceso automático a proyectos.
+- **Proyecto → Personal → Invitar usuarios:** se selecciona un rol para todos los destinatarios del envío: responsable, editor o lector. Al aceptar, se incorpora al proyecto; si aún no pertenecía al Workspace, también se incorpora como miembro.
+- Solo el propietario puede invitar a un proyecto a alguien ajeno al Workspace. Un responsable del proyecto puede invitar a personas que ya son miembros del Workspace. Nunca se puede invitar como owner ni como cliente desde este flujo.
 
-Se especifica dirección y caducidad (1–30 días; por defecto 7). Se genera un token aleatorio de 64 caracteres, almacenado únicamente como hash SHA-256. Se envía correo con enlace de un uso; el enlace también aparece después de crearlo para poder copiarlo.
+El formulario admite varios destinatarios separados por comas, punto y coma o saltos de línea; mezcla correos e identificadores. Evita duplicados en el envío y devuelve los destinatarios que no se encontraron o no eran elegibles.
 
-Un usuario ya registrado debe **iniciar sesión** con la cuenta correspondiente a la dirección invitada; sus credenciales y perfil **no se modifican**. Si no tiene cuenta, se registra normalmente y después acepta con esa sesión. El enlace prueba el acceso al buzón destinatario; no es una invitación abierta a otra dirección.
+## Respuestas y estados
 
-No se puede enviar una nueva invitación por correo si la cuenta ya pertenece al Workspace o existe otra invitación de ese correo pendiente y vigente.
+En **Bandeja de entrada** cada destinatario puede aceptar o rechazar. La API comprueba la identidad, el estado pendiente y la cuota de miembros al aceptar; lo hace bajo una transacción y bloqueo del Workspace.
 
-### Enlace compartible
+- Pendiente: espera una respuesta; quien invita puede eliminarla individualmente o en bloque (se revoca).
+- Rechazada: se mantiene hasta que se elimine manualmente, individualmente o en bloque.
+- Aceptada: se mantiene cinco días desde la respuesta, después desaparece y se elimina mediante el comando `invitations:prune`. El usuario sigue siendo miembro y conserva su rol tras eliminar el registro histórico. No se permite eliminarla manualmente.
+- Si hay que cambiar el rol mientras la invitación sigue pendiente, se elimina y se envía otra. Aceptar nunca sobreescribe un rol de proyecto previamente asignado.
 
-La persona propietaria puede emitir un enlace para enviar por otros medios. Define caducidad (1–30 días) y número de usos (1–50). No se exige un correo predeterminado. Requiere una cuenta Tickard autenticada para aceptarlo.
+La migración revoca las invitaciones por correo o enlace de la implementación anterior. Sus rutas públicas se retiran funcionalmente (410): no deben convertirse en una segunda vía de acceso.
 
-La pantalla de administración muestra usos consumidos, usos máximos y caducidad, pero **nunca vuelve a revelar un token existente**: copiarlo corresponde al momento de la generación. Cancelar invalida el enlace.
+## API
 
-## Comprobaciones en aceptación
+Autenticadas con Sanctum:
 
-La API rechaza enlaces revocados, caducados o agotados; cuentas con correo distinto al destinatario, miembros existentes y Workspaces que han alcanzado su límite de plazas. La comprobación del límite se ejecuta en transacción con bloqueo del Workspace, para evitar sobrepasarlo en aceptaciones simultáneas.
+- `GET /api/workspaces/{workspace}/members-invitations` — vista del propietario.
+- `POST /api/workspaces/{workspace}/invitations` — cuerpo `{"recipients":["nick#42","usuario@example.com"]}`.
+- `POST /api/workspaces/{workspace}/invitations/delete` — cuerpo `{"ids":[1,2]}`.
+- `GET /api/projects/{project}/invitations` — listado autorizado.
+- `POST /api/projects/{project}/invitations` — `{"recipients":["nick#42"],"role":"editor"}`.
+- `POST /api/projects/{project}/invitations/delete` — `{"ids":[1,2]}`.
+- `GET /api/my/invitations` — recibidas, para cualquier usuario autenticado.
+- `POST /api/my/invitations/{invitation}/respond` — `{"action":"accept"}` o `{"action":"reject"}`.
+- `PATCH /api/me` — `{"nickname":"mi-nick"}`.
 
-Los planes efectivos pertenecen al propietario; Free tiene 3 plazas, Base 10, Pro 30, Business usa su configuración. Los asientos adicionales se suman a la capacidad. El propietario ocupa una plaza.
-
-## Interfaz y API
-
-- Workspace → Vista general → **Miembros e invitaciones** (solo propietario).
-- `GET /api/workspaces/{workspace}/members-invitations` — miembros, plazas e invitaciones vigentes.
-- `POST /api/workspaces/{workspace}/invitations` — modo `email` o `link`, `expires_days`, `max_uses`.
-- `DELETE /api/workspaces/{workspace}/invitations/{invitation}` — revocar.
-- `GET /api/workspace-invitations/{token}` — información pública necesaria para la aceptación.
-- `POST /api/workspace-invitations/{token}/accept` — requiere sesión autenticada.
-
-La página `/invitar/workspace/{token}` admite iniciar sesión o registrarse, y devuelve al Workspace aceptado.
-
-Las invitaciones antiguas de proyecto no deben cambiar credenciales: su aceptación ahora requiere iniciar sesión con el correo invitado. El formulario antiguo deja de ofrecer creación nueva; primero se invita al Workspace y luego se asigna al proyecto.
-
-## Entorno local
-
-Ejecutar migraciones:
+## Instalación y pruebas
 
 ```bash
 cd backend
 php artisan migrate
 php artisan test --filter=WorkspaceInvitationsTest
+php artisan invitations:prune
 ```
 
-Configurar en el backend:
+En producción ejecutar el **programador de tareas de Laravel** mediante cron (una vez por minuto invocando `php artisan schedule:run`) para que `invitations:prune` se lance automáticamente a diario. Incluso antes de ejecutar el comando, los registros aceptados con más de cinco días se ocultan de la API.
 
-```dotenv
-FRONTEND_URL=http://localhost:5173
-MAIL_MAILER=log
-```
-
-Con `MAIL_MAILER=log`, **el correo no sale realmente**: queda en `storage/logs/laravel.log`. Para entregar invitaciones a direcciones reales hay que configurar un transporte de correo válido (SMTP, etc.) y sus credenciales. Nunca incrustar tokens en logs públicos.
-
-## Fuera de esta primera fase
-
-Gestión de bajas y roles de miembros, reasignación de proyectos y Cards, transferencia de propiedad, reenvío de invitaciones sin revocar, preferencias de recepción, validación de correo de registro genérica y controles avanzados de uso compartido. Los enlaces compartidos se deben tratar como secretos: cualquiera que los posea puede usarlos mientras sigan vigentes.
+No hay que configurar `MAIL_MAILER` ni `FRONTEND_URL` para estas invitaciones internas.

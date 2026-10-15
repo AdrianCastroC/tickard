@@ -25,9 +25,11 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::post('/invitations/{token}/accept', [InvitationsController::class, 'acceptInvitation']);
     Route::post('/workspace-invitations/{token}/accept', [WorkspaceInvitationsController::class, 'accept']);
+    Route::get('/my/invitations', [WorkspaceInvitationsController::class, 'received']);
+    Route::post('/my/invitations/{invitation}/respond', [WorkspaceInvitationsController::class, 'respond']);
     Route::get('/workspaces/{workspace}/members-invitations', [WorkspaceInvitationsController::class, 'index']);
     Route::post('/workspaces/{workspace}/invitations', [WorkspaceInvitationsController::class, 'store']);
-    Route::delete('/workspaces/{workspace}/invitations/{invitation}', [WorkspaceInvitationsController::class, 'destroy']);
+    Route::post('/workspaces/{workspace}/invitations/delete', [WorkspaceInvitationsController::class, 'deleteMany']);
     Route::get('/me', [AuthController::class, 'me']);
     Route::patch('/me', [AuthController::class, 'updateMe']);
     Route::post('/me/avatar', [AuthController::class, 'updateAvatar']);
@@ -57,6 +59,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/projects/{project}/dashboard', [ProjectDashboardController::class, 'index']);
     Route::get('/projects/{project}/boards/overview', [ProjectBoardsOverviewController::class, 'index']);
     Route::get('/projects/{project}/personnel', [ProjectPersonnelController::class, 'index']);
+    Route::get('/projects/{project}/invitations', [WorkspaceInvitationsController::class, 'projectIndex']);
+    Route::post('/projects/{project}/invitations', [WorkspaceInvitationsController::class, 'projectStore']);
+    Route::post('/projects/{project}/invitations/delete', [WorkspaceInvitationsController::class, 'projectDeleteMany']);
     Route::post('/projects/{project}/personnel/members', [ProjectPersonnelController::class, 'addMember']);
     Route::patch('/projects/{project}/personnel/members/{user}', [ProjectPersonnelController::class, 'updateMember']);
     Route::delete('/projects/{project}/personnel/members/{user}', [ProjectPersonnelController::class, 'removeMember']);
@@ -80,7 +85,6 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::patch('/projects/{project}', [ProjectsController::class, 'updateProject']);
     Route::post('/projects/{project}/labels', [ProjectsController::class, 'storeLabel']);
-    Route::post('/projects/{project}/invitations', [InvitationsController::class, 'invite']);
 
     Route::get('/boards/{board}', [ProjectsController::class, 'showBoard']);
     Route::post('/boards/{board}/columns', [CardsController::class, 'storeColumn']);

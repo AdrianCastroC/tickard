@@ -66,6 +66,7 @@ class AuthController extends ApiController
         $user = DB::transaction(function () use ($data) {
             $user = User::create([
                 'name' => $data['name'],
+                'nickname' => substr(\Illuminate\Support\Str::slug($data['name'], '-'), 0, 30) ?: 'usuario',
                 'email' => $data['email'],
                 'password' => $data['password'],
             ]);
@@ -101,6 +102,7 @@ class AuthController extends ApiController
     {
         $data = $request->validate([
             'name' => ['sometimes', 'string', 'max:120'],
+            'nickname' => ['sometimes', 'required', 'string', 'regex:/^[a-z0-9_-]{3,30}$/'],
             'theme' => ['sometimes', Rule::in(['light', 'dark', 'system'])],
             'notify_in_app' => ['sometimes', 'boolean'],
             'notify_email' => ['sometimes', 'boolean'],

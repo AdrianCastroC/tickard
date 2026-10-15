@@ -211,6 +211,8 @@ export type Profile = {
   user: {
     id: number
     name: string
+    nickname: string | null
+    handle: string
     email: string
     is_admin: boolean
     plan: 'free' | 'base' | 'pro' | 'business'

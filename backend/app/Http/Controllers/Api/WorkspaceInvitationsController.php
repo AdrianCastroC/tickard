@@ -2,193 +2,243 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Models\AppNotification;
+use App\Models\Project;
+use App\Models\ProjectMember;
+use App\Models\User;
 use App\Models\Workspace;
 use App\Models\WorkspaceInvitation;
+use App\Support\ProjectAccess;
 use App\Support\WorkspaceLimits;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
-use Illuminate\Validation\ValidationException;
 
 class WorkspaceInvitationsController extends ApiController
 {
-    private function authorizeOwner(Request $request, Workspace $workspace): void
+    private function isOwner(User $user, Workspace $workspace): bool
     {
-        abort_unless((int) $workspace->owner_id === (int) $request->user()->id, 403);
+        return (int) $workspace->owner_id === (int) $user->id;
     }
 
-    private function currentInvitation(string $token): WorkspaceInvitation
+    private function projectFor(Workspace $workspace, ?int $projectId): ?Project
     {
-        $invitation = WorkspaceInvitation::query()
-            ->where('token_hash', hash('sha256', $token))
-            ->with('workspace')
-            ->firstOrFail();
+        if ($projectId === null) return null;
 
-        abort_if(
-            $invitation->revoked_at !== null
-                || $invitation->expires_at->isPast()
-                || $invitation->used_count >= $invitation->max_uses,
-            410,
-            'La invitación ha caducado o ya no está disponible.'
-        );
+        return $workspace->projects()->findOrFail($projectId);
+    }
 
-        return $invitation;
+    private function present(WorkspaceInvitation $invitation): array
+    {
+        return [
+            'id' => $invitation->id,
+            'workspace_id' => $invitation->workspace_id,
+            'workspace_name' => $invitation->workspace?->name,
+            'project_id' => $invitation->project_id,
+            'project_name' => $invitation->project?->name,
+            'project_role' => $invitation->project_role,
+            'status' => $invitation->status,
+            'user' => $invitation->recipient?->name,
+            'handle' => $invitation->recipient?->publicHandle(),
+            'inviter' => $invitation->inviter?->name,
+            'created_at' => $invitation->created_at?->toIso8601String(),
+            'responded_at' => $invitation->responded_at?->toIso8601String(),
+        ];
+    }
+
+    private function invitations(Workspace $workspace, ?Project $project = null)
+    {
+        return WorkspaceInvitation::visible()->with(['workspace', 'project', 'recipient', 'inviter'])
+            ->where('workspace_id', $workspace->id)
+            ->where('project_id', $project?->id)
+            ->orderByDesc('id')->get()->map(fn ($item) => $this->present($item))->values();
     }
 
     public function index(Request $request, Workspace $workspace)
     {
-        $this->authorizeOwner($request, $workspace);
+        abort_unless($this->isOwner($request->user(), $workspace), 403);
 
-        $members = $workspace->memberships()->with('user:id,name,email,avatar_path')
-            ->orderBy('id')->get()
-            ->filter(fn ($member) => $member->user !== null)
-            ->map(fn ($member) => [
-                'id' => $member->user->id,
-                'name' => $member->user->name,
-                'email' => $member->user->email,
-                'avatar_url' => $member->user->avatarUrl(),
-                'role' => $member->role,
+        $members = $workspace->memberships()->with('user')->get()
+            ->filter(fn ($item) => $item->user)
+            ->map(fn ($item) => [
+                'id' => $item->user->id,
+                'name' => $item->user->name,
+                'handle' => $item->user->publicHandle(),
+                'avatar_url' => $item->user->avatarUrl(),
+                'role' => $item->role,
             ])->values();
-
-        $invitations = WorkspaceInvitation::where('workspace_id', $workspace->id)
-            ->whereNull('revoked_at')->where('expires_at', '>', now())
-            ->whereColumn('used_count', '<', 'max_uses')
-            ->orderByDesc('id')->get()
-            ->map(fn ($invitation) => [
-                'id' => $invitation->id,
-                'email' => $invitation->email,
-                'type' => $invitation->email ? 'email' : 'link',
-                'max_uses' => $invitation->max_uses,
-                'used_count' => $invitation->used_count,
-                'expires_at' => $invitation->expires_at->toIso8601String(),
-                'created_at' => $invitation->created_at->toIso8601String(),
-            ]);
-
-        $limit = WorkspaceLimits::maxMembers($workspace);
 
         return response()->json([
             'members' => $members,
-            'invitations' => $invitations,
-            'member_limit' => $limit,
+            'invitations' => $this->invitations($workspace),
+            'member_limit' => WorkspaceLimits::maxMembers($workspace),
             'member_count' => $workspace->memberships()->count(),
-            'can_invite' => WorkspaceLimits::canAddMember($workspace),
         ]);
+    }
+
+    public function projectIndex(Request $request, Project $project)
+    {
+        abort_unless(ProjectAccess::canManage($request->user(), $project), 403);
+        return response()->json(['invitations' => $this->invitations($project->workspace, $project)]);
+    }
+
+    public function received(Request $request)
+    {
+        return WorkspaceInvitation::visible()->where('recipient_user_id', $request->user()->id)
+            ->with(['workspace', 'project', 'recipient', 'inviter'])->orderByDesc('id')->get()
+            ->map(fn ($item) => $this->present($item))->values();
+    }
+
+    private function resolve(string $value): ?User
+    {
+        $value = trim($value);
+        if (filter_var($value, FILTER_VALIDATE_EMAIL)) {
+            return User::whereRaw('LOWER(email) = ?', [Str::lower($value)])->first();
+        }
+        if (! preg_match('/^@?([a-z0-9_-]{1,30})#([1-9][0-9]*)$/i', $value, $match)) return null;
+        $user = User::find((int) $match[2]);
+        return $user && Str::lower($user->publicHandle()) === Str::lower(ltrim($value, '@')) ? $user : null;
+    }
+
+    private function storeInvites(Request $request, Workspace $workspace, ?Project $project)
+    {
+        $owner = $this->isOwner($request->user(), $workspace);
+        abort_unless($owner || ($project && ProjectAccess::canManage($request->user(), $project)), 403);
+
+        $data = $request->validate([
+            'recipients' => ['required', 'array', 'min:1', 'max:50'],
+            'recipients.*' => ['required', 'string', 'max:255'],
+            'role' => [$project ? 'required' : 'nullable', 'in:responsable,editor,lector'],
+        ]);
+        $role = $project ? $data['role'] : null;
+        $created = [];
+        $errors = [];
+        $seen = [];
+        foreach ($data['recipients'] as $value) {
+            $user = $this->resolve($value);
+            if (! $user) { $errors[] = ['value' => $value, 'reason' => 'Usuario no encontrado']; continue; }
+            if (isset($seen[$user->id])) continue;
+            $seen[$user->id] = true;
+            if ($user->client_company_id !== null) {
+                $errors[] = ['value' => $value, 'reason' => 'Las cuentas de cliente requieren otro tipo de acceso'];
+                continue;
+            }
+
+            // Responsible users may invite only people already in the Workspace.
+            if ($project && ! $owner && ! $workspace->memberships()->where('user_id', $user->id)->exists()) {
+                $errors[] = ['value' => $value, 'reason' => 'Solo el propietario puede incorporar usuarios nuevos al Workspace'];
+                continue;
+            }
+            $result = DB::transaction(function () use ($workspace, $project, $role, $user, $request) {
+                Workspace::whereKey($workspace->id)->lockForUpdate()->firstOrFail();
+                $inWorkspace = $workspace->memberships()->where('user_id', $user->id)->exists();
+                if ($project) {
+                    if ($project->members()->where('user_id', $user->id)->exists() || (int) $workspace->owner_id === (int) $user->id)
+                        return 'Ya pertenece al proyecto';
+                } elseif ($inWorkspace) return 'Ya pertenece al Workspace';
+
+                $pending = WorkspaceInvitation::where('workspace_id', $workspace->id)
+                    ->where('project_id', $project?->id)->where('recipient_user_id', $user->id)
+                    ->where('status', 'pending')->whereNull('revoked_at')->exists();
+                if ($pending) return 'Ya tiene una invitación pendiente';
+                if (! $inWorkspace && ! WorkspaceLimits::canAddMember($workspace))
+                    return 'No quedan plazas libres en el Workspace';
+
+                $invitation = WorkspaceInvitation::create([
+                    'workspace_id' => $workspace->id,
+                    'project_id' => $project?->id,
+                    'recipient_user_id' => $user->id,
+                    'invited_by' => $request->user()->id,
+                    'email' => null,
+                    'token_hash' => hash('sha256', Str::random(64)),
+                    'max_uses' => 1,
+                    'used_count' => 0,
+                    'expires_at' => now()->addYears(50),
+                    'status' => 'pending',
+                    'project_role' => $role,
+                ]);
+                if ($user->notify_in_app) {
+                    AppNotification::create([
+                        'user_id' => $user->id,
+                        'body' => 'Tienes una invitación a '.($project ? '«'.$project->name.'»' : '«'.$workspace->name.'»').' en Tickard.',
+                    ]);
+                }
+                return $this->present($invitation->load(['workspace', 'project', 'recipient', 'inviter']));
+            });
+            if (is_string($result)) $errors[] = ['value' => $value, 'reason' => $result];
+            else $created[] = $result;
+        }
+        return response()->json(['created' => $created, 'errors' => $errors], count($created) ? 201 : 422);
     }
 
     public function store(Request $request, Workspace $workspace)
     {
-        $this->authorizeOwner($request, $workspace);
-
-        $data = $request->validate([
-            'mode' => ['required', 'in:email,link'],
-            'email' => ['required_if:mode,email', 'nullable', 'email', 'max:255'],
-            'expires_days' => ['required', 'integer', 'min:1', 'max:30'],
-            'max_uses' => ['required', 'integer', 'min:1', 'max:50'],
-        ]);
-
-        abort_unless(WorkspaceLimits::canAddMember($workspace), 422, 'No quedan plazas libres en este Workspace.');
-
-        $email = $data['mode'] === 'email' ? Str::lower(trim($data['email'])) : null;
-        if ($email) {
-            if ($workspace->members()->whereRaw('LOWER(users.email) = ?', [$email])->exists()) {
-                throw ValidationException::withMessages(['email' => 'Este usuario ya pertenece al Workspace.']);
-            }
-            $existing = WorkspaceInvitation::where('workspace_id', $workspace->id)
-                ->whereRaw('LOWER(email) = ?', [$email])->whereNull('revoked_at')
-                ->where('expires_at', '>', now())->whereColumn('used_count', '<', 'max_uses')->exists();
-            if ($existing) {
-                throw ValidationException::withMessages(['email' => 'Ya existe una invitación pendiente para este correo.']);
-            }
-        }
-
-        $token = Str::random(64);
-        $invitation = WorkspaceInvitation::create([
-            'workspace_id' => $workspace->id,
-            'invited_by' => $request->user()->id,
-            'email' => $email,
-            'token_hash' => hash('sha256', $token),
-            'max_uses' => $email ? 1 : $data['max_uses'],
-            'used_count' => 0,
-            'expires_at' => now()->addDays((int) $data['expires_days']),
-        ]);
-
-        $base = rtrim((string) (config('app.frontend_url') ?: $request->getSchemeAndHttpHost()), '/');
-        $url = $base.'/invitar/workspace/'.$token;
-
-        if ($email) {
-            try {
-                Mail::raw(
-                    "Te han invitado al Workspace «{$workspace->name}» en Tickard.\n\n".
-                    "Puedes acceder o registrarte y aceptar la invitación aquí:\n{$url}\n\n".
-                    "La invitación caduca en {$data['expires_days']} días. Si no la esperabas, ignora este mensaje.",
-                    fn ($message) => $message->to($email)->subject('Invitación a '.$workspace->name.' · Tickard')
-                );
-            } catch (\Throwable $error) {
-                $invitation->delete();
-                throw $error;
-            }
-        }
-
-        return response()->json([
-            'id' => $invitation->id,
-            'url' => $url,
-            'type' => $email ? 'email' : 'link',
-            'expires_at' => $invitation->expires_at->toIso8601String(),
-        ], 201);
+        return $this->storeInvites($request, $workspace, null);
     }
 
-    public function show(string $token)
+    public function projectStore(Request $request, Project $project)
     {
-        $invitation = $this->currentInvitation($token);
-
-        return response()->json([
-            'workspace' => $invitation->workspace->name,
-            'email' => $invitation->email,
-            'type' => $invitation->email ? 'email' : 'link',
-            'expires_at' => $invitation->expires_at->toIso8601String(),
-        ]);
+        return $this->storeInvites($request, $project->workspace, $project);
     }
 
-    public function accept(Request $request, string $token)
+    public function respond(Request $request, WorkspaceInvitation $invitation)
     {
-        $user = $request->user();
-        $workspaceId = DB::transaction(function () use ($token, $user) {
-            // Lock the workspace first to serialize concurrent acceptances
-            // against the same seat limit, even across different invitations.
-            $invitationInfo = $this->currentInvitation($token);
-            $workspace = Workspace::query()->whereKey($invitationInfo->workspace_id)
-                ->lockForUpdate()->firstOrFail();
-            $invitation = WorkspaceInvitation::whereKey($invitationInfo->id)
-                ->lockForUpdate()->firstOrFail();
+        $action = $request->validate(['action' => ['required', 'in:accept,reject']])['action'];
+        abort_unless((int) $invitation->recipient_user_id === (int) $request->user()->id, 403);
 
-            abort_if($invitation->revoked_at || $invitation->expires_at->isPast()
-                || $invitation->used_count >= $invitation->max_uses, 410,
-                'La invitación ya no está disponible.');
-
-            abort_if($invitation->email && Str::lower($user->email) !== $invitation->email,
-                403, 'Accede con la cuenta del correo al que se envió la invitación.');
-
-            abort_if($workspace->memberships()->where('user_id', $user->id)->exists(),
-                409, 'Ya perteneces a este Workspace.');
-            abort_unless(WorkspaceLimits::canAddMember($workspace), 422,
-                'El Workspace ha alcanzado el límite de miembros de su plan.');
-
-            $workspace->memberships()->create(['user_id' => $user->id, 'role' => 'member']);
-            $invitation->increment('used_count');
-
-            return $workspace->id;
+        return DB::transaction(function () use ($invitation, $request, $action) {
+            $workspace = Workspace::whereKey($invitation->workspace_id)->lockForUpdate()->firstOrFail();
+            $invitation = WorkspaceInvitation::whereKey($invitation->id)->lockForUpdate()->firstOrFail();
+            abort_unless($invitation->status === 'pending' && ! $invitation->revoked_at, 409,
+                'Esta invitación ya se ha respondido o cancelado.');
+            if ($action === 'accept') {
+                $hasWorkspace = $workspace->memberships()->where('user_id', $request->user()->id)->exists();
+                if (! $hasWorkspace) {
+                    abort_unless(WorkspaceLimits::canAddMember($workspace), 422,
+                        'El Workspace ha alcanzado el límite de miembros.');
+                    $workspace->memberships()->create(['user_id' => $request->user()->id, 'role' => 'member']);
+                }
+                if ($invitation->project_id) {
+                    $project = $workspace->projects()->findOrFail($invitation->project_id);
+                    ProjectMember::firstOrCreate(
+                        ['project_id' => $project->id, 'user_id' => $request->user()->id],
+                        ['role' => $invitation->project_role]
+                    );
+                }
+            }
+            $invitation->update(['status' => $action === 'accept' ? 'accepted' : 'rejected',
+                'responded_at' => now(), 'used_count' => $action === 'accept' ? 1 : 0]);
+            return response()->json(['status' => $invitation->status, 'workspace_id' => $workspace->id]);
         });
-
-        return response()->json(['workspace_id' => $workspaceId]);
     }
 
-    public function destroy(Request $request, Workspace $workspace, WorkspaceInvitation $invitation)
+    private function deleteInvites(Request $request, Workspace $workspace, ?Project $project)
     {
-        $this->authorizeOwner($request, $workspace);
-        abort_unless((int) $invitation->workspace_id === (int) $workspace->id, 404);
-        $invitation->update(['revoked_at' => now()]);
-
-        return response()->noContent();
+        abort_unless($this->isOwner($request->user(), $workspace)
+            || ($project && ProjectAccess::canManage($request->user(), $project)), 403);
+        $ids = $request->validate(['ids' => ['required', 'array', 'min:1', 'max:100'],
+            'ids.*' => ['required', 'integer', 'distinct']])['ids'];
+        // Only pending/rejected invitations can be deleted manually.
+        $query = WorkspaceInvitation::where('workspace_id', $workspace->id)
+            ->where('project_id', $project?->id)->whereIn('id', $ids)
+            ->whereIn('status', ['pending', 'rejected'])->whereNotNull('recipient_user_id');
+        $deleted = $query->count();
+        abort_unless($deleted === count($ids), 422, 'La selección incluye invitaciones no eliminables.');
+        $query->delete();
+        return response()->json(['deleted' => $deleted]);
     }
+
+    public function deleteMany(Request $request, Workspace $workspace)
+    {
+        return $this->deleteInvites($request, $workspace, null);
+    }
+
+    public function projectDeleteMany(Request $request, Project $project)
+    {
+        return $this->deleteInvites($request, $project->workspace, $project);
+    }
+
+    // Old shared links have been retired from V1.
+    public function show(string $token) { abort(410, 'Este tipo de invitación ya no está disponible.'); }
+    public function accept(Request $request, string $token) { abort(410, 'Este tipo de invitación ya no está disponible.'); }
 }

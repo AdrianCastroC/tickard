@@ -1,6 +1,7 @@
 import { cachedProjectRequest } from '../../shared/projectRequestCache'
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent } from 'react'
 import { api, type Profile, type Project, type Role } from '../../api'
+import { WorkspaceInvitations } from './WorkspaceInvitations'
 import { Avatar } from '../../shared/ui'
 import { FilterFunnelIcon } from '../../shared/icons'
 import styles from './ProjectPersonnel.module.css'
@@ -151,6 +152,7 @@ function SummaryCard({ icon, title, amount, detail }: { icon: 'users' | 'tasks' 
 }
 
 export function ProjectPersonnel({ project, profile }: { project: Project; profile: Profile }) {
+  const [inviteOpen, setInviteOpen] = useState(false)
   const [data, setData] = useState<PersonnelData | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [reload, setReload] = useState(0)
@@ -342,6 +344,11 @@ export function ProjectPersonnel({ project, profile }: { project: Project; profi
     <button type="button" onClick={() => setReload((old) => old + 1)}>Reintentar</button>
   </section>
 
+  if (inviteOpen && data.can_manage) return <section className="project-panel" style={{ overflowY: 'auto', minHeight:0 }}>
+    <button className="ghost" type="button" onClick={() => setInviteOpen(false)}>← Volver a Personal</button>
+    <WorkspaceInvitations projectId={project.id} />
+  </section>
+
   return <section ref={viewportRef} className={styles.root} aria-label="Personal del proyecto">
     <div className={styles.toolbar}>
       <div className={styles.summary} role="group" aria-label="Indicadores del personal">
@@ -392,6 +399,7 @@ export function ProjectPersonnel({ project, profile }: { project: Project; profi
             </label>
           </div>}
         </div>}
+        {data.can_manage && <button type="button" className="ghost" onClick={() => setInviteOpen(true)}>Invitar usuarios</button>}
         {data.can_manage && <button type="button" className={styles.manageButton} title="Gestionar miembros"
           aria-label="Gestionar miembros" onClick={() => setManagerOpen(true)}>
           <ManageMembersIcon />

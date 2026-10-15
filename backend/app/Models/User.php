@@ -13,7 +13,7 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 
-#[Fillable(['name', 'email', 'password', 'is_admin', 'plan', 'client_company_id', 'theme', 'avatar_path', 'notify_in_app', 'notify_email'])]
+#[Fillable(['name', 'nickname', 'email', 'password', 'is_admin', 'plan', 'client_company_id', 'theme', 'avatar_path', 'notify_in_app', 'notify_email'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
@@ -73,6 +73,13 @@ class User extends Authenticatable
         return $this->belongsToMany(Department::class);
     }
 
+    public function publicHandle(): string
+    {
+        $nick = \Illuminate\Support\Str::slug($this->nickname ?: $this->name, '-');
+
+        return ($nick ?: 'usuario').'#'.$this->id;
+    }
+
     public function avatarUrl(): ?string
     {
         return $this->avatar_path ? '/storage/'.$this->avatar_path : null;
@@ -83,6 +90,8 @@ class User extends Authenticatable
         return [
             'id' => $this->id,
             'name' => $this->name,
+            'nickname' => $this->nickname,
+            'handle' => $this->publicHandle(),
             'email' => $this->email,
             'is_admin' => $this->is_admin,
             'plan' => $this->plan,
