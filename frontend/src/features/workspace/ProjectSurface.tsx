@@ -124,7 +124,7 @@ function Timeline({ boards, anchor, onOpenGantt, onBoardSelect }: {
   const visible = allPlanned.filter((board) => {
     const from = day(board.start_date), to = day(board.end_date)
     return from !== null && to !== null && from < end && to >= start
-  }).slice(0, 7)
+  }).slice(0, 6)
   const months = Array.from({ length: 4 }, (_, i) => addMonths(start, i))
   const rowOffset = (ms: number) => (ms - start) / (end - start) * 100
   return <section className={`${styles.panel} ${styles.timelinePanel}`} aria-label="Cronograma resumido">
@@ -217,40 +217,43 @@ export function ProjectSurface({ project, onOpenGantt, onOpenBoards, onBoardSele
       </section>
       <section className={styles.panel}><div className={styles.panelHead}><h2>Estado de tareas</h2></div>
         <Distribution rows={data.columns} total={summary.total}/></section>
-      <section className={styles.panel}>
+      <section className={`${styles.panel} ${styles.milestonePanel}`}>
         <div className={styles.panelHead}><h2>Hitos próximos</h2><button type="button" onClick={onOpenGantt}>Ver Gantt</button></div>
-        <div className={styles.milestoneList}>{milestones.map((item) => <button type="button" key={item.id}
+        <div className={styles.milestoneList}>{milestones.slice(0, 3).map((item) => <button type="button" key={item.id}
           className={styles.milestone} onClick={() => onBoardSelect(item.board_id)} title={item.board_name}>
           <span className={styles.milestoneGlyph} style={{ '--milestone-color': COLORS[item.state] } as CSSProperties}>◆</span>
           <span className={styles.milestoneName}>{item.title}</span>
           <time>{formatDate(item.due_date)}</time><span className={styles.milestoneState}>{stateName(item.state)}</span>
         </button>)}</div>
-        {!milestones.length && <p className={styles.empty}>Sin hitos planificados.</p>}
+        {!milestones.length && <p className={styles.compactEmpty}>Sin hitos planificados.</p>}
+        <div className={styles.inlineSectionHeader}><strong>Tareas retrasadas</strong><span>{summary.overdue}</span></div>
+        <div className={styles.compactTasks}>{data.overdue_tasks.slice(0, 3).map((item) =>
+          <button type="button" key={item.id} onClick={() => onBoardSelect(item.board_id)} title={item.board_name}>
+            <span>{item.title}</span><time className={styles.lateDate}>{formatDate(item.due_date)}</time>
+          </button>)}</div>
+        {!data.overdue_tasks.length && <p className={styles.compactEmpty}>Sin tareas retrasadas.</p>}
       </section>
     </div>
     <div className={styles.bottom}>
       <Timeline key={project.id} boards={boards} anchor={anchorDate} onOpenGantt={onOpenGantt} onBoardSelect={onBoardSelect}/>
-      <section className={styles.panel}>
-        <div className={styles.panelHead}><h2>Actividad reciente</h2></div>
-        <div className={styles.activityList}>{data.activity.map((entry) => <button type="button" className={styles.activity}
+      <section className={`${styles.panel} ${styles.updatesPanel}`}>
+        <div className={styles.panelHead}><h2>Próximas tareas</h2><button type="button" onClick={onOpenBoards}>Ver tableros</button></div>
+        <div className={styles.compactTasks}>{data.upcoming.slice(0, 3).map((item) =>
+          <button type="button" key={item.id} onClick={() => onBoardSelect(item.board_id)} title={item.board_name}>
+            <span>{item.title}</span><time>{formatDate(item.due_date)}</time>
+          </button>)}</div>
+        {!data.upcoming.length && <p className={styles.compactEmpty}>Sin vencimientos próximos.</p>}
+        <div className={styles.inlineSectionHeader}><strong>Actividad reciente</strong></div>
+        <div className={styles.activityList}>{data.activity.slice(0, 3).map((entry) => <button type="button" className={styles.activity}
           key={entry.id} onClick={() => onBoardSelect(entry.board_id)} title={entry.board_name}>
-          <span className={styles.activityAvatar}><Avatar id={entry.user_id ?? 0} name={entry.user_name} src={entry.avatar_url} size={30}/></span>
+          <span className={styles.activityAvatar}><Avatar id={entry.user_id ?? 0} name={entry.user_name} src={entry.avatar_url} size={26}/></span>
           <span className={styles.activityText}><strong>{entry.user_name}</strong> {activityVerb(entry.type)} una tarea
             <small>{entry.card_title} · {entry.board_name}</small></span>
           <time>{timeSince(entry.created_at)}</time>
         </button>)}</div>
-        {!data.activity.length && <p className={styles.empty}>Todavía no hay actividad registrada.</p>}
+        {!data.activity.length && <p className={styles.compactEmpty}>Todavía no hay actividad registrada.</p>}
       </section>
     </div>
-    <div className={styles.tasksFoot}>
-      <section><strong>Próximas tareas</strong>{data.upcoming.length ? data.upcoming.map((item) =>
-        <button key={item.id} type="button" onClick={() => onBoardSelect(item.board_id)}>
-          <span>{item.title}</span><time>{formatDate(item.due_date)}</time>
-        </button>) : <p>Sin vencimientos próximos.</p>}</section>
-      <section><strong>Tareas retrasadas · {summary.overdue}</strong>{data.overdue_tasks.length ? data.overdue_tasks.map((item) =>
-        <button key={item.id} type="button" onClick={() => onBoardSelect(item.board_id)}>
-          <span>{item.title}</span><time>{formatDate(item.due_date)}</time>
-        </button>) : <p>Sin retrasos pendientes.</p>}</section>
-    </div>
+
   </div>
 }
