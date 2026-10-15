@@ -67,7 +67,7 @@ type DiagramEntry = {
 function diagramEntries(board: BoardSummary): DiagramEntry[] {
   let current = -90
   const angleWhenEmpty: Record<WorkflowState, number> = {
-    backlog: -95, pending: -42, in_progress: 0, review: 45, done: 150,
+    backlog: -140, pending: -45, in_progress: 0, review: 45, done: 150,
   }
   return board.columns.map((column) => {
     const percent = board.total ? column.count / board.total * 100 : 0
@@ -97,15 +97,17 @@ function DonutDistribution({ board }: { board: BoardSummary }) {
   const entries = diagramEntries(board)
   const left = entries.filter((entry) => entry.side === 'left')
   const right = entries.filter((entry) => entry.side === 'right')
-  const height = Math.max(260, Math.max(left.length, right.length) * 38 + 60)
-  const cx = 350
+  // Draw inside a fixed, compact viewBox. The entire diagram scales as a
+  // single element so labels and connectors cannot outgrow the card.
+  const height = Math.max(224, Math.max(left.length, right.length) * 36 + 40)
+  const cx = 320
   const cy = height / 2
-  const r = 88
-  const ringWidth = 42
+  const r = 72
+  const ringWidth = 28
   const circumference = 2 * Math.PI * r
-  const labelHeight = 29
+  const labelHeight = 24
   const yFor = (index: number, count: number) => (
-    cy + (index - (count - 1) / 2) * Math.min(64, (height - 40) / Math.max(count, 1))
+    cy + (index - (count - 1) / 2) * Math.min(49, (height - 42) / Math.max(count, 1))
   )
   let offset = 0
   const segmentCircles = entries.filter(({ column }) => column.count > 0).map((entry) => {
@@ -123,15 +125,15 @@ function DonutDistribution({ board }: { board: BoardSummary }) {
     const x = cx + (r + ringWidth / 2) * Math.cos(rad)
     const y = cy + (r + ringWidth / 2) * Math.sin(rad)
     const targetY = yFor(i, list.length)
-    const xEdge = side === 'left' ? 206 : 494
-    const elbow = side === 'left' ? 234 : 466
-    const pillX = side === 'left' ? 5 : 507
+    const xEdge = side === 'left' ? 201 : 439
+    const elbow = side === 'left' ? 215 : 425
+    const pillX = side === 'left' ? 10 : 453
     return <g key={entry.column.id}>
       <path d={`M ${x} ${y} L ${elbow} ${targetY} L ${xEdge} ${targetY}`}
-        fill="none" stroke={entry.color} strokeWidth="1.7" strokeLinejoin="round" opacity=".85"/>
-      <circle cx={x} cy={y} r="4.5" fill={entry.color} stroke="var(--surface)" strokeWidth="2.2"/>
-      <circle cx={xEdge} cy={targetY} r="4" fill={entry.color}/>
-      <foreignObject x={pillX} y={targetY - labelHeight / 2} width="188" height={labelHeight}>
+        fill="none" stroke={entry.color} strokeWidth="1.3" strokeLinejoin="round" opacity=".8"/>
+      <circle cx={x} cy={y} r="3.5" fill={entry.color} stroke="var(--surface)" strokeWidth="1.7"/>
+      <circle cx={xEdge} cy={targetY} r="3.2" fill={entry.color}/>
+      <foreignObject x={pillX} y={targetY - labelHeight / 2} width="174" height={labelHeight}>
         <div className={styles.diagramLabel} title={`${entry.column.name}: ${entry.column.count} tareas (${columnPercent(entry.column.count, board.total)} %)`}
           style={{ backgroundColor: entry.color, color: readableColor(entry.color) }}>
           <span>{entry.column.name}</span>
@@ -141,13 +143,13 @@ function DonutDistribution({ board }: { board: BoardSummary }) {
     </g>
   })
   return <div className={styles.diagram} aria-label={distributionDescription(board)}>
-    <svg viewBox={`0 0 700 ${height}`} role="img" aria-label={distributionDescription(board)}
+    <svg viewBox={`0 0 640 ${height}`} role="img" aria-label={distributionDescription(board)}
       preserveAspectRatio="xMidYMid meet">
       <circle cx={cx} cy={cy} r={r} stroke="var(--line)" strokeWidth={ringWidth} fill="none"/>
       {segmentCircles}
-      <circle cx={cx} cy={cy} r="66" fill="var(--surface)"/>
+      <circle cx={cx} cy={cy} r="59" fill="var(--surface)"/>
       <text x={cx} y={cy + 1} textAnchor="middle" dominantBaseline="middle" className={styles.diagramTotal}>{board.total}</text>
-      <text x={cx} y={cy + 30} textAnchor="middle" className={styles.diagramCaption}>tareas</text>
+      <text x={cx} y={cy + 25} textAnchor="middle" className={styles.diagramCaption}>tareas</text>
       {connectors('left', left)}
       {connectors('right', right)}
     </svg>
