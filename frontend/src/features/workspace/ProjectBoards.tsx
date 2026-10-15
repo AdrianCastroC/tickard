@@ -158,7 +158,7 @@ function Card({ board, index, layout, onOpen }: {
         {board.members.map((member) => <span key={member.id} title={member.name} className={styles.avatar}>
           <Avatar id={member.id} name={member.name} src={member.avatar_url} size={27}/>
         </span>)}
-        {board.member_count > board.members.length && <span className={styles.moreMembers}>+${board.member_count - board.members.length}</span>}
+        {board.member_count > board.members.length && <span className={styles.moreMembers}>+{board.member_count - board.members.length}</span>}
         {board.member_count === 0 && <span className={styles.noMembers}>Sin asignaciones</span>}
       </div>
       <span className={styles.lastUpdate}>{board.updated_at ? `Actualizado: ${formatDate(board.updated_at) ?? '—'}` : 'Sin actividad registrada'}</span>
