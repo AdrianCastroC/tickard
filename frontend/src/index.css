@@ -3042,6 +3042,41 @@ h1, h2, h3, p { margin: 0; }
   align-self: flex-start;
 }
 .project-view { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+/* Tableros owns the only vertical scroll in the project content. The app
+   shell must be viewport-bound or its height grows with the inner grid,
+   exposing another scrollbar and pushing the sidebar account offscreen. */
+.frame:has(.project-view-boards) {
+  height: 100dvh;
+  min-height: 0;
+}
+.main:has(.project-view-boards) {
+  min-height: 0;
+  overflow: hidden;
+}
+.workspace.project-layout:has(> .project-view-boards) {
+  min-height: 0;
+  overflow: hidden;
+}
+.workspace.project-layout:has(> .project-view-boards) > .project-hero,
+.workspace.project-layout:has(> .project-view-boards) > .project-surface-nav {
+  flex: 0 0 auto;
+}
+.project-view-boards {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+}
+.project-view-boards > section {
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 100%;
+}
+/* The sidebar already scrolls its nav separately: preserve the account
+   footer at the bottom even when the project has many menu entries. */
+.frame:has(.project-view-boards) .body .side > .account-footer {
+  flex: 0 0 auto;
+}
+
 .project-gantt { display: flex; flex-direction: column; flex: 1 1 auto; min-width: 0; min-height: 0; }
 /* Shared loading feedback for project Calendar and Gantt. */
 .project-loading-indicator {
