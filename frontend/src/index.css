@@ -3682,3 +3682,7 @@ h1, h2, h3, p { margin: 0; }
 /* Global inbox owns its scroll region; the app header/sidebar remain fixed. */
 .frame:has(.inbox-view) { height:100dvh; min-height:0; }
 .main:has(.inbox-view) { min-height:0; overflow:hidden; }
+
+/* Inicio global: the dashboard owns its panel scrolling, not the page. */
+.frame:has(.global-home-view) { height:100dvh; min-height:0; }
+.main:has(.global-home-view) { min-height:0; overflow:hidden; }

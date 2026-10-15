@@ -63,13 +63,14 @@ function Icon({ name }: { name: 'search' | 'calendar' | 'arrow' }) {
   return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7"
     strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{paths[name]}</svg>
 }
-export function MyTasksSurface({ onOpenTask, onOpenMeeting }: {
+export function MyTasksSurface({ onOpenTask, onOpenMeeting, initialState = 'all' }: {
   onOpenTask: (task: MyTask) => Promise<void>
   onOpenMeeting: (meeting: MyMeeting) => Promise<void>
+  initialState?: 'all' | 'overdue'
 }) {
   const [workspace, setWorkspace] = useState('all')
   const [project, setProject] = useState('all')
-  const [state, setState] = useState('all')
+  const [state, setState] = useState(initialState)
   const [priority, setPriority] = useState('all')
   const [query, setQuery] = useState('')
   const [debouncedQuery, setDebouncedQuery] = useState('')

@@ -16,6 +16,7 @@ use App\Http\Controllers\Api\ProjectDashboardController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\WorkspacesController;
 use App\Http\Controllers\Api\MyTasksController;
+use App\Http\Controllers\Api\GlobalHomeController;
 use App\Http\Controllers\Api\NotificationsController;
 
 Route::post('/login', [AuthController::class, 'login']);
@@ -29,6 +30,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/workspace-invitations/{token}/accept', [WorkspaceInvitationsController::class, 'accept']);
     Route::get('/my/invitations', [WorkspaceInvitationsController::class, 'received']);
     Route::get('/my/tasks', [MyTasksController::class, 'index']);
+    Route::get('/my/home/projects', [GlobalHomeController::class, 'projects']);
     Route::post('/my/invitations/{invitation}/respond', [WorkspaceInvitationsController::class, 'respond']);
     Route::get('/workspaces/{workspace}/members-invitations', [WorkspaceInvitationsController::class, 'index']);
     Route::post('/workspaces/{workspace}/invitations', [WorkspaceInvitationsController::class, 'store']);
