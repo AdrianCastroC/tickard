@@ -8,9 +8,11 @@ use App\Models\Card;
 use App\Models\ClientCompany;
 use App\Models\Project;
 use App\Models\ProjectMember;
+use App\Models\Team;
 use App\Models\User;
 use App\Models\Workspace;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 class ProjectDashboardTest extends TestCase
@@ -112,4 +114,74 @@ class ProjectDashboardTest extends TestCase
             ->assertJsonCount(1, 'boards')
             ->assertJsonCount(0, 'activity');
     }
+
+    public function test_team_progress_counts_explicit_assignments_and_includes_empty_linked_teams(): void
+    {
+        extract($this->fixture());
+        $team = Team::create(['workspace_id' => $project->workspace_id, 'name' => 'Desarrollo']);
+        $shared = Team::create(['workspace_id' => $project->workspace_id, 'name' => 'Diseño']);
+        $empty = Team::create(['workspace_id' => $project->workspace_id, 'name' => 'Soporte']);
+        foreach ([$team, $shared, $empty] as $linked) {
+            DB::table('project_team')->insert([
+                'project_id' => $project->id, 'team_id' => $linked->id,
+                'created_at' => now(), 'updated_at' => now(),
+            ]);
+        }
+        $pending = $board->columns()->where('workflow_state', 'pending')->firstOrFail();
+        $done = $board->columns()->where('workflow_state', 'done')->firstOrFail();
+        $completed = Card::create(['board_id' => $board->id, 'column_id' => $done->id,
+            'title' => 'Completada', 'is_internal' => false]);
+        $incomplete = Card::create(['board_id' => $board->id, 'column_id' => $pending->id,
+            'title' => 'Pendiente', 'is_internal' => false]);
+        $archived = Card::create(['board_id' => $board->id, 'column_id' => $done->id,
+            'title' => 'Archivada', 'is_internal' => false, 'archived_at' => now()]);
+        $completed->teams()->attach([$team->id, $shared->id]);
+        $incomplete->teams()->attach($team->id);
+        $archived->teams()->attach($team->id);
+
+        $this->actingAs($owner)->getJson("/api/projects/{$project->id}/dashboard")
+            ->assertOk()
+            ->assertJsonPath('summary.total', 2)
+            ->assertJsonCount(3, 'teams')
+            ->assertJsonPath('teams.0.name', 'Desarrollo')
+            ->assertJsonPath('teams.0.completed', 1)
+            ->assertJsonPath('teams.0.total', 2)
+            ->assertJsonPath('teams.1.name', 'Diseño')
+            ->assertJsonPath('teams.1.completed', 1)
+            ->assertJsonPath('teams.1.total', 1)
+            ->assertJsonPath('teams.2.name', 'Soporte')
+            ->assertJsonPath('teams.2.total', 0);
+
+        $this->actingAs($client)->getJson("/api/projects/{$project->id}/dashboard")
+            ->assertOk()->assertJsonCount(0, 'teams');
+    }
+
+    public function test_distribution_orders_workflow_states_across_different_boards(): void
+    {
+        extract($this->fixture());
+        $other = Board::create(['project_id' => $project->id, 'name' => 'Segundo', 'position' => 1]);
+        $other->createDefaultColumns();
+        $firstPending = $board->columns()->where('workflow_state', 'pending')->firstOrFail();
+        $firstReview = $board->columns()->where('workflow_state', 'review')->firstOrFail();
+        $nextProgress = $other->columns()->where('workflow_state', 'in_progress')->firstOrFail();
+        $nextDone = $other->columns()->where('workflow_state', 'done')->firstOrFail();
+        foreach ([
+            [$firstPending, 'Por hacer'],
+            [$firstReview, 'Revisión'],
+            [$nextProgress, 'En curso'],
+            [$nextDone, 'Completada'],
+        ] as [$column, $title]) {
+            Card::create(['board_id' => $column->board_id, 'column_id' => $column->id,
+                'title' => $title, 'is_internal' => false]);
+        }
+
+        $this->actingAs($owner)->getJson("/api/projects/{$project->id}/dashboard")
+            ->assertOk()
+            ->assertJsonPath('columns.0.workflow_state', 'pending')
+            ->assertJsonPath('columns.1.workflow_state', 'in_progress')
+            ->assertJsonPath('columns.2.workflow_state', 'review')
+            ->assertJsonPath('columns.3.workflow_state', 'done')
+            ->assertJsonCount(2, 'boards');
+    }
+
 }

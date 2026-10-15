@@ -43,7 +43,10 @@ class ProjectDashboardController extends ApiController
             ->selectRaw('COUNT(*) as total')
             ->groupBy('columns.id', 'columns.name', 'columns.color', 'columns.workflow_state',
                 'columns.position', 'boards.position')
-            ->orderByRaw("CASE WHEN columns.workflow_state = 'backlog' THEN 0 ELSE 1 END")
+            // Workflow groups must be contiguous across different boards:
+            // Backlog → Por hacer → En progreso → En revisión → Completado.
+            // Keep each real column's configured name and color.
+            ->orderByRaw("CASE columns.workflow_state WHEN 'backlog' THEN 0 WHEN 'pending' THEN 1 WHEN 'in_progress' THEN 2 WHEN 'review' THEN 3 WHEN 'done' THEN 4 ELSE 5 END")
             ->orderBy('boards.position')->orderBy('columns.position')->orderBy('columns.id')
             ->get();
 
@@ -76,6 +79,38 @@ class ProjectDashboardController extends ApiController
                 'end_date' => $stat?->end_date ? substr($stat->end_date, 0, 10) : null,
             ];
         })->values();
+
+        // Only teams explicitly linked to this project. Count cards assigned
+        // to each team (not arbitrary personal assignments of its members).
+        // A card shared by two teams can contribute to each team's progress,
+        // without changing the project's global total.
+        $teams = collect();
+        if (! $client) {
+            $linkedTeams = DB::table('project_team')
+                ->join('teams', 'teams.id', '=', 'project_team.team_id')
+                ->where('project_team.project_id', $project->id)
+                ->where('teams.workspace_id', $project->workspace_id)
+                ->orderBy('teams.name')->orderBy('teams.id')
+                ->get(['teams.id', 'teams.name']);
+
+            $teamCounts = $linkedTeams->isEmpty() ? collect() : $cards()
+                ->join('card_team', 'card_team.card_id', '=', 'cards.id')
+                ->whereIn('card_team.team_id', $linkedTeams->pluck('id'))
+                ->select('card_team.team_id')
+                ->selectRaw('COUNT(DISTINCT cards.id) as total')
+                ->selectRaw("COUNT(DISTINCT CASE WHEN columns.workflow_state = 'done' THEN cards.id END) as completed")
+                ->groupBy('card_team.team_id')->get()->keyBy('team_id');
+
+            $teams = $linkedTeams->map(function ($team) use ($teamCounts) {
+                $stats = $teamCounts->get($team->id);
+                return [
+                    'id' => $team->id,
+                    'name' => $team->name,
+                    'total' => (int) ($stats?->total ?? 0),
+                    'completed' => (int) ($stats?->completed ?? 0),
+                ];
+            })->values();
+        }
 
         // Next milestones and due tasks are limited to small dashboard lists.
         $milestones = $cards()->where('cards.is_milestone', true)
@@ -150,6 +185,7 @@ class ProjectDashboardController extends ApiController
             ])->values(),
             'columns' => $distribution,
             'boards' => $boards,
+            'teams' => $teams,
             'milestones' => $milestones,
             'activity' => $recent,
         ]);

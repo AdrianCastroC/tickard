@@ -13,6 +13,7 @@ type Summary = {
 }
 type ColumnDistribution = { name: string; color: string | null; workflow_state: WorkflowState; total: number }
 type BoardSummary = { id: number; name: string; position: number; total: number; completed: number; start_date: string | null; end_date: string | null }
+type TeamSummary = { id: number; name: string; total: number; completed: number }
 type DashboardTask = { id: number; title: string; board_id: number; board_name: string; due_date: string }
 type Milestone = DashboardTask & { state: WorkflowState }
 type Activity = {
@@ -25,11 +26,14 @@ type Dashboard = {
   members: { id: number; name: string; avatar_url: string | null }[]
   columns: ColumnDistribution[]
   boards: BoardSummary[]
+  teams: TeamSummary[]
   milestones: Milestone[]
   activity: Activity[]
 }
-type Props = { project: Project; onOpenGantt: () => void; onOpenBoards: () => void; onBoardSelect: (id: number) => void }
+type Props = { project: Project; onOpenGantt: () => void; onOpenPersonnel: () => void; onBoardSelect: (id: number) => void }
 
+const WORKFLOW_ORDER: Record<WorkflowState, number> = { backlog: 0, pending: 1, in_progress: 2, review: 3, done: 4 }
+const DAY_MS = 86400000
 const COLORS: Record<WorkflowState, string> = {
   backlog: '#94a3b0', pending: '#478bf7', in_progress: '#f49b44', review: '#a26ae9', done: '#26ad7c',
 }
@@ -45,6 +49,21 @@ function formatDate(iso: string | null) {
   return ms === null ? 'Sin definir' : new Date(ms).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' })
 }
 function percent(value: number, total: number) { return total ? Math.round(100 * value / total) : 0 }
+function projectTime(startDate: string | null, endDate: string | null) {
+  const now = new Date()
+  const today = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate())
+  const start = day(startDate)
+  const end = day(endDate)
+  if (end === null) return null
+  const remainingDays = Math.max(0, Math.ceil((end - today) / DAY_MS))
+  const overdueDays = Math.max(0, Math.ceil((today - end) / DAY_MS))
+  const totalDays = start === null ? null : Math.max(1, Math.ceil((end - start) / DAY_MS))
+  return {
+    remainingDays,
+    overdueDays,
+    remainingPercent: totalDays === null ? 0 : Math.max(0, Math.min(100, remainingDays / totalDays * 100)),
+  }
+}
 function monthStart(ms: number) { const date = new Date(ms); return Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), 1) }
 function addMonths(ms: number, amount: number) { const date = new Date(ms); return Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + amount, 1) }
 function panelIcon(name: 'progress'|'tasks'|'dates'|'team') {
@@ -63,30 +82,33 @@ function Track({ width, color }: { width: number; color?: string }) {
     style={{ width: `${Math.max(0, Math.min(100, width))}%`, backgroundColor: color ?? 'var(--accent)' }} /></div>
 }
 function Distribution({ rows, total }: { rows: ColumnDistribution[]; total: number }) {
+  const ordered = useMemo(() => [...rows].sort((a, b) =>
+    WORKFLOW_ORDER[a.workflow_state] - WORKFLOW_ORDER[b.workflow_state]
+  ), [rows])
   const gradient = useMemo(() => {
     if (!total) return 'var(--line)'
     let at = 0
-    const stops = rows.filter((row) => row.total > 0).map((row) => {
+    const stops = ordered.filter((row) => row.total > 0).map((row) => {
       const start = at
       at += row.total / total * 100
       const color = row.color ?? COLORS[row.workflow_state]
       return `${color} ${start.toFixed(3)}% ${Math.min(100, at).toFixed(3)}%`
     })
     return stops.length ? `conic-gradient(${stops.join(', ')})` : 'var(--line)'
-  }, [rows, total])
+  }, [ordered, total])
   return <div className={styles.distBody}>
-    <div className={styles.donut} role="img" aria-label={rows.map((row) => `${row.name}: ${row.total}`).join(', ')}
+    <div className={styles.donut} role="img" aria-label={ordered.map((row) => `${row.name}: ${row.total}`).join(', ')}
       style={{ background: gradient }}>
       <div className={styles.donutInner}><strong>{total}</strong><span>tareas</span></div>
     </div>
     <div className={styles.distLegend}>
-      {rows.map((row, index) => <div key={`${row.workflow_state}:${row.name}:${row.color}:${index}`} className={styles.distRow}
+      {ordered.map((row, index) => <div key={`${row.workflow_state}:${row.name}:${row.color}:${index}`} className={styles.distRow}
         title={`${row.name}: ${row.total} tareas`}>
         <i className={styles.dot} style={{ backgroundColor: row.color ?? COLORS[row.workflow_state] }}/>
         <span className={styles.distName}>{row.name}</span>
         <strong>{row.total}</strong><small>{percent(row.total, total)}%</small>
       </div>)}
-      {!rows.length && <p className={styles.empty}>No hay tareas todavía.</p>}
+      {!ordered.length && <p className={styles.empty}>No hay tareas todavía.</p>}
     </div>
   </div>
 }
@@ -118,11 +140,8 @@ function Timeline({ boards, anchor, onOpenGantt, onBoardSelect }: {
   const start = addMonths(anchor, shift)
   const end = addMonths(start, 4)
   const now = Date.now()
-  const allPlanned = boards.filter((board) => board.start_date && board.end_date)
-  const visible = allPlanned.filter((board) => {
-    const from = day(board.start_date), to = day(board.end_date)
-    return from !== null && to !== null && from < end && to >= start
-  }).slice(0, 6)
+  // Always show every project board, regardless of date or current time window.
+  const ordered = [...boards].sort((a, b) => a.position - b.position || a.id - b.id)
   const months = Array.from({ length: 4 }, (_, i) => addMonths(start, i))
   const rowOffset = (ms: number) => (ms - start) / (end - start) * 100
   return <section className={`${styles.panel} ${styles.timelinePanel}`} aria-label="Cronograma resumido">
@@ -136,25 +155,36 @@ function Timeline({ boards, anchor, onOpenGantt, onBoardSelect }: {
       {months.map((month) => <span key={month}>{MONTHS[new Date(month).getUTCMonth()]} {new Date(month).getUTCFullYear()}</span>)}
     </div></div>
     <div className={styles.timelineRows}>
-      {visible.map((board) => {
-        const a = day(board.start_date) ?? start, b = day(board.end_date) ?? end
-        const from = Math.max(start, a), to = Math.min(end, b + 86400000)
-        const left = Math.max(0, rowOffset(from)), width = Math.max(1, rowOffset(to) - left)
+      {ordered.map((board) => {
+        const boardStart = day(board.start_date)
+        const boardEnd = day(board.end_date)
+        const planned = boardStart !== null && boardEnd !== null
+        const intersects = planned && boardStart < end && boardEnd >= start
+        const from = intersects ? Math.max(start, boardStart ?? start) : start
+        const to = intersects ? Math.min(end, (boardEnd ?? start) + DAY_MS) : start
+        const left = Math.max(0, rowOffset(from))
+        const width = Math.max(0, rowOffset(to) - left)
         return <div key={board.id} className={styles.timelineRow}>
           <button type="button" title={board.name} className={styles.timelineLabel}
             onClick={() => onBoardSelect(board.id)}>{board.name}</button>
           <div className={styles.timelineLanes}>
             {months.map((month) => <i key={month}/>)}
             {now >= start && now < end && <span className={styles.todayMarker} style={{ left: `${rowOffset(now)}%` }}/>}
-            <button type="button" className={styles.timelineBar} onClick={() => onBoardSelect(board.id)}
-              title={`${board.name}: ${formatDate(board.start_date)} — ${formatDate(board.end_date)}`}
-              style={{ left: `${left}%`, width: `${width}%` }}><span style={{ width: `${percent(board.completed, board.total)}%` }}/></button>
+            {intersects
+              ? <button type="button" className={styles.timelineBar} onClick={() => onBoardSelect(board.id)}
+                  title={`${board.name}: ${formatDate(board.start_date)} — ${formatDate(board.end_date)} · ${board.completed} de ${board.total} tareas completadas`}
+                  style={{ left: `${left}%`, width: `${width}%` }}>
+                  <span style={{ width: `${percent(board.completed, board.total)}%` }}/>
+                </button>
+              : <span className={styles.timelineMissing} title={planned
+                  ? `${formatDate(board.start_date)} — ${formatDate(board.end_date)}`
+                  : 'Este tablero aún no tiene fechas de planificación'}>
+                  {planned ? 'Fuera del período visible' : 'Sin fechas'}
+                </span>}
           </div>
         </div>
       })}
-      {visible.length === 0 && <p className={styles.timelineEmpty}>
-        {allPlanned.length ? 'Sin tableros planificados en estos meses. Utiliza las flechas para navegar.' : 'Los tableros aún no tienen fechas de planificación.'}
-      </p>}
+      {!ordered.length && <p className={styles.timelineEmpty}>Este proyecto todavía no tiene tableros.</p>}
     </div>
     <div className={styles.timelineFoot}>Vista resumida por tableros · <button type="button" onClick={onOpenGantt}>Consultar tareas y dependencias en el Gantt</button></div>
   </section>
@@ -164,7 +194,7 @@ function LoadingPreview() {
     <div className={styles.middle}>{Array.from({ length:3 },(_,i)=><div key={i} className={styles.placeholder}/>)}</div>
     <div className={styles.bottom}><div className={styles.placeholder}/><div className={styles.placeholder}/></div></div>
 }
-export function ProjectSurface({ project, onOpenGantt, onOpenBoards, onBoardSelect }: Props) {
+export function ProjectSurface({ project, onOpenGantt, onOpenPersonnel, onBoardSelect }: Props) {
   const [data, setData] = useState<Dashboard | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -187,17 +217,26 @@ export function ProjectSurface({ project, onOpenGantt, onOpenBoards, onBoardSele
     <button type="button" className={styles.retry} onClick={() => setRetry((value) => value + 1)}>Reintentar</button></section>
   const { summary, boards, milestones, members } = data
   const done = percent(summary.completed, summary.total)
+  const time = projectTime(summary.start_date, summary.end_date)
   const anchorDate = (() => {
     const first = day(summary.start_date), last = day(summary.end_date), now = Date.now()
     return monthStart(first !== null && (now < first || (last !== null && now > last)) ? first : now)
   })()
   return <div className={styles.dashboard}>
     <div className={styles.kpis}>
-      <Kpi kind="progress" title="Progreso general"><strong className={styles.kpiValue}>{done}%</strong><Track width={done}/></Kpi>
+      <Kpi kind="progress" title="Progreso general"><strong className={styles.kpiValue}>{done}%</strong>
+        <Track width={done}/><span className={styles.kpiSub}>{summary.overdue
+          ? `${summary.overdue} ${summary.overdue === 1 ? 'tarea retrasada' : 'tareas retrasadas'}`
+          : 'Sin tareas retrasadas'}</span></Kpi>
       <Kpi kind="tasks" title="Tareas"><strong className={styles.kpiValue}>{summary.completed} / {summary.total}</strong>
         <Track width={done}/><span className={styles.kpiSub}>{summary.in_progress} en progreso · {summary.pending} pendientes · {summary.review} en revisión</span></Kpi>
       <Kpi kind="dates" title="Fechas"><strong className={styles.kpiDate}>{formatDate(summary.start_date)} — {formatDate(summary.end_date)}</strong>
-        <span className={styles.kpiSub}>{summary.overdue ? `${summary.overdue} tareas retrasadas` : 'Sin tareas retrasadas'}</span></Kpi>
+        <span className={styles.kpiSub}>{time
+          ? time.overdueDays > 0
+            ? `Plazo vencido hace ${time.overdueDays} ${time.overdueDays === 1 ? 'día' : 'días'} · 0 días restantes`
+            : `${time.remainingDays} ${time.remainingDays === 1 ? 'día restante' : 'días restantes'}`
+          : 'Sin fecha de finalización'}</span>
+        <Track width={time?.remainingPercent ?? 0}/></Kpi>
       <Kpi kind="team" title="Equipo"><strong className={styles.kpiValue}>{summary.member_count} {summary.member_count === 1 ? 'miembro' : 'miembros'}</strong>
         <div className={styles.avatars}>{members.map((member) => <span key={member.id} title={member.name}>
           <Avatar id={member.id} name={member.name} src={member.avatar_url} size={28}/>
@@ -205,13 +244,17 @@ export function ProjectSurface({ project, onOpenGantt, onOpenBoards, onBoardSele
     </div>
     <div className={styles.middle}>
       <section className={styles.panel}>
-        <div className={styles.panelHead}><h2>Tareas por tablero</h2><button type="button" onClick={onOpenBoards}>Ver tableros</button></div>
-        <div className={styles.boardBars}>{[...boards].sort((a,b)=>b.total-a.total).slice(0,6).map((board) =>
-          <button type="button" className={styles.boardRow} key={board.id} onClick={() => onBoardSelect(board.id)} title={board.name}>
-            <span>{board.name}</span><Track width={percent(board.total, Math.max(...boards.map(x=>x.total),1))}
-              color="var(--accent)"/><strong>{board.total}</strong>
+        <div className={styles.panelHead}><h2>Tareas por equipos</h2><button type="button" onClick={onOpenPersonnel}>Ver personal</button></div>
+        <div className={styles.boardBars}>{data.teams.map((team) =>
+          <button type="button" className={styles.boardRow} key={team.id}
+            onClick={onOpenPersonnel}
+            title={`${team.name}: ${team.completed} de ${team.total} tareas completadas (${percent(team.completed, team.total)}%)`}>
+            <span>{team.name}</span><Track width={percent(team.completed, team.total)}
+              color="var(--accent)"/><strong>{team.completed}/{team.total}</strong>
           </button>)}</div>
-        {!boards.length && <p className={styles.empty}>Todavía no existen tableros.</p>}
+        {!data.teams.length && <p className={styles.empty}>{project.role === 'cliente'
+          ? 'Información de equipos no disponible para clientes.'
+          : 'No hay equipos vinculados a este proyecto.'}</p>}
       </section>
       <section className={styles.panel}><div className={styles.panelHead}><h2>Estado de tareas</h2></div>
         <Distribution rows={data.columns} total={summary.total}/></section>
@@ -231,7 +274,7 @@ export function ProjectSurface({ project, onOpenGantt, onOpenBoards, onBoardSele
       <Timeline key={project.id} boards={boards} anchor={anchorDate} onOpenGantt={onOpenGantt} onBoardSelect={onBoardSelect}/>
       <section className={`${styles.panel} ${styles.updatesPanel}`}>
         <div className={styles.panelHead}><h2>Actividad reciente</h2></div>
-        <div className={styles.activityList}>{data.activity.slice(0, 4).map((entry) => <button type="button" className={styles.activity}
+        <div className={styles.activityList}>{data.activity.map((entry) => <button type="button" className={styles.activity}
           key={entry.id} onClick={() => onBoardSelect(entry.board_id)} title={entry.board_name}>
           <span className={styles.activityAvatar}><Avatar id={entry.user_id ?? 0} name={entry.user_name} src={entry.avatar_url} size={26}/></span>
           <span className={styles.activityText}><strong>{entry.user_name}</strong> {activityVerb(entry.type)} una tarea
