@@ -36,6 +36,14 @@
 .tableScroll { flex:1 1 auto; min-height:0; min-width:0; overflow:auto; overscroll-behavior:contain; scrollbar-width:thin; border:1px solid var(--line); border-radius:10px; background:var(--surface) }
 .table { width:100%; border-spacing:0; border-collapse:separate; font-size:12px; text-align:left }
 .table th { position:sticky; top:0; z-index:1; background:var(--canvas); border-bottom:1px solid var(--line); padding:12px 11px; font-size:11px; color:var(--muted); font-weight:700; white-space:nowrap }
+.sortButton { display:inline-flex; align-items:center; gap:7px; border:0; padding:0; background:transparent; color:inherit; font:inherit; font-weight:inherit; white-space:nowrap; cursor:pointer }
+.sortButton:hover,.sortButtonActive { color:var(--accent) }
+.sortButton:focus-visible { outline:2px solid var(--accent); outline-offset:4px; border-radius:2px }
+.sortIcon { flex:0 0 12px; width:12px; height:12px; color:var(--muted) }
+.sortIcon path { opacity:.45 }
+.sortButton:hover .sortIcon path { opacity:.7 }
+.sortAscending path:first-child,.sortDescending path:last-child { opacity:1; fill:var(--accent) }
+.sortAscending path:last-child,.sortDescending path:first-child { opacity:.23 }
 .table td { padding:9px 11px; border-bottom:1px solid var(--line); white-space:nowrap; color:var(--muted); vertical-align:middle }
 .table tr:last-child td { border-bottom:0 }
 .table tbody tr:hover { background:color-mix(in srgb,var(--accent) 6%,var(--surface)) }

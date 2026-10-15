@@ -34,6 +34,19 @@ type PersonnelData = {
 }
 type ManagementTab = 'teams' | 'people' | 'invite'
 type DetailTab = 'summary' | 'tasks' | 'activity'
+type SortKey = 'name' | 'role' | 'department' | 'team' | 'tasks' | 'progress' | 'load'
+type SortDirection = 'asc' | 'desc'
+type SortState = { key: SortKey; direction: SortDirection }
+const SORT_COLUMNS: { key: SortKey; label: string; sortName: string }[] = [
+  { key: 'name', label: 'Miembro', sortName: 'nombre' },
+  { key: 'role', label: 'Rol', sortName: 'rol' },
+  { key: 'department', label: 'Departamento', sortName: 'departamento' },
+  { key: 'team', label: 'Equipo', sortName: 'equipo' },
+  { key: 'tasks', label: 'Tareas por estado', sortName: 'número de tareas' },
+  { key: 'progress', label: 'Progreso', sortName: 'progreso' },
+  { key: 'load', label: 'Carga relativa', sortName: 'carga' },
+]
+const memberCollator = new Intl.Collator('es', { sensitivity: 'base', numeric: true })
 const STATE_KEYS: StateKey[] = ['pending', 'in_progress', 'review', 'done', 'backlog']
 const STATE_NAMES: Record<StateKey, string> = {
   backlog: 'Backlog', pending: 'Pendientes', in_progress: 'En progreso',
@@ -79,6 +92,16 @@ function ManageMembersIcon() {
   </svg>
 }
 
+// Font Awesome Free v7.3.1 — sorting chevrons supplied for Tickard.
+// Split the original combined path so the active direction can be highlighted.
+function SortIcon({ direction }: { direction: SortDirection | null }) {
+  return <svg className={`${styles.sortIcon} ${direction === 'asc' ? styles.sortAscending : direction === 'desc' ? styles.sortDescending : ''}`}
+    viewBox="0 0 640 640" fill="currentColor" aria-hidden="true">
+    <path d="M130.4 268.2C135.4 280.2 147 288 160 288L480 288C492.9 288 504.6 280.2 509.6 268.2C514.6 256.2 511.8 242.5 502.7 233.3L342.7 73.3C330.2 60.8 309.9 60.8 297.4 73.3L137.4 233.3C128.2 242.5 125.5 256.2 130.5 268.2z" />
+    <path d="M130.4 371.7C125.4 383.7 128.2 397.4 137.3 406.6L297.3 566.6C309.8 579.1 330.1 579.1 342.6 566.6L502.6 406.6C511.8 397.4 514.5 383.7 509.5 371.7C504.5 359.7 492.9 352 480 352L160 352C147.1 352 135.4 359.8 130.4 371.8z" />
+  </svg>
+}
+
 function StatusBar({ stats, compact = false }: { stats: Stats; compact?: boolean }) {
   return <div className={`${styles.statusBar} ${compact ? styles.compactBar : ''}`} title={STATE_KEYS.map((state) => `${STATE_NAMES[state]}: ${stats[state]}`).join(' · ')}>
     {STATE_KEYS.map((state) => stats[state] > 0 && <span key={state} className={STATE_CLASSES[state]}
@@ -104,6 +127,7 @@ export function ProjectPersonnel({ project, profile }: { project: Project; profi
   const [departmentId, setDepartmentId] = useState<number | 'all'>('all')
   const [selectedId, setSelectedId] = useState<number | null>(null)
   const [detailTab, setDetailTab] = useState<DetailTab>('summary')
+  const [sort, setSort] = useState<SortState | null>(null)
   const [managerOpen, setManagerOpen] = useState(false)
   const [filtersOpen, setFiltersOpen] = useState(false)
   const filtersRef = useRef<HTMLDivElement>(null)
@@ -172,6 +196,41 @@ export function ProjectPersonnel({ project, profile }: { project: Project; profi
       .some((term) => term.toLocaleLowerCase('es').includes(query.trim().toLocaleLowerCase('es'))))
   ), [members, role, teamId, departmentId, query])
   const maxAssigned = Math.max(1, ...members.map((person) => person.stats.total))
+  const ordered = useMemo(() => {
+    if (!sort) return filtered
+    const value = (member: Member): string | number => {
+      switch (sort.key) {
+        case 'name': return member.name
+        case 'role': return member.is_workspace_owner ? 'Owner' : roleName(member.role)
+        case 'department': return initials(member.departments)
+        case 'team': return initials(member.teams)
+        case 'tasks': return member.stats.total
+        case 'progress': return pct(member.stats.done, member.stats.total)
+        case 'load': return Math.round(member.stats.total / maxAssigned * 100)
+      }
+    }
+    return [...filtered].sort((a, b) => {
+      // Unassigned departments/teams remain at the end in both directions.
+      if (sort.key === 'department' || sort.key === 'team') {
+        const emptyA = sort.key === 'department' ? a.departments.length === 0 : a.teams.length === 0
+        const emptyB = sort.key === 'department' ? b.departments.length === 0 : b.teams.length === 0
+        if (emptyA !== emptyB) return emptyA ? 1 : -1
+      }
+      const av = value(a)
+      const bv = value(b)
+      const result = typeof av === 'number' && typeof bv === 'number'
+        ? av - bv : memberCollator.compare(String(av), String(bv))
+      if (result !== 0) return sort.direction === 'asc' ? result : -result
+      return memberCollator.compare(a.name, b.name) || a.id - b.id
+    })
+  }, [filtered, sort, maxAssigned])
+
+  function toggleSort(key: SortKey) {
+    setSort((current) => ({
+      key,
+      direction: current?.key === key && current.direction === 'desc' ? 'asc' : 'desc',
+    }))
+  }
   const selected = members.find((person) => person.id === selectedId) ?? null
   const summary = data?.summary
   const client = project.role === 'cliente' && !data?.can_manage
@@ -243,8 +302,22 @@ export function ProjectPersonnel({ project, profile }: { project: Project; profi
       <div className={styles.primaryColumn}>
         <div className={styles.tableScroll}>
           <table className={styles.table}>
-            <thead><tr><th>Miembro</th><th>Rol</th><th>Departamento</th><th>Equipo</th><th>Tareas por estado</th><th>Progreso</th><th>Carga relativa</th></tr></thead>
-            <tbody>{filtered.map((person) => {
+            <thead><tr>{SORT_COLUMNS.map((column) => {
+              const active = sort?.key === column.key
+              const direction = active ? sort.direction : null
+              const alphabetic = ['name', 'role', 'department', 'team'].includes(column.key)
+              const nextIsAscending = active && direction === 'desc'
+              const nextOrder = alphabetic ? (nextIsAscending ? 'A a Z' : 'Z a A') : (nextIsAscending ? 'menor a mayor' : 'mayor a menor')
+              return <th key={column.key} aria-sort={active ? (direction === 'asc' ? 'ascending' : 'descending') : undefined}>
+                <button type="button" className={`${styles.sortButton} ${active ? styles.sortButtonActive : ''}`}
+                  onClick={() => toggleSort(column.key)}
+                  aria-label={`Ordenar por ${column.sortName} de ${nextOrder}`}
+                  title={`Ordenar por ${column.sortName} de ${nextOrder}`}>
+                  {column.label}<SortIcon direction={direction} />
+                </button>
+              </th>
+            })}</tr></thead>
+            <tbody>{ordered.map((person) => {
               const completion = pct(person.stats.done, person.stats.total)
               return <tr key={person.id} className={selectedId === person.id ? styles.selectedRow : ''}>
                 <td><button type="button" className={styles.memberButton} onClick={() => { setSelectedId(person.id); setDetailTab('summary') }}>
@@ -265,7 +338,7 @@ export function ProjectPersonnel({ project, profile }: { project: Project; profi
         <div className={styles.chartPanel}>
           <div className={styles.chartHeading}><strong>Distribución de tareas por persona</strong><small>Por estado · cantidad de Cards asignadas</small></div>
           <div className={styles.chartScroll}><div className={styles.chartRows}>
-            {filtered.map((person) => <div className={styles.chartRow} key={person.id}>
+            {ordered.map((person) => <div className={styles.chartRow} key={person.id}>
               <span title={person.name}>{person.name}</span><div className={styles.chartTrack}><div style={{ width: `${Math.round(person.stats.total / maxAssigned * 100)}%` }}><StatusBar stats={person.stats} /></div></div><strong>{person.stats.total}</strong>
             </div>)}
             {!filtered.length && <p className={styles.empty}>No hay datos para representar.</p>}
