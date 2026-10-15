@@ -39,20 +39,6 @@ function columnPercent(count: number, total: number) {
   return total > 0 ? Math.round(count / total * 100) : 0
 }
 
-// Every non-empty real column contributes its proportional slice.
-// There is no single "completed" progress value in this chart.
-function distributionGradient(board: BoardSummary) {
-  if (board.total <= 0) return 'var(--line)'
-  let previous = 0
-  const stops = board.columns.filter((column) => column.count > 0).map((column) => {
-    const start = previous
-    previous = Math.min(100, previous + column.count / board.total * 100)
-    const color = column.color ?? fallbackColors[column.workflow_state]
-    return `${color} ${start.toFixed(4)}% ${previous.toFixed(4)}%`
-  })
-  return stops.length ? `conic-gradient(${stops.join(', ')})` : 'var(--line)'
-}
-
 function distributionDescription(board: BoardSummary) {
   if (!board.total) return 'Sin tareas'
   return board.columns.map((column) =>
@@ -69,11 +55,110 @@ function dateRange(board: BoardSummary) {
   return 'Sin fechas planificadas'
 }
 
+
+type DiagramEntry = {
+  column: BoardColumnSummary
+  percent: number
+  color: string
+  anchorAngle: number
+  side: 'left' | 'right'
+}
+
+function diagramEntries(board: BoardSummary): DiagramEntry[] {
+  let current = -90
+  const angleWhenEmpty: Record<WorkflowState, number> = {
+    backlog: -95, pending: -42, in_progress: 0, review: 45, done: 150,
+  }
+  return board.columns.map((column) => {
+    const percent = board.total ? column.count / board.total * 100 : 0
+    const angle = percent
+      ? current + (percent / 100 * 360 / 2)
+      : angleWhenEmpty[column.workflow_state]
+    current += percent / 100 * 360
+    return {
+      column, percent,
+      color: column.color ?? fallbackColors[column.workflow_state],
+      anchorAngle: angle,
+      side: column.workflow_state === 'backlog' || column.workflow_state === 'done' ? 'left' : 'right',
+    }
+  })
+}
+
+function readableColor(color: string) {
+  const hex = color.startsWith('#') ? color.slice(1) : ''
+  const expanded = hex.length === 3 ? hex.split('').map((c) => c + c).join('') : hex
+  if (!/^[0-9a-fA-F]{6}$/.test(expanded)) return '#ffffff'
+  const values = [0, 2, 4].map((i) => parseInt(expanded.slice(i, i + 2), 16) / 255)
+  const linear = values.map((value) => value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4)
+  return linear[0] * 0.2126 + linear[1] * 0.7152 + linear[2] * 0.0722 > 0.44 ? '#1d3432' : '#ffffff'
+}
+
+function DonutDistribution({ board }: { board: BoardSummary }) {
+  const entries = diagramEntries(board)
+  const left = entries.filter((entry) => entry.side === 'left')
+  const right = entries.filter((entry) => entry.side === 'right')
+  const height = Math.max(260, Math.max(left.length, right.length) * 38 + 60)
+  const cx = 350
+  const cy = height / 2
+  const r = 88
+  const ringWidth = 42
+  const circumference = 2 * Math.PI * r
+  const labelHeight = 29
+  const yFor = (index: number, count: number) => (
+    cy + (index - (count - 1) / 2) * Math.min(64, (height - 40) / Math.max(count, 1))
+  )
+  let offset = 0
+  const segmentCircles = entries.filter(({ column }) => column.count > 0).map((entry) => {
+    const arc = entry.percent / 100 * circumference
+    const result = <circle key={entry.column.id} cx={cx} cy={cy} r={r} fill="none" stroke={entry.color}
+      strokeWidth={ringWidth} strokeDasharray={`${arc} ${circumference - arc}`}
+      strokeDashoffset={-offset} transform={`rotate(-90 ${cx} ${cy})`}>
+      <title>{`${entry.column.name}: ${columnPercent(entry.column.count, board.total)} % (${entry.column.count} tareas)`}</title>
+    </circle>
+    offset += arc
+    return result
+  })
+  const connectors = (side: 'left' | 'right', list: DiagramEntry[]) => list.map((entry, i) => {
+    const rad = entry.anchorAngle * Math.PI / 180
+    const x = cx + (r + ringWidth / 2) * Math.cos(rad)
+    const y = cy + (r + ringWidth / 2) * Math.sin(rad)
+    const targetY = yFor(i, list.length)
+    const xEdge = side === 'left' ? 206 : 494
+    const elbow = side === 'left' ? 234 : 466
+    const pillX = side === 'left' ? 5 : 507
+    return <g key={entry.column.id}>
+      <path d={`M ${x} ${y} L ${elbow} ${targetY} L ${xEdge} ${targetY}`}
+        fill="none" stroke={entry.color} strokeWidth="1.7" strokeLinejoin="round" opacity=".85"/>
+      <circle cx={x} cy={y} r="4.5" fill={entry.color} stroke="var(--surface)" strokeWidth="2.2"/>
+      <circle cx={xEdge} cy={targetY} r="4" fill={entry.color}/>
+      <foreignObject x={pillX} y={targetY - labelHeight / 2} width="188" height={labelHeight}>
+        <div className={styles.diagramLabel} title={`${entry.column.name}: ${entry.column.count} tareas (${columnPercent(entry.column.count, board.total)} %)`}
+          style={{ backgroundColor: entry.color, color: readableColor(entry.color) }}>
+          <span>{entry.column.name}</span>
+          <strong>{columnPercent(entry.column.count, board.total)} %</strong>
+        </div>
+      </foreignObject>
+    </g>
+  })
+  return <div className={styles.diagram} aria-label={distributionDescription(board)}>
+    <svg viewBox={`0 0 700 ${height}`} role="img" aria-label={distributionDescription(board)}
+      preserveAspectRatio="xMidYMid meet">
+      <circle cx={cx} cy={cy} r={r} stroke="var(--line)" strokeWidth={ringWidth} fill="none"/>
+      {segmentCircles}
+      <circle cx={cx} cy={cy} r="66" fill="var(--surface)"/>
+      <text x={cx} y={cy + 1} textAnchor="middle" dominantBaseline="middle" className={styles.diagramTotal}>{board.total}</text>
+      <text x={cx} y={cy + 30} textAnchor="middle" className={styles.diagramCaption}>tareas</text>
+      {connectors('left', left)}
+      {connectors('right', right)}
+    </svg>
+  </div>
+}
+
 function Card({ board, index, layout, onOpen }: {
   board: BoardSummary; index: number; layout: 'grid' | 'list'; onOpen: () => void
 }) {
   const accent = ['#5ebd96', '#73a2ed', '#e6a05e', '#a787da', '#58b5a8'][index % 5]
-  const gaugeStyle = { '--board-accent': accent } as CSSProperties
+  const cardStyle = { '--board-accent': accent } as CSSProperties
 
   function handleKeyDown(event: KeyboardEvent<HTMLElement>) {
     if (event.key === 'Enter' || event.key === ' ') {
@@ -82,42 +167,36 @@ function Card({ board, index, layout, onOpen }: {
     }
   }
 
-  return <article className={`${styles.card} ${layout === 'list' ? styles.cardList : ''}`} style={gaugeStyle}
-    role="button" tabIndex={0} onClick={onOpen} onKeyDown={handleKeyDown}
-    aria-label={`Abrir tablero ${board.name}`}>
-    <div className={styles.cardHeading}>
-      <span className={styles.boardNumber}>{String(board.position + 1).padStart(2, '0')}</span>
-      <div className={styles.boardName}>
-        <h3 title={board.name}>{board.name}</h3>
-        <span>{board.overdue > 0
-          ? `${board.overdue} tarea${board.overdue === 1 ? '' : 's'} retrasada${board.overdue === 1 ? '' : 's'}`
-          : board.total ? `${board.total - board.completed} tareas sin completar` : 'Tablero sin tareas'}</span>
-      </div>
-      <div className={styles.gauge} role="img" aria-label={distributionDescription(board)}
-        title={distributionDescription(board)}
-        style={{ background: distributionGradient(board) }}>
-        <span><strong>{board.total}</strong><small>tareas</small></span>
-      </div>
-    </div>
-    <div className={styles.dates} title="Primera fecha planificada y última fecha límite de las Cards, excluido Backlog">
-      <NavIcon><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M7 3v4M17 3v4M3 10h18"/></NavIcon>
-      {dateRange(board)}
-    </div>
-    <div className={styles.columns} aria-label={`Tareas por columna de ${board.name}`}>
-      {board.columns.map((column) => <div key={column.id} className={styles.column}
-        title={`${column.name}: ${column.count} tarea${column.count === 1 ? '' : 's'} (${columnPercent(column.count, board.total)}% del total)`}>
-        <div><i style={{ backgroundColor: column.color ?? fallbackColors[column.workflow_state] }} />
-          <strong>{column.count}</strong><span className={styles.columnShare}>{columnPercent(column.count, board.total)}%</span>
+  return <article
+    className={`${styles.card} ${layout === 'list' ? styles.cardList : ''}`}
+    style={cardStyle} role="button" tabIndex={0} onClick={onOpen}
+    onKeyDown={handleKeyDown} aria-label={`Abrir tablero ${board.name}`}>
+    <div className={styles.cardMain}>
+      <div className={styles.cardInfo}>
+        <div className={styles.cardHeading}>
+          <span className={styles.boardNumber}>{String(board.position + 1).padStart(2, '0')}</span>
+          <div className={styles.boardName}>
+            <h3 title={board.name}>{board.name}</h3>
+            <span>{board.overdue > 0
+              ? `${board.overdue} tarea${board.overdue === 1 ? '' : 's'} retrasada${board.overdue === 1 ? '' : 's'}`
+              : board.total ? `${board.total - board.completed} tareas sin completar` : 'Tablero sin tareas'}</span>
+          </div>
         </div>
-        <small>{column.name}</small>
-      </div>)}
+        <div className={styles.dates} title="Primera fecha planificada y última fecha límite de las Cards, excluido Backlog">
+          <NavIcon><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M7 3v4M17 3v4M3 10h18"/></NavIcon>
+          {dateRange(board)}
+        </div>
+      </div>
+      <div className={styles.chartArea}>
+        <DonutDistribution board={board}/>
+      </div>
     </div>
     <div className={styles.footer}>
       <div className={styles.members} aria-label={`${board.member_count} personas asignadas`}>
         {board.members.map((member) => <span key={member.id} title={member.name} className={styles.avatar}>
           <Avatar id={member.id} name={member.name} src={member.avatar_url} size={27}/>
         </span>)}
-        {board.member_count > board.members.length && <span className={styles.moreMembers}>+{board.member_count - board.members.length}</span>}
+        {board.member_count > board.members.length && <span className={styles.moreMembers}>+${board.member_count - board.members.length}</span>}
         {board.member_count === 0 && <span className={styles.noMembers}>Sin asignaciones</span>}
       </div>
       <span className={styles.lastUpdate}>{board.updated_at ? `Actualizado: ${formatDate(board.updated_at) ?? '—'}` : 'Sin actividad registrada'}</span>
@@ -195,7 +274,7 @@ export function ProjectBoards({ project, onBoardSelect, onRefresh }: {
 
   return <section className={styles.root} aria-label="Tableros del proyecto">
     <div className={styles.toolbar}>
-      <div className={styles.title}><h2>Tableros</h2><small>{data?.boards.length ?? project.boards.length} tableros del proyecto</small></div>
+      <div className={styles.title}><h2>Tableros</h2><small>Gestiona y visualiza el progreso de los tableros · {data?.boards.length ?? project.boards.length} en el proyecto</small></div>
       <div className={styles.toolbarActions}>
         <label className={styles.search}>
           <NavIcon><circle cx="11" cy="11" r="7"/><path d="m16 16 5 5"/></NavIcon>
