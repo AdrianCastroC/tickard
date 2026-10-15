@@ -45,7 +45,8 @@ export function ProjectLayout({
   }
 
   const projectContent = <>
-    {projectView === 'overview' && <ProjectSurface project={project} board={board} onOpenGantt={() => changeView('gantt')}/>}
+    {projectView === 'overview' && <ProjectSurface key={project.id} project={project} onOpenGantt={() => changeView('gantt')}
+      onOpenBoards={() => changeView('boards')} onBoardSelect={onBoardSelect}/>}
     {projectView === 'boards' && <ProjectBoards key={project.id} project={project}
       onBoardSelect={onBoardSelect} onRefresh={onRefresh}/>}
     {projectView === 'gantt' && profile && <ProjectGantt project={project} profile={profile} onNavigateExternalCard={onNavigateExternalCard}/>}
@@ -74,7 +75,7 @@ export function ProjectLayout({
       <ProjectHeader project={project} settingsActive={projectView === 'settings'}
         onSettings={() => changeView(projectView === 'settings' ? 'overview' : 'settings')}/>
       <ProjectNavigation value={projectView} onChange={changeView}/>
-      <div className={`project-view${projectView === 'boards' ? ' project-view-boards' : ''}`}>{projectContent}</div>
+      <div className={`project-view${projectView === 'boards' ? ' project-view-boards' : projectView === 'overview' ? ' project-view-overview' : ''}`}>{projectContent}</div>
     </>}
     {boardContent}
     {deleting && <DeleteProjectModal project={project} onClose={() => setDeleting(false)} onConfirm={deleteProject}/>}
