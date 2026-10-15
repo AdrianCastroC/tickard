@@ -279,7 +279,7 @@ class CardsController extends ApiController
         $labels = Label::where('project_id', $project->id)->whereIn('id', $data['label_ids'] ?? [])->pluck('id');
         $card->labels()->sync($labels);
         foreach (User::whereIn('id', $assignees)->get() as $assignee) {
-            Notifier::send($assignee, 'Te han asignado «'.$card->title.'».');
+            Notifier::send($assignee, 'Te han asignado «'.$card->title.'».', $card, 'assignment');
         }
         $this->syncCardTeams($card, $project, $data['team_ids'] ?? [], $assignees, $request->user());
 
@@ -398,7 +398,7 @@ class CardsController extends ApiController
             $card->assignees()->sync($ids);
             $notified = collect($ids)->diff($previous);
             foreach (User::whereIn('id', $notified)->get() as $assignee) {
-                Notifier::send($assignee, 'Te han asignado «'.$card->title.'».');
+                Notifier::send($assignee, 'Te han asignado «'.$card->title.'».', $card, 'assignment');
             }
             $card->activities()->create([
                 'user_id' => $request->user()->id,

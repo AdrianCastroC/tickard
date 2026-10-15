@@ -16,6 +16,7 @@ use App\Http\Controllers\Api\ProjectDashboardController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\WorkspacesController;
 use App\Http\Controllers\Api\MyTasksController;
+use App\Http\Controllers\Api\NotificationsController;
 
 Route::post('/login', [AuthController::class, 'login']);
 Route::post('/register', [AuthController::class, 'register']);
@@ -35,8 +36,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/me', [AuthController::class, 'me']);
     Route::patch('/me', [AuthController::class, 'updateMe']);
     Route::post('/me/avatar', [AuthController::class, 'updateAvatar']);
-    Route::get('/notifications', [AuthController::class, 'notifications']);
-    Route::post('/notifications/read', [AuthController::class, 'readNotifications']);
+    Route::get('/notifications', [NotificationsController::class, 'index']);
+    Route::post('/notifications/read', [NotificationsController::class, 'readAll']);
+    Route::post('/notifications/{notification}/read', [NotificationsController::class, 'read']);
 
     Route::post('/workspaces', [WorkspacesController::class, 'store']);
     Route::patch('/workspaces/{workspace}', [WorkspacesController::class, 'update']);

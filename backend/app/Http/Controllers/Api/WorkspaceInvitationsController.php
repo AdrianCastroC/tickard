@@ -201,6 +201,7 @@ class WorkspaceInvitationsController extends ApiController
                     AppNotification::create([
                         'user_id' => $user->id,
                         'body' => 'Tienes una invitación a '.($project ? '«'.$project->name.'»' : '«'.$workspace->name.'»').' en Tickard.',
+                        'kind' => 'invitation',
                     ]);
                 }
                 return $this->present($invitation->load(['workspace', 'project', 'recipient', 'inviter']));

@@ -43,7 +43,7 @@ protected function internalIds(array $ids): array
                 if (collect($alreadyNotified)->contains($member->id)) {
                     continue;
                 }
-                Notifier::send($member, 'Han asignado «'.$card->title.'» a tu equipo.');
+                Notifier::send($member, 'Han asignado «'.$card->title.'» a tu equipo.', $card, 'team');
             }
         }
 

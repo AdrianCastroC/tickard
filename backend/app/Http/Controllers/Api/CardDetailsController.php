@@ -329,8 +329,12 @@ public function storeComment(Request $request, Card $card)
         }
 
         foreach ($recipients->unique('id') as $recipient) {
-            if ($recipient->id !== $request->user()->id && (! $internal || $role !== 'cliente')) {
-                Notifier::send($recipient, $request->user()->name.' comentó en «'.$card->title.'».');
+            $recipientRole = ProjectAccess::role($recipient, $project);
+            // A private thread or Card must never notify a client,
+            // including by email (which cannot be hidden after delivery).
+            if ($recipient->id !== $request->user()->id && $recipientRole !== null
+                && ($recipientRole !== 'cliente' || (! $internal && ! $card->is_internal))) {
+                Notifier::send($recipient, $request->user()->name.' comentó en «'.$card->title.'».', $card, 'comment');
             }
         }
 
