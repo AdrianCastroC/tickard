@@ -12,7 +12,7 @@
 .summary_done { background:#e3f5ed; color:#1f9166 }
 .summary_overdue { background:#fff0ee; color:#d55452 }
 .summaryCard > div { min-width:0; display:flex; flex-direction:column; gap:3px }
-.summaryCard small { font-size:10px; color:var(--muted); white-space:nowrap }
+.summaryCard small { display:block; max-width:95px; overflow:hidden; text-overflow:ellipsis; font-size:10px; color:var(--muted); white-space:nowrap }
 .summaryCard strong { font-size:16px; font-weight:800; line-height:1.1 }
 .toolbarActions { display:flex; align-items:center; justify-content:flex-end; flex:1 1 270px; min-width:195px; gap:9px }
 .search { display:flex; align-items:center; gap:9px; flex:1 1 170px; min-width:0; height:36px; padding:0 10px; border:1px solid var(--line); border-radius:8px; color:var(--muted); background:var(--surface) }

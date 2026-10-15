@@ -183,12 +183,12 @@ class ProjectPersonnelTest extends TestCase
         ])->assertUnprocessable();
     }
 
-    public function test_manager_cannot_remove_the_last_project_responsible(): void
+    public function test_workspace_owner_cannot_be_removed_from_project(): void
     {
         extract($this->fixture());
         $this->actingAs($manager)
             ->deleteJson("/api/projects/{$project->id}/personnel/members/{$manager->id}")
-            ->assertUnprocessable();
+            ->assertForbidden();
         $this->assertDatabaseHas('project_members', [
             'project_id' => $project->id, 'user_id' => $manager->id, 'role' => 'responsable',
         ]);

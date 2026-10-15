@@ -280,9 +280,13 @@ export function ProjectPersonnel({ project, profile }: { project: Project; profi
 
   const activeFilterCount = Number(role !== 'all') + Number(teamId !== 'all') + Number(departmentId !== 'all')
   const columnGroups = useMemo(() => groupProjectColumns(data?.columns ?? []), [data])
-  const labelForState = (state: StateKey) => {
+  const fullLabelsForState = (state: StateKey) => {
     const names = [...new Set(columnGroups.filter((group) => group.workflow_state === state).map((group) => group.name))]
-    return names.length ? names.join(' · ') : 'Sin columna'
+    return names.length ? names : ['Sin columna']
+  }
+  const labelForState = (state: StateKey) => {
+    const names = fullLabelsForState(state)
+    return names.length > 1 ? `${names[0]} +${names.length - 1}` : names[0]
   }
   const members = data?.members ?? []
   const filtered = useMemo(() => members.filter((person) =>
@@ -343,9 +347,9 @@ export function ProjectPersonnel({ project, profile }: { project: Project; profi
       <div className={styles.summary} role="group" aria-label="Indicadores del personal">
         <SummaryCard icon="users" title="Miembros" amount={summary!.members} detail="En este proyecto" />
         <SummaryCard icon="tasks" title="Tareas asignadas" amount={summary!.assigned} detail={`${summary!.total - summary!.assigned} sin asignar`} />
-        <SummaryCard icon="progress" title={labelForState("in_progress")} amount={summary!.in_progress} detail={`${pct(summary!.in_progress, summary!.total)}% del total`} />
-        <SummaryCard icon="review" title={labelForState("review")} amount={summary!.review} detail={`${pct(summary!.review, summary!.total)}% del total`} />
-        <SummaryCard icon="done" title={labelForState("done")} amount={summary!.done} detail={`${pct(summary!.done, summary!.total)}% del total`} />
+        <SummaryCard icon="progress" title={labelForState("in_progress")} amount={summary!.in_progress} detail={`${fullLabelsForState('in_progress').join(', ')} · ${pct(summary!.in_progress, summary!.total)}% del total`} />
+        <SummaryCard icon="review" title={labelForState("review")} amount={summary!.review} detail={`${fullLabelsForState('review').join(', ')} · ${pct(summary!.review, summary!.total)}% del total`} />
+        <SummaryCard icon="done" title={labelForState("done")} amount={summary!.done} detail={`${fullLabelsForState('done').join(', ')} · ${pct(summary!.done, summary!.total)}% del total`} />
         <SummaryCard icon="overdue" title="Retrasadas" amount={summary!.overdue} detail={`${pct(summary!.overdue, summary!.total)}% del total`} />
       </div>
       <div className={styles.toolbarActions}>
@@ -475,7 +479,7 @@ export function ProjectPersonnel({ project, profile }: { project: Project; profi
           <div className={styles.infoRow}><span>Equipo</span><strong>{initials(selected.teams)}</strong></div>
           <div className={styles.statTiles}>
             {(['pending','in_progress','review','done'] as StateKey[]).map((key) => <div key={key} className={styles.statTile}>
-              <strong>{selected.stats[key]}</strong><small title={labelForState(key)}>{labelForState(key)}</small>
+              <strong>{selected.stats[key]}</strong><small title={fullLabelsForState(key).join(', ')}>{labelForState(key)}</small>
             </div>)}
           </div>
           <div className={styles.detailMetric}><div><strong>Progreso de tareas</strong><span>{pct(selected.stats.done,selected.stats.total)}%</span></div><StatusBar member={selected} groups={columnGroups}/></div>
