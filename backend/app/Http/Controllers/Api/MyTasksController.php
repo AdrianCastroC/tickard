@@ -19,9 +19,10 @@ class MyTasksController extends Controller
             'priority' => ['sometimes', Rule::in(['all', 'baja', 'media', 'alta', 'urgente'])],
             'q' => ['sometimes', 'string', 'max:120'],
             'page' => ['sometimes', 'integer', 'min:1'],
+            'today' => ['sometimes', 'date_format:Y-m-d'],
         ]);
         $user = $request->user();
-        $today = now()->toDateString();
+        $today = $filters['today'] ?? now()->toDateString();
 
         // Only explicitly assigned, non-archived Cards in Workspaces the
         // requester currently belongs to. Team assignments do not implicitly
@@ -127,7 +128,66 @@ class MyTasksController extends Controller
             ->orderBy('cards.id')
             ->paginate(30, ['*'], 'page', $filters['page'] ?? 1);
 
+        // Meetings are project calendar events, not Cards. For now there
+        // are no per-user attendees: only show events from projects whose
+        // calendar the current user may read (never external clients).
+        $meetingsQuery = DB::table('calendar_events')
+            ->join('projects', 'projects.id', '=', 'calendar_events.project_id')
+            ->join('workspaces', 'workspaces.id', '=', 'projects.workspace_id')
+            ->join('workspace_members', function ($join) use ($user) {
+                $join->on('workspace_members.workspace_id', '=', 'workspaces.id')
+                    ->where('workspace_members.user_id', '=', $user->id);
+            })
+            ->leftJoin('project_members', function ($join) use ($user) {
+                $join->on('project_members.project_id', '=', 'projects.id')
+                    ->where('project_members.user_id', '=', $user->id);
+            })
+            ->where('calendar_events.kind', 'meeting')
+            ->whereDate('calendar_events.start_date', '<=', $today)
+            ->whereDate('calendar_events.end_date', '>=', $today)
+            ->where(function ($query) use ($user) {
+                $query->where('workspaces.owner_id', $user->id)
+                    ->orWhereIn('project_members.role', ['responsable', 'editor', 'lector']);
+                if ($user->is_admin) {
+                    $query->orWhere('workspace_members.user_id', $user->id);
+                }
+            });
+
+        if (! empty($filters['workspace_id'])) {
+            $meetingsQuery->where('workspaces.id', $filters['workspace_id']);
+        }
+        if (! empty($filters['project_id'])) {
+            $meetingsQuery->where('projects.id', $filters['project_id']);
+        }
+
+        $meetings = $meetingsQuery
+            ->select(
+                'calendar_events.id', 'calendar_events.title', 'calendar_events.location',
+                'calendar_events.start_date', 'calendar_events.end_date',
+                'calendar_events.start_time', 'calendar_events.end_time',
+                'calendar_events.all_day', 'projects.id as project_id',
+                'projects.name as project_name', 'workspaces.id as workspace_id',
+                'workspaces.name as workspace_name'
+            )
+            ->orderByRaw('CASE WHEN calendar_events.all_day = 1 THEN 0 ELSE 1 END')
+            ->orderBy('calendar_events.start_time')
+            ->orderBy('calendar_events.id')
+            ->get()
+            ->map(fn ($event) => [
+                'id' => $event->id,
+                'title' => $event->title,
+                'location' => $event->location,
+                'start_time' => $event->start_time ? substr($event->start_time, 0, 5) : null,
+                'end_time' => $event->end_time ? substr($event->end_time, 0, 5) : null,
+                'all_day' => (bool) $event->all_day,
+                'project_id' => $event->project_id,
+                'project_name' => $event->project_name,
+                'workspace_id' => $event->workspace_id,
+                'workspace_name' => $event->workspace_name,
+            ])->values();
+
         return response()->json([
+            'meetings' => $meetings,
             'tasks' => $page->getCollection()->map(fn ($row) => [
                 'id' => $row->id,
                 'title' => $row->title,

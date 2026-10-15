@@ -142,6 +142,75 @@ class MyTasksTest extends TestCase
             ->assertJsonCount(0, 'scopes');
     }
 
+
+    public function test_today_meetings_appear_only_when_visible_and_match_the_selected_day(): void
+    {
+        $owner = User::factory()->create(['is_admin' => false]);
+        $workspace = Workspace::createInitialFor($owner);
+        [$project] = $this->project($workspace, 'Con reuniones');
+        [$otherProject] = $this->project($workspace, 'Otro proyecto');
+        $stranger = User::factory()->create(['is_admin' => false]);
+        $outside = Workspace::createInitialFor($stranger);
+        [$private] = $this->project($outside, 'Privado');
+
+        $base = [
+            'kind' => 'meeting',
+            'start_date' => '2026-10-14', 'end_date' => '2026-10-16',
+            'all_day' => false, 'start_time' => '09:00', 'end_time' => '10:30',
+            'created_by' => $owner->id,
+        ];
+        $project->calendarEvents()->create([...$base, 'title' => 'Planificación', 'location' => 'Sala A']);
+        $otherProject->calendarEvents()->create([...$base, 'title' => 'Otra reunión', 'all_day' => true,
+            'start_time' => null, 'end_time' => null]);
+        $project->calendarEvents()->create([...$base, 'kind' => 'appointment', 'title' => 'Cita']);
+        $project->calendarEvents()->create([...$base, 'start_date' => '2026-10-18',
+            'end_date' => '2026-10-18', 'title' => 'La semana próxima']);
+        $private->calendarEvents()->create([...$base, 'title' => 'Reunión privada']);
+
+        $this->actingAs($owner)->getJson('/api/my/tasks?today=2026-10-15')
+            ->assertOk()->assertJsonCount(2, 'meetings')
+            ->assertJsonPath('meetings.0.title', 'Otra reunión')
+            ->assertJsonPath('meetings.1.title', 'Planificación')
+            ->assertJsonPath('meetings.1.start_time', '09:00')
+            ->assertJsonPath('meetings.1.location', 'Sala A')
+            ->assertJsonPath('pagination.total', 0);
+
+        $this->getJson('/api/my/tasks?today=2026-10-15&project_id='.$project->id)
+            ->assertOk()->assertJsonCount(1, 'meetings');
+        $this->getJson('/api/my/tasks?today=2026-10-17')
+            ->assertOk()->assertJsonCount(0, 'meetings');
+        $this->getJson('/api/my/tasks?today=wrong')->assertUnprocessable();
+    }
+
+    public function test_meeting_access_follows_project_calendar_permissions(): void
+    {
+        $owner = User::factory()->create(['is_admin' => false]);
+        $workspace = Workspace::createInitialFor($owner);
+        [$project] = $this->project($workspace, 'Calendario');
+
+        $event = $project->calendarEvents()->create([
+            'kind' => 'meeting', 'title' => 'Equipo',
+            'start_date' => '2026-10-15', 'end_date' => '2026-10-15',
+            'all_day' => true, 'created_by' => $owner->id,
+        ]);
+        $editor = User::factory()->create(['is_admin' => false]);
+        $client = User::factory()->create(['is_admin' => false]);
+        $outsider = User::factory()->create(['is_admin' => false]);
+
+        foreach ([$editor, $client] as $member) {
+            $workspace->memberships()->create(['user_id' => $member->id, 'role' => 'member']);
+        }
+        $project->members()->create(['user_id' => $editor->id, 'role' => 'editor']);
+        $project->members()->create(['user_id' => $client->id, 'role' => 'cliente']);
+
+        $this->actingAs($editor)->getJson('/api/my/tasks?today=2026-10-15')
+            ->assertOk()->assertJsonPath('meetings.0.id', $event->id);
+        $this->actingAs($client)->getJson('/api/my/tasks?today=2026-10-15')
+            ->assertOk()->assertJsonCount(0, 'meetings');
+        $this->actingAs($outsider)->getJson('/api/my/tasks?today=2026-10-15')
+            ->assertOk()->assertJsonCount(0, 'meetings');
+    }
+
     public function test_list_is_paginated_without_loading_entire_boards(): void
     {
         $owner = User::factory()->create(['is_admin' => false]);

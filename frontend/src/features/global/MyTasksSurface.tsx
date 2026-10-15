@@ -1,5 +1,7 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { api } from '../../api'
+import { CloseIcon, FilterFunnelIcon } from '../../shared/icons'
 import styles from './MyTasksSurface.module.css'
 
 export type MyTask = {
@@ -20,7 +22,20 @@ export type MyTask = {
   overdue: boolean
 }
 type Scope = { workspace_id: number; workspace_name: string; project_id: number; project_name: string }
+export type MyMeeting = {
+  id: number
+  title: string
+  location: string | null
+  start_time: string | null
+  end_time: string | null
+  all_day: boolean
+  project_id: number
+  project_name: string
+  workspace_id: number
+  workspace_name: string
+}
 type TaskResponse = {
+  meetings: MyMeeting[]
   tasks: MyTask[]
   summary: { total: number; overdue: number; backlog: number; pending: number; in_progress: number; review: number; done: number }
   scopes: Scope[]
@@ -39,17 +54,19 @@ function dateLabel(day: string | null) {
     day: 'numeric', month: 'short', year: 'numeric',
   })
 }
-function Icon({ name }: { name: 'search' | 'calendar' | 'arrow' | 'refresh' }) {
+function Icon({ name }: { name: 'search' | 'calendar' | 'arrow' }) {
   const paths = {
     search: <><circle cx="10.5" cy="10.5" r="7"/><path d="m16 16 5 5"/></>,
     calendar: <><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M7 3v4M17 3v4M3 10h18"/></>,
     arrow: <><path d="M5 12h14m-7-7 7 7-7 7"/></>,
-    refresh: <><path d="M20 7v5h-5M4 17v-5h5"/><path d="M5.6 9A7 7 0 0 1 18.5 7M18.4 15A7 7 0 0 1 5.5 17"/></>,
   }
   return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7"
     strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{paths[name]}</svg>
 }
-export function MyTasksSurface({ onOpenTask }: { onOpenTask: (task: MyTask) => Promise<void> }) {
+export function MyTasksSurface({ onOpenTask, onOpenMeeting }: {
+  onOpenTask: (task: MyTask) => Promise<void>
+  onOpenMeeting: (meeting: MyMeeting) => Promise<void>
+}) {
   const [workspace, setWorkspace] = useState('all')
   const [project, setProject] = useState('all')
   const [state, setState] = useState('all')
@@ -62,6 +79,11 @@ export function MyTasksSurface({ onOpenTask }: { onOpenTask: (task: MyTask) => P
   const [error, setError] = useState('')
   const [openingId, setOpeningId] = useState<number | null>(null)
   const [reload, setReload] = useState(0)
+  const [filtersOpen, setFiltersOpen] = useState(false)
+  const [filterPosition, setFilterPosition] = useState<{ top: number; left: number } | null>(null)
+  const filterButtonRef = useRef<HTMLButtonElement>(null)
+  const filterPanelRef = useRef<HTMLDivElement>(null)
+  const filterPopoverId = useId()
 
   useEffect(() => {
     const timer = window.setTimeout(() => setDebouncedQuery(query.trim()), 250)
@@ -70,7 +92,13 @@ export function MyTasksSurface({ onOpenTask }: { onOpenTask: (task: MyTask) => P
 
   useEffect(() => {
     const controller = new AbortController()
-    const params = new URLSearchParams({ page: String(page) })
+    const localDate = new Date()
+    const today = [
+      localDate.getFullYear(),
+      String(localDate.getMonth() + 1).padStart(2, '0'),
+      String(localDate.getDate()).padStart(2, '0'),
+    ].join('-')
+    const params = new URLSearchParams({ page: String(page), today })
     if (workspace !== 'all') params.set('workspace_id', workspace)
     if (project !== 'all') params.set('project_id', project)
     if (state !== 'all') params.set('state', state)
@@ -98,6 +126,71 @@ export function MyTasksSurface({ onOpenTask }: { onOpenTask: (task: MyTask) => P
   const projects = scopes.filter(item => workspace === 'all' || String(item.workspace_id) === workspace)
   const summary = result?.summary
 
+  const filtersActive = workspace !== 'all' || project !== 'all' || state !== 'all' || priority !== 'all'
+
+  function clearFilters() {
+    setWorkspace('all')
+    setProject('all')
+    setState('all')
+    setPriority('all')
+    setPage(1)
+  }
+
+  useLayoutEffect(() => {
+    if (!filtersOpen) return
+    const updatePosition = () => {
+      const anchor = filterButtonRef.current
+      const panel = filterPanelRef.current
+      if (!anchor || !panel) return
+      const rect = anchor.getBoundingClientRect()
+      const width = panel.offsetWidth
+      const height = panel.offsetHeight
+      const margin = 12
+      const gap = 8
+      const left = Math.max(margin, Math.min(rect.right - width, window.innerWidth - width - margin))
+      const below = rect.bottom + gap
+      const top = below + height <= window.innerHeight - margin
+        ? below : Math.max(margin, rect.top - height - gap)
+      setFilterPosition(current => current?.top === top && current?.left === left ? current : { top, left })
+    }
+    updatePosition()
+    window.addEventListener('resize', updatePosition)
+    window.addEventListener('scroll', updatePosition, true)
+    const observer = new ResizeObserver(updatePosition)
+    if (filterPanelRef.current) observer.observe(filterPanelRef.current)
+    return () => {
+      window.removeEventListener('resize', updatePosition)
+      window.removeEventListener('scroll', updatePosition, true)
+      observer.disconnect()
+    }
+  }, [filtersOpen])
+
+  useEffect(() => {
+    if (!filtersOpen) return
+    const onPointerDown = (event: PointerEvent) => {
+      if (!(event.target instanceof Node)) return
+      if (filterButtonRef.current?.contains(event.target) || filterPanelRef.current?.contains(event.target)) return
+      setFiltersOpen(false)
+    }
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return
+      setFiltersOpen(false)
+      filterButtonRef.current?.focus()
+    }
+    document.addEventListener('pointerdown', onPointerDown)
+    document.addEventListener('keydown', onKeyDown)
+    return () => {
+      document.removeEventListener('pointerdown', onPointerDown)
+      document.removeEventListener('keydown', onKeyDown)
+    }
+  }, [filtersOpen])
+
+  async function openMeeting(meeting: MyMeeting) {
+    setError('')
+    try { await onOpenMeeting(meeting) }
+    catch (cause) { setError(cause instanceof Error ? cause.message : 'No se pudo abrir el calendario.') }
+  }
+
   async function open(task: MyTask) {
     setOpeningId(task.id)
     setError('')
@@ -108,11 +201,27 @@ export function MyTasksSurface({ onOpenTask }: { onOpenTask: (task: MyTask) => P
 
   return <section className={`${styles.root} my-tasks-view`} aria-label="Mis tareas">
     <header className={styles.heading}>
-      <div><h1>Mis tareas</h1><p>Las Cards que tienes asignadas en todos tus Workspaces.</p></div>
-      <button className={styles.refresh} type="button" title="Actualizar tareas"
-        aria-label="Actualizar tareas" onClick={() => setReload(value => value + 1)} disabled={loading}>
-        <Icon name="refresh"/>
-      </button>
+      <div className={styles.headingTitle}>
+        <h1>Mis tareas</h1>
+        <p>Las Cards que tienes asignadas en todos tus Workspaces.</p>
+      </div>
+      <div className={styles.headingActions}>
+        <label className={styles.headerSearch}>
+          <Icon name="search"/>
+          <input type="search" value={query} onChange={event => {
+            setQuery(event.target.value)
+            setPage(1)
+          }} aria-label="Buscar tareas" placeholder="Buscar tarea, tablero…" />
+        </label>
+        <button ref={filterButtonRef} type="button"
+          className={`icon-button board-filter-trigger${filtersOpen || filtersActive ? ' on' : ''}`}
+          title="Filtros" aria-label={filtersActive ? 'Filtros activos' : 'Filtros'}
+          aria-haspopup="dialog" aria-controls={filtersOpen ? filterPopoverId : undefined}
+          aria-expanded={filtersOpen} onClick={() => setFiltersOpen(open => !open)}>
+          <FilterFunnelIcon/>
+          {filtersActive && <span className="board-filter-active-dot" aria-hidden="true"/>}
+        </button>
+      </div>
     </header>
     <div className={styles.summary} aria-label="Resumen de mis tareas">
       <div><span>Total asignadas</span><strong>{summary?.total ?? '—'}</strong></div>
@@ -120,7 +229,17 @@ export function MyTasksSurface({ onOpenTask }: { onOpenTask: (task: MyTask) => P
       <div><span>En progreso</span><strong>{summary?.in_progress ?? '—'}</strong></div>
       <div><span>Completadas</span><strong>{summary?.done ?? '—'}</strong></div>
     </div>
-    <div className={styles.filters}>
+    {filtersOpen && createPortal(
+      <div ref={filterPanelRef} id={filterPopoverId} className={styles.filterPopover}
+        role="dialog" aria-label="Filtros de mis tareas"
+        style={filterPosition ? { top: filterPosition.top, left: filterPosition.left } : { top: 0, left: 0, visibility: 'hidden' }}>
+        <div className={styles.filterPopoverHeader}>
+          <strong>Filtros</strong>
+          <button type="button" className="icon-close" aria-label="Cerrar filtros" onClick={() => setFiltersOpen(false)}>
+            <CloseIcon/>
+          </button>
+        </div>
+        <div className={styles.filters}>
       <label>Workspace
         <select value={workspace} onChange={event => {
           setWorkspace(event.target.value); setProject('all'); setPage(1)
@@ -152,12 +271,32 @@ export function MyTasksSurface({ onOpenTask }: { onOpenTask: (task: MyTask) => P
             <option key={value} value={value}>{label}</option>)}
         </select>
       </label>
-      <label className={styles.search}>Buscar
-        <span><Icon name="search"/><input type="search" value={query} onChange={event => {
-          setQuery(event.target.value); setPage(1)
-        }} placeholder="Buscar tarea, tablero…" /></span>
-      </label>
-    </div>
+        </div>
+        <div className={styles.filterPopoverFooter}>
+          <button type="button" className="ghost" disabled={!filtersActive} onClick={clearFilters}>Limpiar filtros</button>
+        </div>
+      </div>, document.body
+    )}
+    {!!result?.meetings.length && <section className={styles.meetings} aria-label="Reuniones de hoy">
+      <div className={styles.meetingHeading}>
+        <h2>Reuniones de hoy</h2>
+        <span>{result.meetings.length}</span>
+      </div>
+      <div className={styles.meetingList}>
+        {result.meetings.map(meeting => <button key={meeting.id} type="button"
+          className={styles.meeting} onClick={() => void openMeeting(meeting)}
+          title="Ver calendario del proyecto">
+          <span className={styles.meetingTime}>{meeting.all_day
+            ? 'Todo el día'
+            : `${meeting.start_time ?? '—'} – ${meeting.end_time ?? '—'}`}</span>
+          <span className={styles.meetingInfo}>
+            <strong>{meeting.title}</strong>
+            <small>{meeting.workspace_name} › {meeting.project_name}{meeting.location ? ` · ${meeting.location}` : ''}</small>
+          </span>
+          <span className={styles.meetingOpen}><Icon name="arrow"/></span>
+        </button>)}
+      </div>
+    </section>}
     <div className={styles.listPanel}>
       <div className={styles.listHeading}>
         <strong>Tareas asignadas</strong>

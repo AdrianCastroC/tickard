@@ -7,7 +7,7 @@ import { useBoard } from '../features/board/useBoard'
 import type { GanttCardFocus, GanttDependencyNavigation } from '../features/board/GanttView'
 import { useBoardFilters } from '../features/board/useBoardFilters'
 import { GlobalHome, InboxSurface } from '../features/global/GlobalSurfaces'
-import { MyTasksSurface, type MyTask } from '../features/global/MyTasksSurface'
+import { MyTasksSurface, type MyTask, type MyMeeting } from '../features/global/MyTasksSurface'
 import { Sidebar } from '../features/sidebar/Sidebar'
 import { useSidebarState } from '../features/sidebar/useSidebarState'
 import { WorkspaceSelector } from '../features/sidebar/WorkspaceSelector/WorkspaceSelector'
@@ -64,6 +64,18 @@ function WorkspaceContent({ workspace, profile, sidebar, query, appContext, onAp
     }))
     tabs.selectBoard(destination, task.board_id)
   }
+  async function openMyMeeting(meeting: MyMeeting) {
+    const nextProfile = meeting.workspace_id === workspace.activeWorkspaceId
+      ? profile : await workspace.changeWorkspace(meeting.workspace_id)
+    if (!nextProfile) throw new Error('No se pudo acceder al Workspace de esta reunión.')
+    const destination = nextProfile.projects.find(item => item.id === meeting.project_id)
+    if (!destination) throw new Error('Ya no tienes acceso al proyecto de esta reunión.')
+    board.setSelected(null)
+    onAppContext('workspace')
+    tabs.open(destination)
+    tabs.selectContext('project')
+    setProjectView('calendar')
+  }
   function openProject(project: Project) { board.setSelected(null); onAppContext('workspace'); tabs.open(project) }
   function selectProject(id: number) { board.setSelected(null); tabs.select(id) }
   function showWorkspace() { board.setSelected(null); onAppContext('workspace'); tabs.showWorkspace() }
@@ -74,5 +86,5 @@ function WorkspaceContent({ workspace, profile, sidebar, query, appContext, onAp
   return <div className="body"><Sidebar mini={sidebar.mini}><nav className="global-nav"><div className="global-nav-row"><button className={`nav-item sub${appContext === 'home' ? ' on' : ''}`} type="button" title={sidebar.mini ? 'Desplegar menú' : 'Inicio'} aria-label={sidebar.mini ? 'Desplegar menú' : 'Inicio'} onClick={() => sidebar.mini ? sidebar.toggle() : onAppContext('home')}><NavIcon><path d="m3 11 9-8 9 8" /><path d="M5 10v10h14V10" /></NavIcon><span className="side-label-text">Inicio</span></button>{!sidebar.mini && (<button className="sidebar-toggle" type="button" title="Plegar menú" aria-label="Plegar menú" onClick={sidebar.toggle}><NavIcon><rect width="18" height="18" x="3" y="3" rx="2" /><path d="M9 3v18" /><path d="m16 15-3-3 3-3" /></NavIcon></button>)}</div><button className={`nav-item sub${appContext === 'inbox' ? ' on' : ''}`} type="button" onClick={() => onAppContext('inbox')}><NavIcon><rect width="18" height="14" x="3" y="5" rx="2" /><path d="m3 7 9 6 9-6" /></NavIcon><span className="side-label-text">Bandeja de entrada</span></button><button className={`nav-item sub${appContext === 'my-tasks' ? ' on' : ''}`} type="button" onClick={() => onAppContext('my-tasks')}><NavIcon><path d="m5 12 4 4L19 6" /><rect width="18" height="18" x="3" y="3" rx="2" /></NavIcon><span className="side-label-text">Mis tareas</span></button></nav><WorkspaceSelector profile={profile} activeWorkspaceId={workspace.activeWorkspaceId} mini={sidebar.mini} activeContext={!activeProject && appContext === 'workspace'} onOpenOverview={showWorkspace} onWorkspaceChange={async (id) => { onAppContext('workspace'); tabs.showWorkspace(); await workspace.changeWorkspace(id) }} onProfileRefresh={workspace.refreshProfile} /><nav className="nav">{profile.user.is_admin && <PersonalSection workspaceId={workspace.activeWorkspaceId} closeRequest={filters.myTasksRequest} onDataChanged={board.refresh} />}<ProjectsSection profile={profile} workspaceId={workspace.activeWorkspaceId} mini={sidebar.mini} onOpenProject={openProject} onProjectsChanged={workspace.refreshProfile} /></nav><AccountFooter profile={profile} mini={sidebar.mini} /></Sidebar><MainContent tabs={tabs.tabs} activeProjectId={tabs.activeProjectId} onSelectTab={selectProject} onCloseTab={(id) => tabs.close(id)} showProjectTabs={appContext === 'workspace' && activeProject !== undefined && activeProject !== null} contextBar={activeProject && appContext === 'workspace' && typeof context === 'number' && <ProjectContextBar project={activeProject} context={context} canManage={canManage} projectView={projectView} onProjectView={setProjectView} onContext={tabs.selectContext} onRefresh={workspace.refreshProfile} />}>{appContext === 'home' && <GlobalHome profile={profile} />}{appContext === 'inbox' && <InboxSurface onAccepted={async (workspaceId) => {
       if (workspaceId === workspace.activeWorkspaceId) await workspace.refreshProfile()
       else await workspace.changeWorkspace(workspaceId)
-    }} />}{appContext === 'my-tasks' && <MyTasksSurface onOpenTask={openMyTask} />}{appContext === 'workspace' && !activeProject && <WorkspaceOverview profile={profile} workspaceId={workspace.activeWorkspaceId} />}{appContext === 'workspace' && activeProject && <ProjectSurface project={activeProject} board={board.board} projectView={projectView} onProjectViewChange={setProjectView} onRefresh={workspace.refreshProfile} onDeleted={removeProject} context={context} boardState={board} filters={filters} profile={profile} query={query} onBoardDeleted={removeBoard} onNavigateExternalCard={openRelatedGanttCard} ganttFocus={ganttFocus} onContextChange={tabs.selectContext} />}</MainContent></div>
+    }} />}{appContext === 'my-tasks' && <MyTasksSurface onOpenTask={openMyTask} onOpenMeeting={openMyMeeting} />}{appContext === 'workspace' && !activeProject && <WorkspaceOverview profile={profile} workspaceId={workspace.activeWorkspaceId} />}{appContext === 'workspace' && activeProject && <ProjectSurface project={activeProject} board={board.board} projectView={projectView} onProjectViewChange={setProjectView} onRefresh={workspace.refreshProfile} onDeleted={removeProject} context={context} boardState={board} filters={filters} profile={profile} query={query} onBoardDeleted={removeBoard} onNavigateExternalCard={openRelatedGanttCard} ganttFocus={ganttFocus} onContextChange={tabs.selectContext} />}</MainContent></div>
 }
