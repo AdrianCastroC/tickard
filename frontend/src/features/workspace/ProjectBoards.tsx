@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type FormEvent } from 'react'
+import { useCallback, useEffect, useMemo, useState, type CSSProperties, type FormEvent, type KeyboardEvent } from 'react'
 import { api, type Project, type WorkflowState } from '../../api'
 import { Avatar } from '../../shared/ui'
 import { NavIcon, PlusIcon } from '../../shared/icons'
@@ -35,6 +35,31 @@ function completion(board: BoardSummary) {
   return board.total ? Math.round((board.completed / board.total) * 100) : 0
 }
 
+function columnPercent(count: number, total: number) {
+  return total > 0 ? Math.round(count / total * 100) : 0
+}
+
+// Every non-empty real column contributes its proportional slice.
+// There is no single "completed" progress value in this chart.
+function distributionGradient(board: BoardSummary) {
+  if (board.total <= 0) return 'var(--line)'
+  let previous = 0
+  const stops = board.columns.filter((column) => column.count > 0).map((column) => {
+    const start = previous
+    previous = Math.min(100, previous + column.count / board.total * 100)
+    const color = column.color ?? fallbackColors[column.workflow_state]
+    return `${color} ${start.toFixed(4)}% ${previous.toFixed(4)}%`
+  })
+  return stops.length ? `conic-gradient(${stops.join(', ')})` : 'var(--line)'
+}
+
+function distributionDescription(board: BoardSummary) {
+  if (!board.total) return 'Sin tareas'
+  return board.columns.map((column) =>
+    `${column.name}: ${column.count} tareas (${columnPercent(column.count, board.total)}%)`
+  ).join(' · ')
+}
+
 function dateRange(board: BoardSummary) {
   const start = formatDate(board.start_date)
   const end = formatDate(board.end_date)
@@ -44,35 +69,22 @@ function dateRange(board: BoardSummary) {
   return 'Sin fechas planificadas'
 }
 
-function Card({ board, index, layout, onOpen, canManage, onDelete }: {
-  board: BoardSummary; index: number; layout: 'grid' | 'list'
-  onOpen: () => void; canManage: boolean; onDelete: () => void
+function Card({ board, index, layout, onOpen }: {
+  board: BoardSummary; index: number; layout: 'grid' | 'list'; onOpen: () => void
 }) {
-  const [moreOpen, setMoreOpen] = useState(false)
-  const moreRef = useRef<HTMLDivElement>(null)
-  useEffect(() => {
-    if (!moreOpen) return
-    const outside = (event: PointerEvent) => {
-      if (event.target instanceof Node && !moreRef.current?.contains(event.target)) setMoreOpen(false)
-    }
-    const escape = (event: KeyboardEvent) => { if (event.key === 'Escape') setMoreOpen(false) }
-    document.addEventListener('pointerdown', outside)
-    document.addEventListener('keydown', escape)
-    return () => {
-      document.removeEventListener('pointerdown', outside)
-      document.removeEventListener('keydown', escape)
-    }
-  }, [moreOpen])
-  const percent = completion(board)
   const accent = ['#5ebd96', '#73a2ed', '#e6a05e', '#a787da', '#58b5a8'][index % 5]
-  const gaugeStyle = {
-    '--board-percent': `${percent}%`,
-    '--board-accent': accent,
-  } as CSSProperties
+  const gaugeStyle = { '--board-accent': accent } as CSSProperties
 
-  return <article className={`${styles.card} ${layout === 'list' ? styles.cardList : ''}`} style={gaugeStyle}>
-    <button type="button" className={styles.clickArea} onClick={onOpen}
-      aria-label={`Abrir tablero ${board.name}`} title={`Abrir ${board.name}`} />
+  function handleKeyDown(event: KeyboardEvent<HTMLElement>) {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault()
+      onOpen()
+    }
+  }
+
+  return <article className={`${styles.card} ${layout === 'list' ? styles.cardList : ''}`} style={gaugeStyle}
+    role="button" tabIndex={0} onClick={onOpen} onKeyDown={handleKeyDown}
+    aria-label={`Abrir tablero ${board.name}`}>
     <div className={styles.cardHeading}>
       <span className={styles.boardNumber}>{String(board.position + 1).padStart(2, '0')}</span>
       <div className={styles.boardName}>
@@ -81,20 +93,10 @@ function Card({ board, index, layout, onOpen, canManage, onDelete }: {
           ? `${board.overdue} tarea${board.overdue === 1 ? '' : 's'} retrasada${board.overdue === 1 ? '' : 's'}`
           : board.total ? `${board.total - board.completed} tareas sin completar` : 'Tablero sin tareas'}</span>
       </div>
-      <span className={styles.taskTotal}><strong>{board.total}</strong><small>tareas</small></span>
-      <div className={styles.gauge} role="img" aria-label={`${percent}% de tareas completadas`}>
-        <span>{percent}%</span>
-      </div>
-      <div ref={moreRef} className={styles.moreAnchor}>
-        <button type="button" className={styles.moreButton} aria-label={`Acciones de ${board.name}`}
-          aria-haspopup="menu" aria-expanded={moreOpen} onClick={() => setMoreOpen((old) => !old)}>
-          ···
-        </button>
-        {moreOpen && <div className={styles.moreMenu} role="menu">
-          <button role="menuitem" type="button" onClick={() => { setMoreOpen(false); onOpen() }}>Abrir tablero</button>
-          {canManage && <button role="menuitem" type="button" className={styles.danger}
-            onClick={() => { setMoreOpen(false); onDelete() }}>Eliminar tablero</button>}
-        </div>}
+      <div className={styles.gauge} role="img" aria-label={distributionDescription(board)}
+        title={distributionDescription(board)}
+        style={{ background: distributionGradient(board) }}>
+        <span><strong>{board.total}</strong><small>tareas</small></span>
       </div>
     </div>
     <div className={styles.dates} title="Primera fecha planificada y última fecha límite de las Cards, excluido Backlog">
@@ -103,8 +105,10 @@ function Card({ board, index, layout, onOpen, canManage, onDelete }: {
     </div>
     <div className={styles.columns} aria-label={`Tareas por columna de ${board.name}`}>
       {board.columns.map((column) => <div key={column.id} className={styles.column}
-        title={`${column.name}: ${column.count} tarea${column.count === 1 ? '' : 's'}`}>
-        <div><i style={{ backgroundColor: column.color ?? fallbackColors[column.workflow_state] }} /><strong>{column.count}</strong></div>
+        title={`${column.name}: ${column.count} tarea${column.count === 1 ? '' : 's'} (${columnPercent(column.count, board.total)}% del total)`}>
+        <div><i style={{ backgroundColor: column.color ?? fallbackColors[column.workflow_state] }} />
+          <strong>{column.count}</strong><span className={styles.columnShare}>{columnPercent(column.count, board.total)}%</span>
+        </div>
         <small>{column.name}</small>
       </div>)}
     </div>
@@ -117,7 +121,6 @@ function Card({ board, index, layout, onOpen, canManage, onDelete }: {
         {board.member_count === 0 && <span className={styles.noMembers}>Sin asignaciones</span>}
       </div>
       <span className={styles.lastUpdate}>{board.updated_at ? `Actualizado: ${formatDate(board.updated_at) ?? '—'}` : 'Sin actividad registrada'}</span>
-      <span className={styles.goArrow}><NavIcon><path d="m9 18 6-6-6-6"/></NavIcon></span>
     </div>
   </article>
 }
@@ -189,22 +192,6 @@ export function ProjectBoards({ project, onBoardSelect, onRefresh }: {
     } finally { setBusy(false) }
   }
 
-  async function deleteBoard(board: BoardSummary) {
-    if (busy) return
-    const confirmation = window.prompt(`Para eliminar el tablero "${board.name}", escribe su nombre exactamente. Se eliminarán también sus tareas.`)
-    if (confirmation !== board.name) return
-    setBusy(true)
-    setError('')
-    try {
-      await api(`/boards/${board.id}`, {
-        method: 'DELETE', body: JSON.stringify({ confirmation_name: board.name }),
-      })
-      await onRefresh()
-      setReload((value) => value + 1)
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : 'No se pudo eliminar el tablero.')
-    } finally { setBusy(false) }
-  }
 
   return <section className={styles.root} aria-label="Tableros del proyecto">
     <div className={styles.toolbar}>
@@ -247,8 +234,7 @@ export function ProjectBoards({ project, onBoardSelect, onRefresh }: {
     </div>}
     {!loading && data && <div className={layout === 'grid' ? styles.grid : styles.list}>
       {filtered.map((board, index) => <Card key={board.id} board={board} index={index}
-        layout={layout} canManage={data.can_manage} onOpen={() => onBoardSelect(board.id)}
-        onDelete={() => void deleteBoard(board)} />)}
+        layout={layout} onOpen={() => onBoardSelect(board.id)} />)}
       {filtered.length === 0 && <p className={styles.empty}>{query ? 'No hay tableros que coincidan con la búsqueda.' : 'Todavía no hay tableros en este proyecto.'}</p>}
     </div>}
     {creating && <div className={styles.modalBackdrop} role="presentation" onClick={() => { if (!busy) setCreating(false) }}>
