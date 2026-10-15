@@ -11,6 +11,10 @@ type Invite = {
 type Member = { id: number; name: string; handle: string; avatar_url: string|null; role: string }
 type Data = { members?: Member[]; invitations: Invite[]; member_count?: number; member_limit?: number|null }
 type Result = { created: Invite[]; errors: { value: string; reason: string }[] }
+const MEMBER_ROLE_LABELS: Record<string, string> = {
+  owner:'Propietario', member:'Miembro', responsable:'Responsable',
+  editor:'Editor', lector:'Lector', cliente:'Cliente',
+}
 export function WorkspaceInvitations({ workspaceId, workspaceName, projectId, onAdded }:
   { workspaceId?: number; workspaceName?: string; projectId?: number; onAdded?: () => void }) {
   const base = projectId ? `/projects/${projectId}/invitations` : `/workspaces/${workspaceId}/invitations`
@@ -61,11 +65,13 @@ export function WorkspaceInvitations({ workspaceId, workspaceName, projectId, on
     }catch(e){setError(e instanceof Error?e.message:'No se pudo eliminar la selección')}
     finally{setBusy(false)}
   }
-  return <div className={`${styles.root}${projectId ? '' : ` ${styles.workspaceRoot}`}`}>
+  return <div className={`${styles.root} ${styles.workspaceRoot}`}>
     <div className={styles.topline}><div>
       <h2>{projectId?'Invitaciones al proyecto':'Miembros e invitaciones'}</h2>
       <p>Invita a cuentas existentes por correo o identificador nick#ID.{workspaceName?' · '+workspaceName:''}</p>
-    </div>{data?.member_count!==undefined&&<span className={styles.count}>{data.member_count} / {data.member_limit??'∞'} plazas</span>}</div>
+    </div>{data?.member_count!==undefined&&<span className={styles.count}>{projectId
+      ? `${data.member_count} miembros`
+      : `${data.member_count} / ${data.member_limit ?? '∞'} plazas`}</span>}</div>
     <div className={styles.columns}>
       <section className={styles.panel}>
         <h3>Enviar invitaciones</h3>
@@ -114,19 +120,20 @@ export function WorkspaceInvitations({ workspaceId, workspaceName, projectId, on
     </div>
     {loading&&<p className={styles.muted}>Cargando…</p>}
     {error&&<p role="status" className={styles.feedback}>{error}</p>}
-    {!projectId&&!!data?.members?.length&&<section className={`${styles.panel} ${styles.membersPanel}`}>
+    {data?.members&&<section className={`${styles.panel} ${styles.membersPanel}`}>
       <div className={styles.membersHeader}>
-        <h3>Miembros actuales <span>{data.members.length}</span></h3>
+        <h3>{projectId ? 'Miembros del proyecto' : 'Miembros actuales'} <span>{data.members.length}</span></h3>
       </div>
-      <div className={styles.membersGrid} aria-label="Miembros actuales">
+      <div className={styles.membersGrid} aria-label={projectId ? 'Miembros del proyecto' : 'Miembros actuales'}>
         {data.members.map(x=><div key={x.id} className={styles.memberCard}>
           <Avatar id={x.id} name={x.name} src={x.avatar_url} size={32}/>
           <div className={styles.memberInfo}>
             <strong title={x.name}>{x.name}</strong>
             <small title={x.handle}>{x.handle}</small>
           </div>
-          <span className={styles.role}>{x.role==='owner'?'Propietario':'Miembro'}</span>
+          <span className={styles.role}>{MEMBER_ROLE_LABELS[x.role] ?? x.role}</span>
         </div>)}
+        {!data.members.length&&<p className={styles.muted}>Todavía no hay miembros.</p>}
       </div>
     </section>}
     {onAdded&&<button type="button" className="ghost" onClick={onAdded}>Volver a Personal</button>}

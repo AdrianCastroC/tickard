@@ -72,6 +72,38 @@ class WorkspaceInvitationsTest extends TestCase
         ]);
     }
 
+    public function test_project_invitation_view_lists_project_members_with_roles_not_everyone_in_workspace(): void
+    {
+        [$owner, $workspace, $project] = $this->fixture();
+        $editor = User::factory()->create(['name' => 'Editor Demo']);
+        $reader = User::factory()->create(['name' => 'Lector Demo']);
+        $client = User::factory()->create(['name' => 'Cliente Demo']);
+        $unassigned = User::factory()->create(['name' => 'Solo Workspace']);
+
+        foreach ([$editor, $reader, $client, $unassigned] as $user) {
+            $workspace->memberships()->create(['user_id' => $user->id, 'role' => 'member']);
+        }
+
+        ProjectMember::create(['project_id' => $project->id, 'user_id' => $editor->id, 'role' => 'editor']);
+        ProjectMember::create(['project_id' => $project->id, 'user_id' => $reader->id, 'role' => 'lector']);
+        ProjectMember::create(['project_id' => $project->id, 'user_id' => $client->id, 'role' => 'cliente']);
+
+        $response = $this->actingAs($owner)->getJson("/api/projects/{$project->id}/invitations")
+            ->assertOk()->assertJsonCount(4, 'members')->assertJsonPath('member_count', 4);
+
+        $members = collect($response->json('members'))->keyBy('id');
+        $this->assertSame('responsable', $members[$owner->id]['role']);
+        $this->assertSame('editor', $members[$editor->id]['role']);
+        $this->assertSame('lector', $members[$reader->id]['role']);
+        $this->assertSame('cliente', $members[$client->id]['role']);
+        $this->assertSame($reader->publicHandle(), $members[$reader->id]['handle']);
+        $this->assertArrayNotHasKey($unassigned->id, $members->all());
+        $this->assertArrayHasKey('avatar_url', $members[$owner->id]);
+
+        $this->actingAs($reader)->getJson("/api/projects/{$project->id}/invitations")
+            ->assertForbidden();
+    }
+
     public function test_project_responsible_can_invite_existing_members_but_cannot_onboard_external_people(): void
     {
         [$owner, $workspace, $project] = $this->fixture();

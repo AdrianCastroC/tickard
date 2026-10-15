@@ -3637,3 +3637,33 @@ h1, h2, h3, p { margin: 0; }
   align-self: flex-start;
   flex: 0 0 auto;
 }
+
+/* Project invitation editor uses the same viewport-bounded, internal
+   member-grid scroll as Workspace invitations. Keep project chrome fixed. */
+.frame:has(.project-invitations-view) {
+  height: 100dvh;
+  min-height: 0;
+}
+.main:has(.project-invitations-view),
+.workspace.project-layout:has(.project-invitations-view) {
+  min-height: 0;
+  overflow: hidden;
+}
+.project-view:has(> .project-invitations-view) {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+}
+.project-invitations-view {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 0;
+  overflow: hidden;
+  padding: 14px 16px;
+}
+.project-invitations-view > .ghost {
+  flex: 0 0 auto;
+  align-self: flex-start;
+}

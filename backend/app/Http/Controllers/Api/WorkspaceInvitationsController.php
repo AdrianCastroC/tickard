@@ -79,7 +79,46 @@ class WorkspaceInvitationsController extends ApiController
     public function projectIndex(Request $request, Project $project)
     {
         abort_unless(ProjectAccess::canManage($request->user(), $project), 403);
-        return response()->json(['invitations' => $this->invitations($project->workspace, $project)]);
+
+        $project->load('workspace.owner');
+        $owner = $project->workspace->owner;
+        $members = $project->members()->with('user')->get()
+            ->filter(fn (ProjectMember $membership) => $membership->user !== null)
+            ->map(function (ProjectMember $membership) use ($owner) {
+                $user = $membership->user;
+                return [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'handle' => $user->publicHandle(),
+                    'avatar_url' => $user->avatarUrl(),
+                    'role' => $owner && $user->id === $owner->id
+                        ? 'responsable' : $membership->role,
+                ];
+            });
+
+        // The Workspace owner has effective responsible permissions even
+        // without an explicit project_members record.
+        if ($owner && ! $members->contains('id', $owner->id)) {
+            $members->push([
+                'id' => $owner->id,
+                'name' => $owner->name,
+                'handle' => $owner->publicHandle(),
+                'avatar_url' => $owner->avatarUrl(),
+                'role' => 'responsable',
+            ]);
+        }
+
+        $members = $members->sortBy(fn ($member) => [
+            $member['role'] === 'responsable' ? 0 : 1,
+            mb_strtolower($member['name']),
+            $member['id'],
+        ])->values();
+
+        return response()->json([
+            'members' => $members,
+            'member_count' => $members->count(),
+            'invitations' => $this->invitations($project->workspace, $project),
+        ]);
     }
 
     public function received(Request $request)
