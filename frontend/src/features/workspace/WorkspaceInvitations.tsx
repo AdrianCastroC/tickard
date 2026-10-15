@@ -61,7 +61,7 @@ export function WorkspaceInvitations({ workspaceId, workspaceName, projectId, on
     }catch(e){setError(e instanceof Error?e.message:'No se pudo eliminar la selección')}
     finally{setBusy(false)}
   }
-  return <div className={styles.root}>
+  return <div className={`${styles.root}${projectId ? '' : ` ${styles.workspaceRoot}`}`}>
     <div className={styles.topline}><div>
       <h2>{projectId?'Invitaciones al proyecto':'Miembros e invitaciones'}</h2>
       <p>Invita a cuentas existentes por correo o identificador nick#ID.{workspaceName?' · '+workspaceName:''}</p>
@@ -114,13 +114,20 @@ export function WorkspaceInvitations({ workspaceId, workspaceName, projectId, on
     </div>
     {loading&&<p className={styles.muted}>Cargando…</p>}
     {error&&<p role="status" className={styles.feedback}>{error}</p>}
-    {!projectId&&!!data?.members?.length&&<section className={styles.panel}>
-      <h3>Miembros actuales <span>{data.members.length}</span></h3>
-      <div className={styles.members}>{data.members.map(x=><div key={x.id} className={styles.member}>
-        <Avatar id={x.id} name={x.name} src={x.avatar_url} size={34}/>
-        <div><strong>{x.name}</strong><small>{x.handle}</small></div>
-        <span className={styles.role}>{x.role==='owner'?'Propietario':'Miembro'}</span>
-      </div>)}</div>
+    {!projectId&&!!data?.members?.length&&<section className={`${styles.panel} ${styles.membersPanel}`}>
+      <div className={styles.membersHeader}>
+        <h3>Miembros actuales <span>{data.members.length}</span></h3>
+      </div>
+      <div className={styles.membersGrid} aria-label="Miembros actuales">
+        {data.members.map(x=><div key={x.id} className={styles.memberCard}>
+          <Avatar id={x.id} name={x.name} src={x.avatar_url} size={32}/>
+          <div className={styles.memberInfo}>
+            <strong title={x.name}>{x.name}</strong>
+            <small title={x.handle}>{x.handle}</small>
+          </div>
+          <span className={styles.role}>{x.role==='owner'?'Propietario':'Miembro'}</span>
+        </div>)}
+      </div>
     </section>}
     {onAdded&&<button type="button" className="ghost" onClick={onAdded}>Volver a Personal</button>}
   </div>

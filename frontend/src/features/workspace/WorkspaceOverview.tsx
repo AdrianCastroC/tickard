@@ -11,7 +11,7 @@ export function WorkspaceOverview({ profile, workspaceId }: Props) {
 
   if (!workspace) return <section className="workspace-overview"><h1>Sin Workspace</h1></section>
 
-  return <section className="workspace-overview" style={{ overflowY: 'auto', minHeight: 0 }}>
+  return <section className={`workspace-overview${managing && workspace.role === 'owner' ? ' workspace-overview-invitations' : ''}`}>
     {managing && workspace.role === 'owner'
       ? <>
           <button type="button" className="ghost" onClick={() => setManagingId(null)}>← Volver al Workspace</button>
