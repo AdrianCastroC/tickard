@@ -42,7 +42,7 @@
 .tableScroll { flex:1 1 auto; min-height:160px; min-width:0; overflow:auto; overscroll-behavior:contain; scrollbar-width:none; border:1px solid var(--line); border-radius:10px; background:var(--surface) }
 .table { width:100%; border-spacing:0; border-collapse:separate; font-size:12px; text-align:left }
 .table th { position:sticky; top:0; z-index:1; background:var(--canvas); border-bottom:1px solid var(--line); padding:12px 11px; font-size:11px; color:var(--muted); font-weight:700; white-space:nowrap }
-.sortButton { display:inline-flex; align-items:center; gap:7px; border:0; padding:0; background:transparent; color:inherit; font:inherit; font-weight:inherit; white-space:nowrap; cursor:pointer }
+.sortButton { display:flex; align-items:center; justify-content:space-between; gap:12px; width:100%; text-align:left; border:0; padding:0; background:transparent; color:inherit; font:inherit; font-weight:inherit; white-space:nowrap; cursor:pointer }
 .sortButton:hover,.sortButtonActive { color:var(--accent) }
 .sortButton:focus-visible { outline:2px solid var(--accent); outline-offset:4px; border-radius:2px }
 .sortIcon { flex:0 0 12px; width:12px; height:12px; color:var(--muted) }
