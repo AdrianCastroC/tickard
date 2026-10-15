@@ -52,12 +52,13 @@ export function useWorkspace() {
   }, [activeWorkspaceId])
 
   async function changeWorkspace(id: number) {
-    if (id === activeWorkspaceId) { await refreshProfile(id); return }
+    if (id === activeWorkspaceId) return refreshProfile(id)
     const version = ++requests.current.version
     const profile = await api<Profile>(profilePath(id))
     if (version !== requests.current.version) return
     persistWorkspace(id)
     setSession({ id, profile })
+    return profile
   }
 
   const updateProfile = useCallback((profile: Profile) => {

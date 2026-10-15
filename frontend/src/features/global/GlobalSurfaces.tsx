@@ -66,6 +66,3 @@ export function InboxSurface({ onAccepted }: { onAccepted: (workspaceId:number)=
   </div>
 }
 
-export function MyTasksSurface() {
-  return <div className="global-surface"><h1>Mis tareas</h1><p className="subtitle">Una vista global de las tareas que tienes asignadas.</p><div className="global-empty"><strong>Tus tareas aparecerán aquí</strong><span className="muted">La vista global estará disponible cuando exista un endpoint común para todos tus workspaces.</span></div></div>
-}

@@ -15,6 +15,7 @@ use App\Http\Controllers\Api\ProjectBoardsOverviewController;
 use App\Http\Controllers\Api\ProjectDashboardController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\WorkspacesController;
+use App\Http\Controllers\Api\MyTasksController;
 
 Route::post('/login', [AuthController::class, 'login']);
 Route::post('/register', [AuthController::class, 'register']);
@@ -26,6 +27,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/invitations/{token}/accept', [InvitationsController::class, 'acceptInvitation']);
     Route::post('/workspace-invitations/{token}/accept', [WorkspaceInvitationsController::class, 'accept']);
     Route::get('/my/invitations', [WorkspaceInvitationsController::class, 'received']);
+    Route::get('/my/tasks', [MyTasksController::class, 'index']);
     Route::post('/my/invitations/{invitation}/respond', [WorkspaceInvitationsController::class, 'respond']);
     Route::get('/workspaces/{workspace}/members-invitations', [WorkspaceInvitationsController::class, 'index']);
     Route::post('/workspaces/{workspace}/invitations', [WorkspaceInvitationsController::class, 'store']);

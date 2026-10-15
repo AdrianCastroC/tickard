@@ -3667,3 +3667,14 @@ h1, h2, h3, p { margin: 0; }
   flex: 0 0 auto;
   align-self: flex-start;
 }
+
+/* Mis tareas: keep global navigation and account controls fixed while the
+   task list scrolls internally, without a visible scrollbar. */
+.frame:has(.my-tasks-view) {
+  height: 100dvh;
+  min-height: 0;
+}
+.main:has(.my-tasks-view) {
+  min-height: 0;
+  overflow: hidden;
+}
