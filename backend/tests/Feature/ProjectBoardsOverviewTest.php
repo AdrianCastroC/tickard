@@ -93,7 +93,7 @@ class ProjectBoardsOverviewTest extends TestCase
             ->assertJsonPath('boards.0.start_date', '2027-01-10')
             ->assertJsonPath('boards.0.member_count', 1)
             ->assertJsonPath('boards.0.members.0.id', $client->id)
-            ->assertJsonMissing(['id' => $owner->id, 'name' => $owner->name]);
+            ->assertJsonCount(1, 'boards.0.members');
 
         $this->actingAs($outsider)->getJson("/api/projects/{$project->id}/boards/overview")
             ->assertForbidden();
