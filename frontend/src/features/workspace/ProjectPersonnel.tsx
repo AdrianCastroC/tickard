@@ -2,6 +2,7 @@ import { cachedProjectRequest } from '../../shared/projectRequestCache'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { api, type Profile, type Project, type Role } from '../../api'
 import { Avatar } from '../../shared/ui'
+import { NavIcon } from '../../shared/icons'
 import styles from './ProjectPersonnel.module.css'
 import { ProjectSectionLoading } from './ProjectSectionLoading'
 
@@ -56,7 +57,7 @@ function dateLabel(value: string | null) {
 function pct(done: number, total: number) { return total > 0 ? Math.round((done / total) * 100) : 0 }
 function initials(items: Group[]) { return items.length ? items.map((item) => item.name).join(', ') : '—' }
 
-function MiniIcon({ name }: { name: 'users' | 'tasks' | 'progress' | 'review' | 'done' | 'overdue' | 'search' | 'manage' | 'close' }) {
+function MiniIcon({ name }: { name: 'users' | 'tasks' | 'progress' | 'review' | 'done' | 'overdue' | 'search' | 'close' }) {
   const drawings = {
     users: <><circle cx="9" cy="8" r="3" /><path d="M3 20v-2c0-3 3-5 6-5s6 2 6 5v2M17 5c3 1 4 5 1 7m1 2c2 1 3 3 3 6" /></>,
     tasks: <><rect x="3" y="3" width="18" height="18" rx="3" /><path d="m7 8 1.5 1.5L11 7M13 8h5m-11 6 1.5 1.5L11 13m2 2h5" /></>,
@@ -65,10 +66,17 @@ function MiniIcon({ name }: { name: 'users' | 'tasks' | 'progress' | 'review' | 
     done: <><circle cx="12" cy="12" r="9" /><path d="m7.5 12 3 3 6-6" /></>,
     overdue: <><path d="M12 3 2 21h20L12 3zM12 9v5m0 3v.2" /></>,
     search: <><circle cx="10.5" cy="10.5" r="7" /><path d="m16 16 5 5" /></>,
-    manage: <><circle cx="9" cy="8" r="3" /><path d="M3 20v-2c0-3 3-5 6-5s6 2 6 5v2m8-11v6m-3-3h6" /></>,
     close: <path d="M5 5 19 19M19 5 5 19" />,
   }
   return <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{drawings[name]}</svg>
+}
+
+// Font Awesome Free v7.3.1, Copyright 2026 Fonticons, Inc. — Free License.
+// Use the original path provided for the project management action.
+function ManageMembersIcon() {
+  return <svg viewBox="0 0 640 640" fill="currentColor" aria-hidden="true">
+    <path d="M256.5 72C322.8 72 376.5 125.7 376.5 192C376.5 258.3 322.8 312 256.5 312C190.2 312 136.5 258.3 136.5 192C136.5 125.7 190.2 72 256.5 72zM226.7 368L286.1 368L287.6 368C274.7 394.8 279.8 426.2 299.1 447.5C278.9 469.8 274.3 503.3 289.7 530.9L312.2 571.3C313.1 572.9 314.1 574.5 315.1 576L78.1 576C61.7 576 48.4 562.7 48.4 546.3C48.4 447.8 128.2 368 226.7 368zM432.6 311.6C432.6 298.3 443.3 287.6 456.6 287.6L504.6 287.6C517.9 287.6 528.6 298.3 528.6 311.6L528.6 317.7C528.6 336.6 552.7 350.5 569.1 341.1L574.1 338.2C585.7 331.5 600.6 335.6 607.1 347.3L629.5 387.5C635.7 398.7 632.1 412.7 621.3 419.5L616.6 422.4C600.4 432.5 600.4 462.3 616.6 472.5L621.2 475.4C632 482.2 635.7 496.2 629.5 507.4L607 547.8C600.5 559.5 585.6 563.7 574 556.9L569.1 554C552.7 544.5 528.6 558.5 528.6 577.4L528.6 583.5C528.6 596.8 517.9 607.5 504.6 607.5L456.6 607.5C443.3 607.5 432.6 596.8 432.6 583.5L432.6 577.6C432.6 558.6 408.4 544.6 391.9 554.1L387.1 556.9C375.5 563.6 360.7 559.5 354.1 547.8L331.5 507.4C325.3 496.2 328.9 482.1 339.8 475.3L344.2 472.6C360.5 462.5 360.5 432.5 344.2 422.4L339.7 419.6C328.8 412.8 325.2 398.7 331.4 387.5L353.9 347.2C360.4 335.5 375.3 331.4 386.8 338.1L391.6 340.9C408.1 350.4 432.3 336.4 432.3 317.4L432.3 311.5zM532.5 447.8C532.5 419.1 509.2 395.8 480.5 395.8C451.8 395.8 428.5 419.1 428.5 447.8C428.5 476.5 451.8 499.8 480.5 499.8C509.2 499.8 532.5 476.5 532.5 447.8z" />
+  </svg>
 }
 
 function StatusBar({ stats, compact = false }: { stats: Stats; compact?: boolean }) {
@@ -80,9 +88,9 @@ function StatusBar({ stats, compact = false }: { stats: Stats; compact?: boolean
 }
 
 function SummaryCard({ icon, title, amount, detail }: { icon: 'users' | 'tasks' | 'progress' | 'review' | 'done' | 'overdue'; title: string; amount: number; detail: string }) {
-  return <div className={styles.summaryCard}>
+  return <div className={styles.summaryCard} title={`${title}: ${amount} · ${detail}`}>
     <span className={`${styles.summaryIcon} ${styles['summary_' + icon]}`}><MiniIcon name={icon} /></span>
-    <div><small>{title}</small><strong>{amount}</strong><span>{detail}</span></div>
+    <div><small>{title}</small><strong>{amount}</strong></div>
   </div>
 }
 
@@ -97,6 +105,9 @@ export function ProjectPersonnel({ project, profile }: { project: Project; profi
   const [selectedId, setSelectedId] = useState<number | null>(null)
   const [detailTab, setDetailTab] = useState<DetailTab>('summary')
   const [managerOpen, setManagerOpen] = useState(false)
+  const [filtersOpen, setFiltersOpen] = useState(false)
+  const filtersRef = useRef<HTMLDivElement>(null)
+  const filterButtonRef = useRef<HTMLButtonElement>(null)
   const viewportRef = useRef<HTMLElement>(null)
 
   const refresh = useCallback(async () => {
@@ -132,6 +143,26 @@ export function ProjectPersonnel({ project, profile }: { project: Project; profi
     return () => window.removeEventListener('resize', resize)
   }, [data])
 
+  useEffect(() => {
+    if (!filtersOpen) return
+    const onPointerDown = (event: PointerEvent) => {
+      if (event.target instanceof Node && !filtersRef.current?.contains(event.target)) setFiltersOpen(false)
+    }
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setFiltersOpen(false)
+        filterButtonRef.current?.focus()
+      }
+    }
+    document.addEventListener('pointerdown', onPointerDown)
+    document.addEventListener('keydown', onKeyDown)
+    return () => {
+      document.removeEventListener('pointerdown', onPointerDown)
+      document.removeEventListener('keydown', onKeyDown)
+    }
+  }, [filtersOpen])
+
+  const activeFilterCount = Number(role !== 'all') + Number(teamId !== 'all') + Number(departmentId !== 'all')
   const members = data?.members ?? []
   const filtered = useMemo(() => members.filter((person) =>
     (role === 'all' || person.role === role)
@@ -152,37 +183,60 @@ export function ProjectPersonnel({ project, profile }: { project: Project; profi
   </section>
 
   return <section ref={viewportRef} className={styles.root} aria-label="Personal del proyecto">
-    <div className={styles.summary}>
-      <SummaryCard icon="users" title="Miembros" amount={summary!.members} detail="En este proyecto" />
-      <SummaryCard icon="tasks" title="Tareas asignadas" amount={summary!.assigned} detail={`${summary!.total - summary!.assigned} sin asignar`} />
-      <SummaryCard icon="progress" title="En progreso" amount={summary!.in_progress} detail={`${pct(summary!.in_progress, summary!.total)}% del total`} />
-      <SummaryCard icon="review" title="En revisión" amount={summary!.review} detail={`${pct(summary!.review, summary!.total)}% del total`} />
-      <SummaryCard icon="done" title="Completadas" amount={summary!.done} detail={`${pct(summary!.done, summary!.total)}% del total`} />
-      <SummaryCard icon="overdue" title="Retrasadas" amount={summary!.overdue} detail={`${pct(summary!.overdue, summary!.total)}% del total`} />
-      {data.can_manage && <button type="button" className={styles.manageButton} onClick={() => setManagerOpen(true)}>
-        <MiniIcon name="manage" /> Gestionar miembros
-      </button>}
-    </div>
-
     <div className={styles.toolbar}>
-      <label className={styles.search}><MiniIcon name="search" />
-        <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar miembros…" aria-label="Buscar miembros" />
-      </label>
-      {!client && <>
-        <select aria-label="Filtrar por rol" value={role} onChange={(event) => setRole(event.target.value as Role | 'all')}>
-          <option value="all">Todos los roles</option>
-          {ROLES.map((item) => <option key={item.key} value={item.key}>{item.name}</option>)}
-        </select>
-        <select aria-label="Filtrar por equipo" value={teamId} onChange={(event) => setTeamId(event.target.value === 'all' ? 'all' : Number(event.target.value))}>
-          <option value="all">Todos los equipos</option>
-          {data.teams.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
-        </select>
-        <select aria-label="Filtrar por departamento" value={departmentId} onChange={(event) => setDepartmentId(event.target.value === 'all' ? 'all' : Number(event.target.value))}>
-          <option value="all">Todos los departamentos</option>
-          {data.departments.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
-        </select>
-      </>}
-      <span className={styles.resultCount}>{filtered.length} persona{filtered.length === 1 ? '' : 's'}</span>
+      <div className={styles.summary} role="group" aria-label="Indicadores del personal">
+        <SummaryCard icon="users" title="Miembros" amount={summary!.members} detail="En este proyecto" />
+        <SummaryCard icon="tasks" title="Tareas asignadas" amount={summary!.assigned} detail={`${summary!.total - summary!.assigned} sin asignar`} />
+        <SummaryCard icon="progress" title="En progreso" amount={summary!.in_progress} detail={`${pct(summary!.in_progress, summary!.total)}% del total`} />
+        <SummaryCard icon="review" title="En revisión" amount={summary!.review} detail={`${pct(summary!.review, summary!.total)}% del total`} />
+        <SummaryCard icon="done" title="Completadas" amount={summary!.done} detail={`${pct(summary!.done, summary!.total)}% del total`} />
+        <SummaryCard icon="overdue" title="Retrasadas" amount={summary!.overdue} detail={`${pct(summary!.overdue, summary!.total)}% del total`} />
+      </div>
+      <div className={styles.toolbarActions}>
+        <label className={styles.search}><MiniIcon name="search" />
+          <input type="search" value={query} onChange={(event) => setQuery(event.target.value)}
+            placeholder="Buscar miembros…" aria-label="Buscar miembros" />
+        </label>
+        {!client && <div className={styles.filterAnchor} ref={filtersRef}>
+          <button ref={filterButtonRef} type="button"
+            className={`icon-button board-filter-trigger${filtersOpen || activeFilterCount ? ' on' : ''}`}
+            aria-label={activeFilterCount ? `Filtros de personal: ${activeFilterCount} activos` : 'Filtros de personal'}
+            title="Filtros" aria-haspopup="dialog" aria-expanded={filtersOpen}
+            aria-controls={filtersOpen ? 'personnel-filters' : undefined}
+            onClick={() => setFiltersOpen((open) => !open)}>
+            <NavIcon><path d="M4 6h16M7 12h10M10 18h4" /></NavIcon>
+            {activeFilterCount > 0 && <span className="board-filter-active-dot" aria-hidden="true" />}
+          </button>
+          {filtersOpen && <div id="personnel-filters" className={styles.filterPopover} role="dialog" aria-label="Filtros de personal">
+            <div className={styles.filterHeading}>
+              <strong>Filtros</strong>
+              <button type="button" onClick={() => { setRole('all'); setTeamId('all'); setDepartmentId('all') }}>Restablecer</button>
+            </div>
+            <label>Rol
+              <select value={role} onChange={(event) => setRole(event.target.value as Role | 'all')}>
+                <option value="all">Todos los roles</option>
+                {ROLES.map((item) => <option key={item.key} value={item.key}>{item.name}</option>)}
+              </select>
+            </label>
+            <label>Equipo
+              <select value={teamId} onChange={(event) => setTeamId(event.target.value === 'all' ? 'all' : Number(event.target.value))}>
+                <option value="all">Todos los equipos</option>
+                {data.teams.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
+              </select>
+            </label>
+            <label>Departamento
+              <select value={departmentId} onChange={(event) => setDepartmentId(event.target.value === 'all' ? 'all' : Number(event.target.value))}>
+                <option value="all">Todos los departamentos</option>
+                {data.departments.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
+              </select>
+            </label>
+          </div>}
+        </div>}
+        {data.can_manage && <button type="button" className={styles.manageButton} title="Gestionar miembros"
+          aria-label="Gestionar miembros" onClick={() => setManagerOpen(true)}>
+          <ManageMembersIcon />
+        </button>}
+      </div>
     </div>
 
     <div className={`${styles.workspaceBody} ${selected ? styles.hasDetails : ''}`}>

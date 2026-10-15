@@ -1,25 +1,35 @@
 .root { display:flex; flex-direction:column; gap:12px; min-width:0; min-height:0; height:calc(100dvh - 260px); overflow:hidden; color:var(--ink) }
-.summary { display:flex; flex:0 0 auto; align-items:stretch; gap:9px; min-width:0 }
-.summaryCard { flex:1 1 0; min-width:0; display:flex; align-items:center; gap:10px; padding:12px; background:var(--surface); border:1px solid var(--line); border-radius:10px }
-.summaryIcon { display:grid; flex:0 0 38px; place-items:center; width:38px; height:38px; border-radius:10px; background:color-mix(in srgb,var(--accent) 11%,var(--surface)); color:var(--accent) }
-.summaryIcon svg { width:22px; height:22px }
+.toolbar { display:flex; position:relative; z-index:3; align-items:center; gap:16px; flex:0 0 auto; min-width:0; min-height:42px; background:transparent; border:0; padding:0 }
+.summary { display:flex; flex:0 1 auto; min-width:0; align-items:center; overflow:hidden }
+.summaryCard { display:flex; flex:0 0 auto; align-items:center; gap:7px; padding:1px 11px; min-width:0; border-right:1px solid var(--line) }
+.summaryCard:first-child { padding-left:0 }
+.summaryCard:last-child { border-right:0; padding-right:0 }
+.summaryIcon { display:grid; flex:0 0 30px; place-items:center; width:30px; height:30px; border-radius:9px; background:color-mix(in srgb,var(--accent) 11%,var(--surface)); color:var(--accent) }
+.summaryIcon svg { width:17px; height:17px }
 .summary_tasks { background:#eaf1ff; color:#4785e7 }
 .summary_progress { background:#eaf0ff; color:#5988ea }
 .summary_review { background:#f4efff; color:#9465d8 }
 .summary_done { background:#e3f5ed; color:#1f9166 }
 .summary_overdue { background:#fff0ee; color:#d55452 }
 .summaryCard > div { min-width:0; display:flex; flex-direction:column; gap:3px }
-.summaryCard small { font-size:11px; color:var(--muted); white-space:nowrap }
-.summaryCard strong { font-size:22px; font-weight:800; line-height:1.1 }
-.summaryCard div > span { font-size:10px; color:var(--muted); white-space:nowrap }
-.manageButton,.modalPrimary { display:inline-flex; justify-content:center; align-items:center; gap:7px; align-self:center; padding:11px 15px; border:0; border-radius:9px; background:var(--accent); color:var(--accent-ink); cursor:pointer; white-space:nowrap; font-weight:700; font-size:12px }
-.manageButton svg { width:17px; height:17px }
-.toolbar { display:flex; align-items:center; gap:10px; flex:0 0 auto; min-width:0; padding:10px; background:var(--surface); border:1px solid var(--line); border-radius:10px; flex-wrap:wrap }
-.search { display:flex; align-items:center; gap:9px; flex:1 1 230px; min-width:170px; max-width:350px; height:36px; padding:0 10px; border:1px solid var(--line); border-radius:8px; color:var(--muted); background:var(--canvas) }
-.search input { width:100%; min-width:0; background:transparent; border:0; outline:0; color:var(--ink); font:inherit; font-size:12px }
-.toolbar select,.modalContent select,.modalContent input { min-width:0; padding:9px 11px; border:1px solid var(--line); border-radius:8px; background:var(--canvas); color:var(--ink); font:inherit; font-size:12px; cursor:pointer }
-.toolbar select { flex:0 1 auto; max-width:195px }
-.resultCount { margin-left:auto; white-space:nowrap; color:var(--muted); font-size:11px }
+.summaryCard small { font-size:10px; color:var(--muted); white-space:nowrap }
+.summaryCard strong { font-size:16px; font-weight:800; line-height:1.1 }
+.toolbarActions { display:flex; align-items:center; justify-content:flex-end; flex:1 1 270px; min-width:195px; gap:9px }
+.search { display:flex; align-items:center; gap:9px; flex:1 1 170px; min-width:0; height:36px; padding:0 10px; border:1px solid var(--line); border-radius:8px; color:var(--muted); background:var(--surface) }
+.search input { flex:1 1 auto; width:100%; min-width:0; background:transparent; border:0; outline:0; color:var(--ink); font:inherit; font-size:12px }
+.search:focus-within { border-color:var(--accent) }
+.filterAnchor { position:relative; flex:0 0 auto }
+.filterPopover { position:absolute; z-index:30; top:calc(100% + 8px); right:0; display:flex; flex-direction:column; gap:14px; width:255px; max-width:calc(100vw - 30px); box-sizing:border-box; padding:15px; border:1px solid var(--line); border-radius:12px; background:var(--surface); box-shadow:0 12px 32px rgb(12 36 32 / 15%) }
+.filterHeading { display:flex; align-items:center; justify-content:space-between; gap:10px }
+.filterHeading strong { font-size:15px }
+.filterHeading button { padding:0; font-size:12px; color:var(--accent); border:0; background:transparent; cursor:pointer }
+.filterPopover label { display:flex; flex-direction:column; gap:7px; font-size:12px; font-weight:650; color:var(--muted) }
+.filterPopover select,.modalContent select,.modalContent input { min-width:0; padding:9px 11px; border:1px solid var(--line); border-radius:8px; background:var(--canvas); color:var(--ink); font:inherit; font-size:12px; cursor:pointer }
+.filterPopover select { width:100% }
+.manageButton { display:grid; place-items:center; flex:0 0 36px; width:36px; height:36px; padding:8px; border:1px solid var(--line); border-radius:9px; background:var(--surface); color:var(--accent); cursor:pointer }
+.manageButton:hover { border-color:var(--accent); background:color-mix(in srgb,var(--accent) 7%,var(--surface)) }
+.manageButton svg { width:20px; height:20px }
+.modalPrimary { display:inline-flex; justify-content:center; align-items:center; gap:7px; align-self:center; padding:11px 15px; border:0; border-radius:9px; background:var(--accent); color:var(--accent-ink); cursor:pointer; white-space:nowrap; font-weight:700; font-size:12px }
 .workspaceBody { display:grid; grid-template-columns:minmax(0,1fr); flex:1 1 auto; gap:13px; min-height:0; min-width:0; overflow:hidden }
 .workspaceBody.hasDetails { grid-template-columns:minmax(0,1fr) minmax(300px,31%) }
 .primaryColumn { display:flex; flex-direction:column; min-height:0; min-width:0; gap:12px; overflow:hidden }
@@ -126,6 +136,12 @@
 .manageMembers > div > span { flex:1 1 auto; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis }
 .manageMembers select { width:125px }
 .inviteResult { display:flex; flex-direction:column; gap:8px; padding:12px; border-radius:8px; background:var(--canvas); font-size:12px }
-@media(max-width:1400px) { .summary { flex-wrap:wrap } .summaryCard { flex:1 1 145px } .manageButton { align-self:stretch } .workspaceBody.hasDetails { grid-template-columns:minmax(0,1fr) minmax(280px,34%) } .table { min-width:810px } }
-@media(max-width:900px) { .workspaceBody.hasDetails { grid-template-columns:1fr; grid-template-rows:minmax(0,1fr) minmax(0,44%) } .chartPanel { display:none } .toolbar select { flex:1 1 130px } }
-@media(max-width:570px) { .summaryCard { flex:1 1 calc(50% - 10px) } .manageButton { flex:1 1 100% } .summaryCard strong { font-size:18px } .summaryIcon { flex-basis:30px; width:30px; height:30px } .toolbar .search { max-width:none; flex-basis:100% } .modalBackdrop { padding:5px } .manageMembers > div { flex-wrap:wrap } }
+@media(max-width:1400px) { .workspaceBody.hasDetails { grid-template-columns:minmax(0,1fr) minmax(280px,34%) } .table { min-width:810px } }
+@media(max-width:1200px) {
+  .toolbar { flex-wrap:wrap; gap:8px }
+  .summary { flex:1 1 100%; overflow-x:auto; scrollbar-width:none }
+  .summary::-webkit-scrollbar { display:none }
+  .toolbarActions { flex:1 1 100%; min-width:0 }
+}
+@media(max-width:900px) { .workspaceBody.hasDetails { grid-template-columns:1fr; grid-template-rows:minmax(0,1fr) minmax(0,44%) } .chartPanel { display:none } }
+@media(max-width:570px) { .summaryCard { padding-inline:8px } .summaryCard strong { font-size:14px } .summaryCard small { font-size:9px } .summaryIcon { flex-basis:26px; width:26px; height:26px } .filterPopover { right:-45px } .modalBackdrop { padding:5px } .manageMembers > div { flex-wrap:wrap } }
