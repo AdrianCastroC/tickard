@@ -70,7 +70,7 @@ export function MyTasksSurface({ onOpenTask, onOpenMeeting, initialState = 'all'
 }) {
   const [workspace, setWorkspace] = useState('all')
   const [project, setProject] = useState('all')
-  const [state, setState] = useState(initialState)
+  const [state, setState] = useState<string>(initialState)
   const [priority, setPriority] = useState('all')
   const [query, setQuery] = useState('')
   const [debouncedQuery, setDebouncedQuery] = useState('')
