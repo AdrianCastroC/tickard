@@ -73,6 +73,68 @@ class ProjectPersonnelTest extends TestCase
             ->assertJsonCount(2, 'members');
     }
 
+    public function test_personnel_uses_real_column_names_order_and_per_member_counts(): void
+    {
+        extract($this->fixture());
+        $board = Board::create(['project_id' => $project->id, 'name' => 'Sprint', 'position' => 1]);
+        $board->createDefaultColumns();
+
+        $backlog = $board->columns()->where('workflow_state', 'backlog')->firstOrFail();
+        $pending = $board->columns()->where('workflow_state', 'pending')->firstOrFail();
+        $backlog->update(['name' => 'Ideas futuras', 'color' => '#aabbcc', 'position' => 6]);
+        $pending->update(['name' => 'Pendiente de validar', 'position' => 0]);
+
+        $idea = Card::create(['board_id' => $board->id, 'column_id' => $backlog->id,
+            'title' => 'Investigar']);
+        $idea->assignees()->attach($editor->id);
+        $task = Card::create(['board_id' => $board->id, 'column_id' => $pending->id,
+            'title' => 'Validar']);
+        $task->assignees()->attach($editor->id);
+
+        $response = $this->actingAs($manager)->getJson("/api/projects/{$project->id}/personnel");
+        $response->assertOk()
+            ->assertJsonPath('columns.0.id', $backlog->id)
+            ->assertJsonPath('columns.0.name', 'Ideas futuras')
+            ->assertJsonPath('columns.0.color', '#aabbcc')
+            ->assertJsonPath('columns.1.id', $pending->id)
+            ->assertJsonPath('columns.1.name', 'Pendiente de validar')
+            ->assertJsonPath('summary.backlog', 1)
+            ->assertJsonPath('summary.pending', 1);
+
+        $members = collect($response->json('members'));
+        $editorData = $members->firstWhere('id', $editor->id);
+        $this->assertSame(1, $editorData['column_counts'][(string) $backlog->id]);
+        $this->assertSame(1, $editorData['column_counts'][(string) $pending->id]);
+        $this->assertSame('Ideas futuras', collect($editorData['tasks'])->firstWhere('id', $idea->id)['column_name']);
+        $this->assertSame('Pendiente de validar', collect($editorData['tasks'])->firstWhere('id', $task->id)['column_name']);
+    }
+
+    public function test_client_cannot_see_private_column_names_in_personnel(): void
+    {
+        extract($this->fixture());
+        $clientUser = User::factory()->create(['is_admin' => false,
+            'client_company_id' => $project->client_company_id]);
+        ProjectMember::create(['project_id' => $project->id, 'user_id' => $clientUser->id, 'role' => 'cliente']);
+        $board = Board::create(['project_id' => $project->id, 'name' => 'Servicio']);
+        $board->createDefaultColumns();
+        $publicColumn = $board->columns()->where('workflow_state', 'pending')->firstOrFail();
+        $privateColumn = $board->columns()->where('workflow_state', 'review')->firstOrFail();
+        $privateColumn->update(['name' => 'Revisión secreta']);
+        $visible = Card::create(['board_id' => $board->id, 'column_id' => $publicColumn->id,
+            'title' => 'Visible', 'is_internal' => false]);
+        $hidden = Card::create(['board_id' => $board->id, 'column_id' => $privateColumn->id,
+            'title' => 'Oculta', 'is_internal' => true]);
+        $visible->assignees()->attach($clientUser->id);
+        $hidden->assignees()->attach($clientUser->id);
+
+        $this->actingAs($clientUser)->getJson("/api/projects/{$project->id}/personnel")
+            ->assertOk()
+            ->assertJsonCount(1, 'columns')
+            ->assertJsonPath('columns.0.id', $publicColumn->id)
+            ->assertJsonMissing(['name' => 'Revisión secreta'])
+            ->assertJsonMissing(['column_name' => 'Revisión secreta']);
+    }
+
     public function test_only_managers_can_add_a_team_and_existing_roles_are_preserved(): void
     {
         extract($this->fixture());

@@ -30,7 +30,7 @@ jobs:
         run: npm run lint
 
   backend:
-    name: Laravel calendar feature tests
+    name: Laravel personnel and calendar feature tests
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -48,5 +48,5 @@ jobs:
         run: |
           cp .env.example .env
           php artisan key:generate
-      - name: Test calendar permissions and events
-        run: php artisan test --filter='CalendarEventsTest|ProjectCalendarAssignmentsTest'
+      - name: Test calendar and personnel permissions
+        run: php artisan test --filter='CalendarEventsTest|ProjectCalendarAssignmentsTest|ProjectPersonnelTest'

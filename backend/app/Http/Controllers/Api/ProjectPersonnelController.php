@@ -53,11 +53,33 @@ class ProjectPersonnelController extends ApiController
             ->select([
                 'cards.id', 'cards.title', 'cards.due_date', 'cards.updated_at', 'cards.is_milestone',
                 'boards.id as board_id', 'boards.name as board_name',
+                'columns.id as column_id', 'columns.name as column_name',
                 'columns.workflow_state', 'card_user.user_id',
             ])->get();
 
         $today = now()->toDateString();
         $tasks = $assignments->unique('id')->values();
+
+        // Keep the configured column names and positions from the real boards.
+        // Backlog columns are listed first, then the remaining columns in
+        // board/column order. Clients only learn about their own public Cards.
+        $columns = DB::table('columns')
+            ->join('boards', 'boards.id', '=', 'columns.board_id')
+            ->where('boards.project_id', $project->id)
+            ->when($client, fn ($query) => $query->whereIn(
+                'columns.id', $tasks->pluck('column_id')->unique()->all()
+            ))
+            ->orderByRaw("CASE WHEN columns.workflow_state = 'backlog' THEN 0 ELSE 1 END")
+            ->orderBy('boards.position')
+            ->orderBy('boards.id')
+            ->orderBy('columns.position')
+            ->orderBy('columns.id')
+            ->get([
+                'columns.id', 'columns.name', 'columns.color',
+                'columns.workflow_state', 'columns.position',
+                'boards.id as board_id', 'boards.name as board_name',
+            ]);
+
         // Group assignments once instead of rescanning them for every user.
         $assignedByUser = $assignments->filter(fn ($row) => $row->user_id !== null)->groupBy('user_id');
         $countStates = function ($items) use ($today) {
@@ -99,11 +121,14 @@ class ProjectPersonnelController extends ApiController
                     $department->members->contains('id', $user->id)
                 )->map(fn ($department) => ['id' => $department->id, 'name' => $department->name])->values(),
                 'stats' => $countStates($assigned),
+                'column_counts' => $assigned->groupBy('column_id')->map(fn ($group) => $group->count()),
                 'tasks' => $ordered->map(fn ($row) => [
                     'id' => $row->id,
                     'title' => $row->title,
                     'board_id' => $row->board_id,
                     'board_name' => $row->board_name,
+                    'column_id' => $row->column_id,
+                    'column_name' => $row->column_name,
                     'due_date' => $row->due_date,
                     'updated_at' => $row->updated_at,
                     'workflow_state' => $row->workflow_state,
@@ -124,6 +149,7 @@ class ProjectPersonnelController extends ApiController
 
         return response()->json([
             'members' => $people,
+            'columns' => $columns,
             'summary' => array_merge($countStates($tasks), [
                 'assigned' => $tasks->filter(fn ($row) => $row->user_id !== null)->count(),
                 'members' => $people->count(),

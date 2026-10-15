@@ -16,15 +16,26 @@ type Assignment = {
   board_name: string
   due_date: string | null
   workflow_state: StateKey
+  column_id: number
+  column_name: string
   is_milestone: boolean
   overdue: boolean
   updated_at: string | null
 }
 type Member = {
   id: number; name: string; email: string | null; avatar_url: string | null; role: Role; is_workspace_owner: boolean
-  teams: Group[]; departments: Group[]; stats: Stats; tasks: Assignment[]
+  teams: Group[]; departments: Group[]; stats: Stats; column_counts: Record<number, number>; tasks: Assignment[]
+}
+type PersonnelColumn = {
+  id: number; name: string; color: string | null; workflow_state: StateKey
+  position: number; board_id: number; board_name: string
+}
+type ColumnGroup = {
+  key: string; name: string; workflow_state: StateKey; color: string | null
+  columnIds: number[]; boardNames: string[]
 }
 type PersonnelData = {
+  columns: PersonnelColumn[]
   members: Member[]
   summary: Stats & { assigned: number; members: number }
   can_manage: boolean
@@ -42,7 +53,7 @@ const SORT_COLUMNS: { key: SortKey; label: string; sortName: string }[] = [
   { key: 'role', label: 'Rol', sortName: 'rol' },
   { key: 'department', label: 'Departamento', sortName: 'departamento' },
   { key: 'team', label: 'Equipo', sortName: 'equipo' },
-  { key: 'tasks', label: 'Tareas por estado', sortName: 'número de tareas' },
+  { key: 'tasks', label: 'Tareas por columna', sortName: 'número de tareas' },
   { key: 'progress', label: 'Progreso', sortName: 'progreso' },
   { key: 'load', label: 'Carga relativa', sortName: 'carga' },
 ]
@@ -50,11 +61,6 @@ const memberCollator = new Intl.Collator('es', { sensitivity: 'base', numeric: t
 const DIVIDER_HEIGHT = 12
 const MIN_TABLE_HEIGHT = 160
 const MIN_CHART_HEIGHT = 96
-const STATE_KEYS: StateKey[] = ['pending', 'in_progress', 'review', 'done', 'backlog']
-const STATE_NAMES: Record<StateKey, string> = {
-  backlog: 'Backlog', pending: 'Pendientes', in_progress: 'En progreso',
-  review: 'En revisión', done: 'Completadas',
-}
 const STATE_CLASSES: Record<StateKey, string> = {
   backlog: styles.stateBacklog, pending: styles.statePending, in_progress: styles.stateProgress,
   review: styles.stateReview, done: styles.stateDone,
@@ -105,11 +111,35 @@ function SortIcon({ direction }: { direction: SortDirection | null }) {
   </svg>
 }
 
-function StatusBar({ stats, compact = false }: { stats: Stats; compact?: boolean }) {
-  return <div className={`${styles.statusBar} ${compact ? styles.compactBar : ''}`} title={STATE_KEYS.map((state) => `${STATE_NAMES[state]}: ${stats[state]}`).join(' · ')}>
-    {STATE_KEYS.map((state) => stats[state] > 0 && <span key={state} className={STATE_CLASSES[state]}
-      style={{ flex: stats[state] }} />)}
-    {!stats.total && <span className={styles.emptyBar} />}
+// Project columns are grouped only when their name, workflow state and color
+// are identical. This avoids duplicate legends across similarly configured boards.
+function groupProjectColumns(columns: PersonnelColumn[]): ColumnGroup[] {
+  const groups = new Map<string, ColumnGroup>()
+  for (const column of columns) {
+    const key = JSON.stringify([column.workflow_state, column.name.trim().toLocaleLowerCase('es'), column.color?.toLowerCase() ?? null])
+    const group = groups.get(key)
+    if (group) {
+      group.columnIds.push(column.id)
+      if (!group.boardNames.includes(column.board_name)) group.boardNames.push(column.board_name)
+    } else {
+      groups.set(key, {
+        key, name: column.name, workflow_state: column.workflow_state, color: column.color,
+        columnIds: [column.id], boardNames: [column.board_name],
+      })
+    }
+  }
+  return [...groups.values()]
+}
+
+function StatusBar({ member, groups, compact = false }: { member: Member; groups: ColumnGroup[]; compact?: boolean }) {
+  return <div className={`${styles.statusBar} ${compact ? styles.compactBar : ''}`}>
+    {groups.map((group) => {
+      const count = group.columnIds.reduce((total, id) => total + (member.column_counts[id] ?? 0), 0)
+      return count > 0 && <span key={group.key} className={STATE_CLASSES[group.workflow_state]}
+        title={`${group.name} · ${count} tareas (${group.boardNames.join(', ')})`}
+        style={{ flex: count, backgroundColor: group.color ?? undefined }} />
+    })}
+    {!member.stats.total && <span className={styles.emptyBar} />}
   </div>
 }
 
@@ -249,6 +279,11 @@ export function ProjectPersonnel({ project, profile }: { project: Project; profi
   }, [filtersOpen])
 
   const activeFilterCount = Number(role !== 'all') + Number(teamId !== 'all') + Number(departmentId !== 'all')
+  const columnGroups = useMemo(() => groupProjectColumns(data?.columns ?? []), [data])
+  const labelForState = (state: StateKey) => {
+    const names = [...new Set(columnGroups.filter((group) => group.workflow_state === state).map((group) => group.name))]
+    return names.length ? names.join(' · ') : 'Sin columna'
+  }
   const members = data?.members ?? []
   const filtered = useMemo(() => members.filter((person) =>
     (role === 'all' || person.role === role)
@@ -308,9 +343,9 @@ export function ProjectPersonnel({ project, profile }: { project: Project; profi
       <div className={styles.summary} role="group" aria-label="Indicadores del personal">
         <SummaryCard icon="users" title="Miembros" amount={summary!.members} detail="En este proyecto" />
         <SummaryCard icon="tasks" title="Tareas asignadas" amount={summary!.assigned} detail={`${summary!.total - summary!.assigned} sin asignar`} />
-        <SummaryCard icon="progress" title="En progreso" amount={summary!.in_progress} detail={`${pct(summary!.in_progress, summary!.total)}% del total`} />
-        <SummaryCard icon="review" title="En revisión" amount={summary!.review} detail={`${pct(summary!.review, summary!.total)}% del total`} />
-        <SummaryCard icon="done" title="Completadas" amount={summary!.done} detail={`${pct(summary!.done, summary!.total)}% del total`} />
+        <SummaryCard icon="progress" title={labelForState("in_progress")} amount={summary!.in_progress} detail={`${pct(summary!.in_progress, summary!.total)}% del total`} />
+        <SummaryCard icon="review" title={labelForState("review")} amount={summary!.review} detail={`${pct(summary!.review, summary!.total)}% del total`} />
+        <SummaryCard icon="done" title={labelForState("done")} amount={summary!.done} detail={`${pct(summary!.done, summary!.total)}% del total`} />
         <SummaryCard icon="overdue" title="Retrasadas" amount={summary!.overdue} detail={`${pct(summary!.overdue, summary!.total)}% del total`} />
       </div>
       <div className={styles.toolbarActions}>
@@ -390,7 +425,7 @@ export function ProjectPersonnel({ project, profile }: { project: Project; profi
                 <td><span className={`${styles.roleTag} ${person.role === 'responsable' ? styles.responsible : ''}`}>{person.is_workspace_owner ? 'Owner' : roleName(person.role)}</span></td>
                 <td title={initials(person.departments)}>{initials(person.departments)}</td>
                 <td title={initials(person.teams)}>{initials(person.teams)}</td>
-                <td><div className={styles.assignedBar}><StatusBar stats={person.stats} compact /><small>{person.stats.total} tareas</small></div></td>
+                <td><div className={styles.assignedBar}><StatusBar member={person} groups={columnGroups} compact /><small>{person.stats.total} tareas</small></div></td>
                 <td><div className={styles.progressCell}><span className={styles.progressTrack}><i style={{ width: `${completion}%` }} /></span><small>{completion}%</small></div></td>
                 <td><div className={styles.progressCell}><span className={styles.loadTrack}><i style={{ width: `${Math.round(person.stats.total / maxAssigned * 100)}%` }} /></span><small>{person.stats.total}</small></div></td>
               </tr>
@@ -410,14 +445,18 @@ export function ProjectPersonnel({ project, profile }: { project: Project; profi
           <span className={styles.resizeGrip} aria-hidden="true" />
         </div>
         <div ref={chartPanelRef} className={styles.chartPanel}>
-          <div className={styles.chartHeading}><strong>Distribución de tareas por persona</strong><small>Por estado · cantidad de Cards asignadas</small></div>
+          <div className={styles.chartHeading}><strong>Distribución de tareas por persona</strong><small>Por columna · cantidad de Cards asignadas</small></div>
           <div className={styles.chartScroll}><div className={styles.chartRows}>
             {ordered.map((person) => <div className={styles.chartRow} key={person.id}>
-              <span title={person.name}>{person.name}</span><div className={styles.chartTrack}><div style={{ width: `${Math.round(person.stats.total / maxAssigned * 100)}%` }}><StatusBar stats={person.stats} /></div></div><strong>{person.stats.total}</strong>
+              <span title={person.name}>{person.name}</span><div className={styles.chartTrack}><div style={{ width: `${Math.round(person.stats.total / maxAssigned * 100)}%` }}><StatusBar member={person} groups={columnGroups} /></div></div><strong>{person.stats.total}</strong>
             </div>)}
             {!filtered.length && <p className={styles.empty}>No hay datos para representar.</p>}
           </div></div>
-          <div className={styles.legend}>{STATE_KEYS.map((state) => <span key={state}><i className={STATE_CLASSES[state]}/>{STATE_NAMES[state]}</span>)}</div>
+          <div className={styles.legend} aria-label="Columnas del proyecto">
+            {columnGroups.map((group) => <span key={group.key} title={`Tablero(s): ${group.boardNames.join(', ')}`}>
+              <i className={STATE_CLASSES[group.workflow_state]} style={{ backgroundColor: group.color ?? undefined }} />{group.name}
+            </span>)}
+          </div>
         </div>
       </div>
       {selected && <aside className={styles.details}>
@@ -436,10 +475,10 @@ export function ProjectPersonnel({ project, profile }: { project: Project; profi
           <div className={styles.infoRow}><span>Equipo</span><strong>{initials(selected.teams)}</strong></div>
           <div className={styles.statTiles}>
             {(['pending','in_progress','review','done'] as StateKey[]).map((key) => <div key={key} className={styles.statTile}>
-              <strong>{selected.stats[key]}</strong><small>{STATE_NAMES[key]}</small>
+              <strong>{selected.stats[key]}</strong><small title={labelForState(key)}>{labelForState(key)}</small>
             </div>)}
           </div>
-          <div className={styles.detailMetric}><div><strong>Progreso de tareas</strong><span>{pct(selected.stats.done,selected.stats.total)}%</span></div><StatusBar stats={selected.stats}/></div>
+          <div className={styles.detailMetric}><div><strong>Progreso de tareas</strong><span>{pct(selected.stats.done,selected.stats.total)}%</span></div><StatusBar member={selected} groups={columnGroups}/></div>
           <div className={styles.detailMetric}><div><strong>Carga relativa del equipo</strong><span>{selected.stats.total} tareas</span></div>
             <span className={styles.loadTrack}><i style={{ width: `${Math.round(selected.stats.total / maxAssigned * 100)}%` }}/></span>
           </div>
@@ -462,7 +501,7 @@ function TaskList({ tasks, showUpdated = false }: { tasks: Assignment[]; showUpd
   return <div className={styles.taskList}>{tasks.map((task) => <div key={task.id} className={styles.taskItem}>
     <div><strong title={task.title}>{task.title}</strong><small>{task.board_name}</small></div>
     <div className={styles.taskMeta}><small>{dateLabel(showUpdated ? task.updated_at : task.due_date)}</small>
-      <span className={task.overdue ? styles.overduePill : styles.statePill}>{task.overdue ? 'Retrasada' : STATE_NAMES[task.workflow_state]}</span></div>
+      <span className={task.overdue ? styles.overduePill : styles.statePill} title={task.overdue ? `Retrasada · ${task.column_name}` : undefined}>{task.column_name}</span></div>
   </div>)}</div>
 }
 
