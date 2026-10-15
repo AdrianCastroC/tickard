@@ -20,6 +20,11 @@ class Team extends Model
         return $this->belongsToMany(Card::class);
     }
 
+    public function projects(): BelongsToMany
+    {
+        return $this->belongsToMany(Project::class, 'project_team')->withTimestamps();
+    }
+
     public function workspace(): BelongsTo
     {
         return $this->belongsTo(Workspace::class);

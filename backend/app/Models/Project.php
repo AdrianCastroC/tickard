@@ -42,6 +42,11 @@ class Project extends Model
         return $this->hasMany(ProjectMember::class);
     }
 
+    public function teams(): \Illuminate\Database\Eloquent\Relations\BelongsToMany
+    {
+        return $this->belongsToMany(Team::class, 'project_team')->withTimestamps();
+    }
+
     public function calendarEvents(): HasMany
     {
         return $this->hasMany(CalendarEvent::class);

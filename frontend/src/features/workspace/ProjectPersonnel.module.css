@@ -1,0 +1,131 @@
+.root { display:flex; flex-direction:column; gap:12px; min-width:0; min-height:0; height:calc(100dvh - 260px); overflow:hidden; color:var(--ink) }
+.summary { display:flex; flex:0 0 auto; align-items:stretch; gap:9px; min-width:0 }
+.summaryCard { flex:1 1 0; min-width:0; display:flex; align-items:center; gap:10px; padding:12px; background:var(--surface); border:1px solid var(--line); border-radius:10px }
+.summaryIcon { display:grid; flex:0 0 38px; place-items:center; width:38px; height:38px; border-radius:10px; background:color-mix(in srgb,var(--accent) 11%,var(--surface)); color:var(--accent) }
+.summaryIcon svg { width:22px; height:22px }
+.summary_tasks { background:#eaf1ff; color:#4785e7 }
+.summary_progress { background:#eaf0ff; color:#5988ea }
+.summary_review { background:#f4efff; color:#9465d8 }
+.summary_done { background:#e3f5ed; color:#1f9166 }
+.summary_overdue { background:#fff0ee; color:#d55452 }
+.summaryCard > div { min-width:0; display:flex; flex-direction:column; gap:3px }
+.summaryCard small { font-size:11px; color:var(--muted); white-space:nowrap }
+.summaryCard strong { font-size:22px; font-weight:800; line-height:1.1 }
+.summaryCard div > span { font-size:10px; color:var(--muted); white-space:nowrap }
+.manageButton,.modalPrimary { display:inline-flex; justify-content:center; align-items:center; gap:7px; align-self:center; padding:11px 15px; border:0; border-radius:9px; background:var(--accent); color:var(--accent-ink); cursor:pointer; white-space:nowrap; font-weight:700; font-size:12px }
+.manageButton svg { width:17px; height:17px }
+.toolbar { display:flex; align-items:center; gap:10px; flex:0 0 auto; min-width:0; padding:10px; background:var(--surface); border:1px solid var(--line); border-radius:10px; flex-wrap:wrap }
+.search { display:flex; align-items:center; gap:9px; flex:1 1 230px; min-width:170px; max-width:350px; height:36px; padding:0 10px; border:1px solid var(--line); border-radius:8px; color:var(--muted); background:var(--canvas) }
+.search input { width:100%; min-width:0; background:transparent; border:0; outline:0; color:var(--ink); font:inherit; font-size:12px }
+.toolbar select,.modalContent select,.modalContent input { min-width:0; padding:9px 11px; border:1px solid var(--line); border-radius:8px; background:var(--canvas); color:var(--ink); font:inherit; font-size:12px; cursor:pointer }
+.toolbar select { flex:0 1 auto; max-width:195px }
+.resultCount { margin-left:auto; white-space:nowrap; color:var(--muted); font-size:11px }
+.workspaceBody { display:grid; grid-template-columns:minmax(0,1fr); flex:1 1 auto; gap:13px; min-height:0; min-width:0; overflow:hidden }
+.workspaceBody.hasDetails { grid-template-columns:minmax(0,1fr) minmax(300px,31%) }
+.primaryColumn { display:flex; flex-direction:column; min-height:0; min-width:0; gap:12px; overflow:hidden }
+.tableScroll { flex:1 1 auto; min-height:0; min-width:0; overflow:auto; overscroll-behavior:contain; scrollbar-width:thin; border:1px solid var(--line); border-radius:10px; background:var(--surface) }
+.table { width:100%; border-spacing:0; border-collapse:separate; font-size:12px; text-align:left }
+.table th { position:sticky; top:0; z-index:1; background:var(--canvas); border-bottom:1px solid var(--line); padding:12px 11px; font-size:11px; color:var(--muted); font-weight:700; white-space:nowrap }
+.table td { padding:9px 11px; border-bottom:1px solid var(--line); white-space:nowrap; color:var(--muted); vertical-align:middle }
+.table tr:last-child td { border-bottom:0 }
+.table tbody tr:hover { background:color-mix(in srgb,var(--accent) 6%,var(--surface)) }
+.table tbody tr.selectedRow { background:color-mix(in srgb,var(--accent) 10%,var(--surface)) }
+.memberButton { display:flex; align-items:center; gap:9px; padding:0; text-align:left; min-width:135px; max-width:230px; background:transparent; border:0; color:var(--ink); cursor:pointer }
+.memberButton > span { display:flex; flex-direction:column; gap:3px; min-width:0 }
+.memberButton strong,.memberButton small { max-width:170px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis }
+.memberButton strong { font-weight:700; font-size:12px }
+.memberButton small { font-size:10px; color:var(--muted) }
+.roleTag { display:inline-block; padding:5px 7px; border-radius:5px; background:#eef1fa; color:#5970a3; font-size:10px; font-weight:700; white-space:nowrap }
+.roleTag.responsible { background:#eee9ff; color:#7250b1 }
+.assignedBar { display:flex; flex-direction:column; gap:4px; min-width:75px }
+.assignedBar small { text-align:center; color:var(--muted); font-size:10px }
+.statusBar { display:flex; width:100%; min-width:0; height:11px; border-radius:7px; overflow:hidden; background:var(--line); gap:1px }
+.compactBar { height:8px; min-width:80px }
+.statusBar span { min-width:0; height:100% }
+.statePending { background:#7faafb }
+.stateProgress { background:#a990eb }
+.stateReview { background:#f0b76a }
+.stateDone { background:#5ebd90 }
+.stateBacklog { background:#acb9c4 }
+.emptyBar { background:var(--line); flex:1 }
+.progressCell { display:flex; align-items:center; gap:7px; min-width:75px }
+.progressCell small { font-size:10px; min-width:28px; color:var(--muted); text-align:right }
+.progressTrack,.loadTrack { display:block; position:relative; flex:1 1 auto; min-width:42px; height:9px; background:var(--line); border-radius:20px; overflow:hidden }
+.progressTrack i,.loadTrack i { display:block; height:100%; background:var(--accent); border-radius:20px }
+.loadTrack i { background:#80aafb }
+.chartPanel { display:flex; flex:0 0 clamp(150px,24%,240px); flex-direction:column; min-height:0; gap:9px; border:1px solid var(--line); border-radius:10px; padding:13px 15px; background:var(--surface) }
+.chartHeading { display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:5px }
+.chartHeading strong { font-size:12px }
+.chartHeading small { font-size:10px; color:var(--muted) }
+.chartScroll { flex:1 1 auto; overflow:auto; min-height:0; scrollbar-width:thin }
+.chartRows { display:flex; flex-direction:column; gap:7px }
+.chartRow { display:grid; grid-template-columns:120px minmax(0,1fr) 24px; align-items:center; gap:8px; font-size:10px }
+.chartRow > span { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--muted) }
+.chartRow > strong { text-align:right; font-size:10px; font-weight:700 }
+.chartTrack .statusBar { height:13px }
+.legend { display:flex; justify-content:center; flex-wrap:wrap; gap:6px 12px; padding-top:6px; border-top:1px solid var(--line); font-size:10px; color:var(--muted) }
+.legend > span { display:inline-flex; align-items:center; gap:5px }
+.legend i { display:inline-block; width:8px; height:8px; border-radius:3px }
+.details { display:flex; flex-direction:column; min-height:0; min-width:0; border:1px solid var(--line); border-radius:10px; background:var(--surface); overflow:hidden }
+.personHeading { display:flex; align-items:center; gap:12px; padding:14px; border-bottom:1px solid var(--line) }
+.personHeading > div { display:flex; flex:1; flex-direction:column; gap:6px; min-width:0 }
+.personHeading strong { font-size:15px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis }
+.personHeading .roleTag { align-self:start }
+.closeDetail { align-self:start; display:grid; place-items:center; padding:5px; border:0; background:transparent; color:var(--muted); cursor:pointer }
+.detailTabs,.modalTabs { display:flex; gap:5px; border-bottom:1px solid var(--line); padding:0 12px }
+.detailTabs button,.modalTabs button { border:0; border-bottom:2px solid transparent; background:transparent; padding:11px 10px; color:var(--muted); cursor:pointer; font-size:11px }
+.detailTabs .currentTab,.modalTabs .currentTab { border-bottom-color:var(--accent); color:var(--accent); font-weight:700 }
+.detailScroll { flex:1 1 auto; min-height:0; overflow:auto; overscroll-behavior:contain; padding:14px; scrollbar-width:thin }
+.infoRow { display:flex; gap:10px; justify-content:space-between; padding:7px 0; border-bottom:1px solid var(--line); font-size:11px }
+.infoRow span { color:var(--muted) }
+.infoRow strong { font-weight:600; text-align:right; overflow-wrap:anywhere }
+.statTiles { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:6px; margin:15px 0 }
+.statTile { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; min-height:54px; background:var(--canvas); border-radius:8px }
+.statTile strong { font-size:16px; color:var(--ink) }
+.statTile small { font-size:9px; color:var(--muted); text-align:center }
+.detailMetric { display:flex; flex-direction:column; gap:8px; margin-bottom:15px }
+.detailMetric > div:first-child { display:flex; justify-content:space-between; gap:7px; font-size:11px }
+.detailMetric > div:first-child span { color:var(--muted) }
+.detailMetric .loadTrack { height:11px }
+.taskHeading { display:flex; justify-content:space-between; align-items:center; margin:15px 0 8px; font-size:12px }
+.taskHeading button { background:none; border:0; color:var(--accent); font-size:11px; cursor:pointer }
+.taskList { display:flex; flex-direction:column; gap:0 }
+.taskItem { display:flex; justify-content:space-between; align-items:start; gap:8px; border-bottom:1px solid var(--line); padding:10px 2px }
+.taskItem > div:first-child { display:flex; flex-direction:column; gap:5px; min-width:0 }
+.taskItem strong { font-size:11px; line-height:1.3; font-weight:650; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:190px }
+.taskItem small { font-size:10px; color:var(--muted) }
+.taskMeta { display:flex; align-items:end; flex-direction:column; gap:5px; flex:0 0 auto }
+.taskMeta .statePill,.taskMeta .overduePill { font-size:9px; padding:4px 6px; border-radius:5px; color:#607398; background:#ecf2ff }
+.taskMeta .overduePill { background:#fff0ef; color:#bd4a4a }
+.activityIntro,.emptyTasks,.empty { color:var(--muted); font-size:12px; line-height:1.5 }
+.empty { padding:25px; text-align:center }
+.modalBackdrop { position:fixed; z-index:1000; inset:0; background:rgb(10 24 20 / 40%); display:grid; place-items:center; padding:18px }
+.modal { display:flex; flex-direction:column; width:min(600px,100%); max-height:min(86dvh,800px); min-height:0; overflow:hidden; background:var(--surface); color:var(--ink); border:1px solid var(--line); border-radius:13px; box-shadow:0 24px 65px rgb(0 0 0 / 20%) }
+.modalHeader { display:flex; justify-content:space-between; align-items:start; gap:15px; padding:17px 20px }
+.modalHeader > div { display:flex; flex-direction:column; gap:6px }
+.modalHeader strong { font-size:18px }
+.modalHeader small { font-size:12px; color:var(--muted) }
+.modalHeader button { background:transparent; color:var(--muted); border:0; cursor:pointer }
+.modalTabs { padding:0 15px }
+.modalContent { display:flex; flex-direction:column; gap:12px; min-height:0; overflow:auto; padding:18px; margin:0 }
+.modalContent p { margin:0; line-height:1.55; font-size:12px; color:var(--muted) }
+.modalContent label { display:flex; flex-direction:column; gap:7px; font-size:12px; font-weight:700 }
+.modalContent select,.modalContent input { width:100%; box-sizing:border-box; padding:10px 11px }
+.modalPrimary { align-self:flex-start; margin-top:3px }
+.modalPrimary:disabled { opacity:.5; cursor:not-allowed }
+.formError { margin:10px 18px 0; padding:10px; border:1px solid #d89595; color:#ac3434; border-radius:8px; font-size:12px }
+.teamPreview { padding:13px; border:1px solid var(--line); border-radius:8px; background:var(--canvas); display:flex; flex-direction:column; gap:8px }
+.teamPreview strong { font-size:12px }
+.teamPreview small { font-size:11px; color:var(--accent) }
+.linkedTeams { display:flex; flex-direction:column; gap:7px; border-top:1px solid var(--line); padding-top:12px }
+.linkedTeams > strong,.modalSectionTitle { font-size:13px; margin-top:8px }
+.linkedTeams > div { display:flex; justify-content:space-between; align-items:center; gap:12px; padding:7px 0; font-size:12px }
+.linkedTeams button,.manageMembers button { color:#bd4d4d; background:transparent; border:0; cursor:pointer; font-size:11px }
+.manageMembers { display:flex; flex-direction:column; gap:0 }
+.manageMembers > div { display:flex; align-items:center; gap:9px; padding:8px 0; border-bottom:1px solid var(--line); font-size:12px }
+.manageMembers > div > span { flex:1 1 auto; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis }
+.manageMembers select { width:125px }
+.inviteResult { display:flex; flex-direction:column; gap:8px; padding:12px; border-radius:8px; background:var(--canvas); font-size:12px }
+@media(max-width:1400px) { .summary { flex-wrap:wrap } .summaryCard { flex:1 1 145px } .manageButton { align-self:stretch } .workspaceBody.hasDetails { grid-template-columns:minmax(0,1fr) minmax(280px,34%) } .table { min-width:810px } }
+@media(max-width:900px) { .workspaceBody.hasDetails { grid-template-columns:1fr; grid-template-rows:minmax(0,1fr) minmax(0,44%) } .chartPanel { display:none } .toolbar select { flex:1 1 130px } }
+@media(max-width:570px) { .summaryCard { flex:1 1 calc(50% - 10px) } .manageButton { flex:1 1 100% } .summaryCard strong { font-size:18px } .summaryIcon { flex-basis:30px; width:30px; height:30px } .toolbar .search { max-width:none; flex-basis:100% } .modalBackdrop { padding:5px } .manageMembers > div { flex-wrap:wrap } }
