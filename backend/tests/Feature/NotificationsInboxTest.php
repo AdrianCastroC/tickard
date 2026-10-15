@@ -71,7 +71,7 @@ class NotificationsInboxTest extends TestCase
     public function test_new_card_notifications_include_direct_navigation_context(): void
     {
         Mail::fake();
-        $owner = User::factory()->create(['is_admin' => false, 'notify_email' => false]);
+        $owner = User::factory()->create(['is_admin' => false, 'notify_email' => false, 'notify_in_app' => true]);
         [$workspace, $project, $board, $card] = $this->projectWithCard($owner);
 
         Notifier::send($owner, 'Te han asignado «Preparar entrega».', $card, 'assignment');
@@ -90,7 +90,7 @@ class NotificationsInboxTest extends TestCase
         Mail::fake();
         $owner = User::factory()->create(['is_admin' => false]);
         [$workspace, $project, , $card] = $this->projectWithCard($owner);
-        $member = User::factory()->create(['is_admin' => false, 'notify_email' => false]);
+        $member = User::factory()->create(['is_admin' => false, 'notify_email' => false, 'notify_in_app' => true]);
         $workspace->memberships()->create(['user_id' => $member->id, 'role' => 'member']);
         $membership = $project->members()->create(['user_id' => $member->id, 'role' => 'editor']);
 
@@ -106,7 +106,7 @@ class NotificationsInboxTest extends TestCase
         Mail::fake();
         $owner = User::factory()->create(['is_admin' => false]);
         [$workspace, $project, , $card] = $this->projectWithCard($owner);
-        $member = User::factory()->create(['is_admin' => false, 'notify_email' => false]);
+        $member = User::factory()->create(['is_admin' => false, 'notify_email' => false, 'notify_in_app' => true]);
         $workspace->memberships()->create(['user_id' => $member->id, 'role' => 'member']);
         $project->members()->create(['user_id' => $member->id, 'role' => 'cliente']);
 
