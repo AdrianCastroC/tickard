@@ -105,7 +105,12 @@ class AuthController extends ApiController
         $data = $request->validate([
             'first_name' => ['sometimes', 'required', 'string', 'max:120'],
             'last_name' => ['sometimes', 'nullable', 'string', 'max:120'],
-            'nickname' => ['sometimes', 'required', 'string', 'regex:/^[a-z0-9_-]{3,30}$/'],
+            // Public identity is created at registration and cannot be modified.
+            'nickname' => ['prohibited'],
+            'email' => ['prohibited'],
+            'name' => ['prohibited'],
+            'id' => ['prohibited'],
+            'handle' => ['prohibited'],
             'theme' => ['sometimes', Rule::in(['light', 'dark', 'system'])],
             'notify_in_app' => ['sometimes', 'boolean'],
             'notify_email' => ['sometimes', 'boolean'],
