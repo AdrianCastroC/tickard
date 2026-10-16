@@ -1,9 +1,9 @@
 import styles from './DepartmentsDashboard.module.css'
-import { ProjectLoadingIndicator } from '../workspace/ProjectLoadingIndicator'
+import { ProjectContentLoading } from '../workspace/ProjectContentLoading'
 
 const placeholders = [0, 1, 2, 3, 4, 5]
 
-/** Consistent loading skeleton for the three Workspace administration views. */
+/** Reuse the project Gantt loading animation in Workspace administration. */
 export function AdministrationLoading({
   section,
 }: {
@@ -11,10 +11,16 @@ export function AdministrationLoading({
 }) {
   const hasMetrics = section !== 'clients'
   const isCards = section === 'departments'
-  const label = section === 'departments' ? 'Cargando departamentos'
-    : section === 'teams' ? 'Cargando equipos' : 'Cargando clientes'
+  const title = section === 'departments' ? 'Cargando Departamentos'
+    : section === 'teams' ? 'Cargando Equipos' : 'Cargando Clientes'
+  const description = section === 'departments'
+    ? 'Preparando departamentos y sus asignaciones…'
+    : section === 'teams' ? 'Preparando equipos, miembros y proyectos…'
+      : 'Preparando clientes y proyectos…'
 
-  return <div className={styles.loadingSurface}>
+  return <div className={styles.loadingOverlay}>
+    <ProjectContentLoading title={title} description={description}>
+      <div className={styles.loadingSurface} data-no-metrics={!hasMetrics}>
     {hasMetrics && <div className={styles.loadingStats} aria-hidden="true">
       {placeholders.slice(0, 4).map(i => <span key={i}/>)}
     </div>}
@@ -24,9 +30,6 @@ export function AdministrationLoading({
         <span className={styles.loadingControl}/>
         <span className={styles.loadingControl}/>
         <span className={styles.loadingAction}/>
-      </div>
-      <div className={styles.loadingStatus}>
-        <ProjectLoadingIndicator label={label}/>
       </div>
       <div className={isCards ? styles.loadingCards : styles.loadingTable} aria-hidden="true">
         {placeholders.map(i => <span key={i}/>)}
@@ -44,5 +47,7 @@ export function AdministrationLoading({
         {placeholders.map(i => <span key={i}/>)}
       </div>
     </aside>
+      </div>
+    </ProjectContentLoading>
   </div>
 }
