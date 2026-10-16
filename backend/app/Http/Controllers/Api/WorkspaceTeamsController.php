@@ -39,6 +39,7 @@ class WorkspaceTeamsController extends ApiController
             'description' => ['nullable', 'string', 'max:1000'],
             'status' => ['sometimes', Rule::in(['active', 'inactive'])],
             'icon' => ['sometimes', Rule::in(self::ICONS)],
+            'lead_user_id' => ['required', 'integer'],
             'member_ids' => ['sometimes', 'array'],
             'member_ids.*' => ['integer', 'distinct'],
             'department_ids' => ['sometimes', 'array'],
@@ -54,6 +55,11 @@ class WorkspaceTeamsController extends ApiController
         $data['member_ids'] = Guard::validPeople(
             $workspace, $data['member_ids'] ?? $team?->members()->pluck('users.id')->all() ?? []
         );
+        if (! in_array((int) $data['lead_user_id'], $data['member_ids'], true)) {
+            throw ValidationException::withMessages([
+                'lead_user_id' => 'El responsable debe pertenecer al equipo.',
+            ]);
+        }
         $data['department_ids'] = $this->linkedIds(
             $workspace, $data['department_ids'] ?? $team?->departments()->pluck('departments.id')->all() ?? [], 'department'
         );
@@ -86,6 +92,8 @@ class WorkspaceTeamsController extends ApiController
                 'id' => $team->id, 'name' => $team->name,
                 'description' => $team->description,
                 'status' => $team->status, 'icon' => $team->icon,
+                'image_url' => $team->image_path ? '/storage/'.$team->image_path : null,
+                'lead_user_id' => $team->lead_user_id ? (int) $team->lead_user_id : null,
                 'created_at' => $team->created_at?->toIso8601String(),
                 'updated_at' => $team->updated_at?->toIso8601String(),
                 'members' => $team->members->map($present)->values(),
@@ -118,6 +126,7 @@ class WorkspaceTeamsController extends ApiController
                 'workspace_id' => $workspace->id, 'name' => $values['name'],
                 'description' => $values['description'], 'status' => $values['status'] ?? 'active',
                 'icon' => $values['icon'] ?? 'users',
+                'lead_user_id' => $values['lead_user_id'],
             ]);
             $team->members()->sync($values['member_ids']);
             $team->departments()->sync($values['department_ids']);
@@ -145,6 +154,7 @@ class WorkspaceTeamsController extends ApiController
                 'description' => $values['description'],
                 'status' => $values['status'] ?? $team->status,
                 'icon' => $values['icon'] ?? $team->icon,
+                'lead_user_id' => $values['lead_user_id'],
             ]);
             $team->members()->sync($values['member_ids']);
             $team->departments()->sync($values['department_ids']);

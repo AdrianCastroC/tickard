@@ -5,18 +5,21 @@ import { Avatar, formatDateLong } from '../../shared/ui'
 import { EditIcon, FilterFunnelIcon, FloppyIcon, PlusIcon, TrashIcon } from '../../shared/icons'
 import styles from './DepartmentsDashboard.module.css'
 import { AdministrationLoading } from './AdministrationLoading'
+import { EntityAppearanceEditor, EntityVisual } from './EntityAppearanceEditor'
+import { MemberRoster } from './MemberRoster'
+import { AssociationRoster } from './AssociationRoster'
 import teamCss from './TeamsDashboard.module.css'
 
 type Person = { id: number; name: string; avatar_url: string | null }
 type Linked = { id: number; name: string }
 type IconName = 'users' | 'code' | 'layers' | 'palette' | 'megaphone' | 'settings' | 'chart' | 'box'
 type Team = {
-  id: number; name: string; description: string | null; status: 'active' | 'inactive'; icon: IconName
+  id: number; name: string; description: string | null; status: 'active' | 'inactive'; icon: IconName; image_url: string | null; lead_user_id: number | null
   created_at: string | null; updated_at: string | null; members: Person[]
   departments: Linked[]; projects: Linked[]; projects_count: number; cards_count: number
 }
 type Data = { can_manage: boolean; teams: Team[]; people: Person[]; departments: Linked[]; projects: Linked[] }
-type Tab = 'summary' | 'members' | 'projects' | 'settings'
+type Tab = 'summary' | 'members' | 'projects'
 type Sort = 'name' | 'members' | 'projects' | 'recent'
 type Mark = IconName | 'folder' | 'search' | 'grid' | 'list'
 const icons: IconName[] = ['users', 'code', 'layers', 'palette', 'megaphone', 'settings', 'chart', 'box']
@@ -28,7 +31,7 @@ const tones = ['mint', 'blue', 'purple', 'orange', 'rose', 'teal'] as const
 const collator = new Intl.Collator('es', { sensitivity: 'base', numeric: true })
 const tabs: { id: Tab; label: string }[] = [
   { id: 'summary', label: 'Resumen' }, { id: 'members', label: 'Miembros' },
-  { id: 'projects', label: 'Proyectos' }, { id: 'settings', label: 'Ajustes' },
+  { id: 'projects', label: 'Proyectos' },
 ]
 
 function Glyph({ name, size = 18 }: { name: Mark; size?: number }) {
@@ -94,6 +97,10 @@ export function TeamsSurface({ workspaceId }: { workspaceId: number | null }) {
   const [memberIds, setMemberIds] = useState<number[]>([])
   const [departmentIds, setDepartmentIds] = useState<number[]>([])
   const [projectIds, setProjectIds] = useState<number[]>([])
+  const [leadId, setLeadId] = useState<number | null>(null)
+  const [pendingImage, setPendingImage] = useState<File | null>(null)
+  const [imageError, setImageError] = useState('')
+  const [imageBusy, setImageBusy] = useState(false)
 
   const path = '/teams?workspace_id=' + workspaceId
   const load = useCallback(async () => {
@@ -168,14 +175,16 @@ export function TeamsSurface({ workspaceId }: { workspaceId: number | null }) {
   }
   function beginCreate() {
     setEditor('create'); setName(''); setDescription(''); setStatus('active'); setIcon('users')
-    setMemberIds([]); setDepartmentIds([]); setProjectIds([])
+    setMemberIds([]); setDepartmentIds([]); setProjectIds([]); setLeadId(null)
+    setPendingImage(null); setImageError('')
     setError(''); setNotice(''); setFiltersOpen(false)
   }
   function beginEdit(team: Team) {
     setSelectedId(team.id); setEditor('edit'); setName(team.name); setDescription(team.description ?? '')
     setStatus(team.status); setIcon(team.icon ?? 'users'); setMemberIds(team.members.map(person => person.id))
     setDepartmentIds(team.departments.map(dept => dept.id))
-    setProjectIds(team.projects.map(project => project.id))
+    setProjectIds(team.projects.map(project => project.id)); setLeadId(team.lead_user_id)
+    setPendingImage(null); setImageError('')
     setError(''); setNotice('')
   }
   function toggle(ids: number[], change: (value: number[]) => void, id: number, checked: boolean) {
@@ -185,14 +194,36 @@ export function TeamsSurface({ workspaceId }: { workspaceId: number | null }) {
     const ids = new Set(visible.map(item => item.id))
     setSelectedRows(current => checked ? [...new Set([...current, ...ids])] : current.filter(id => !ids.has(id)))
   }
+  async function updateLinks(values: { member_ids?: number[]; lead_user_id?: number; project_ids?: number[] }) {
+    if (!workspaceId || !selected || !canManage || busy) return
+    setBusy(true); setError('')
+    try {
+      await api('/teams/' + selected.id, { method: 'PATCH', body: JSON.stringify({
+        workspace_id: workspaceId, name: selected.name, description: selected.description,
+        status: selected.status, icon: selected.icon,
+        member_ids: values.member_ids ?? selected.members.map(person => person.id),
+        lead_user_id: values.lead_user_id ?? selected.lead_user_id,
+        department_ids: selected.departments.map(dept => dept.id),
+        project_ids: values.project_ids ?? selected.projects.map(project => project.id),
+      }) })
+      await load(); setNotice('Vinculaciones actualizadas.')
+    } finally { setBusy(false) }
+  }
   async function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    if (!canManage || !workspaceId || busy || !name.trim()) return
+    if (!canManage || !workspaceId || busy || !name.trim() || imageBusy) return
+    if (editor === 'create' && (!leadId || !memberIds.includes(leadId))) {
+      setError('Selecciona un responsable entre los miembros del equipo.'); return
+    }
     setBusy(true); setError(''); setNotice('')
     try {
       const payload = {
         workspace_id: workspaceId, name: name.trim(), description: description.trim() || null,
-        status, icon, member_ids: memberIds, department_ids: departmentIds, project_ids: projectIds,
+        status, icon,
+        member_ids: editor === 'create' ? memberIds : selected?.members.map(person => person.id) ?? [],
+        lead_user_id: editor === 'create' ? leadId : selected?.lead_user_id,
+        department_ids: editor === 'create' ? departmentIds : selected?.departments.map(dept => dept.id) ?? [],
+        project_ids: editor === 'create' ? projectIds : selected?.projects.map(project => project.id) ?? [],
       }
       const created = editor === 'create' ? await api<{ id: number }>('/teams', {
         method: 'POST', body: JSON.stringify(payload),
@@ -200,8 +231,16 @@ export function TeamsSurface({ workspaceId }: { workspaceId: number | null }) {
       if (editor === 'edit' && selectedId) {
         await api('/teams/' + selectedId, { method: 'PATCH', body: JSON.stringify(payload) })
       }
+      const entityId = created?.id ?? selectedId
+      if (pendingImage && entityId) {
+        const form = new FormData()
+        form.append('workspace_id', String(workspaceId))
+        form.append('image', pendingImage)
+        await api('/teams/' + entityId + '/image', { method: 'POST', body: form })
+      }
+      setPendingImage(null)
       await load()
-      setSelectedId(created?.id ?? selectedId)
+      setSelectedId(entityId)
       setEditor(null); setActiveTab('summary')
       setNotice(created ? 'Equipo creado.' : 'Equipo actualizado.')
     } catch (cause) {
@@ -388,12 +427,18 @@ export function TeamsSurface({ workspaceId }: { workspaceId: number | null }) {
                   <select value={status} onChange={event => setStatus(event.target.value as 'active' | 'inactive')}>
                     <option value="active">Activo</option><option value="inactive">Inactivo</option>
                   </select></label>
-                <label className={styles.field}>Icono
-                  <select value={icon} onChange={event => setIcon(event.target.value as IconName)}>
-                    {icons.map(kind => <option key={kind} value={kind}>{iconNames[kind]}</option>)}
-                  </select></label>
+
               </div>
-              <div className={styles.editorSection}><strong>Miembros <small>({memberIds.length})</small></strong>
+              {workspaceId && <EntityAppearanceEditor kind="teams"
+                id={editor === 'edit' ? selectedId : null} workspaceId={workspaceId}
+                imageUrl={editor === 'edit' ? selected?.image_url ?? null : null}
+                icon={icon} icons={icons.map(id => ({ id, label: iconNames[id] }))}
+                renderIcon={id => <Glyph name={id as IconName} size={26}/>}
+                onIconChange={id => setIcon(id as IconName)}
+                pendingImage={pendingImage} onPendingImageChange={setPendingImage}
+                onImageChanged={load} error={imageError} onError={setImageError}
+                busy={imageBusy} onBusy={setImageBusy}/>}
+              {editor === 'create' && <><div className={styles.editorSection}><strong>Miembros <small>({memberIds.length})</small></strong>
                 <div className={styles.checkList}>{data.people.map(person => <label key={person.id}>
                   <input type="checkbox" checked={memberIds.includes(person.id)}
                     onChange={event => toggle(memberIds, setMemberIds, person.id, event.target.checked)}/>
@@ -401,6 +446,12 @@ export function TeamsSurface({ workspaceId }: { workspaceId: number | null }) {
                   <span>{person.name}</span>
                 </label>)}{!data.people.length && <small>Sin miembros internos disponibles.</small>}</div>
               </div>
+              <label className={styles.field}>Responsable
+                <select required value={leadId ?? ''} onChange={event => setLeadId(event.target.value ? Number(event.target.value) : null)}>
+                  <option value="">Seleccionar responsable</option>
+                  {data.people.filter(person => memberIds.includes(person.id)).map(person =>
+                    <option key={person.id} value={person.id}>{person.name}</option>)}
+                </select></label>
               <div className={styles.editorSection}><strong>Departamentos <small>({departmentIds.length})</small></strong>
                 <div className={styles.checkList}>{data.departments.map(dept => <label key={dept.id}>
                   <input type="checkbox" checked={departmentIds.includes(dept.id)}
@@ -415,19 +466,19 @@ export function TeamsSurface({ workspaceId }: { workspaceId: number | null }) {
                   <Glyph name="folder"/><span>{project.name}</span>
                 </label>)}{!data.projects.length && <small>No hay proyectos en este Workspace.</small>}</div>
               </div>
-              <p className={styles.hint}>Asociar un equipo a un proyecto no convierte automáticamente a todos sus miembros en miembros del proyecto.</p>
+              <p className={styles.hint}>Asociar un equipo a un proyecto no convierte automáticamente a todos sus miembros en miembros del proyecto.</p></>}
             </div>
             {error && <p role="alert" className={styles.formError}>{error}</p>}
             <footer className={styles.formActions}>
               <button type="button" disabled={busy} className={styles.subtle} onClick={() => setEditor(null)}>Cancelar</button>
-              <button type="submit" disabled={busy || !name.trim()} className={styles.primary}>
+              <button type="submit" disabled={busy || imageBusy || !name.trim() || (editor === 'create' && (!leadId || !memberIds.includes(leadId)))} className={styles.primary}>
                 <FloppyIcon/>{busy ? 'Guardando…' : 'Guardar'}
               </button>
             </footer>
           </form> : selected ? <>
             <div className={styles.detailHead}>
               <span className={styles.detailIcon} data-tone={tones[Math.max(0,data.teams.indexOf(selected)) % tones.length]}>
-                <Glyph name={icons.includes(selected.icon) ? selected.icon : 'users'} size={25}/></span>
+                <EntityVisual url={selected.image_url}><Glyph name={icons.includes(selected.icon) ? selected.icon : 'users'} size={25}/></EntityVisual></span>
               <div className={styles.detailTitle}>
                 <div className={teamCss.detailName}><strong>{selected.name}</strong>
                   <span className={styles.status} data-status={selected.status}><span/>
@@ -445,6 +496,14 @@ export function TeamsSurface({ workspaceId }: { workspaceId: number | null }) {
             </nav>
             <div className={styles.detailScroll}>
               {activeTab === 'summary' && <>
+                <div className={styles.overviewSplit}>
+                  <div className={styles.overviewVisual}>
+                    <EntityVisual url={selected.image_url} large>
+                      <Glyph name={icons.includes(selected.icon) ? selected.icon : 'users'} size={53}/>
+                    </EntityVisual>
+                    <small>{selected.image_url ? 'Imagen del equipo' : 'Icono del equipo'}</small>
+                  </div>
+                  <div className={styles.overviewInfo}>
                 <div className={styles.sectionTitle}><strong>Información</strong>
                   {canManage && <button type="button" className={styles.editSmall} onClick={() => beginEdit(selected)}>
                     <EditIcon/> Editar</button>}</div>
@@ -457,12 +516,15 @@ export function TeamsSurface({ workspaceId }: { workspaceId: number | null }) {
                     <span/>{selected.status === 'active' ? 'Activo' : 'Inactivo'}</span></dd>
                   <dt>Fecha de creación</dt><dd>{formatDateLong(selected.created_at)}</dd>
                   <dt>Última actualización</dt><dd>{formatDateLong(selected.updated_at)}</dd>
+                  <dt>Responsable</dt><dd>{selected.members.find(person => person.id === selected.lead_user_id)?.name ?? 'Sin asignar'}</dd>
                 </dl>
+                  </div>
+                </div>
                 <div className={styles.detailGroup}>
                   <div className={styles.groupHeading}><strong>Miembros ({selected.members.length})</strong>
                     <button type="button" onClick={() => setActiveTab('members')}>Ver todos</button></div>
                   <Avatars people={selected.members} max={5}/>
-                  {canManage && <button type="button" className={teamCss.manageButton} onClick={() => beginEdit(selected)}>
+                  {canManage && <button type="button" className={teamCss.manageButton} onClick={() => setActiveTab('members')}>
                     <Glyph name="users" size={17}/> Gestionar miembros</button>}
                 </div>
                 <div className={styles.detailGroup}>
@@ -472,34 +534,26 @@ export function TeamsSurface({ workspaceId }: { workspaceId: number | null }) {
                     <Glyph name="folder" size={17}/><span>{project.name}</span>
                   </div>)}
                   {!selected.projects.length && <small className={styles.muted}>Sin proyectos asociados.</small>}
-                  {canManage && <button type="button" className={teamCss.manageButton} onClick={() => beginEdit(selected)}>
+                  {canManage && <button type="button" className={teamCss.manageButton} onClick={() => setActiveTab('projects')}>
                     <Glyph name="folder" size={17}/> Gestionar proyectos</button>}
                 </div>
               </>}
               {activeTab === 'members' && <div className={styles.detailGroup}>
-                <div className={styles.groupHeading}><strong>Miembros ({selected.members.length})</strong>
-                  {canManage && <button type="button" onClick={() => beginEdit(selected)}>Gestionar</button>}</div>
-                {selected.members.map(person => <div className={styles.detailEntry} key={person.id}>
-                  <Avatar id={person.id} name={person.name} src={person.avatar_url} size={28}/><span>{person.name}</span>
-                </div>)}
-                {!selected.members.length && <p className={styles.muted}>Sin miembros.</p>}
+                <div className={styles.groupHeading}><strong>Miembros ({selected.members.length})</strong></div>
+                <MemberRoster entityId={selected.id} current={selected.members} available={data.people}
+                  leadId={selected.lead_user_id} canManage={canManage} busy={busy}
+                  onSave={(members, lead) => updateLinks({member_ids:members,lead_user_id:lead})}/>
               </div>}
               {activeTab === 'projects' && <div className={styles.detailGroup}>
-                <div className={styles.groupHeading}><strong>Proyectos ({selected.projects.length})</strong>
-                  {canManage && <button type="button" onClick={() => beginEdit(selected)}>Gestionar</button>}</div>
-                {selected.projects.map(project => <div className={styles.detailEntry} key={project.id}>
-                  <Glyph name="folder"/><span>{project.name}</span></div>)}
-                {!selected.projects.length && <p className={styles.muted}>Sin proyectos asociados.</p>}
+                <div className={styles.groupHeading}><strong>Proyectos ({selected.projects.length})</strong></div>
+                <AssociationRoster entityId={selected.id} label="Proyectos" current={selected.projects}
+                  available={data.projects} canManage={canManage} busy={busy} renderIcon={() => <Glyph name="folder" size={17}/>}
+                  onSave={project_ids => updateLinks({project_ids})}/>
               </div>}
-              {activeTab === 'settings' && <div className={styles.detailGroup}>
-                <strong>Ajustes del equipo</strong>
-                <p className={styles.muted}>Configura estado, descripción, icono, departamentos, miembros y proyectos.</p>
-                {canManage ? <>
-                  <button type="button" className={styles.editSmall} onClick={() => beginEdit(selected)}>
-                    <EditIcon/> Editar equipo</button>
-                  <button type="button" className={styles.dangerLink}
-                    onClick={() => setConfirmDeleteIds([selected.id])}><TrashIcon/> Eliminar equipo</button>
-                </> : <span className={styles.muted}>Solo lectura.</span>}
+              {activeTab === 'summary' && canManage && <div className={styles.summaryDanger}>
+                <button type="button" className={styles.dangerLink} onClick={() => setConfirmDeleteIds([selected.id])}>
+                  <TrashIcon/> Eliminar equipo
+                </button>
               </div>}
             </div>
           </> : <div className={styles.placeholder}><Glyph name="users" size={30}/>

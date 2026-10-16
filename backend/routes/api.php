@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\AdministrationController;
 use App\Http\Controllers\Api\WorkspaceDepartmentsController;
+use App\Http\Controllers\Api\WorkspaceEntityImagesController;
 use App\Http\Controllers\Api\WorkspaceTeamsController;
 use App\Http\Controllers\Api\WorkspaceClientsController;
 use App\Http\Controllers\Api\AuthController;
@@ -62,17 +63,23 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/departments', [WorkspaceDepartmentsController::class, 'store']);
     Route::patch('/departments/{department}', [WorkspaceDepartmentsController::class, 'update']);
     Route::delete('/departments/{department}', [WorkspaceDepartmentsController::class, 'destroy']);
+    Route::post('/departments/{department}/image', [WorkspaceEntityImagesController::class, 'uploadDepartment']);
+    Route::delete('/departments/{department}/image', [WorkspaceEntityImagesController::class, 'deleteDepartment']);
 
     Route::get('/clients', [WorkspaceClientsController::class, 'index']);
     Route::post('/clients', [WorkspaceClientsController::class, 'store']);
     Route::delete('/clients/pending/{invitation}', [WorkspaceClientsController::class, 'cancelPending']);
     Route::patch('/clients/{client}', [WorkspaceClientsController::class, 'update']);
     Route::delete('/clients/{client}', [WorkspaceClientsController::class, 'destroy']);
+    Route::post('/clients/{client}/image', [WorkspaceEntityImagesController::class, 'uploadClient']);
+    Route::delete('/clients/{client}/image', [WorkspaceEntityImagesController::class, 'deleteClient']);
 
     Route::get('/teams', [WorkspaceTeamsController::class, 'index']);
     Route::post('/teams', [WorkspaceTeamsController::class, 'store']);
     Route::patch('/teams/{team}', [WorkspaceTeamsController::class, 'update']);
     Route::delete('/teams/{team}', [WorkspaceTeamsController::class, 'destroy']);
+    Route::post('/teams/{team}/image', [WorkspaceEntityImagesController::class, 'uploadTeam']);
+    Route::delete('/teams/{team}/image', [WorkspaceEntityImagesController::class, 'deleteTeam']);
 
     Route::post('/projects', [ProjectsController::class, 'storeProject']);
     Route::delete('/projects/{project}', [ProjectsController::class, 'deleteProject']);

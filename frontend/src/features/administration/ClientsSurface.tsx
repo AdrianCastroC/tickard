@@ -5,6 +5,7 @@ import { Avatar, formatDateLong } from '../../shared/ui'
 import { EditIcon, FilterFunnelIcon, FloppyIcon, PlusIcon, TrashIcon } from '../../shared/icons'
 import styles from './DepartmentsDashboard.module.css'
 import { AdministrationLoading } from './AdministrationLoading'
+import { EntityAppearanceEditor } from './EntityAppearanceEditor'
 import teamStyles from './TeamsDashboard.module.css'
 import css from './ClientsDashboard.module.css'
 
@@ -12,15 +13,16 @@ type Person = { id: number; name: string; email: string; professional_phone: str
 type ProjectLink = { id: number; name: string }
 type ClientType = 'company' | 'self_employed' | 'individual' | 'institution'
 type Status = 'active' | 'inactive' | 'archived'
+type ClientIcon = 'building' | 'users' | 'folder'
 type Client = {
-  id: number; name: string; client_type: ClientType; sector: string | null
+  id: number; name: string; client_type: ClientType; sector: string | null; image_url: string | null; icon: ClientIcon
   description: string | null; status: Status; created_at: string | null; updated_at: string | null
   primary_contact_user_id: number | null; primary_contact: Person | null
   people: Person[]; people_count: number; needs_representative?: boolean; projects: ProjectLink[]; projects_count: number
 }
 type PendingClient = { id: number; name: string; representative: string | null; created_at: string | null }
 type Data = { can_manage: boolean; clients: Client[]; pending_clients: PendingClient[] }
-type Tab = 'summary' | 'members' | 'projects' | 'settings'
+type Tab = 'summary' | 'members' | 'projects'
 const labels: Record<ClientType,string> = {
   company: 'Empresa', self_employed: 'Autónomo', individual: 'Particular', institution: 'Institución',
 }
@@ -29,7 +31,10 @@ const collator = new Intl.Collator('es',{sensitivity:'base',numeric:true})
 
 function Logo({client,size='normal'}:{client:Client;size?:'normal'|'large'}) {
   const initials = client.name.split(/\s+/).filter(Boolean).slice(0,2).map(x=>x[0]).join('').toUpperCase()
-  return <span className={size==='large'?css.logoLarge:css.logo} aria-hidden="true">{initials}</span>
+  return <span className={size==='large'?css.logoLarge:css.logo} aria-hidden="true">
+    {client.image_url ? <img src={client.image_url} alt=""/> : client.icon
+      ? <LineIcon name={client.icon}/> : initials}
+  </span>
 }
 function ClientStatus({status}:{status:Status}) {
   return <span className={css.status} data-status={status}><i/>{statuses[status]}</span>
@@ -81,6 +86,9 @@ export function ClientsSurface({workspaceId}:{workspaceId:number|null}) {
   const [status,setStatus]=useState<Status>('active')
   const [contactId,setContactId]=useState<number|null>(null)
   const [representative,setRepresentative]=useState('')
+  const [icon,setIcon]=useState<ClientIcon>('building')
+  const [imageError,setImageError]=useState('')
+  const [imageBusy,setImageBusy]=useState(false)
 
   const path='/clients?workspace_id='+workspaceId
   const reload=useCallback(async()=>{
@@ -124,25 +132,25 @@ export function ClientsSurface({workspaceId}:{workspaceId:number|null}) {
   const allChecked=visible.length>0&&visible.every(c=>selectedRows.includes(c.id))
   const tabs:{id:Tab;label:string}[]=[
     {id:'summary',label:'Resumen'},{id:'members',label:'Miembros'},
-    {id:'projects',label:'Proyectos'},{id:'settings',label:'Ajustes'},
+    {id:'projects',label:'Proyectos'},
   ]
   function choose(c:Client){setSelectedId(c.id);setEditor(null);setTab('summary');setError('')}
   function beginCreate(){
     setEditor('create');setName('');setDescription('');setSector('');setType('company');setStatus('active')
-    setContactId(null);setRepresentative('');setFiltersOpen(false);setError('');setNotice('')
+    setContactId(null);setRepresentative('');setIcon('building');setImageError('');setFiltersOpen(false);setError('');setNotice('')
   }
   function beginEdit(c:Client){
     setSelectedId(c.id);setEditor('edit');setName(c.name);setDescription(c.description??'')
     setSector(c.sector??'');setType(c.client_type);setStatus(c.status)
-    setContactId(c.primary_contact_user_id);setRepresentative('');setError('')
+    setContactId(c.primary_contact_user_id);setRepresentative('');setIcon(c.icon??'building');setImageError('');setError('')
   }
   async function save(event:FormEvent<HTMLFormElement>){
     event.preventDefault()
-    if(!workspaceId||!canManage||busy||!name.trim()||(editor==='create'&&!representative.trim()))return
+    if(!workspaceId||!canManage||busy||imageBusy||!name.trim()||(editor==='create'&&!representative.trim()))return
     setBusy(true);setError('');setNotice('')
     try {
       const payload={workspace_id:workspaceId,name:name.trim(),description:description.trim()||null,
-        sector:sector.trim()||null,client_type:type,status,primary_contact_user_id:contactId}
+        sector:sector.trim()||null,client_type:type,status,primary_contact_user_id:contactId,icon}
       const created=editor==='create'?await api<{invitation_id:number;status:string}>('/clients',{
         method:'POST',body:JSON.stringify({...payload,representative:representative.trim(),primary_contact_user_id:undefined})}):null
       if(editor==='edit'&&selectedId)await api('/clients/'+selectedId,{
@@ -316,6 +324,14 @@ export function ClientsSurface({workspaceId}:{workspaceId:number|null}) {
               <label className={styles.field}>Estado<select value={status} onChange={e=>setStatus(e.target.value as Status)}>
                 {Object.entries(statuses).map(([key,label])=><option value={key} key={key}>{label}</option>)}</select></label>
             </div>
+            {editor==='edit'&&workspaceId&&<EntityAppearanceEditor kind="clients" id={selectedId}
+              workspaceId={workspaceId} imageUrl={selected?.image_url??null} icon={icon}
+              icons={[{id:'building',label:'Empresa'},{id:'users',label:'Personas'},{id:'folder',label:'Proyectos'}]}
+              renderIcon={value=><LineIcon name={value as ClientIcon}/>}
+              onIconChange={value=>setIcon(value as ClientIcon)}
+              onImageChanged={reload} pendingImage={null} onPendingImageChange={()=>{}}
+              error={imageError} onError={setImageError} busy={imageBusy} onBusy={setImageBusy}/>}
+            {editor==='create'&&<p className={styles.hint}>Podrás añadir el logo y elegir el icono cuando el representante haya aceptado la invitación.</p>}
             {editor==='edit'&&<label className={styles.field}>Contacto principal
               <select value={contactId??''} onChange={e=>setContactId(e.target.value?Number(e.target.value):null)}>
                 <option value="">Sin asignar</option>
@@ -328,7 +344,7 @@ export function ClientsSurface({workspaceId}:{workspaceId:number|null}) {
           {error&&<p className={styles.formError} role="alert">{error}</p>}
           <footer className={styles.formActions}>
             <button type="button" className={styles.subtle} disabled={busy} onClick={()=>setEditor(null)}>Cancelar</button>
-            <button type="submit" className={styles.primary} disabled={busy||!name.trim()||(editor==='create'&&!representative.trim())}>
+            <button type="submit" className={styles.primary} disabled={busy||imageBusy||!name.trim()||(editor==='create'&&!representative.trim())}>
               <FloppyIcon/>{busy?'Guardando…':editor==='create'?'Enviar invitación':'Guardar'}</button>
           </footer>
         </form>:selected?<>
@@ -345,6 +361,12 @@ export function ClientsSurface({workspaceId}:{workspaceId:number|null}) {
           </nav>
           <div className={styles.detailScroll}>
             {tab==='summary'&&<>
+              <div className={styles.overviewSplit}>
+                <div className={styles.overviewVisual + " " + css.clientVisual}>
+                  <Logo client={selected} size="large"/>
+                  <small>{selected.image_url ? 'Logo del cliente' : 'Icono del cliente'}</small>
+                </div>
+                <div className={styles.overviewInfo}>
               <div className={styles.sectionTitle}><strong>Información</strong>
                 {canManage&&<button className={styles.editSmall} type="button" onClick={()=>beginEdit(selected)}><EditIcon/> Editar</button>}</div>
               <dl className={styles.info}><dt>Nombre</dt><dd>{selected.name}</dd>
@@ -355,6 +377,8 @@ export function ClientsSurface({workspaceId}:{workspaceId:number|null}) {
                 <dt>Creado</dt><dd>{formatDateLong(selected.created_at)}</dd>
                 <dt>Actualizado</dt><dd>{formatDateLong(selected.updated_at)}</dd>
               </dl>
+                </div>
+              </div>
               <div className={styles.detailGroup}>
                 <div className={styles.groupHeading}><strong>Contacto principal</strong>
                   {canManage&&<button type="button" onClick={()=>beginEdit(selected)}>Cambiar</button>}</div>
@@ -398,16 +422,14 @@ export function ClientsSurface({workspaceId}:{workspaceId:number|null}) {
               {!selected.projects.length&&<p className={styles.muted}>No hay proyectos asociados.</p>}
               <p className={styles.hint}>Asociar un proyecto a la empresa no concede acceso automáticamente a sus usuarios.</p>
             </div>}
-            {tab==='settings'&&<div className={styles.detailGroup}>
-              <strong>Configuración</strong>
-              <p className={styles.muted}>Edita la información, cambia el contacto principal o archiva este cliente.</p>
-              {canManage&&<>
-                <button type="button" className={styles.editSmall} onClick={()=>beginEdit(selected)}><EditIcon/> Editar cliente</button>
-                <button type="button" className={styles.dangerLink} onClick={()=>setConfirmDeleteIds([selected.id])}
-                  disabled={selected.projects_count>0||selected.people.length>0}>
-                  <TrashIcon/> Eliminar cliente</button>
-                {(selected.projects_count>0||selected.people_count>0)&&<small className={styles.hint}>Solo se pueden eliminar clientes sin proyectos ni usuarios vinculados.</small>}
-              </>}
+            {tab==='summary'&&canManage&&<div className={styles.summaryDanger}>
+              <button type="button" className={styles.dangerLink}
+                onClick={()=>setConfirmDeleteIds([selected.id])}
+                disabled={selected.projects_count>0||selected.people.length>0}>
+                <TrashIcon/> Eliminar cliente
+              </button>
+              {(selected.projects_count>0||selected.people_count>0)&&<small className={styles.hint}>
+                Para eliminar el cliente primero debes desvincular sus proyectos y usuarios.</small>}
             </div>}
             {error&&<p role="alert" className={styles.formError}>{error}</p>}
           </div>

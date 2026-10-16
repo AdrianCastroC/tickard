@@ -36,7 +36,7 @@ class WorkspaceTeamsClientsTest extends TestCase
         extract($this->fixture());
         $created = $this->actingAs($owner)->postJson('/api/teams', [
             'workspace_id' => $workspace->id, 'name' => 'Desarrollo',
-            'member_ids' => [$owner->id, $member->id],
+            'member_ids' => [$owner->id, $member->id], 'lead_user_id' => $owner->id,
         ])->assertCreated()->json('id');
         $this->getJson('/api/teams?workspace_id='.$workspace->id)->assertOk()
             ->assertJsonPath('can_manage', true)
@@ -46,7 +46,7 @@ class WorkspaceTeamsClientsTest extends TestCase
 
         $this->patchJson('/api/teams/'.$created, [
             'workspace_id' => $workspace->id, 'name' => 'Producto',
-            'member_ids' => [$owner->id],
+            'member_ids' => [$owner->id], 'lead_user_id' => $owner->id,
         ])->assertNoContent();
         $this->assertSame([$owner->id], Team::findOrFail($created)->members()->pluck('users.id')->all());
 
@@ -105,7 +105,7 @@ class WorkspaceTeamsClientsTest extends TestCase
         $created = $this->actingAs($owner)->postJson('/api/teams', [
             'workspace_id' => $workspace->id, 'name' => 'Frontend',
             'description' => 'Interfaces de usuario', 'status' => 'active', 'icon' => 'code',
-            'member_ids' => [$owner->id, $member->id],
+            'member_ids' => [$owner->id, $member->id], 'lead_user_id' => $owner->id,
             'department_ids' => [$department->id], 'project_ids' => [$project->id],
         ])->assertCreated()->json('id');
 
@@ -128,7 +128,8 @@ class WorkspaceTeamsClientsTest extends TestCase
         $this->patchJson('/api/teams/'.$created, [
             'workspace_id' => $workspace->id, 'name' => 'Frontend',
             'description' => 'Renovado', 'status' => 'inactive', 'icon' => 'palette',
-            'member_ids' => [$owner->id], 'department_ids' => [], 'project_ids' => [],
+            'member_ids' => [$owner->id], 'lead_user_id' => $owner->id,
+            'department_ids' => [], 'project_ids' => [],
         ])->assertNoContent();
         $this->assertDatabaseHas('teams', [
             'id' => $created, 'description' => 'Renovado', 'status' => 'inactive', 'icon' => 'palette',

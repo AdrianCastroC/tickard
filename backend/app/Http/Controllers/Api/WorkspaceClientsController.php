@@ -23,6 +23,7 @@ class WorkspaceClientsController extends ApiController
             'name' => ['required', 'string', 'max:120',
                 Rule::unique('client_companies', 'name')->where('workspace_id', $workspace->id)->ignore($client?->id)],
             'client_type' => ['sometimes', Rule::in(['company', 'self_employed', 'individual', 'institution'])],
+            'icon' => ['sometimes', Rule::in(['building', 'users', 'folder'])],
             'sector' => ['nullable', 'string', 'max:120'],
             'description' => ['nullable', 'string', 'max:1500'],
             'status' => ['sometimes', Rule::in(['active', 'inactive', 'archived'])],
@@ -88,6 +89,8 @@ class WorkspaceClientsController extends ApiController
                 $contact = $users->firstWhere('id', $client->primary_contact_user_id);
                 return [
                     'id' => $client->id, 'name' => $client->name,
+                    'image_url' => $client->image_path ? '/storage/'.$client->image_path : null,
+                    'icon' => $client->icon ?? 'building',
                     'client_type' => $client->client_type, 'sector' => $client->sector,
                     'description' => $client->description, 'status' => $client->status,
                     'created_at' => $client->created_at?->toIso8601String(),
@@ -177,6 +180,7 @@ class WorkspaceClientsController extends ApiController
         $data = $this->validated($request, $workspace, $client);
         $client->update([
             'name' => $data['name'], 'client_type' => $data['client_type'] ?? $client->client_type,
+            'icon' => $data['icon'] ?? $client->icon,
             'sector' => $data['sector'], 'description' => $data['description'],
             'status' => $data['status'] ?? $client->status,
             'primary_contact_user_id' => $data['primary_contact_user_id'] ?? null,

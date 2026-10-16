@@ -129,7 +129,7 @@ class WorkspaceDepartmentsTest extends TestCase
         $this->patchJson('/api/departments/'.$id, [
             'workspace_id' => $workspace->id, 'name' => 'Desarrollo',
             'description' => 'Renovado', 'status' => 'inactive', 'icon' => 'palette',
-            'member_ids' => [$owner->id], 'lead_user_id' => null,
+            'member_ids' => [$owner->id], 'lead_user_id' => $owner->id,
             'team_ids' => [], 'project_ids' => [],
         ])->assertNoContent();
         $this->assertDatabaseHas('departments', ['id' => $id, 'description' => 'Renovado',

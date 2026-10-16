@@ -5,6 +5,9 @@ import { Avatar, formatDateLong } from '../../shared/ui'
 import { EditIcon, FilterFunnelIcon, FloppyIcon, PlusIcon, TrashIcon } from '../../shared/icons'
 import styles from './DepartmentsDashboard.module.css'
 import { AdministrationLoading } from './AdministrationLoading'
+import { EntityAppearanceEditor, EntityVisual } from './EntityAppearanceEditor'
+import { MemberRoster } from './MemberRoster'
+import { AssociationRoster } from './AssociationRoster'
 
 type Person = { id: number; name: string; avatar_url: string | null }
 type Linked = { id: number; name: string }
@@ -12,12 +15,12 @@ type TeamOption = Linked & { members_count: number }
 type IconName = 'layers' | 'code' | 'palette' | 'megaphone' | 'settings' | 'chart' | 'users' | 'box'
 type Department = {
   id: number; name: string; description: string | null; status: 'active' | 'inactive'
-  icon: IconName; lead_user_id: number | null
+  icon: IconName; image_url: string | null; lead_user_id: number | null
   created_at: string | null; updated_at: string | null
   members: Person[]; teams: Linked[]; projects: Linked[]
 }
 type Data = { can_manage: boolean; departments: Department[]; people: Person[]; teams: TeamOption[]; projects: Linked[] }
-type PanelTab = 'summary' | 'members' | 'teams' | 'projects' | 'settings'
+type PanelTab = 'summary' | 'members' | 'teams' | 'projects'
 type Sort = 'name' | 'members' | 'recent'
 type Editor = 'create' | 'edit' | null
 type Mark = IconName | 'folder' | 'search' | 'grid' | 'list' | 'check' | 'calendar'
@@ -32,7 +35,6 @@ const collator = new Intl.Collator('es', { sensitivity: 'base', numeric: true })
 const tabs: { id: PanelTab; label: string }[] = [
   { id: 'summary', label: 'Resumen' }, { id: 'members', label: 'Miembros' },
   { id: 'teams', label: 'Equipos' }, { id: 'projects', label: 'Proyectos' },
-  { id: 'settings', label: 'Ajustes' },
 ]
 
 function Glyph({ name, size = 19 }: { name: Mark; size?: number }) {
@@ -99,6 +101,9 @@ export function DepartmentsSurface({ workspaceId }: { workspaceId: number | null
   const [teamIds, setTeamIds] = useState<number[]>([])
   const [projectIds, setProjectIds] = useState<number[]>([])
   const [leadId, setLeadId] = useState<number | null>(null)
+  const [pendingImage, setPendingImage] = useState<File | null>(null)
+  const [imageError, setImageError] = useState('')
+  const [imageBusy, setImageBusy] = useState(false)
 
   const path = '/departments?workspace_id=' + workspaceId
   const load = useCallback(async () => {
@@ -172,6 +177,7 @@ export function DepartmentsSurface({ workspaceId }: { workspaceId: number | null
   function beginCreate() {
     setEditor('create'); setName(''); setDescription(''); setStatus('active'); setIcon('layers')
     setMemberIds([]); setTeamIds([]); setProjectIds([]); setLeadId(null)
+    setPendingImage(null); setImageError('')
     setError(''); setNotice(''); setFiltersOpen(false)
   }
   function beginEdit(dep: Department) {
@@ -180,7 +186,7 @@ export function DepartmentsSurface({ workspaceId }: { workspaceId: number | null
     setMemberIds(dep.members.map(person => person.id))
     setTeamIds(dep.teams.map(item => item.id))
     setProjectIds(dep.projects.map(item => item.id))
-    setLeadId(dep.lead_user_id)
+    setLeadId(dep.lead_user_id); setPendingImage(null); setImageError('')
     setError(''); setNotice('')
   }
   function toggle(ids: number[], set: (ids: number[]) => void, id: number, checked: boolean) {
@@ -188,15 +194,43 @@ export function DepartmentsSurface({ workspaceId }: { workspaceId: number | null
     if (!checked && ids === memberIds && leadId === id) setLeadId(null)
   }
 
+  async function updateLinks(values: { member_ids?: number[]; lead_user_id?: number; team_ids?: number[]; project_ids?: number[] }) {
+    if (!workspaceId || !selected || !canManage || busy) return
+    setBusy(true); setError('')
+    try {
+      await api('/departments/' + selected.id, {
+        method: 'PATCH',
+        body: JSON.stringify({
+          workspace_id: workspaceId, name: selected.name,
+          description: selected.description, status: selected.status, icon: selected.icon,
+          member_ids: values.member_ids ?? selected.members.map(person => person.id),
+          lead_user_id: values.lead_user_id ?? selected.lead_user_id,
+          team_ids: values.team_ids ?? selected.teams.map(team => team.id),
+          project_ids: values.project_ids ?? selected.projects.map(project => project.id),
+        }),
+      })
+      await load()
+      setNotice('Vinculaciones actualizadas.')
+    } catch (cause) {
+      throw cause
+    } finally { setBusy(false) }
+  }
+
   async function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    if (!workspaceId || !canManage || busy || !name.trim()) return
+    if (!workspaceId || !canManage || busy || !name.trim() || imageBusy) return
+    if (editor === 'create' && (!leadId || !memberIds.includes(leadId))) {
+      setError('Selecciona un responsable entre los miembros del departamento.'); return
+    }
     setBusy(true); setError(''); setNotice('')
     try {
       const payload = {
         workspace_id: workspaceId, name: name.trim(), description: description.trim() || null,
-        status, icon, member_ids: memberIds, lead_user_id: leadId,
-        team_ids: teamIds, project_ids: projectIds,
+        status, icon,
+        member_ids: editor === 'create' ? memberIds : selected?.members.map(person => person.id) ?? [],
+        lead_user_id: editor === 'create' ? leadId : selected?.lead_user_id,
+        team_ids: editor === 'create' ? teamIds : selected?.teams.map(item => item.id) ?? [],
+        project_ids: editor === 'create' ? projectIds : selected?.projects.map(item => item.id) ?? [],
       }
       const created = editor === 'create' ? await api<{ id: number }>('/departments', {
         method: 'POST', body: JSON.stringify(payload),
@@ -204,8 +238,16 @@ export function DepartmentsSurface({ workspaceId }: { workspaceId: number | null
       if (editor === 'edit' && selectedId) {
         await api('/departments/' + selectedId, { method: 'PATCH', body: JSON.stringify(payload) })
       }
+      const entityId = created?.id ?? selectedId
+      if (pendingImage && entityId) {
+        const form = new FormData()
+        form.append('workspace_id', String(workspaceId))
+        form.append('image', pendingImage)
+        await api('/departments/' + entityId + '/image', { method: 'POST', body: form })
+      }
+      setPendingImage(null)
       await load()
-      setSelectedId(created?.id ?? selectedId)
+      setSelectedId(entityId)
       setEditor(null); setActiveTab('summary')
       setNotice(created ? 'Departamento creado.' : 'Cambios guardados.')
     } catch (cause) {
@@ -312,7 +354,7 @@ export function DepartmentsSurface({ workspaceId }: { workspaceId: number | null
                   <button type="button" className={styles.cardSelect} onClick={() => choose(dep)}
                     aria-label={'Abrir departamento ' + dep.name}>
                     <span className={styles.cardIcon} data-tone={tones[i % tones.length]}>
-                      <Glyph name={icons.includes(dep.icon) ? dep.icon : 'layers'} size={25}/></span>
+                      <EntityVisual url={dep.image_url}><Glyph name={icons.includes(dep.icon) ? dep.icon : 'layers'} size={25}/></EntityVisual></span>
                     <span className={styles.cardCopy}>
                       <strong>{dep.name}</strong>
                       <span>{dep.description || 'Sin descripción'}</span>
@@ -358,12 +400,18 @@ export function DepartmentsSurface({ workspaceId }: { workspaceId: number | null
                   <select value={status} onChange={event => setStatus(event.target.value as 'active' | 'inactive')}>
                     <option value="active">Activo</option><option value="inactive">Inactivo</option>
                   </select></label>
-                <label className={styles.field}>Icono
-                  <select value={icon} onChange={event => setIcon(event.target.value as IconName)}>
-                    {icons.map(item => <option key={item} value={item}>{iconNames[item]}</option>)}
-                  </select></label>
+
               </div>
-              <div className={styles.editorSection}><strong>Miembros <small>({memberIds.length})</small></strong>
+              {workspaceId && <EntityAppearanceEditor kind="departments"
+                id={editor === 'edit' ? selectedId : null} workspaceId={workspaceId}
+                imageUrl={editor === 'edit' ? selected?.image_url ?? null : null}
+                icon={icon} icons={icons.map(id => ({ id, label: iconNames[id] }))}
+                renderIcon={id => <Glyph name={id as IconName} size={26}/>}
+                onIconChange={id => setIcon(id as IconName)}
+                pendingImage={pendingImage} onPendingImageChange={setPendingImage}
+                onImageChanged={load} error={imageError} onError={setImageError}
+                busy={imageBusy} onBusy={setImageBusy}/>}
+              {editor === 'create' && <><div className={styles.editorSection}><strong>Miembros <small>({memberIds.length})</small></strong>
                 <div className={styles.checkList}>{data.people.map(person => <label key={person.id}>
                   <input type="checkbox" checked={memberIds.includes(person.id)}
                     onChange={event => toggle(memberIds, setMemberIds, person.id, event.target.checked)}/>
@@ -373,8 +421,8 @@ export function DepartmentsSurface({ workspaceId }: { workspaceId: number | null
                 {!data.people.length && <small>No hay miembros internos en este Workspace.</small>}</div>
               </div>
               <label className={styles.field}>Responsable
-                <select value={leadId ?? ''} onChange={event => setLeadId(event.target.value ? Number(event.target.value) : null)}>
-                  <option value="">Sin asignar</option>
+                <select required value={leadId ?? ''} onChange={event => setLeadId(event.target.value ? Number(event.target.value) : null)}>
+                  <option value="">Seleccionar responsable</option>
                   {data.people.filter(person => memberIds.includes(person.id)).map(person =>
                     <option key={person.id} value={person.id}>{person.name}</option>)}
                 </select></label>
@@ -394,19 +442,19 @@ export function DepartmentsSurface({ workspaceId }: { workspaceId: number | null
                 </label>)}
                 {!data.projects.length && <small>Sin proyectos en este Workspace.</small>}</div>
               </div>
-              <p className={styles.hint}>Agrupar personas, equipos y proyectos no modifica sus permisos de acceso.</p>
+              <p className={styles.hint}>Agrupar personas, equipos y proyectos no modifica sus permisos de acceso.</p></>}
             </div>
             {error && <p role="alert" className={styles.formError}>{error}</p>}
             <footer className={styles.formActions}>
               <button className={styles.subtle} type="button" disabled={busy} onClick={() => setEditor(null)}>Cancelar</button>
-              <button className={styles.primary} type="submit" disabled={busy || !name.trim()}>
+              <button className={styles.primary} type="submit" disabled={busy || imageBusy || !name.trim() || (editor === 'create' && (!leadId || !memberIds.includes(leadId)))}>
                 <FloppyIcon/>{busy ? 'Guardando…' : 'Guardar'}
               </button>
             </footer>
           </form> : selected ? <>
             <div className={styles.detailHead}>
               <span className={styles.detailIcon} data-tone={tones[Math.max(0, data.departments.indexOf(selected)) % tones.length]}>
-                <Glyph name={icons.includes(selected.icon) ? selected.icon : 'layers'} size={24}/></span>
+                <EntityVisual url={selected.image_url}><Glyph name={icons.includes(selected.icon) ? selected.icon : 'layers'} size={24}/></EntityVisual></span>
               <div className={styles.detailTitle}><strong>{selected.name}</strong>
                 <p>{selected.description || 'Sin descripción'}</p>
               </div>
@@ -420,6 +468,14 @@ export function DepartmentsSurface({ workspaceId }: { workspaceId: number | null
             </nav>
             <div className={styles.detailScroll}>
               {activeTab === 'summary' && <>
+                <div className={styles.overviewSplit}>
+                  <div className={styles.overviewVisual}>
+                    <EntityVisual url={selected.image_url} large>
+                      <Glyph name={icons.includes(selected.icon) ? selected.icon : 'layers'} size={53}/>
+                    </EntityVisual>
+                    <small>{selected.image_url ? 'Imagen del departamento' : 'Icono del departamento'}</small>
+                  </div>
+                  <div className={styles.overviewInfo}>
                 <div className={styles.sectionTitle}><strong>Información</strong>
                   {canManage && <button type="button" className={styles.editSmall} onClick={() => beginEdit(selected)}>
                     <EditIcon/> Editar</button>}</div>
@@ -432,6 +488,8 @@ export function DepartmentsSurface({ workspaceId }: { workspaceId: number | null
                   <dt>Fecha de creación</dt><dd>{formatDateLong(selected.created_at)}</dd>
                   <dt>Última actualización</dt><dd>{formatDateLong(selected.updated_at)}</dd>
                 </dl>
+                  </div>
+                </div>
                 <div className={styles.detailGroup}>
                   <div className={styles.groupHeading}><strong>Miembros ({selected.members.length})</strong>
                     <button type="button" onClick={() => setActiveTab('members')}>Ver todos</button></div>
@@ -453,40 +511,27 @@ export function DepartmentsSurface({ workspaceId }: { workspaceId: number | null
                 </div>
               </>}
               {activeTab === 'members' && <div className={styles.detailGroup}>
-                <div className={styles.groupHeading}><strong>Miembros ({selected.members.length})</strong>
-                  {canManage && <button type="button" onClick={() => beginEdit(selected)}>Gestionar</button>}</div>
-                {selected.members.map(person => <div className={styles.detailEntry} key={person.id}>
-                  <Avatar id={person.id} name={person.name} src={person.avatar_url} size={29}/>
-                  <span>{person.name}</span>{person.id === selected.lead_user_id && <small>Responsable</small>}
-                </div>)}
-                {!selected.members.length && <p className={styles.muted}>No hay miembros asignados.</p>}
+                <div className={styles.groupHeading}><strong>Miembros ({selected.members.length})</strong></div>
+                <MemberRoster entityId={selected.id} current={selected.members} available={data.people}
+                  leadId={selected.lead_user_id} busy={busy} canManage={canManage}
+                  onSave={(members, lead) => updateLinks({member_ids:members,lead_user_id:lead})}/>
               </div>}
               {activeTab === 'teams' && <div className={styles.detailGroup}>
-                <div className={styles.groupHeading}><strong>Equipos ({selected.teams.length})</strong>
-                  {canManage && <button type="button" onClick={() => beginEdit(selected)}>Gestionar</button>}</div>
-                {selected.teams.map(team => <div className={styles.detailEntry} key={team.id}>
-                  <Glyph name="layers" size={17}/><span>{team.name}</span>
-                  <small>{data.teams.find(item => item.id === team.id)?.members_count ?? 0} miembros</small>
-                </div>)}
-                {!selected.teams.length && <p className={styles.muted}>Ningún equipo vinculado.</p>}
+                <div className={styles.groupHeading}><strong>Equipos ({selected.teams.length})</strong></div>
+                <AssociationRoster entityId={selected.id} label="Equipos" current={selected.teams}
+                  available={data.teams} canManage={canManage} busy={busy} renderIcon={() => <Glyph name="layers" size={17}/>}
+                  onSave={team_ids => updateLinks({team_ids})}/>
               </div>}
               {activeTab === 'projects' && <div className={styles.detailGroup}>
-                <div className={styles.groupHeading}><strong>Proyectos ({selected.projects.length})</strong>
-                  {canManage && <button type="button" onClick={() => beginEdit(selected)}>Gestionar</button>}</div>
-                {selected.projects.map(project => <div className={styles.detailEntry} key={project.id}>
-                  <Glyph name="folder" size={17}/><span>{project.name}</span>
-                </div>)}
-                {!selected.projects.length && <p className={styles.muted}>Ningún proyecto vinculado.</p>}
+                <div className={styles.groupHeading}><strong>Proyectos ({selected.projects.length})</strong></div>
+                <AssociationRoster entityId={selected.id} label="Proyectos" current={selected.projects}
+                  available={data.projects} canManage={canManage} busy={busy} renderIcon={() => <Glyph name="folder" size={17}/>}
+                  onSave={project_ids => updateLinks({project_ids})}/>
               </div>}
-              {activeTab === 'settings' && <div className={styles.detailGroup}>
-                <strong>Ajustes del departamento</strong>
-                <p className={styles.muted}>Configura el estado, los integrantes y las vinculaciones de «{selected.name}».</p>
-                {canManage ? <>
-                  <button type="button" className={styles.editSmall} onClick={() => beginEdit(selected)}>
-                    <EditIcon/> Editar departamento</button>
-                  <button type="button" className={styles.dangerLink} onClick={() => setConfirmDelete(true)}>
-                    <TrashIcon/> Eliminar departamento</button>
-                </> : <span className={styles.muted}>Solo lectura.</span>}
+              {activeTab === 'summary' && canManage && <div className={styles.summaryDanger}>
+                <button type="button" className={styles.dangerLink} onClick={() => setConfirmDelete(true)}>
+                  <TrashIcon/> Eliminar departamento
+                </button>
               </div>}
             </div>
           </> : <div className={styles.placeholder}>

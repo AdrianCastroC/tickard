@@ -41,7 +41,7 @@ class WorkspaceDepartmentsController extends ApiController
             'icon' => ['sometimes', Rule::in(self::ICONS)],
             'member_ids' => ['sometimes', 'array'],
             'member_ids.*' => ['integer', 'distinct'],
-            'lead_user_id' => ['nullable', 'integer'],
+            'lead_user_id' => ['required', 'integer'],
             'team_ids' => ['sometimes', 'array'],
             'team_ids.*' => ['integer', 'distinct'],
             'project_ids' => ['sometimes', 'array'],
@@ -61,8 +61,7 @@ class WorkspaceDepartmentsController extends ApiController
         $data['project_ids'] = $this->assertLinkedIds(
             $workspace, $data['project_ids'] ?? $department?->projects()->pluck('projects.id')->all() ?? [], 'project'
         );
-        if (($data['lead_user_id'] ?? null) !== null
-            && ! in_array((int) $data['lead_user_id'], $data['member_ids'], true)) {
+        if (! in_array((int) $data['lead_user_id'], $data['member_ids'], true)) {
             throw ValidationException::withMessages([
                 'lead_user_id' => 'El responsable debe pertenecer al departamento.',
             ]);
@@ -98,6 +97,7 @@ class WorkspaceDepartmentsController extends ApiController
                 'description' => $department->description,
                 'status' => $department->status,
                 'icon' => $department->icon,
+                'image_url' => $department->image_path ? '/storage/'.$department->image_path : null,
                 'created_at' => $department->created_at?->toIso8601String(),
                 'updated_at' => $department->updated_at?->toIso8601String(),
                 'lead_user_id' => $department->lead_user_id ? (int) $department->lead_user_id : null,
@@ -132,7 +132,7 @@ class WorkspaceDepartmentsController extends ApiController
                 'description' => $data['description'],
                 'status' => $data['status'] ?? 'active',
                 'icon' => $data['icon'] ?? 'layers',
-                'lead_user_id' => $data['lead_user_id'] ?? null,
+                'lead_user_id' => $data['lead_user_id'],
             ]);
             $department->members()->sync($data['member_ids']);
             $department->teams()->sync($data['team_ids']);
@@ -155,7 +155,7 @@ class WorkspaceDepartmentsController extends ApiController
                 'description' => $data['description'],
                 'status' => $data['status'] ?? $department->status,
                 'icon' => $data['icon'] ?? $department->icon,
-                'lead_user_id' => $data['lead_user_id'] ?? null,
+                'lead_user_id' => $data['lead_user_id'],
             ]);
             $department->members()->sync($data['member_ids']);
             $department->teams()->sync($data['team_ids']);

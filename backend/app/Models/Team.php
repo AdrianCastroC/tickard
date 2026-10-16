@@ -8,7 +8,12 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Team extends Model
 {
-    protected $fillable = ['workspace_id', 'name', 'description', 'status', 'icon'];
+    protected $fillable = ['workspace_id', 'name', 'description', 'status', 'icon', 'image_path', 'lead_user_id'];
+
+    public function lead(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'lead_user_id');
+    }
 
     public function members(): BelongsToMany
     {

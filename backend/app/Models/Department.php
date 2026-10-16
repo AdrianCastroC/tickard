@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 class Department extends Model
 {
-    protected $fillable = ['workspace_id', 'name', 'lead_user_id', 'description', 'status', 'icon'];
+    protected $fillable = ['workspace_id', 'name', 'lead_user_id', 'description', 'status', 'icon', 'image_path'];
 
     public function workspace(): BelongsTo
     {

@@ -47,3 +47,8 @@
  background:var(--surface);color:var(--ink);font:inherit;font-size:10px;cursor:pointer; }
 .pendingRow button:disabled { opacity:.5;cursor:default; }
 .representativeWarning { color:#ad743a;background:#fff1dc;border-radius:6px;padding:5px 8px;font-size:10px; }
+
+
+.logo img,.logoLarge img {display:block;width:100%;height:100%;object-fit:contain;}
+.logo svg,.logoLarge svg {width:55%;height:55%;flex:0 0 auto;}
+.clientVisual .logoLarge {width:min(100%,155px);height:auto;aspect-ratio:1;border-radius:14px;font-size:30px;}
