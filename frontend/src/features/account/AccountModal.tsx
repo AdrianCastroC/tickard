@@ -18,7 +18,9 @@ export function AccountModal({ section, profile, notes, workspaceId, onSection, 
     return () => { cancelled = true }
   }, [section])
   const titles = { profile: 'Mi perfil', settings: 'Configuración', notifications: 'Notificaciones' } as const
-  return <div className="modal-back" onClick={onClose}><div className={`modal ${styles.modal}`} onClick={(event) => event.stopPropagation()}>
+  return <div className="modal-back" onClick={onClose}>
+    <div className={`modal ${styles.modal}`} role="dialog" aria-modal="true"
+      aria-label="Mi cuenta" onClick={(event) => event.stopPropagation()}>
     <div className={styles.nav}>
       <button type="button" className={section === 'profile' ? styles.active : undefined} onClick={() => onSection('profile')}><ProfileUserIcon /> Mi perfil</button>
       <button type="button" className={section === 'settings' ? styles.active : undefined} onClick={() => onSection('settings')}><SettingsIcon /> Configuración</button>

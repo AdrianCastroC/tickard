@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Validation\ValidationException;
 use Laravel\Sanctum\HasApiTokens;
 
 #[Fillable(['name', 'first_name', 'last_name', 'nickname', 'email', 'password', 'is_admin', 'plan', 'client_company_id', 'theme', 'avatar_path', 'notify_in_app', 'notify_email'])]
@@ -45,6 +46,16 @@ class User extends Authenticatable
             }
         });
 
+        static::updating(function (self $user): void {
+            // A nickname is assigned once; changes to names, password or
+            // preferences must never alter an existing public identity.
+            // Legacy accounts without a nickname can receive it once.
+            if ($user->getRawOriginal('nickname') !== null && $user->isDirty('nickname')) {
+                throw ValidationException::withMessages([
+                    'nickname' => 'El nickname es permanente. Para utilizar otro necesitas crear otra cuenta.',
+                ]);
+            }
+        });
     }
 
     public static function splitName(?string $name): array

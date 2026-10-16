@@ -111,6 +111,10 @@ class AuthController extends ApiController
             'notify_email' => ['sometimes', 'boolean'],
             'current_password' => ['required_with:password', 'current_password'],
             'password' => ['sometimes', 'string', 'min:8', 'confirmed'],
+        ], [
+            'nickname.prohibited' => 'El nickname es permanente. Para utilizar otro necesitas crear otra cuenta.',
+            'email.prohibited' => 'El correo no puede modificarse desde el perfil sin un proceso de verificación.',
+            'handle.prohibited' => 'El identificador público es permanente.',
         ]);
 
         $user = $request->user();

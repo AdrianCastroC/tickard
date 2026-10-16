@@ -185,13 +185,20 @@ class WorkspaceInvitationsTest extends TestCase
         $this->assertSame(3, $workspace->memberships()->count());
     }
 
-    public function test_public_handle_can_be_changed_without_changing_user_id(): void
+    public function test_public_handle_remains_fixed_even_after_name_changes(): void
     {
         $user = User::factory()->create(['name' => 'María', 'nickname' => 'maria']);
+        $originalHandle = $user->publicHandle();
+
         $this->actingAs($user)->patchJson('/api/me', ['nickname' => 'maria-dev'])
-            ->assertOk()->assertJsonPath('user.handle', 'maria-dev#'.str_pad((string) $user->id, 5, '0', STR_PAD_LEFT));
+            ->assertUnprocessable()->assertJsonValidationErrors('nickname');
+
+        $this->patchJson('/api/me', ['first_name' => 'Ana', 'last_name' => 'García'])
+            ->assertOk()->assertJsonPath('user.handle', $originalHandle)
+            ->assertJsonPath('user.name', 'Ana García');
+
         $this->assertSame($user->id, $user->fresh()->id);
-        $this->assertSame('María', $user->fresh()->first_name);
+        $this->assertSame('maria', $user->fresh()->nickname);
     }
     public function test_invites_resolve_padded_primary_key_suffix(): void
     {

@@ -4,7 +4,7 @@
 
 Invitaciones **solo para cuentas Tickard registradas**, identificadas por correo o identificador público `nick#ID`. No hay listas de amigos, enlaces compartibles, invitaciones a cuentas inexistentes ni SMTP.
 
-El identificador se muestra en **Perfil**. La tabla `users` tiene `first_name` obligatorio, `last_name` opcional y `nickname` editable. El handle es `nickname#ID`: el sufijo corresponde al **ID real de la tabla `users`**, completado con ceros a la izquierda hasta un **mínimo de 5 dígitos** (`ana#00001`, `maria#00125`, `juan#100000`). No se trunca si el ID supera las cinco cifras. La clave primaria `users.id` ya es única; por lo tanto, también lo es la combinación `nickname#ID` sin necesidad de otro índice.\n\nEl nickname de registro se obtiene únicamente del primer nombre. El campo `name` conserva el nombre completo para las vistas existentes. Una migración posterior elimina la antigua columna `public_id`, que contenía códigos independientes desde 100000, pero **mantiene todos los usuarios y sus IDs reales**.
+El identificador se muestra en **Perfil**. La tabla `users` tiene `first_name` obligatorio, `last_name` opcional y `nickname` **permanente**, asignado una sola vez al registrar la cuenta a partir de `first_name`. El handle es `nickname#ID`: el sufijo corresponde al **ID real de la tabla `users`**, completado con ceros a la izquierda hasta un **mínimo de 5 dígitos** (`ana#00001`, `maria#00125`, `juan#100000`). No se trunca si el ID supera las cinco cifras. La clave primaria `users.id` ya es única; por lo tanto, también lo es la combinación `nickname#ID` sin necesidad de otro índice.\n\nEl nickname de registro se obtiene únicamente del primer nombre. El campo `name` conserva el nombre completo para las vistas existentes. Una migración posterior elimina la antigua columna `public_id`, que contenía códigos independientes desde 100000, pero **mantiene todos los usuarios y sus IDs reales**.
 
 ## Dos destinos, mismo flujo
 
@@ -37,7 +37,7 @@ Autenticadas con Sanctum:
 - `POST /api/projects/{project}/invitations/delete` — `{"ids":[1,2]}`.
 - `GET /api/my/invitations` — recibidas, para cualquier usuario autenticado.
 - `POST /api/my/invitations/{invitation}/respond` — `{"action":"accept"}` o `{"action":"reject"}`.
-- `PATCH /api/me` — `{"nickname":"mi-nick"}`.
+- `PATCH /api/me` — permite editar `first_name`, `last_name`, contraseña y preferencias. Rechaza `nickname`, `email`, `handle`, `name` e `id`. Para cambiar de nickname es necesario crear otra cuenta.
 
 ## Instalación y pruebas
 
