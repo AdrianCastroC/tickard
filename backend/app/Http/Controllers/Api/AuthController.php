@@ -117,7 +117,10 @@ class AuthController extends ApiController
             'handle.prohibited' => 'El identificador público es permanente.',
         ]);
 
-        $user = $request->user();
+        // Apply only validated changes to a freshly loaded user. In
+        // particular, stale/dirty attributes from a rejected identity change
+        // must never leak into an otherwise valid profile update.
+        $user = $request->user()->fresh();
         $payload = collect($data)->except(['current_password', 'password', 'password_confirmation'])->all();
         if (! empty($data['password'])) {
             $payload['password'] = $data['password'];
