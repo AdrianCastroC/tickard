@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\ClientCompany;
+use App\Models\Department;
 use App\Models\Project;
 use App\Models\Team;
 use App\Models\User;
@@ -92,6 +93,76 @@ class WorkspaceTeamsClientsTest extends TestCase
             'workspace_id' => $workspace->id, 'name' => 'Invalido',
             'member_ids' => [$client->id],
         ])->assertUnprocessable()->assertJsonValidationErrors('member_ids');
+    }
+
+    public function test_teams_dashboard_has_real_status_description_icons_members_departments_and_projects(): void
+    {
+        extract($this->fixture());
+        $department = Department::create(['workspace_id' => $workspace->id, 'name' => 'Desarrollo']);
+        $project = Project::create(['workspace_id' => $workspace->id,
+            'client_company_id' => $company->id, 'name' => 'Portal']);
+
+        $created = $this->actingAs($owner)->postJson('/api/teams', [
+            'workspace_id' => $workspace->id, 'name' => 'Frontend',
+            'description' => 'Interfaces de usuario', 'status' => 'active', 'icon' => 'code',
+            'member_ids' => [$owner->id, $member->id],
+            'department_ids' => [$department->id], 'project_ids' => [$project->id],
+        ])->assertCreated()->json('id');
+
+        $this->assertDatabaseHas('department_team', [
+            'department_id' => $department->id, 'team_id' => $created,
+        ]);
+        $this->assertDatabaseHas('project_team', [
+            'project_id' => $project->id, 'team_id' => $created,
+        ]);
+        $this->getJson('/api/teams?workspace_id='.$workspace->id)->assertOk()
+            ->assertJsonPath('teams.0.name', 'Frontend')
+            ->assertJsonPath('teams.0.description', 'Interfaces de usuario')
+            ->assertJsonPath('teams.0.status', 'active')
+            ->assertJsonPath('teams.0.icon', 'code')
+            ->assertJsonPath('teams.0.departments.0.name', 'Desarrollo')
+            ->assertJsonPath('teams.0.projects.0.name', 'Portal')
+            ->assertJsonPath('teams.0.projects_count', 1)
+            ->assertJsonStructure(['teams' => [['members', 'created_at', 'updated_at']]]);
+
+        $this->patchJson('/api/teams/'.$created, [
+            'workspace_id' => $workspace->id, 'name' => 'Frontend',
+            'description' => 'Renovado', 'status' => 'inactive', 'icon' => 'palette',
+            'member_ids' => [$owner->id], 'department_ids' => [], 'project_ids' => [],
+        ])->assertNoContent();
+        $this->assertDatabaseHas('teams', [
+            'id' => $created, 'description' => 'Renovado', 'status' => 'inactive', 'icon' => 'palette',
+        ]);
+        $this->assertDatabaseMissing('department_team', ['team_id' => $created]);
+        $this->assertDatabaseMissing('project_team', ['team_id' => $created]);
+        $this->assertDatabaseHas('projects', ['id' => $project->id]);
+        $this->assertDatabaseHas('departments', ['id' => $department->id]);
+    }
+
+    public function test_team_cannot_reference_departments_or_projects_from_other_workspaces(): void
+    {
+        extract($this->fixture());
+        $outsideWorkspace = Workspace::create(['name' => 'Otra agencia', 'owner_id' => $outsider->id]);
+        $outsideWorkspace->memberships()->create(['user_id' => $outsider->id, 'role' => 'owner']);
+        $department = Department::create(['workspace_id' => $outsideWorkspace->id, 'name' => 'Privado']);
+        $outsideCompany = ClientCompany::create(['workspace_id' => $outsideWorkspace->id, 'name' => 'Otro cliente']);
+        $outsideProject = Project::create(['workspace_id' => $outsideWorkspace->id,
+            'client_company_id' => $outsideCompany->id, 'name' => 'Confidencial']);
+
+        $this->actingAs($owner)->postJson('/api/teams', [
+            'workspace_id' => $workspace->id, 'name' => 'Prueba',
+            'department_ids' => [$department->id],
+        ])->assertUnprocessable()->assertJsonValidationErrors('department_ids');
+
+        $this->postJson('/api/teams', [
+            'workspace_id' => $workspace->id, 'name' => 'Prueba',
+            'project_ids' => [$outsideProject->id],
+        ])->assertUnprocessable()->assertJsonValidationErrors('project_ids');
+
+        $this->postJson('/api/teams', [
+            'workspace_id' => $workspace->id, 'name' => 'Prueba',
+            'status' => 'unknown', 'icon' => 'not-an-icon',
+        ])->assertUnprocessable()->assertJsonValidationErrors(['status', 'icon']);
     }
 
     public function test_client_crud_is_workspace_scoped_and_cannot_delete_used_company(): void

@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Team extends Model
 {
-    protected $fillable = ['workspace_id', 'name'];
+    protected $fillable = ['workspace_id', 'name', 'description', 'status', 'icon'];
 
     public function members(): BelongsToMany
     {
@@ -23,6 +23,11 @@ class Team extends Model
     public function projects(): BelongsToMany
     {
         return $this->belongsToMany(Project::class, 'project_team')->withTimestamps();
+    }
+
+    public function departments(): BelongsToMany
+    {
+        return $this->belongsToMany(Department::class, 'department_team');
     }
 
     public function workspace(): BelongsTo

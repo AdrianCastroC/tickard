@@ -1,0 +1,84 @@
+/* Teams uses the same two-column workspace dashboard as Departments. */
+.headline { display:flex; align-items:center; gap:13px; min-width:0; }
+.headline > span:last-child { display:flex; flex-direction:column; gap:4px; min-width:0; }
+.headlineIcon { display:grid; place-items:center; width:51px; height:51px; flex:0 0 51px;
+  border-radius:11px; background:#dff5eb; color:#0c9772; }
+.headline h1 { margin:0; }
+.headline p { margin:0; }
+.tableScroller { flex:1 1 auto; min-height:0; min-width:0; overflow:auto;
+  border:1px solid var(--line); border-radius:10px; background:var(--surface);
+  scrollbar-width:thin; scrollbar-color:var(--line) transparent; }
+.table { min-width:720px; width:100%; border-collapse:separate; border-spacing:0; text-align:left; }
+.table thead { position:sticky; top:0; z-index:5; background:var(--canvas); }
+.table th { height:42px; border-bottom:1px solid var(--line); padding:9px 10px;
+  font-size:10px; font-weight:690; color:var(--muted); white-space:nowrap; }
+.table td { height:68px; padding:10px; border-bottom:1px solid var(--line);
+  font-size:11px; vertical-align:middle; box-sizing:border-box; }
+.table tbody tr:last-child td { border-bottom:0; }
+.table tbody tr:hover { background:color-mix(in srgb,var(--accent) 4%,var(--surface)); }
+.table tbody tr[data-selected="true"] { background:color-mix(in srgb,var(--accent) 7%,var(--surface)); }
+.table tbody tr[data-selected="true"] td:first-child { box-shadow:inset 2px 0 var(--accent); }
+.checkboxCol { width:38px; }
+.table input[type="checkbox"] { width:16px; height:16px; accent-color:var(--accent); cursor:pointer; }
+.teamCell { display:flex; align-items:center; gap:10px; min-width:155px; max-width:265px;
+  text-align:left; background:transparent; border:0; padding:0; color:var(--ink); cursor:pointer; }
+.teamCell > span:first-child { width:42px; height:42px; flex:0 0 42px; }
+.teamCell > span:last-child { display:flex; flex:1 1 auto; flex-direction:column; min-width:0; gap:4px; }
+.teamCell strong { font:inherit; font-size:12px; font-weight:750; overflow:hidden;
+  text-overflow:ellipsis; white-space:nowrap; }
+.teamCell small { display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2;
+  color:var(--muted); line-height:1.4; font-size:10px; overflow:hidden; }
+.departmentTags { display:flex; flex-wrap:wrap; gap:4px; max-width:145px; }
+.departmentTags span { max-width:130px; overflow:hidden; white-space:nowrap; text-overflow:ellipsis;
+  display:inline-flex; align-items:center; border-radius:5px; padding:5px 8px; background:var(--canvas);
+  color:var(--accent); font-size:10px; font-weight:650; }
+.departmentTags small { color:var(--muted); align-self:center; }
+.projectCount { display:inline-flex; align-items:center; gap:8px; border:0; background:transparent;
+  padding:5px 0; font:inherit; font-size:11px; color:var(--ink); cursor:pointer; }
+.projectCount svg { color:#e6a018; }
+.projectCount:hover { color:var(--accent); }
+.actionsCol { width:95px; }
+.rowActions { display:flex; justify-content:flex-end; align-items:center; gap:6px; }
+.rowActions > button,.menuWrapper > button,.iconButton { display:grid; place-items:center;
+  width:30px; height:30px; padding:6px; border:1px solid var(--line);
+  border-radius:7px; background:var(--surface); color:var(--ink); cursor:pointer; }
+.rowActions > button:hover,.menuWrapper > button:hover,.iconButton:hover { color:var(--accent); border-color:var(--accent); }
+.rowActions svg,.iconButton svg { width:16px; height:16px; }
+.menuWrapper { position:relative; }
+.rowMenu { position:absolute; z-index:12; top:calc(100% + 3px); right:0; width:138px; padding:5px;
+  background:var(--surface); border:1px solid var(--line); border-radius:8px;
+  box-shadow:0 9px 28px rgb(0 0 0 / 16%); }
+.rowMenu button { display:flex; align-items:center; gap:7px; width:100%; border:0; border-radius:5px;
+  background:transparent; padding:8px 7px; font:inherit; font-size:11px;
+  text-align:left; color:var(--ink); cursor:pointer; }
+.rowMenu button:hover { background:var(--canvas); }
+.rowMenu svg { width:14px; height:14px; }
+.selectionToolbar { flex:0 0 auto; display:flex; align-items:center; gap:12px; padding:8px 11px;
+  border:1px solid var(--line); border-radius:8px; background:var(--canvas); font-size:11px; }
+.selectionToolbar > strong { font-weight:750; }
+.selectionToolbar button { display:inline-flex; align-items:center; gap:6px; padding:4px;
+  background:transparent; border:0; color:var(--accent); font:inherit; font-weight:650;
+  font-size:11px; cursor:pointer; }
+.selectionToolbar button:last-child { margin-left:auto; color:#a74543; }
+.selectionToolbar button svg { width:15px; height:15px; }
+.cards { display:grid; grid-template-columns:repeat(auto-fill,minmax(min(100%,245px),1fr));
+  align-content:start; gap:13px; padding:2px; }
+.cardDepartments { display:flex; gap:6px; flex-wrap:wrap; color:var(--muted); font-size:10px; }
+.cardDepartments span { background:var(--canvas); border-radius:5px; padding:4px 7px; }
+.detailName { display:flex; align-items:center; gap:8px; flex-wrap:wrap; min-width:0; }
+.detailName strong { min-width:0; max-width:100%; }
+.detailName > span { padding:4px 7px; }
+.manageButton { display:flex; align-items:center; justify-content:center; gap:8px; min-height:35px; width:100%;
+  padding:8px 12px; border:1px solid var(--line); border-radius:8px;
+  background:var(--surface); font:inherit; color:var(--ink); font-size:11px; cursor:pointer; }
+.manageButton:hover { color:var(--accent); border-color:var(--accent); }
+.manageButton svg { width:16px; height:16px; }
+@media(max-width:1160px) {
+  .table { min-width:690px; }
+  .teamCell { min-width:125px; }
+}
+@media(max-width:740px) {
+  .tableScroller { flex:0 0 auto; max-height:480px; }
+  .headlineIcon { width:43px; height:43px; flex-basis:43px; }
+  .headline p { max-width:480px; }
+}
