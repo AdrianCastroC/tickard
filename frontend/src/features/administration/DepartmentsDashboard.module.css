@@ -302,12 +302,26 @@
 .iconChooser button.chosenIcon { border:2px solid var(--accent);color:var(--accent);
   background:color-mix(in srgb,var(--accent) 9%,var(--surface)); }
 .roster { display:flex;flex-direction:column;gap:10px;min-width:0; }
-.rosterToolbar { display:flex;gap:8px;justify-content:space-between;align-items:center;flex-wrap:wrap; }
-.rosterAddAnchor { position:relative;min-width:0; }
-.rosterDropdown { position:absolute; z-index:30;top:calc(100% + 7px);left:0;
-  min-width:min(290px,70vw);max-width:min(380px,75vw);padding:11px;
-  background:var(--surface);border:1px solid var(--panel-border);box-shadow:0 10px 25px #0002;
+.rosterLead { display:flex;flex-direction:column;gap:8px;min-width:0; padding-bottom:13px;
+  border-bottom:1px solid var(--panel-border); }
+.rosterSectionHeader { display:flex;align-items:center;justify-content:flex-start;flex-wrap:wrap;
+  gap:8px 12px;min-width:0; }
+.rosterSectionHeader strong { font-size:12px;font-weight:750; }
+.rosterSectionHeader .dangerLink { margin-left:auto; }
+.rosterSelectAll { display:inline-flex;align-items:center;gap:6px;flex:0 0 auto;
+  font-size:10px;color:var(--muted);font-weight:500;cursor:pointer; }
+.rosterSelectAll input { width:15px;height:15px;accent-color:var(--accent);cursor:pointer; }
+.rosterSelectAll input:disabled { cursor:default; }
+.rosterAddAnchor { display:flex;flex-direction:column;gap:9px;width:100%;min-width:0; }
+.rosterAddButton { display:flex;justify-content:center;align-items:center;width:100%;min-height:36px;
+  padding:8px 12px;border:1px dashed var(--panel-border);border-radius:8px;
+  background:var(--canvas);color:var(--ink);font:inherit;font-size:11px;font-weight:700;cursor:pointer; }
+.rosterAddButton:hover { border-color:var(--accent);color:var(--accent); }
+.rosterAddButton:disabled { opacity:.55;cursor:default; }
+.rosterDropdown { position:static; width:100%;min-width:0;max-width:100%;box-sizing:border-box;
+  padding:11px;background:var(--surface);border:1px solid var(--panel-border);
   border-radius:9px;display:flex;flex-direction:column;gap:10px; }
+.rosterDropdown > .primary { width:100%;justify-content:center; }
 .rosterDropdown > strong { font-size:11px; }
 .rosterChoices { max-height:220px;overflow-y:auto;display:flex;flex-direction:column;gap:4px; }
 .rosterChoices label { display:flex;align-items:center;gap:8px;padding:6px 4px;font-size:11px;cursor:pointer; }
@@ -321,7 +335,12 @@
 .rosterRemove { border:1px solid var(--panel-border);border-radius:6px;padding:5px 8px;
   color:var(--ink);background:var(--canvas);font:inherit;font-size:10px;cursor:pointer; }
 .rosterRemove:disabled { opacity:.5;cursor:not-allowed; }
-.summaryDanger { margin-top:14px;padding-top:10px;border-top:1px solid var(--panel-border); }
+.editDangerZone { display:flex;flex-direction:column;align-items:flex-start;gap:8px;
+  margin-top:12px;padding-top:16px;border-top:1px solid var(--panel-border); }
+.editDangerZone > strong { font-size:12px;font-weight:750; }
+.editDangerZone > p { font-size:11px;line-height:1.5;margin:0;color:var(--muted); }
+.editDangerZone .dangerLink { padding:6px 0; }
+.editDangerZone .dangerLink:disabled { opacity:.5;cursor:not-allowed; }
 @media(max-width:1050px) {
   .overviewSplit { grid-template-columns:minmax(94px,36%) minmax(0,1fr);gap:10px; }
   .iconChooser { grid-template-columns:repeat(4,minmax(0,1fr)); }

@@ -467,6 +467,12 @@ export function TeamsSurface({ workspaceId }: { workspaceId: number | null }) {
                 </label>)}{!data.projects.length && <small>No hay proyectos en este Workspace.</small>}</div>
               </div>
               <p className={styles.hint}>Asociar un equipo a un proyecto no convierte automáticamente a todos sus miembros en miembros del proyecto.</p></>}
+              {editor === 'edit' && selected && <div className={styles.editDangerZone}>
+                <strong>Eliminar equipo</strong>
+                <p>Sus miembros y proyectos seguirán existiendo; solo se eliminará el equipo.</p>
+                <button type="button" className={styles.dangerLink} disabled={busy || imageBusy}
+                  onClick={() => setConfirmDeleteIds([selected.id])}><TrashIcon/> Eliminar equipo</button>
+              </div>}
             </div>
             {error && <p role="alert" className={styles.formError}>{error}</p>}
             <footer className={styles.formActions}>
@@ -539,21 +545,16 @@ export function TeamsSurface({ workspaceId }: { workspaceId: number | null }) {
                 </div>
               </>}
               {activeTab === 'members' && <div className={styles.detailGroup}>
-                <div className={styles.groupHeading}><strong>Miembros ({selected.members.length})</strong></div>
+
                 <MemberRoster entityId={selected.id} current={selected.members} available={data.people}
                   leadId={selected.lead_user_id} canManage={canManage} busy={busy}
                   onSave={(members, lead) => updateLinks({member_ids:members,lead_user_id:lead})}/>
               </div>}
               {activeTab === 'projects' && <div className={styles.detailGroup}>
-                <div className={styles.groupHeading}><strong>Proyectos ({selected.projects.length})</strong></div>
+
                 <AssociationRoster entityId={selected.id} label="Proyectos" current={selected.projects}
                   available={data.projects} canManage={canManage} busy={busy} renderIcon={() => <Glyph name="folder" size={17}/>}
                   onSave={project_ids => updateLinks({project_ids})}/>
-              </div>}
-              {activeTab === 'summary' && canManage && <div className={styles.summaryDanger}>
-                <button type="button" className={styles.dangerLink} onClick={() => setConfirmDeleteIds([selected.id])}>
-                  <TrashIcon/> Eliminar equipo
-                </button>
               </div>}
             </div>
           </> : <div className={styles.placeholder}><Glyph name="users" size={30}/>

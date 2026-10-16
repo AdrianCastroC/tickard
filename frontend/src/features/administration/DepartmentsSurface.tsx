@@ -33,8 +33,8 @@ const iconNames: Record<IconName, string> = {
 const tones = ['mint', 'blue', 'purple', 'orange', 'rose', 'teal'] as const
 const collator = new Intl.Collator('es', { sensitivity: 'base', numeric: true })
 const tabs: { id: PanelTab; label: string }[] = [
-  { id: 'summary', label: 'Resumen' }, { id: 'members', label: 'Miembros' },
-  { id: 'teams', label: 'Equipos' }, { id: 'projects', label: 'Proyectos' },
+  { id: 'summary', label: 'Resumen' }, { id: 'teams', label: 'Equipos' },
+  { id: 'members', label: 'Miembros' }, { id: 'projects', label: 'Proyectos' },
 ]
 
 function Glyph({ name, size = 19 }: { name: Mark; size?: number }) {
@@ -443,6 +443,12 @@ export function DepartmentsSurface({ workspaceId }: { workspaceId: number | null
                 {!data.projects.length && <small>Sin proyectos en este Workspace.</small>}</div>
               </div>
               <p className={styles.hint}>Agrupar personas, equipos y proyectos no modifica sus permisos de acceso.</p></>}
+              {editor === 'edit' && selected && <div className={styles.editDangerZone}>
+                <strong>Eliminar departamento</strong>
+                <p>Los miembros, equipos y proyectos seguirán existiendo, pero dejarán de estar agrupados aquí.</p>
+                <button type="button" className={styles.dangerLink} disabled={busy || imageBusy}
+                  onClick={() => setConfirmDelete(true)}><TrashIcon/> Eliminar departamento</button>
+              </div>}
             </div>
             {error && <p role="alert" className={styles.formError}>{error}</p>}
             <footer className={styles.formActions}>
@@ -511,27 +517,22 @@ export function DepartmentsSurface({ workspaceId }: { workspaceId: number | null
                 </div>
               </>}
               {activeTab === 'members' && <div className={styles.detailGroup}>
-                <div className={styles.groupHeading}><strong>Miembros ({selected.members.length})</strong></div>
+
                 <MemberRoster entityId={selected.id} current={selected.members} available={data.people}
                   leadId={selected.lead_user_id} busy={busy} canManage={canManage}
                   onSave={(members, lead) => updateLinks({member_ids:members,lead_user_id:lead})}/>
               </div>}
               {activeTab === 'teams' && <div className={styles.detailGroup}>
-                <div className={styles.groupHeading}><strong>Equipos ({selected.teams.length})</strong></div>
+
                 <AssociationRoster entityId={selected.id} label="Equipos" current={selected.teams}
                   available={data.teams} canManage={canManage} busy={busy} renderIcon={() => <Glyph name="layers" size={17}/>}
                   onSave={team_ids => updateLinks({team_ids})}/>
               </div>}
               {activeTab === 'projects' && <div className={styles.detailGroup}>
-                <div className={styles.groupHeading}><strong>Proyectos ({selected.projects.length})</strong></div>
+
                 <AssociationRoster entityId={selected.id} label="Proyectos" current={selected.projects}
                   available={data.projects} canManage={canManage} busy={busy} renderIcon={() => <Glyph name="folder" size={17}/>}
                   onSave={project_ids => updateLinks({project_ids})}/>
-              </div>}
-              {activeTab === 'summary' && canManage && <div className={styles.summaryDanger}>
-                <button type="button" className={styles.dangerLink} onClick={() => setConfirmDelete(true)}>
-                  <TrashIcon/> Eliminar departamento
-                </button>
               </div>}
             </div>
           </> : <div className={styles.placeholder}>

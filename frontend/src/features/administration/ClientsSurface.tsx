@@ -341,6 +341,15 @@ export function ClientsSurface({workspaceId}:{workspaceId:number|null}) {
             </label>}
             <p className={styles.hint}>Las personas se vinculan a esta empresa mediante sus cuentas de Tickard. No se crea una agenda independiente.</p>
           </div>
+          {editor==='edit'&&selected&&<div className={styles.editDangerZone}>
+            <strong>Eliminar cliente</strong>
+            <p>Solo se puede eliminar una empresa sin usuarios ni proyectos vinculados.</p>
+            <button type="button" className={styles.dangerLink}
+              disabled={busy||imageBusy||selected.projects_count>0||selected.people_count>0}
+              onClick={()=>setConfirmDeleteIds([selected.id])}><TrashIcon/> Eliminar cliente</button>
+            {(selected.projects_count>0||selected.people_count>0)&&<small className={styles.hint}>
+              Desvincula primero los proyectos y usuarios de esta empresa.</small>}
+          </div>}
           {error&&<p className={styles.formError} role="alert">{error}</p>}
           <footer className={styles.formActions}>
             <button type="button" className={styles.subtle} disabled={busy} onClick={()=>setEditor(null)}>Cancelar</button>
@@ -421,15 +430,6 @@ export function ClientsSurface({workspaceId}:{workspaceId:number|null}) {
                 <LineIcon name="folder"/><span>{project.name}</span></div>)}
               {!selected.projects.length&&<p className={styles.muted}>No hay proyectos asociados.</p>}
               <p className={styles.hint}>Asociar un proyecto a la empresa no concede acceso automáticamente a sus usuarios.</p>
-            </div>}
-            {tab==='summary'&&canManage&&<div className={styles.summaryDanger}>
-              <button type="button" className={styles.dangerLink}
-                onClick={()=>setConfirmDeleteIds([selected.id])}
-                disabled={selected.projects_count>0||selected.people.length>0}>
-                <TrashIcon/> Eliminar cliente
-              </button>
-              {(selected.projects_count>0||selected.people_count>0)&&<small className={styles.hint}>
-                Para eliminar el cliente primero debes desvincular sus proyectos y usuarios.</small>}
             </div>}
             {error&&<p role="alert" className={styles.formError}>{error}</p>}
           </div>
