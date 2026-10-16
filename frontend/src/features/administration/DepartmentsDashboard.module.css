@@ -308,16 +308,15 @@
   gap:8px 12px;min-width:0; }
 .rosterSectionHeader strong { font-size:12px;font-weight:750; }
 .rosterSectionHeader .dangerLink { margin-left:auto; }
-.rosterSelectAll { display:inline-flex;align-items:center;gap:6px;flex:0 0 auto;
-  font-size:10px;color:var(--muted);font-weight:500;cursor:pointer; }
-.rosterSelectAll input { width:15px;height:15px;accent-color:var(--accent);cursor:pointer; }
+.rosterSelectAll { display:inline-flex;align-items:center;gap:9px;flex:0 1 auto;min-width:0;
+  font-size:11px;color:var(--ink);font-weight:500;cursor:pointer; }
+.rosterSelectAll strong { color:var(--ink);font-size:12px;font-weight:750; }
+.rosterDropdown > .rosterSelectAll strong { font-size:11px; }
+.rosterSelectAll input { width:15px;height:15px;flex:0 0 15px;margin:0;
+  accent-color:var(--accent);cursor:pointer; }
 .rosterSelectAll input:disabled { cursor:default; }
 .rosterAddAnchor { display:flex;flex-direction:column;gap:9px;width:100%;min-width:0; }
-.rosterAddButton { display:flex;justify-content:center;align-items:center;width:100%;min-height:36px;
-  padding:8px 12px;border:1px dashed var(--panel-border);border-radius:8px;
-  background:var(--canvas);color:var(--ink);font:inherit;font-size:11px;font-weight:700;cursor:pointer; }
-.rosterAddButton:hover { border-color:var(--accent);color:var(--accent); }
-.rosterAddButton:disabled { opacity:.55;cursor:default; }
+.rosterAddButton { width:100%; }
 .rosterDropdown { position:static; width:100%;min-width:0;max-width:100%;box-sizing:border-box;
   padding:11px;background:var(--surface);border:1px solid var(--panel-border);
   border-radius:9px;display:flex;flex-direction:column;gap:10px; }
@@ -332,6 +331,7 @@
 .rosterItem > span:not(.avatar) { flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap; }
 .rosterItem small { flex:0 0 auto;color:var(--accent);font-size:10px; }
 .rosterItem input,.rosterChoices input { accent-color:var(--accent); }
+.rosterItem > input[type="checkbox"] { width:15px;height:15px;flex:0 0 15px;margin:0; }
 .rosterRemove { border:1px solid var(--panel-border);border-radius:6px;padding:5px 8px;
   color:var(--ink);background:var(--canvas);font:inherit;font-size:10px;cursor:pointer; }
 .rosterRemove:disabled { opacity:.5;cursor:not-allowed; }

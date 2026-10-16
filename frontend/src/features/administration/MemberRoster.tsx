@@ -56,13 +56,12 @@ export function MemberRoster({
       </button>}
     </div>}
     <div className={styles.rosterSectionHeader}>
-      <strong>Miembros ({current.length})</strong>
-      {canManage && <label className={styles.rosterSelectAll}>
-        <input type="checkbox" disabled={busy || !removable.length}
-          checked={allRemovableSelected}
+      {canManage ? <label className={styles.rosterSelectAll} title="Seleccionar todos los miembros que se pueden quitar">
+        <input type="checkbox" aria-label="Seleccionar todos los miembros que se pueden quitar"
+          disabled={busy || !removable.length} checked={allRemovableSelected}
           onChange={event => setToRemove(event.target.checked ? removable : [])}/>
-        Seleccionar todos
-      </label>}
+        <strong>Miembros ({current.length})</strong>
+      </label> : <strong>Miembros ({current.length})</strong>}
       {canManage && toRemove.length > 0 && <button className={styles.dangerLink}
         type="button" disabled={busy}
         onClick={() => void persist(ids.filter(id => !toRemove.includes(id)), nextLead)}>
@@ -85,16 +84,16 @@ export function MemberRoster({
     </div>)}
     {!current.length && <p className={styles.hint}>No hay miembros asignados.</p>}
     {canManage && <div className={styles.rosterAddAnchor}>
-      <button type="button" className={styles.rosterAddButton} disabled={busy}
+      <button type="button" className={`${styles.primary} ${styles.rosterAddButton}`} disabled={busy}
         aria-expanded={open} onClick={() => { setOpen(value => !value); setToAdd([]) }}>
         + Añadir miembros
       </button>
       {open && <div className={styles.rosterDropdown} role="group" aria-label="Añadir personal del Workspace">
-        <strong>Personal disponible ({candidates.length})</strong>
-        <label className={styles.rosterSelectAll}>
-          <input type="checkbox" checked={allCandidatesSelected} disabled={busy || !candidates.length}
+        <label className={styles.rosterSelectAll} title="Seleccionar todo el personal disponible">
+          <input type="checkbox" aria-label="Seleccionar todo el personal disponible"
+            checked={allCandidatesSelected} disabled={busy || !candidates.length}
             onChange={event => setToAdd(event.target.checked ? candidates.map(person => person.id) : [])}/>
-          Seleccionar todos
+          <strong>Personal disponible ({candidates.length})</strong>
         </label>
         <div className={styles.rosterChoices}>
           {candidates.map(person => <label key={person.id}>

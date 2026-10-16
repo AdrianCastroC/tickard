@@ -38,13 +38,12 @@ export function AssociationRoster({
 
   return <div className={styles.roster}>
     <div className={styles.rosterSectionHeader}>
-      <strong>{label} ({current.length})</strong>
-      {canManage && <label className={styles.rosterSelectAll}>
-        <input type="checkbox" disabled={busy || !currentIds.length}
-          checked={allCurrentSelected}
+      {canManage ? <label className={styles.rosterSelectAll} title={'Seleccionar todos los '+label.toLowerCase()}>
+        <input type="checkbox" aria-label={'Seleccionar todos los '+label.toLowerCase()}
+          disabled={busy || !currentIds.length} checked={allCurrentSelected}
           onChange={event => setToRemove(event.target.checked ? [...currentIds] : [])}/>
-        Seleccionar todos
-      </label>}
+        <strong>{label} ({current.length})</strong>
+      </label> : <strong>{label} ({current.length})</strong>}
       {canManage && toRemove.length > 0 && <button type="button" className={styles.dangerLink}
         disabled={busy} onClick={() => void persist(currentIds.filter(id => !toRemove.includes(id)))}>
         Quitar seleccionados ({toRemove.length})
@@ -63,17 +62,17 @@ export function AssociationRoster({
     </div>)}
     {current.length === 0 && <p className={styles.hint}>No hay {label.toLowerCase()} vinculados.</p>}
     {canManage && <div className={styles.rosterAddAnchor}>
-      <button type="button" className={styles.rosterAddButton} disabled={busy}
+      <button type="button" className={`${styles.primary} ${styles.rosterAddButton}`} disabled={busy}
         aria-expanded={open} onClick={() => { setOpen(value => !value); setToAdd([]) }}>
         + Añadir {label.toLowerCase()}
       </button>
       {open && <div className={styles.rosterDropdown} role="group"
         aria-label={'Añadir '+label.toLowerCase()}>
-        <strong>{label} disponibles ({choices.length})</strong>
-        <label className={styles.rosterSelectAll}>
-          <input type="checkbox" checked={allChoicesSelected} disabled={busy || !choices.length}
+        <label className={styles.rosterSelectAll} title={'Seleccionar todos los '+label.toLowerCase()+' disponibles'}>
+          <input type="checkbox" aria-label={'Seleccionar todos los '+label.toLowerCase()+' disponibles'}
+            checked={allChoicesSelected} disabled={busy || !choices.length}
             onChange={event => setToAdd(event.target.checked ? choices.map(item => item.id) : [])}/>
-          Seleccionar todos
+          <strong>{label} disponibles ({choices.length})</strong>
         </label>
         <div className={styles.rosterChoices}>
           {choices.map(item => <label key={item.id}>
