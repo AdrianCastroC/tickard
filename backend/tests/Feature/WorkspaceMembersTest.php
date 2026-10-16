@@ -131,4 +131,67 @@ class WorkspaceMembersTest extends TestCase
         $this->assertSame('client', $clientMember['role']);
         $this->assertTrue($clientMember['is_client']);
     }
+    public function test_owner_and_admin_can_update_a_workspaces_job_title_without_affecting_other_workspaces(): void
+    {
+        extract($this->fixture());
+        $url = "/api/workspaces/{$workspace->id}/members/{$member->id}/job-title";
+
+        $this->actingAs($owner)->patchJson($url, ['job_title' => 'Programador junior'])
+            ->assertOk()->assertJsonPath('job_title', 'Programador junior');
+        $this->assertDatabaseHas('workspace_members', [
+            'workspace_id' => $workspace->id, 'user_id' => $member->id,
+            'job_title' => 'Programador junior',
+        ]);
+
+        $this->actingAs($admin)->patchJson($url, ['job_title' => 'Programador backend'])
+            ->assertOk()->assertJsonPath('job_title', 'Programador backend');
+
+        $secondOwner = User::factory()->create(['is_admin' => false]);
+        $otherWorkspace = Workspace::createInitialFor($secondOwner);
+        $otherWorkspace->memberships()->create(['user_id' => $member->id, 'role' => 'member']);
+        $this->assertDatabaseHas('workspace_members', [
+            'workspace_id' => $otherWorkspace->id, 'user_id' => $member->id,
+            'job_title' => null,
+        ]);
+
+        $this->actingAs($owner)->getJson("/api/workspaces/{$workspace->id}/members")
+            ->assertOk()->assertJsonPath('can_manage_jobs', true);
+        $this->actingAs($admin)->getJson("/api/workspaces/{$workspace->id}/members")
+            ->assertOk()->assertJsonPath('can_manage_jobs', true);
+        $this->actingAs($secondOwner)->getJson("/api/workspaces/{$otherWorkspace->id}/members")
+            ->assertOk()->assertJsonPath('can_manage_jobs', true);
+        $this->actingAs($owner)->patchJson($url, ['job_title' => null])
+            ->assertOk()->assertJsonPath('job_title', null);
+    }
+
+    public function test_job_title_changes_are_scoped_validated_and_cannot_modify_clients(): void
+    {
+        extract($this->fixture());
+        $base = "/api/workspaces/{$workspace->id}/members/";
+
+        $this->actingAs($member)->patchJson($base.$admin->id.'/job-title', [
+            'job_title' => 'Director',
+        ])->assertForbidden();
+        $this->actingAs($outside)->patchJson($base.$member->id.'/job-title', [
+            'job_title' => 'Consultor',
+        ])->assertForbidden();
+
+        $this->actingAs($owner)->patchJson($base.$outside->id.'/job-title', [
+            'job_title' => 'Consultor',
+        ])->assertNotFound();
+        $this->patchJson($base.$client->id.'/job-title', [
+            'job_title' => 'Gestor',
+        ])->assertUnprocessable();
+        $this->patchJson($base.$member->id.'/job-title', [
+            'job_title' => str_repeat('a', 121),
+        ])->assertUnprocessable()->assertJsonValidationErrors('job_title');
+        $this->patchJson($base.$member->id.'/job-title', [
+            'job_title' => ['invalid'],
+        ])->assertUnprocessable()->assertJsonValidationErrors('job_title');
+
+        $this->assertDatabaseHas('workspace_members', [
+            'workspace_id' => $workspace->id, 'user_id' => $member->id, 'job_title' => null,
+        ]);
+    }
+
 }

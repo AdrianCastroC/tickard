@@ -1,27 +1,28 @@
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { api } from '../../api'
 import { Avatar, formatDateLong } from '../../shared/ui'
+import { EditIcon, FilterFunnelIcon } from '../../shared/icons'
 import { ProjectLoadingIndicator } from '../workspace/ProjectLoadingIndicator'
 import { WorkspaceInvitations } from '../workspace/WorkspaceInvitations'
 import styles from './MembersSurface.module.css'
 
 type Linked = { id: number; name: string; is_lead?: boolean; role?: string }
 type Member = {
-  id: number; name: string; handle: string; email: string
+  id: number; name: string; handle: string; email: string; job_title: string | null
   professional_phone: string | null; joined_at: string | null; avatar_url: string | null
   role: string; is_client: boolean
   departments: Linked[]; teams: Linked[]; projects: Linked[]
 }
 type MemberData = {
   members: Member[]; member_count: number; member_limit: number | null
-  pending_invitations: number; can_manage_roles: boolean
+  pending_invitations: number; can_manage_roles: boolean; can_manage_jobs: boolean
 }
 type Filter = 'all' | 'owner' | 'admin' | 'member' | 'client'
 type Panel = 'members' | 'invitations'
 type Tab = 'summary' | 'projects' | 'teams' | 'permissions' | 'activity'
 type View = 'list' | 'grid'
+type SortKey = 'name' | 'job' | 'assignment' | 'role' | 'projects' | 'joined'
 type IconName = 'people' | 'teams' | 'departments' | 'roles' | 'search' | 'plus' | 'list' | 'grid' | 'folder' | 'close' | 'chevron-left' | 'chevron-right' | 'mail' | 'phone' | 'calendar' | 'shield'
-const PAGE_SIZE = 10
 const roleLabels: Record<string, string> = {
   owner: 'Owner', admin: 'Administrador', member: 'Miembro', client: 'Cliente',
   responsable: 'Responsable', editor: 'Editor', lector: 'Lector', cliente: 'Cliente',
@@ -110,9 +111,15 @@ export function MembersSurface({ workspaceId, workspaceName }: {
   const [panel, setPanel] = useState<Panel>('members')
   const [tab, setTab] = useState<Tab>('summary')
   const [view, setView] = useState<View>('list')
-  const [page, setPage] = useState(1)
+  const [sortKey, setSortKey] = useState<SortKey>('name')
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc')
+  const [filtersOpen, setFiltersOpen] = useState(false)
+  const filterRef = useRef<HTMLDivElement>(null)
+  const [editingJob, setEditingJob] = useState(false)
+  const [draftJob, setDraftJob] = useState('')
   const [draftRole, setDraftRole] = useState<'admin' | 'member'>('member')
   const [saving, setSaving] = useState(false)
+  const [savingJob, setSavingJob] = useState(false)
 
   const load = useCallback(async () => {
     if (workspaceId === null) return
@@ -125,7 +132,7 @@ export function MembersSurface({ workspaceId, workspaceName }: {
   useEffect(() => {
     let alive = true
     setLoading(true); setData(null); setSelectedId(null); setSelectedIds([]); setPanel('members')
-    setError(''); setNotice(''); setSearch(''); setRoleFilter('all'); setDepartmentFilter('all'); setTeamFilter('all'); setPage(1)
+    setError(''); setNotice(''); setSearch(''); setRoleFilter('all'); setDepartmentFilter('all'); setTeamFilter('all'); setFiltersOpen(false); setSortKey('name'); setSortDirection('asc')
     if (workspaceId === null) { setLoading(false); return }
     void api<MemberData>('/workspaces/' + workspaceId + '/members')
       .then(result => { if (alive) { setData(result); setSelectedId(result.members[0]?.id ?? null) } })
@@ -138,6 +145,19 @@ export function MembersSurface({ workspaceId, workspaceName }: {
   useEffect(() => {
     setDraftRole(selected?.role === 'admin' ? 'admin' : 'member')
   }, [selected?.id, selected?.role])
+
+  useEffect(() => { setDraftJob(selected?.job_title ?? ''); setEditingJob(false) }, [selected?.id, selected?.job_title])
+
+  useEffect(() => {
+    if (!filtersOpen) return
+    const dismiss = (event: MouseEvent) => {
+      if (!filterRef.current?.contains(event.target as Node)) setFiltersOpen(false)
+    }
+    const escape = (event: KeyboardEvent) => { if (event.key === 'Escape') setFiltersOpen(false) }
+    document.addEventListener('mousedown', dismiss)
+    document.addEventListener('keydown', escape)
+    return () => { document.removeEventListener('mousedown', dismiss); document.removeEventListener('keydown', escape) }
+  }, [filtersOpen])
 
   const departments = useMemo(() => Array.from(new Map<number, string>((data?.members ?? [])
     .flatMap(member => member.departments).map(item => [item.id, item.name] as const)).entries())
@@ -154,14 +174,28 @@ export function MembersSurface({ workspaceId, workspaceName }: {
       && (teamFilter === 'all' || member.teams.some(item => String(item.id) === teamFilter))
       && (!needle || [member.name, member.handle, member.email].some(value => value.toLocaleLowerCase('es').includes(needle)))
   }).sort((a, b) => {
-    const level = (role: string) => role === 'owner' ? 0 : role === 'admin' ? 1 : 2
-    return level(a.role) - level(b.role) || collator.compare(a.name, b.name)
-  }), [data, search, roleFilter, departmentFilter, teamFilter])
+    const value = (m: Member): string | number => {
+      switch (sortKey) {
+        case 'name': return m.name
+        case 'job': return m.job_title ?? ''
+        case 'assignment': return [...m.departments.map(x => x.name), ...m.teams.map(x => x.name)].join(' ')
+        case 'role': return m.role
+        case 'projects': return m.projects.length
+        case 'joined': return m.joined_at ?? ''
+      }
+    }
+    const left = value(a), right = value(b)
+    // Keep missing job titles or dates at the end in either direction.
+    if (left === '' && right !== '') return 1
+    if (right === '' && left !== '') return -1
+    const order = typeof left === 'number' && typeof right === 'number'
+      ? left - right : collator.compare(String(left), String(right))
+    return (sortDirection === 'asc' ? order : -order) || collator.compare(a.name, b.name)
+  }), [data, search, roleFilter, departmentFilter, teamFilter, sortKey, sortDirection])
 
-  const pages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
-  const actualPage = Math.min(page, pages)
-  const displayed = filtered.slice((actualPage - 1) * PAGE_SIZE, actualPage * PAGE_SIZE)
+  const displayed = filtered
   const allOnPage = displayed.length > 0 && displayed.every(member => selectedIds.includes(member.id))
+  const activeFilters = Number(roleFilter !== 'all') + Number(departmentFilter !== 'all') + Number(teamFilter !== 'all')
   const editableSelected = (data?.members ?? []).filter(member =>
     selectedIds.includes(member.id) && (member.role === 'admin' || member.role === 'member'))
   const rolesCount = new Set((data?.members ?? []).map(member => member.role)).size
@@ -169,13 +203,44 @@ export function MembersSurface({ workspaceId, workspaceName }: {
   const internalCount = (data?.member_count ?? 0) - clientCount
 
   function changeFilter(action: () => void) {
-    action(); setPage(1); setSelectedIds([])
+    action(); setSelectedIds([])
   }
   function toggleSelected(id: number, checked: boolean) {
     setSelectedIds(previous => checked
       ? [...new Set([...previous, id])] : previous.filter(value => value !== id))
   }
   function chooseMember(id: number) { setSelectedId(id); setTab('summary') }
+  function changeSort(key: SortKey) {
+    if (sortKey === key) setSortDirection(direction => direction === 'asc' ? 'desc' : 'asc')
+    else { setSortKey(key); setSortDirection('asc') }
+  }
+  function sortHeading(key: SortKey, title: string) {
+    return <th key={key} aria-sort={sortKey === key ? (sortDirection === 'asc' ? 'ascending' : 'descending') : 'none'}>
+      <button type="button" className={styles.sortButton} onClick={() => changeSort(key)}
+        title={'Ordenar por ' + title}>
+        {title}<span className={sortKey === key ? styles.sortActive : styles.sortInactive} aria-hidden="true">
+          {sortKey === key ? (sortDirection === 'asc' ? '▲' : '▼') : '↕'}
+        </span>
+      </button>
+    </th>
+  }
+
+  async function saveJob() {
+    if (workspaceId === null || !selected || !data?.can_manage_jobs || selected.is_client || savingJob) return
+    const next = draftJob.trim()
+    if (next.length > 120) { setError('El cargo no puede superar los 120 caracteres.'); return }
+    setSavingJob(true); setError(''); setNotice('')
+    try {
+      await api('/workspaces/' + workspaceId + '/members/' + selected.id + '/job-title', {
+        method: 'PATCH', body: JSON.stringify({ job_title: next || null }),
+      })
+      await load()
+      setEditingJob(false)
+      setNotice('Cargo actualizado.')
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'No se pudo actualizar el cargo.')
+    } finally { setSavingJob(false) }
+  }
 
   async function updateRoles(ids: number[], role: 'admin' | 'member') {
     if (!data?.can_manage_roles || workspaceId === null || saving || !ids.length) return
@@ -211,11 +276,7 @@ export function MembersSurface({ workspaceId, workspaceName }: {
       <span className={styles.headerIcon}><Glyph name="people" size={27}/></span>
       <div className={styles.headerCopy}><h1>Miembros</h1>
         <p>Gestiona los miembros de {workspaceName}, sus permisos y asignaciones.</p></div>
-      {data?.can_manage_roles && <button type="button" className={styles.primary}
-        onClick={() => { setPanel(previous => previous === 'members' ? 'invitations' : 'members'); setError(''); setNotice('') }}>
-        <Glyph name={panel === 'members' ? 'plus' : 'chevron-left'} size={18}/>
-        {panel === 'members' ? 'Invitar miembros' : 'Volver a miembros'}
-      </button>}
+
     </header>
 
     {loading ? <div className={styles.loading} role="status">
@@ -238,6 +299,10 @@ export function MembersSurface({ workspaceId, workspaceName }: {
       {error && <p className={styles.error} role="alert">{error}</p>}
 
       {data && panel === 'invitations' && data.can_manage_roles ? <div className={styles.invitationArea}>
+        <div className={styles.inviteToolbar}><button type="button" className={styles.primary}
+          onClick={() => { setPanel('members'); setError(''); setNotice('') }}>
+          <Glyph name="chevron-left" size={17}/> Volver a miembros
+        </button></div>
         <WorkspaceInvitations workspaceId={workspaceId ?? undefined} workspaceName={workspaceName} showMembers={false}/>
       </div> : data && <div className={styles.main}>
         <div className={styles.toolbar}>
@@ -245,22 +310,43 @@ export function MembersSurface({ workspaceId, workspaceName }: {
             <input type="search" placeholder="Buscar miembros..." aria-label="Buscar miembros"
               value={search} onChange={event => changeFilter(() => setSearch(event.target.value))}/>
           </label>
-          <select aria-label="Filtrar por departamento" value={departmentFilter}
-            onChange={event => changeFilter(() => setDepartmentFilter(event.target.value))}>
-            <option value="all">Departamento: Todos</option>
-            {departments.map(([id, name]) => <option key={id} value={id}>{name}</option>)}
-          </select>
-          <select aria-label="Filtrar por equipo" value={teamFilter}
-            onChange={event => changeFilter(() => setTeamFilter(event.target.value))}>
-            <option value="all">Equipo: Todos</option>
-            {teams.map(([id, name]) => <option key={id} value={id}>{name}</option>)}
-          </select>
-          <select aria-label="Filtrar por rol" value={roleFilter}
-            onChange={event => changeFilter(() => setRoleFilter(event.target.value as Filter))}>
-            <option value="all">Rol: Todos</option>
-            <option value="owner">Owner</option><option value="admin">Administrador</option>
-            <option value="member">Miembro</option><option value="client">Cliente</option>
-          </select>
+          <div className={styles.filterControls} ref={filterRef}>
+            <button type="button" className={`icon-button board-filter-trigger ${styles.filterTrigger}${filtersOpen || activeFilters ? ' on' : ''}`}
+              aria-label={activeFilters ? 'Filtros: ' + activeFilters + ' activos' : 'Filtros de miembros'}
+              title="Filtros" aria-haspopup="dialog" aria-expanded={filtersOpen}
+              aria-controls={filtersOpen ? 'members-filters-popover' : undefined}
+              onClick={() => setFiltersOpen(open => !open)}>
+              <FilterFunnelIcon/>
+              {activeFilters > 0 && <span className="board-filter-active-dot" aria-hidden="true"/>}
+            </button>
+            {filtersOpen && <div id="members-filters-popover" className={styles.filterPopover}
+              role="dialog" aria-label="Filtros de miembros">
+              <div className={styles.filterPopoverHeader}><strong>Filtros</strong>
+                {activeFilters > 0 && <button type="button" onClick={() => {
+                  setRoleFilter('all'); setDepartmentFilter('all'); setTeamFilter('all'); setSelectedIds([])
+                }}>Limpiar</button>}
+              </div>
+              <label>Departamento
+                <select value={departmentFilter} onChange={event => changeFilter(() => setDepartmentFilter(event.target.value))}>
+                  <option value="all">Todos</option>
+                  {departments.map(([id, name]) => <option key={id} value={id}>{name}</option>)}
+                </select>
+              </label>
+              <label>Equipo
+                <select value={teamFilter} onChange={event => changeFilter(() => setTeamFilter(event.target.value))}>
+                  <option value="all">Todos</option>
+                  {teams.map(([id, name]) => <option key={id} value={id}>{name}</option>)}
+                </select>
+              </label>
+              <label>Rol
+                <select value={roleFilter} onChange={event => changeFilter(() => setRoleFilter(event.target.value as Filter))}>
+                  <option value="all">Todos</option><option value="owner">Owner</option>
+                  <option value="admin">Administrador</option><option value="member">Miembro</option>
+                  <option value="client">Cliente</option>
+                </select>
+              </label>
+            </div>}
+          </div>
           <div className={styles.viewSwitch} role="group" aria-label="Vista de miembros">
             <button type="button" aria-pressed={view === 'grid'} title="Vista en tarjetas"
               className={view === 'grid' ? styles.viewActive : undefined}
@@ -269,6 +355,10 @@ export function MembersSurface({ workspaceId, workspaceName }: {
               className={view === 'list' ? styles.viewActive : undefined}
               onClick={() => setView('list')}><Glyph name="list" size={18}/></button>
           </div>
+          {data.can_manage_roles && <button type="button" className={styles.primary}
+            onClick={() => { setPanel('invitations'); setError(''); setNotice('') }}>
+            <Glyph name="plus" size={18}/> Invitar miembros
+          </button>}
         </div>
 
         {selectedIds.length > 0 && <div className={styles.selectionBar}>
@@ -287,12 +377,14 @@ export function MembersSurface({ workspaceId, workspaceName }: {
         {view === 'list' ? <div className={styles.tableScroll}>
           <table className={styles.table}>
             <thead><tr>
-              <th className={styles.checkCol}><input type="checkbox" aria-label="Seleccionar todos los miembros de esta página"
+              <th className={styles.checkCol}><input type="checkbox" aria-label="Seleccionar todos los miembros filtrados"
                 checked={allOnPage} disabled={!displayed.length}
                 onChange={event => setSelectedIds(previous => event.target.checked
                   ? [...new Set([...previous, ...displayed.map(member => member.id)])]
                   : previous.filter(id => !displayed.some(member => member.id === id)))}/></th>
-              <th>Miembro</th><th>Departamento / Equipo</th><th>Rol</th><th>Proyectos</th><th>Incorporación</th>
+              {sortHeading('name', 'Miembro')}{sortHeading('job', 'Cargo')}
+              {sortHeading('assignment', 'Departamento / Equipo')}{sortHeading('role', 'Rol')}
+              {sortHeading('projects', 'Proyectos')}{sortHeading('joined', 'Incorporación')}
             </tr></thead>
             <tbody>{displayed.map(member => <tr key={member.id} data-selected={member.id === selectedId}>
               <td className={styles.checkCol}><input type="checkbox" aria-label={'Seleccionar ' + member.name}
@@ -302,6 +394,8 @@ export function MembersSurface({ workspaceId, workspaceName }: {
                 <Avatar id={member.id} name={member.name} src={member.avatar_url} size={32}/>
                 <span><strong title={member.name}>{member.name}</strong><small title={member.email}>{member.email}</small></span>
               </button></td>
+              <td className={styles.jobCell} title={member.job_title ?? 'Cargo sin especificar'}>
+                {member.job_title || 'Sin especificar'}</td>
               <td><button type="button" className={styles.badgeList} onClick={() => chooseMember(member.id)}
                 aria-label={'Ver equipos y departamentos de ' + member.name}>
                 {member.departments.slice(0, 1).map(item => <span key={item.id} className={styles.departmentBadge}>{item.name}</span>)}
@@ -321,24 +415,13 @@ export function MembersSurface({ workspaceId, workspaceName }: {
             data-selected={member.id === selectedId} onClick={() => chooseMember(member.id)}>
             <Avatar id={member.id} name={member.name} src={member.avatar_url} size={46}/>
             <strong>{member.name}</strong><small>{member.email}</small>
+            <span className={styles.cardJob}>{member.job_title || 'Cargo sin especificar'}</span>
             <Role role={member.role}/>
             <span className={styles.cardMeta}>{member.teams.length} equipos · {member.projects.length} proyectos</span>
           </button>)}
           {!displayed.length && <p className={styles.empty}>No hay miembros que coincidan con los filtros.</p>}
         </div></div>}
 
-        <div className={styles.pagination}>
-          <span>{filtered.length ? ((actualPage - 1) * PAGE_SIZE + 1) + '–' + Math.min(actualPage * PAGE_SIZE, filtered.length) : 0} de {filtered.length} miembros</span>
-          {pages > 1 && <div className={styles.pageControls}>
-            <button type="button" title="Página anterior" disabled={actualPage === 1}
-              onClick={() => setPage(value => Math.max(1, value - 1))}><Glyph name="chevron-left" size={16}/></button>
-            {Array.from({ length: pages }, (_, i) => i + 1).map(value =>
-              <button key={value} type="button" className={value === actualPage ? styles.pageActive : undefined}
-                aria-current={value === actualPage ? 'page' : undefined} onClick={() => setPage(value)}>{value}</button>)}
-            <button type="button" title="Página siguiente" disabled={actualPage === pages}
-              onClick={() => setPage(value => Math.min(pages, value + 1))}><Glyph name="chevron-right" size={16}/></button>
-          </div>}
-        </div>
       </div>}
 
       {data && panel === 'members' && <aside className={styles.inspector} aria-label="Ficha del miembro">
@@ -361,10 +444,24 @@ export function MembersSurface({ workspaceId, workspaceName }: {
           <div className={styles.detailScroll}>
             {tab === 'summary' && <>
               <section className={styles.detailGroup}>
-                <div className={styles.sectionHeading}><strong>Información</strong></div>
+                <div className={styles.sectionHeading}><strong>Información</strong>
+                  {data.can_manage_jobs && !selected.is_client && <button type="button"
+                    onClick={() => { setDraftJob(selected.job_title ?? ''); setEditingJob(!editingJob) }}>
+                    <EditIcon/> {editingJob ? 'Cancelar' : 'Editar cargo'}
+                  </button>}
+                </div>
+                {editingJob && data.can_manage_jobs && !selected.is_client && <div className={styles.jobEditor}>
+                  <label className={styles.field}>Cargo en el Workspace
+                    <input maxLength={120} value={draftJob} disabled={savingJob}
+                      placeholder="Ej.: Programador junior" onChange={event => setDraftJob(event.target.value)}/>
+                  </label>
+                  <button className={styles.primary} type="button" disabled={savingJob}
+                    onClick={() => void saveJob()}>{savingJob ? 'Guardando…' : 'Guardar cargo'}</button>
+                </div>}
                 <dl className={styles.info}>
                   <dt>Nombre</dt><dd>{selected.name}</dd>
                   <dt>Correo</dt><dd title={selected.email}>{selected.email}</dd>
+                  <dt>Cargo</dt><dd>{selected.job_title || 'Sin especificar'}</dd>
                   <dt>Identificador</dt><dd>{selected.handle}</dd>
                   <dt>Teléfono</dt><dd>{selected.professional_phone || 'No indicado'}</dd>
                   <dt>Departamento</dt><dd>{selected.departments.map(x => x.name).join(', ') || 'Sin asignar'}</dd>

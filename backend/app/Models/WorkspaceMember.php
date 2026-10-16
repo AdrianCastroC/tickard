@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class WorkspaceMember extends Model
 {
-    protected $fillable = ['workspace_id', 'user_id', 'role', 'client_company_id'];
+    protected $fillable = ['workspace_id', 'user_id', 'role', 'client_company_id', 'job_title'];
 
     public function workspace(): BelongsTo
     {

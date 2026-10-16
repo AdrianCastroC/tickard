@@ -45,9 +45,10 @@
 .viewSwitch button {display:grid;place-items:center;width:30px;height:29px;padding:0;border:0;
   border-radius:6px;background:transparent;color:var(--muted);cursor:pointer;}
 .viewSwitch button.viewActive {background:var(--accent);color:var(--accent-ink);}
-.tableScroll {flex:1 1 auto;min-height:0;min-width:0;overflow:auto;
+.tableScroll {flex:1 1 auto;min-height:0;min-width:0;overflow:auto;scrollbar-width:none;
   border:1px solid var(--panel-border);border-radius:11px;background:var(--surface);}
-.table {border-collapse:separate;border-spacing:0;width:100%;min-width:660px;font-size:11px;}
+.tableScroll::-webkit-scrollbar,.cardScroll::-webkit-scrollbar {display:none;}
+.table {border-collapse:separate;border-spacing:0;width:100%;min-width:850px;font-size:11px;}
 .table th {position:sticky;top:0;z-index:2;text-align:left;padding:12px 8px;
   white-space:nowrap;font-size:10px;font-weight:700;color:var(--muted);
   background:var(--canvas);border-bottom:1px solid var(--panel-border);}
@@ -80,7 +81,7 @@
 .role[data-role="client"] {color:#7649a8;background:#eee5ff;}
 .countCell {font-weight:700;font-variant-numeric:tabular-nums;}
 .dateCell {color:var(--muted);font-size:10px;white-space:nowrap;}
-.cardScroll {flex:1 1 auto;min-height:0;overflow-y:auto;scrollbar-width:thin;}
+.cardScroll {flex:1 1 auto;min-height:0;overflow-y:auto;scrollbar-width:none;}
 .memberGrid {display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,210px),1fr));gap:11px;align-content:start;}
 .memberCard {display:flex;flex-direction:column;align-items:flex-start;gap:8px;min-width:0;
   padding:15px;border:1px solid var(--panel-border);border-radius:11px;background:var(--surface);
@@ -90,19 +91,12 @@
 .memberCard > small {max-width:100%;font-size:10px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .cardMeta {font-size:10px;color:var(--muted);border-top:1px solid var(--panel-border);
   width:100%;padding-top:9px;margin-top:auto;}
-.pagination {display:flex;align-items:center;justify-content:space-between;gap:10px;
-  font-size:11px;color:var(--muted);flex:0 0 auto;}
-.pageControls {display:flex;align-items:center;gap:5px;}
-.pageControls button {width:32px;height:32px;display:grid;place-items:center;border:1px solid var(--panel-border);
-  border-radius:7px;background:var(--surface);color:var(--ink);font:inherit;font-size:11px;cursor:pointer;}
-.pageControls button.pageActive {background:var(--accent);color:var(--accent-ink);border-color:var(--accent);}
-.pageControls button:disabled {opacity:.4;cursor:default;}
 .selectionBar {display:flex;align-items:center;gap:8px;flex-wrap:wrap;flex:0 0 auto;
   padding:8px 10px;border:1px solid var(--panel-border);border-radius:8px;background:var(--surface);}
 .selectionBar span {font-size:11px;font-weight:700;flex:1;}
 .selectionBar button {padding:6px 8px;border:1px solid var(--panel-border);border-radius:7px;
   background:var(--canvas);color:var(--ink);font:inherit;font-size:10px;cursor:pointer;}
-.inspector {grid-column:2;grid-row:1 / 4;display:flex;flex-direction:column;min-width:0;
+.inspector {grid-column:2;grid-row:2 / 4;display:flex;flex-direction:column;min-width:0;
   min-height:0;overflow:hidden;border:1px solid var(--panel-border);
   border-radius:11px;background:var(--surface);}
 .memberHead {display:flex;align-items:center;gap:12px;padding:20px 15px 16px;flex:0 0 auto;min-width:0;}
@@ -196,3 +190,34 @@
   .toolbar > select {flex:1 1 42%;}
   .memberHead {padding:13px;}
 }
+
+/* Toolbar filters follow the existing Personal/Departments control pattern. */
+.filterControls {position:relative;flex:0 0 auto;display:flex;align-items:center;}
+.filterTrigger {flex:0 0 36px;width:36px;height:36px;display:grid;place-items:center;}
+.filterPopover {position:absolute;z-index:30;top:calc(100% + 8px);right:0;
+  display:flex;flex-direction:column;gap:13px;width:255px;max-width:calc(100vw - 35px);
+  padding:14px;border:1px solid var(--panel-border);border-radius:10px;
+  box-sizing:border-box;background:var(--surface);box-shadow:0 12px 30px rgb(0 0 0 / 16%);}
+.filterPopoverHeader {display:flex;align-items:center;justify-content:space-between;gap:8px;}
+.filterPopoverHeader strong {font-size:12px;font-weight:750;}
+.filterPopoverHeader button {border:0;background:transparent;color:var(--accent);
+  padding:3px;font:inherit;font-size:11px;font-weight:700;cursor:pointer;}
+.filterPopover label {display:flex;flex-direction:column;gap:6px;font-size:11px;font-weight:650;}
+.filterPopover select {width:100%;height:35px;padding:0 9px;border:1px solid var(--panel-border);
+  border-radius:7px;background:var(--canvas);color:var(--ink);font:inherit;font-size:11px;}
+.sortButton {display:inline-flex;align-items:center;gap:6px;background:transparent;
+  border:0;padding:0;font:inherit;font-size:10px;font-weight:700;color:var(--muted);
+  cursor:pointer;white-space:nowrap;}
+.sortButton:hover {color:var(--ink);}
+.sortActive {color:var(--accent);font-size:9px;}
+.sortInactive {color:var(--muted);opacity:.55;font-size:12px;}
+.jobCell {font-size:11px;max-width:150px;min-width:105px;overflow:hidden;
+  text-overflow:ellipsis;white-space:nowrap;color:var(--ink);}
+.cardJob {color:var(--muted);font-size:11px;white-space:normal;}
+.sectionHeading button svg {width:13px;height:13px;vertical-align:middle;}
+.jobEditor {display:flex;flex-direction:column;gap:9px;padding:11px;border:1px solid var(--panel-border);
+  border-radius:8px;background:var(--canvas);}
+.jobEditor input {width:100%;min-width:0;box-sizing:border-box;height:35px;border:1px solid var(--panel-border);
+  border-radius:7px;padding:0 10px;background:var(--surface);color:var(--ink);font:inherit;font-size:11px;}
+.jobEditor .primary {align-self:flex-start;}
+.inviteToolbar {display:flex;align-items:center;gap:8px;flex:0 0 auto;}

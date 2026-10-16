@@ -56,6 +56,7 @@ class WorkspaceMembersController extends ApiController
                 'avatar_url' => $user->avatarUrl(),
                 'email' => $user->email,
                 'professional_phone' => $user->professional_phone,
+                'job_title' => $membership->job_title,
                 'joined_at' => $membership->created_at?->toDateString(),
                 'role' => (int) $workspace->owner_id === (int) $user->id ? 'owner' : ($isClient ? 'client' : $membership->role),
                 'is_client' => $isClient,
@@ -78,7 +79,28 @@ class WorkspaceMembersController extends ApiController
             'member_limit' => WorkspaceLimits::maxMembers($workspace),
             'pending_invitations' => $pending,
             'can_manage_roles' => $isOwner,
+            'can_manage_jobs' => $isOwner || $workspace->memberships()->where('user_id', $request->user()->id)->where('role', 'admin')->exists(),
         ]);
+    }
+
+    public function updateJobTitle(Request $request, Workspace $workspace, User $user)
+    {
+        $this->authorizeViewer($request, $workspace);
+        $data = $request->validate([
+            'job_title' => ['nullable', 'string', 'max:120'],
+        ]);
+        $title = trim($data['job_title'] ?? '');
+        abort_if(mb_strlen($title) > 120, 422, 'El cargo no puede superar los 120 caracteres.');
+
+        DB::transaction(function () use ($workspace, $user, $title) {
+            $membership = $workspace->memberships()
+                ->where('user_id', $user->id)->lockForUpdate()->firstOrFail();
+            abort_if(WorkspaceClientAccess::isClient($user, $workspace), 422,
+                'El cargo de las cuentas de cliente no puede modificarse desde Personal.');
+            $membership->update(['job_title' => $title !== '' ? $title : null]);
+        });
+
+        return response()->json(['user_id' => $user->id, 'job_title' => $title !== '' ? $title : null]);
     }
 
     public function updateRole(Request $request, Workspace $workspace, User $user)

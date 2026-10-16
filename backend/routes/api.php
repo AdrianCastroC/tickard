@@ -41,6 +41,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/workspaces/{workspace}/members-invitations', [WorkspaceInvitationsController::class, 'index']);
     Route::get('/workspaces/{workspace}/members', [WorkspaceMembersController::class, 'index']);
     Route::patch('/workspaces/{workspace}/members/{user}/role', [WorkspaceMembersController::class, 'updateRole']);
+    Route::patch('/workspaces/{workspace}/members/{user}/job-title', [WorkspaceMembersController::class, 'updateJobTitle']);
     Route::post('/workspaces/{workspace}/invitations', [WorkspaceInvitationsController::class, 'store']);
     Route::post('/workspaces/{workspace}/invitations/delete', [WorkspaceInvitationsController::class, 'deleteMany']);
     Route::get('/me', [AuthController::class, 'me']);
