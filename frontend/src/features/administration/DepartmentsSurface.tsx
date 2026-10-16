@@ -289,8 +289,8 @@ export function DepartmentsSurface({ workspaceId }: { workspaceId: number | null
       <div className={styles.stats}>
         <Stat icon="users" title="Departamentos" value={data.departments.length}
           detail={stats.active + ' activos · ' + (data.departments.length - stats.active) + ' inactivos'} tone="mint"/>
-        <Stat icon="users" title="Miembros" value={stats.people} detail="asignados a departamentos" tone="blue"/>
         <Stat icon="layers" title="Equipos" value={stats.teams} detail="vinculados" tone="purple"/>
+        <Stat icon="users" title="Miembros" value={stats.people} detail="asignados a departamentos" tone="blue"/>
         <Stat icon="folder" title="Proyectos" value={stats.projects} detail="vinculados" tone="orange"/>
       </div>
       <div className={styles.workspace}>
