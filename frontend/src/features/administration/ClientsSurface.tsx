@@ -309,7 +309,6 @@ export function ClientsSurface({workspaceId}:{workspaceId:number|null}) {
             <strong>{data.clients.length?'Sin resultados':'Todavía no hay clientes'}</strong>
             <p>{data.clients.length?'Prueba otros filtros.':'Crea la primera empresa cliente.'}</p></div>}
         </div>
-        <small className={styles.results}>{visible.length} de {data.clients.length} clientes</small>
       </div>
       <aside className={styles.inspector} style={{ gridRow: "1 / 3" }} aria-label="Ficha del cliente">
         {editor?<form className={styles.form} onSubmit={save}>

@@ -357,7 +357,6 @@ export function DepartmentsSurface({ workspaceId }: { workspaceId: number | null
                 onClick={beginCreate}><PlusIcon/> Nuevo departamento</button>}
             </div>}
           </div>
-          <span className={styles.results}>{visible.length} de {data.departments.length} departamentos</span>
         </div>
         <aside className={styles.inspector} aria-label="Detalle del departamento">
           {editor ? <form className={styles.form} onSubmit={save}>

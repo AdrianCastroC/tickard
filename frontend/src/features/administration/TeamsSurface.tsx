@@ -390,7 +390,6 @@ export function TeamsSurface({ workspaceId }: { workspaceId: number | null }) {
                 <PlusIcon/> Nuevo equipo</button>}
             </div>}
           </div>
-          <span className={styles.results}>{visible.length} de {data.teams.length} equipos</span>
         </div>
         <aside className={styles.inspector} aria-label="Detalle del equipo">
           {editor ? <form className={styles.form} onSubmit={save}>
