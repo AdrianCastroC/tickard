@@ -4,6 +4,8 @@ namespace Tests\Feature;
 
 use App\Models\ClientCompany;
 use App\Models\Department;
+use App\Models\Team;
+use App\Models\Project;
 use App\Models\User;
 use App\Models\Workspace;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -94,6 +96,74 @@ class WorkspaceDepartmentsTest extends TestCase
             'workspace_id' => $workspace->id, 'name' => 'Soporte',
             'member_ids' => [$client->id],
         ])->assertUnprocessable()->assertJsonValidationErrors('member_ids');
+    }
+
+    public function test_department_panel_has_real_descriptions_status_members_teams_projects_and_timestamps(): void
+    {
+        extract($this->fixture());
+        $team = Team::create(['workspace_id' => $workspace->id, 'name' => 'Frontend']);
+        $company = ClientCompany::create(['workspace_id' => $workspace->id, 'name' => 'Interno']);
+        $project = Project::create(['workspace_id' => $workspace->id,
+            'client_company_id' => $company->id, 'name' => 'Web corporativa']);
+
+        $id = $this->actingAs($owner)->postJson('/api/departments', [
+            'workspace_id' => $workspace->id, 'name' => 'Desarrollo',
+            'description' => 'Aplicaciones y sitios web',
+            'status' => 'active', 'icon' => 'code',
+            'member_ids' => [$owner->id, $member->id], 'lead_user_id' => $member->id,
+            'team_ids' => [$team->id], 'project_ids' => [$project->id],
+        ])->assertCreated()->json('id');
+
+        $this->assertDatabaseHas('department_team', ['department_id' => $id, 'team_id' => $team->id]);
+        $this->assertDatabaseHas('department_project', ['department_id' => $id, 'project_id' => $project->id]);
+
+        $this->getJson('/api/departments?workspace_id='.$workspace->id)->assertOk()
+            ->assertJsonPath('departments.0.description', 'Aplicaciones y sitios web')
+            ->assertJsonPath('departments.0.icon', 'code')
+            ->assertJsonPath('departments.0.status', 'active')
+            ->assertJsonPath('departments.0.teams.0.name', 'Frontend')
+            ->assertJsonPath('departments.0.projects.0.name', 'Web corporativa')
+            ->assertJsonPath('departments.0.lead_user_id', $member->id)
+            ->assertJsonStructure(['departments' => [['created_at', 'updated_at', 'members']]]);
+
+        $this->patchJson('/api/departments/'.$id, [
+            'workspace_id' => $workspace->id, 'name' => 'Desarrollo',
+            'description' => 'Renovado', 'status' => 'inactive', 'icon' => 'palette',
+            'member_ids' => [$owner->id], 'lead_user_id' => null,
+            'team_ids' => [], 'project_ids' => [],
+        ])->assertNoContent();
+        $this->assertDatabaseHas('departments', ['id' => $id, 'description' => 'Renovado',
+            'status' => 'inactive', 'icon' => 'palette', 'lead_user_id' => null]);
+        $this->assertDatabaseMissing('department_team', ['department_id' => $id, 'team_id' => $team->id]);
+        $this->assertDatabaseMissing('department_project', ['department_id' => $id, 'project_id' => $project->id]);
+        $this->assertDatabaseHas('projects', ['id' => $project->id]);
+        $this->assertDatabaseHas('teams', ['id' => $team->id]);
+    }
+
+    public function test_cross_workspace_teams_and_projects_cannot_be_attached_to_departments(): void
+    {
+        extract($this->fixture());
+        $otherWorkspace = Workspace::create(['name' => 'Otra', 'owner_id' => $other->id]);
+        $otherWorkspace->memberships()->create(['user_id' => $other->id, 'role' => 'owner']);
+        $otherTeam = Team::create(['workspace_id' => $otherWorkspace->id, 'name' => 'Confidencial']);
+        $client = ClientCompany::create(['workspace_id' => $otherWorkspace->id, 'name' => 'Otra empresa']);
+        $otherProject = Project::create(['workspace_id' => $otherWorkspace->id,
+            'client_company_id' => $client->id, 'name' => 'Secreto']);
+
+        $this->actingAs($owner)->postJson('/api/departments', [
+            'workspace_id' => $workspace->id, 'name' => 'Prueba',
+            'team_ids' => [$otherTeam->id],
+        ])->assertUnprocessable()->assertJsonValidationErrors('team_ids');
+
+        $this->postJson('/api/departments', [
+            'workspace_id' => $workspace->id, 'name' => 'Prueba',
+            'project_ids' => [$otherProject->id],
+        ])->assertUnprocessable()->assertJsonValidationErrors('project_ids');
+
+        $this->postJson('/api/departments', [
+            'workspace_id' => $workspace->id, 'name' => 'Prueba',
+            'status' => 'unknown', 'icon' => 'javascript:alert(1)',
+        ])->assertUnprocessable()->assertJsonValidationErrors(['status', 'icon']);
     }
 
     public function test_lead_must_belong_to_department_and_names_are_unique_per_workspace(): void
