@@ -15,8 +15,8 @@ const MEMBER_ROLE_LABELS: Record<string, string> = {
   owner:'Propietario', member:'Miembro', responsable:'Responsable',
   editor:'Editor', lector:'Lector', cliente:'Cliente',
 }
-export function WorkspaceInvitations({ workspaceId, workspaceName, projectId, onAdded }:
-  { workspaceId?: number; workspaceName?: string; projectId?: number; onAdded?: () => void }) {
+export function WorkspaceInvitations({ workspaceId, workspaceName, projectId, onAdded, showMembers = true }:
+  { workspaceId?: number; workspaceName?: string; projectId?: number; onAdded?: () => void; showMembers?: boolean }) {
   const base = projectId ? `/projects/${projectId}/invitations` : `/workspaces/${workspaceId}/invitations`
   const listPath = projectId ? base : `/workspaces/${workspaceId}/members-invitations`
   const [data,setData] = useState<Data|null>(null)
@@ -120,7 +120,7 @@ export function WorkspaceInvitations({ workspaceId, workspaceName, projectId, on
     </div>
     {loading&&<p className={styles.muted}>Cargando…</p>}
     {error&&<p role="status" className={styles.feedback}>{error}</p>}
-    {data?.members&&<section className={`${styles.panel} ${styles.membersPanel}`}>
+    {showMembers&&data?.members&&<section className={`${styles.panel} ${styles.membersPanel}`}>
       <div className={styles.membersHeader}>
         <h3>{projectId ? 'Miembros del proyecto' : 'Miembros actuales'} <span>{data.members.length}</span></h3>
       </div>

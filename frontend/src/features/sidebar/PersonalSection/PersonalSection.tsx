@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { NavIcon } from '../../../shared/icons'
 
-type Section = 'departments' | 'teams' | 'clients'
+type Section = 'members' | 'departments' | 'teams' | 'clients'
 type Props = { active: Section | null; onOpen: (section: Section) => void; showClients: boolean }
 
 export function PersonalSection({ active, onOpen, showClients }: Props) {
@@ -13,6 +13,9 @@ export function PersonalSection({ active, onOpen, showClients }: Props) {
       <span className={`side-section-chevron${open ? ' open' : ''}`}>›</span>
     </button>
     {open && <><span className="mini-section-indicator" aria-hidden="true" />
+      <button className={active === 'members' ? 'nav-item sub on' : 'nav-item sub'} type="button" title="Miembros" onClick={() => onOpen('members')}>
+        <NavIcon><circle cx="9" cy="7" r="4"/><path d="M2 21v-2a7 7 0 0 1 14 0v2"/><circle cx="19" cy="8" r="2.5"/><path d="M18 15a5 5 0 0 1 4 5v1"/></NavIcon><span className="side-label-text">Miembros</span>
+      </button>
       <button className={active === 'departments' ? 'nav-item sub on' : 'nav-item sub'} type="button" title="Departamentos" onClick={() => onOpen('departments')}>
         <NavIcon><path d="M2.97 12.92A2 2 0 0 0 2 14.63v3.24a2 2 0 0 0 .97 1.71l3 1.8a2 2 0 0 0 2.06 0L12 19v-5.5l-5-3-4.03 2.42Z"/><path d="m7 16.5-4.74-2.85"/><path d="m7 16.5 5-3"/><path d="M7 16.5v5.17"/><path d="M12 13.5V19l3.97 2.38a2 2 0 0 0 2.06 0l3-1.8a2 2 0 0 0 .97-1.71v-3.24a2 2 0 0 0-.97-1.71L17 10.5l-5 3Z"/><path d="m17 16.5-5-3"/><path d="m17 16.5 4.74-2.85"/><path d="M17 16.5v5.17"/><path d="M7.97 4.42A2 2 0 0 0 7 6.13v4.37l5 3 5-3V6.13a2 2 0 0 0-.97-1.71l-3-1.8a2 2 0 0 0-2.06 0l-3 1.8Z"/><path d="M12 8 7.26 5.15"/><path d="m12 8 4.74-2.85"/><path d="M12 13.5V8"/></NavIcon><span className="side-label-text">Departamentos</span>
       </button>

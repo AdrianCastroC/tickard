@@ -13,6 +13,7 @@ use App\Http\Controllers\Api\CardDependenciesController;
 use App\Http\Controllers\Api\CardDetailsController;
 use App\Http\Controllers\Api\InvitationsController;
 use App\Http\Controllers\Api\WorkspaceInvitationsController;
+use App\Http\Controllers\Api\WorkspaceMembersController;
 use App\Http\Controllers\Api\ProjectsController;
 use App\Http\Controllers\Api\ProjectFilesController;
 use App\Http\Controllers\Api\ProjectPersonnelController;
@@ -38,6 +39,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/my/home/projects', [GlobalHomeController::class, 'projects']);
     Route::post('/my/invitations/{invitation}/respond', [WorkspaceInvitationsController::class, 'respond']);
     Route::get('/workspaces/{workspace}/members-invitations', [WorkspaceInvitationsController::class, 'index']);
+    Route::get('/workspaces/{workspace}/members', [WorkspaceMembersController::class, 'index']);
+    Route::patch('/workspaces/{workspace}/members/{user}/role', [WorkspaceMembersController::class, 'updateRole']);
     Route::post('/workspaces/{workspace}/invitations', [WorkspaceInvitationsController::class, 'store']);
     Route::post('/workspaces/{workspace}/invitations/delete', [WorkspaceInvitationsController::class, 'deleteMany']);
     Route::get('/me', [AuthController::class, 'me']);

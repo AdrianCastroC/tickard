@@ -530,8 +530,6 @@ export function TeamsSurface({ workspaceId }: { workspaceId: number | null }) {
                   <div className={styles.groupHeading}><strong>Miembros ({selected.members.length})</strong>
                     <button type="button" onClick={() => setActiveTab('members')}>Ver todos</button></div>
                   <Avatars people={selected.members} max={5}/>
-                  {canManage && <button type="button" className={teamCss.manageButton} onClick={() => setActiveTab('members')}>
-                    <Glyph name="users" size={17}/> Gestionar miembros</button>}
                 </div>
                 <div className={styles.detailGroup}>
                   <div className={styles.groupHeading}><strong>Proyectos asignados ({selected.projects.length})</strong>
@@ -540,8 +538,6 @@ export function TeamsSurface({ workspaceId }: { workspaceId: number | null }) {
                     <Glyph name="folder" size={17}/><span>{project.name}</span>
                   </div>)}
                   {!selected.projects.length && <small className={styles.muted}>Sin proyectos asociados.</small>}
-                  {canManage && <button type="button" className={teamCss.manageButton} onClick={() => setActiveTab('projects')}>
-                    <Glyph name="folder" size={17}/> Gestionar proyectos</button>}
                 </div>
               </>}
               {activeTab === 'members' && <div className={styles.detailGroup}>
