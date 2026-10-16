@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\AdministrationController;
+use App\Http\Controllers\Api\WorkspaceDepartmentsController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\AccountSecurityController;
 use App\Http\Controllers\Api\CardsController;
@@ -53,10 +54,10 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::patch('/workspaces/{workspace}', [WorkspacesController::class, 'update']);
     Route::delete('/workspaces/{workspace}', [WorkspacesController::class, 'destroy']);
 
-    Route::get('/departments', [AdministrationController::class, 'departments']);
-    Route::post('/departments', [AdministrationController::class, 'storeDepartment']);
-    Route::patch('/departments/{department}', [AdministrationController::class, 'updateDepartment']);
-    Route::delete('/departments/{department}', [AdministrationController::class, 'destroyDepartment']);
+    Route::get('/departments', [WorkspaceDepartmentsController::class, 'index']);
+    Route::post('/departments', [WorkspaceDepartmentsController::class, 'store']);
+    Route::patch('/departments/{department}', [WorkspaceDepartmentsController::class, 'update']);
+    Route::delete('/departments/{department}', [WorkspaceDepartmentsController::class, 'destroy']);
 
     Route::get('/clients', [AdministrationController::class, 'clients']);
     Route::post('/clients', [AdministrationController::class, 'storeClient']);

@@ -1,7 +1,7 @@
-import { type FormEvent, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { api, type Profile } from '../../api'
 import { Avatar } from '../../shared/ui'
-import { FloppyIcon, PencilIcon } from '../../shared/icons'
+import { PencilIcon } from '../../shared/icons'
 import { AccountSecurityDialog, type SecurityPurpose } from './AccountSecurityDialog'
 import styles from './AccountModal.module.css'
 
@@ -20,25 +20,72 @@ export function ProfileSection({ profile, workspaceId, onProfile, onAvatar }: Pr
   const [info, setInfo] = useState('')
   const [saving, setSaving] = useState(false)
   const mePath = workspaceId ? '/me?workspace_id=' + workspaceId : '/me'
+  const committed = useRef({ first: profile.user.first_name, last: profile.user.last_name ?? '' })
+  const draft = useRef({ first: profile.user.first_name, last: profile.user.last_name ?? '' })
+  const busy = useRef(false)
+  const live = useRef(true)
+  const queued = useRef(false)
+  const onProfileRef = useRef(onProfile)
+  onProfileRef.current = onProfile
 
-  useEffect(() => setFirstName(profile.user.first_name), [profile.user.first_name])
-  useEffect(() => setLastName(profile.user.last_name ?? ''), [profile.user.last_name])
+  useEffect(() => {
+    live.current = true
+    return () => { live.current = false }
+  }, [])
 
-  async function saveProfile(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-    setError(''); setInfo('')
-    if (!firstName.trim()) { setError('El nombre no puede estar vacío.'); return }
-    setSaving(true)
+  const persist = useCallback(async () => {
+    const first = draft.current.first.trim()
+    const last = draft.current.last.trim()
+    if (!first) {
+      if (live.current) { setError('El nombre no puede estar vacío.'); setInfo('') }
+      return
+    }
+    if (busy.current) { queued.current = true; return }
+    if (first === committed.current.first && last === committed.current.last) return
+
+    busy.current = true
+    if (live.current) { setSaving(true); setError(''); setInfo('') }
     try {
       const next = await api<Profile>(mePath, {
         method: 'PATCH',
-        body: JSON.stringify({ first_name: firstName.trim(), last_name: lastName.trim() || null }),
+        body: JSON.stringify({ first_name: first, last_name: last || null }),
       })
-      onProfile(next)
-      setInfo('Datos personales actualizados.')
+      committed.current = { first: next.user.first_name, last: next.user.last_name ?? '' }
+      onProfileRef.current(next)
+      if (live.current) setInfo('Cambios guardados automáticamente.')
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : 'No se pudieron guardar los datos.')
-    } finally { setSaving(false) }
+      if (live.current) {
+        setError(cause instanceof Error ? cause.message : 'No se pudieron guardar los cambios.')
+      }
+    } finally {
+      busy.current = false
+      if (live.current) setSaving(false)
+      const needsAnother = draft.current.first.trim() !== committed.current.first ||
+        draft.current.last.trim() !== committed.current.last
+      if (queued.current && needsAnother && live.current) {
+        queued.current = false
+        void persist()
+      } else {
+        queued.current = false
+      }
+    }
+  }, [mePath])
+
+  useEffect(() => {
+    if (firstName.trim() === committed.current.first &&
+        lastName.trim() === committed.current.last) return
+    if (!firstName.trim()) return
+    const pending = window.setTimeout(() => { void persist() }, 800)
+    return () => window.clearTimeout(pending)
+  }, [firstName, lastName, persist])
+
+  function updateFirst(value: string) {
+    draft.current.first = value
+    setFirstName(value); setError(''); setInfo('')
+  }
+  function updateLast(value: string) {
+    draft.current.last = value
+    setLastName(value); setError(''); setInfo('')
   }
 
   function copy(value: string, label: string) {
@@ -51,11 +98,8 @@ export function ProfileSection({ profile, workspaceId, onProfile, onAvatar }: Pr
       .catch(() => setError('No se pudo copiar ' + label.toLowerCase() + '.'))
   }
 
-  const hasChanges = firstName.trim() !== profile.user.first_name ||
-    lastName.trim() !== (profile.user.last_name ?? '')
-
   return <>
-    <form className={[styles.modalBody, styles.profileBody].join(' ')} onSubmit={saveProfile}>
+    <div className={[styles.modalBody, styles.profileBody].join(' ')}>
       <div className={styles.profileScroll}>
         <div className={styles.identity}>
           <button type="button" className="account-avatar account-avatar-lg" aria-label="Cambiar foto de perfil"
@@ -88,11 +132,11 @@ export function ProfileSection({ profile, workspaceId, onProfile, onAvatar }: Pr
         <div className={styles.sectionIntro}><strong>Datos personales</strong></div>
         <div className={styles.fieldsGrid}>
           <label className={styles.field}>Nombre
-            <input value={firstName} onChange={event => setFirstName(event.target.value)}
+            <input value={firstName} onChange={event => updateFirst(event.target.value)} onBlur={() => void persist()}
               autoComplete="given-name" required maxLength={120}/>
           </label>
           <label className={styles.field}>Apellidos (opcional)
-            <input value={lastName} onChange={event => setLastName(event.target.value)}
+            <input value={lastName} onChange={event => updateLast(event.target.value)} onBlur={() => void persist()}
               autoComplete="family-name" maxLength={120}/>
           </label>
           <div className={[styles.readonlyField, styles.fieldFull].join(' ')}>
@@ -113,14 +157,12 @@ export function ProfileSection({ profile, workspaceId, onProfile, onAvatar }: Pr
           <button type="button" className={styles.secondaryAction} onClick={() => setSecurity('password')}>Cambiar contraseña</button>
         </div>
       </div>
-      <div className={styles.formFooter}>
-        {error && <p className={[styles.feedback, styles.feedbackError].join(' ')} role="alert">{error}</p>}
-        {!error && info && <p className={[styles.feedback, styles.ok].join(' ')} role="status">{info}</p>}
-        <button className={['primary', styles.save].join(' ')} type="submit" disabled={saving || !hasChanges}>
-          <FloppyIcon/>{saving ? 'Guardando…' : 'Guardar cambios'}
-        </button>
+        {(saving || error || info) && <div className={styles.autoSaveStatus} role={error ? 'alert' : 'status'}>
+          {error ? <span className={styles.feedbackError}>{error}</span> :
+            <span className={styles.ok}>{saving ? 'Guardando cambios…' : info}</span>}
+          {error && <button type="button" onClick={() => void persist()}>Reintentar</button>}
+        </div>}
       </div>
-    </form>
     {security && <AccountSecurityDialog purpose={security} profile={profile} workspaceId={workspaceId}
       onClose={() => setSecurity(null)}
       onUpdated={next => { onProfile(next); setInfo(security === 'email' ? 'Correo actualizado.' : 'Contraseña actualizada.') }}/>}
