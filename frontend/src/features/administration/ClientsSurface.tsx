@@ -4,6 +4,7 @@ import { api } from '../../api'
 import { Avatar, formatDateLong } from '../../shared/ui'
 import { EditIcon, FilterFunnelIcon, FloppyIcon, PlusIcon, TrashIcon } from '../../shared/icons'
 import styles from './DepartmentsDashboard.module.css'
+import { AdministrationLoading } from './AdministrationLoading'
 import teamStyles from './TeamsDashboard.module.css'
 import css from './ClientsDashboard.module.css'
 
@@ -25,7 +26,6 @@ const labels: Record<ClientType,string> = {
 }
 const statuses: Record<Status,string> = { active: 'Activo', inactive: 'Inactivo', archived: 'Archivado' }
 const collator = new Intl.Collator('es',{sensitivity:'base',numeric:true})
-const skeleton = Array.from({length:5},(_,i)=>i)
 
 function Logo({client,size='normal'}:{client:Client;size?:'normal'|'large'}) {
   const initials = client.name.split(/\s+/).filter(Boolean).slice(0,2).map(x=>x[0]).join('').toUpperCase()
@@ -42,7 +42,7 @@ function People({users,max=5}:{users:Person[];max?:number}) {
     {!users.length&&<span className={styles.muted}>Sin usuarios activos</span>}
   </div>
 }
-function LineIcon({name}:{name:'folder'|'list'|'grid'|'search'|'users'|'building'|'more'}) {
+function LineIcon({name}:{name:'folder'|'list'|'grid'|'search'|'users'|'building'}) {
   const paths={
     folder:<path d="M3 6a2 2 0 0 1 2-2h5l2 3h7a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6Z"/>,
     list:<><path d="M9 5h12M9 12h12M9 19h12M4 5h.01M4 12h.01M4 19h.01"/></>,
@@ -50,7 +50,6 @@ function LineIcon({name}:{name:'folder'|'list'|'grid'|'search'|'users'|'building
     search:<><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/></>,
     users:<><circle cx="9" cy="8" r="3"/><path d="M2 20v-2a6 6 0 0 1 12 0v2H2ZM16 5a3 3 0 0 1 0 6M16 15a5 5 0 0 1 6 5"/></>,
     building:<><rect x="5" y="3" width="14" height="18" rx="1"/><path d="M3 21h18M9 7h2M14 7h2M9 11h2M14 11h2M10 21v-6h4v6"/></>,
-    more:<><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></>,
   }
   return <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor"
     strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{paths[name]}</svg>
@@ -82,7 +81,6 @@ export function ClientsSurface({workspaceId}:{workspaceId:number|null}) {
   const [status,setStatus]=useState<Status>('active')
   const [contactId,setContactId]=useState<number|null>(null)
   const [representative,setRepresentative]=useState('')
-  const [menuId,setMenuId]=useState<number|null>(null)
 
   const path='/clients?workspace_id='+workspaceId
   const reload=useCallback(async()=>{
@@ -128,15 +126,15 @@ export function ClientsSurface({workspaceId}:{workspaceId:number|null}) {
     {id:'summary',label:'Resumen'},{id:'members',label:'Miembros'},
     {id:'projects',label:'Proyectos'},{id:'settings',label:'Ajustes'},
   ]
-  function choose(c:Client){setSelectedId(c.id);setEditor(null);setTab('summary');setMenuId(null);setError('')}
+  function choose(c:Client){setSelectedId(c.id);setEditor(null);setTab('summary');setError('')}
   function beginCreate(){
     setEditor('create');setName('');setDescription('');setSector('');setType('company');setStatus('active')
-    setContactId(null);setRepresentative('');setFiltersOpen(false);setError('');setMenuId(null);setNotice('')
+    setContactId(null);setRepresentative('');setFiltersOpen(false);setError('');setNotice('')
   }
   function beginEdit(c:Client){
     setSelectedId(c.id);setEditor('edit');setName(c.name);setDescription(c.description??'')
     setSector(c.sector??'');setType(c.client_type);setStatus(c.status)
-    setContactId(c.primary_contact_user_id);setRepresentative('');setError('');setMenuId(null)
+    setContactId(c.primary_contact_user_id);setRepresentative('');setError('')
   }
   async function save(event:FormEvent<HTMLFormElement>){
     event.preventDefault()
@@ -201,10 +199,8 @@ export function ClientsSurface({workspaceId}:{workspaceId:number|null}) {
         </span>
       </div>
     </header>
-    {loading?<div className={styles.loading} role="status" aria-label="Cargando clientes">
-      <div className={styles.loadingGrid}>{skeleton.map(i=><span key={i}/>)}</div>
-    </div>:data&&<div className={styles.workspace}>
-      <div className={styles.mainColumn} style={{ gridRow: 2 }}>
+    {loading?<AdministrationLoading section="clients"/>:data&&<div className={styles.workspace}>
+      <div className={`${styles.mainColumn} ${css.clientMain}`}>
         <div className={styles.filters}>
           <label className={styles.search}><LineIcon name="search"/>
             <input type="search" aria-label="Buscar clientes" placeholder="Buscar clientes…"
@@ -258,7 +254,7 @@ export function ClientsSurface({workspaceId}:{workspaceId:number|null}) {
             <thead><tr><th><input type="checkbox" checked={allChecked} aria-label="Seleccionar clientes visibles"
               onChange={e=>toggleVisible(e.target.checked)}/></th>
               <th>Cliente</th><th>Tipo</th><th>Contacto principal</th><th>Proyectos</th>
-              <th>Estado</th><th className={teamStyles.actionsCol}>Acciones</th>
+              <th>Estado</th>
             </tr></thead>
             <tbody>{visible.map(c=><tr key={c.id} data-selected={selectedId===c.id&&editor!=='create'}>
               <td><input type="checkbox" aria-label={'Seleccionar '+c.name}
@@ -275,25 +271,13 @@ export function ClientsSurface({workspaceId}:{workspaceId:number|null}) {
               <td><button type="button" className={teamStyles.projectCount}
                 onClick={()=>{choose(c);setTab('projects')}}><LineIcon name="folder"/>{c.projects_count}</button></td>
               <td><ClientStatus status={c.status}/></td>
-              <td><div className={teamStyles.rowActions}>
-                {canManage&&<button type="button" title={'Editar '+c.name} onClick={()=>beginEdit(c)}><EditIcon/></button>}
-                <div className={teamStyles.menuWrapper}><button type="button" title="Más opciones"
-                  aria-expanded={menuId===c.id} onClick={()=>setMenuId(menuId===c.id?null:c.id)}>
-                  <LineIcon name="more"/></button>
-                  {menuId===c.id&&<div className={teamStyles.rowMenu}>
-                    <button type="button" onClick={()=>choose(c)}>Ver detalles</button>
-                    {canManage&&<button type="button" onClick={()=>{choose(c);setConfirmDeleteIds([c.id])}}>
-                      <TrashIcon/> Eliminar</button>}
-                  </div>}</div>
-              </div></td>
             </tr>)}</tbody>
           </table>:<div className={teamStyles.cards}>{visible.map(c=>
             <article className={styles.departmentCard} key={c.id} data-selected={c.id===selectedId}>
               <div className={styles.cardTop}><button type="button" className={styles.cardSelect} onClick={()=>choose(c)}>
                 <Logo client={c}/><span className={styles.cardCopy}><strong>{c.name}</strong>
                   <span>{c.description||c.sector||'Sin descripción'}</span></span>
-              </button>{canManage&&<button type="button" className={teamStyles.iconButton}
-                title={'Editar '+c.name} onClick={()=>beginEdit(c)}><EditIcon/></button>}</div>
+              </button></div>
               <div className={css.cardMeta}><span className={css.typePill}>{labels[c.client_type]}</span>
                 <ClientStatus status={c.status}/></div>
               <button className={styles.cardMetrics} type="button" onClick={()=>{choose(c);setTab('projects')}}>
@@ -310,7 +294,7 @@ export function ClientsSurface({workspaceId}:{workspaceId:number|null}) {
             <p>{data.clients.length?'Prueba otros filtros.':'Crea la primera empresa cliente.'}</p></div>}
         </div>
       </div>
-      <aside className={styles.inspector} style={{ gridRow: "1 / 3" }} aria-label="Ficha del cliente">
+      <aside className={`${styles.inspector} ${css.clientInspector}`} aria-label="Ficha del cliente">
         {editor?<form className={styles.form} onSubmit={save}>
           <div className={styles.formHeading}><strong>{editor==='create'?'Nuevo cliente':'Editar cliente'}</strong>
             <button type="button" className={styles.close} aria-label="Cancelar edición" onClick={()=>setEditor(null)}>×</button></div>

@@ -4,6 +4,7 @@ import { api } from '../../api'
 import { Avatar, formatDateLong } from '../../shared/ui'
 import { EditIcon, FilterFunnelIcon, FloppyIcon, PlusIcon, TrashIcon } from '../../shared/icons'
 import styles from './DepartmentsDashboard.module.css'
+import { AdministrationLoading } from './AdministrationLoading'
 import teamCss from './TeamsDashboard.module.css'
 
 type Person = { id: number; name: string; avatar_url: string | null }
@@ -17,7 +18,7 @@ type Team = {
 type Data = { can_manage: boolean; teams: Team[]; people: Person[]; departments: Linked[]; projects: Linked[] }
 type Tab = 'summary' | 'members' | 'projects' | 'settings'
 type Sort = 'name' | 'members' | 'projects' | 'recent'
-type Mark = IconName | 'folder' | 'search' | 'grid' | 'list' | 'more'
+type Mark = IconName | 'folder' | 'search' | 'grid' | 'list'
 const icons: IconName[] = ['users', 'code', 'layers', 'palette', 'megaphone', 'settings', 'chart', 'box']
 const iconNames: Record<IconName, string> = {
   users: 'Personas', code: 'Desarrollo', layers: 'Capas', palette: 'Diseño',
@@ -29,7 +30,6 @@ const tabs: { id: Tab; label: string }[] = [
   { id: 'summary', label: 'Resumen' }, { id: 'members', label: 'Miembros' },
   { id: 'projects', label: 'Proyectos' }, { id: 'settings', label: 'Ajustes' },
 ]
-const skeleton = Array.from({ length: 6 }, (_, i) => i)
 
 function Glyph({ name, size = 18 }: { name: Mark; size?: number }) {
   const paths: Record<Mark, ReactNode> = {
@@ -45,7 +45,6 @@ function Glyph({ name, size = 18 }: { name: Mark; size?: number }) {
     search: <><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/></>,
     grid: <><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></>,
     list: <><path d="M9 5h12M9 12h12M9 19h12"/><path d="M4 5h.01M4 12h.01M4 19h.01"/></>,
-    more: <><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></>,
   }
   return <svg aria-hidden="true" width={size} height={size} viewBox="0 0 24 24"
     fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">{paths[name]}</svg>
@@ -86,7 +85,6 @@ export function TeamsSurface({ workspaceId }: { workspaceId: number | null }) {
   const [selectedId, setSelectedId] = useState<number | null>(null)
   const [selectedRows, setSelectedRows] = useState<number[]>([])
   const [activeTab, setActiveTab] = useState<Tab>('summary')
-  const [menuId, setMenuId] = useState<number | null>(null)
   const [editor, setEditor] = useState<'create' | 'edit' | null>(null)
   const [confirmDeleteIds, setConfirmDeleteIds] = useState<number[]>([])
   const [name, setName] = useState('')
@@ -109,7 +107,7 @@ export function TeamsSurface({ workspaceId }: { workspaceId: number | null }) {
   useEffect(() => {
     let active = true
     setData(null); setLoading(true); setLoadError(''); setSelectedId(null); setSelectedRows([])
-    setEditor(null); setMenuId(null); setFiltersOpen(false)
+    setEditor(null); setFiltersOpen(false)
     if (!workspaceId) { setLoading(false); return }
     void api<Data>(path).then(result => {
       if (active) { setData(result); setSelectedId(result.teams[0]?.id ?? null) }
@@ -165,20 +163,20 @@ export function TeamsSurface({ workspaceId }: { workspaceId: number | null }) {
   const selectedAll = visible.length > 0 && visible.every(team => selectedRows.includes(team.id))
 
   function choose(team: Team) {
-    setSelectedId(team.id); setEditor(null); setActiveTab('summary'); setMenuId(null)
+    setSelectedId(team.id); setEditor(null); setActiveTab('summary')
     setError(''); setNotice('')
   }
   function beginCreate() {
     setEditor('create'); setName(''); setDescription(''); setStatus('active'); setIcon('users')
     setMemberIds([]); setDepartmentIds([]); setProjectIds([])
-    setError(''); setNotice(''); setMenuId(null); setFiltersOpen(false)
+    setError(''); setNotice(''); setFiltersOpen(false)
   }
   function beginEdit(team: Team) {
     setSelectedId(team.id); setEditor('edit'); setName(team.name); setDescription(team.description ?? '')
     setStatus(team.status); setIcon(team.icon ?? 'users'); setMemberIds(team.members.map(person => person.id))
     setDepartmentIds(team.departments.map(dept => dept.id))
     setProjectIds(team.projects.map(project => project.id))
-    setError(''); setNotice(''); setMenuId(null)
+    setError(''); setNotice('')
   }
   function toggle(ids: number[], change: (value: number[]) => void, id: number, checked: boolean) {
     change(checked ? [...ids, id] : ids.filter(item => item !== id))
@@ -246,10 +244,7 @@ export function TeamsSurface({ workspaceId }: { workspaceId: number | null }) {
         </span>
       </div>
     </header>
-    {loading ? <div className={styles.loading} role="status" aria-label="Cargando equipos">
-      <div className={styles.loadingStats}>{skeleton.slice(0, 4).map(i => <span key={i}/>)}</div>
-      <div className={styles.loadingGrid}>{skeleton.map(i => <span key={i}/>)}</div>
-    </div> : data && <>
+    {loading ? <AdministrationLoading section="teams"/> : data && <>
       <div className={styles.stats}>
         <Stat icon="users" tone="blue" value={data.teams.length} title="Equipos"
           detail={stats.active + ' activos · ' + (data.teams.length - stats.active) + ' inactivos'}/>
@@ -323,7 +318,7 @@ export function TeamsSurface({ workspaceId }: { workspaceId: number | null }) {
                 <th className={teamCss.checkboxCol}><input type="checkbox" aria-label="Seleccionar todos los equipos visibles"
                   checked={selectedAll} onChange={event => toggleVisible(event.target.checked)}/></th>
                 <th>Nombre</th><th>Departamento</th><th>Miembros</th><th>Proyectos</th>
-                <th>Estado</th><th className={teamCss.actionsCol}>Acciones</th>
+                <th>Estado</th>
               </tr></thead>
               <tbody>{visible.map((team, i) => <tr key={team.id} data-selected={selectedId === team.id && editor !== 'create'}>
                 <td><input type="checkbox" aria-label={'Seleccionar ' + team.name} checked={selectedRows.includes(team.id)}
@@ -343,18 +338,6 @@ export function TeamsSurface({ workspaceId }: { workspaceId: number | null }) {
                 }}><Glyph name="folder" size={17}/>{team.projects_count}</button></td>
                 <td><span className={styles.status} data-status={team.status}>
                   <span/>{team.status === 'active' ? 'Activo' : 'Inactivo'}</span></td>
-                <td><div className={teamCss.rowActions}>
-                  {canManage && <button type="button" title={'Editar ' + team.name} aria-label={'Editar ' + team.name}
-                    onClick={() => beginEdit(team)}><EditIcon/></button>}
-                  <div className={teamCss.menuWrapper}><button type="button" aria-label={'Opciones de ' + team.name}
-                    title={'Opciones de ' + team.name} aria-expanded={menuId === team.id}
-                    onClick={() => setMenuId(menuId === team.id ? null : team.id)}><Glyph name="more"/></button>
-                    {menuId === team.id && <div className={teamCss.rowMenu}>
-                      <button type="button" onClick={() => choose(team)}>Ver detalle</button>
-                      {canManage && <button type="button" onClick={() => { choose(team); setConfirmDeleteIds([team.id]) }}>
-                        <TrashIcon/> Eliminar</button>}
-                    </div>}</div>
-                </div></td>
               </tr>)}</tbody>
             </table> : <div className={teamCss.cards}>
               {visible.map((team, i) => <article key={team.id} className={styles.departmentCard}
@@ -366,8 +349,6 @@ export function TeamsSurface({ workspaceId }: { workspaceId: number | null }) {
                     <span className={styles.cardCopy}><strong>{team.name}</strong>
                       <span>{team.description || 'Sin descripción'}</span></span>
                   </button>
-                  {canManage && <button type="button" className={teamCss.iconButton} title={'Editar ' + team.name}
-                    onClick={() => beginEdit(team)}><EditIcon/></button>}
                 </div>
                 <div className={teamCss.cardDepartments}>
                   {team.departments.map(dept => <span key={dept.id}>{dept.name}</span>)}

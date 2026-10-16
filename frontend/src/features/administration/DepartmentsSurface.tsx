@@ -4,6 +4,7 @@ import { api } from '../../api'
 import { Avatar, formatDateLong } from '../../shared/ui'
 import { EditIcon, FilterFunnelIcon, FloppyIcon, PlusIcon, TrashIcon } from '../../shared/icons'
 import styles from './DepartmentsDashboard.module.css'
+import { AdministrationLoading } from './AdministrationLoading'
 
 type Person = { id: number; name: string; avatar_url: string | null }
 type Linked = { id: number; name: string }
@@ -19,7 +20,7 @@ type Data = { can_manage: boolean; departments: Department[]; people: Person[]; 
 type PanelTab = 'summary' | 'members' | 'teams' | 'projects' | 'settings'
 type Sort = 'name' | 'members' | 'recent'
 type Editor = 'create' | 'edit' | null
-type Mark = IconName | 'folder' | 'search' | 'grid' | 'list' | 'more' | 'check' | 'calendar'
+type Mark = IconName | 'folder' | 'search' | 'grid' | 'list' | 'check' | 'calendar'
 
 const icons: IconName[] = ['layers', 'code', 'palette', 'megaphone', 'settings', 'chart', 'users', 'box']
 const iconNames: Record<IconName, string> = {
@@ -33,7 +34,6 @@ const tabs: { id: PanelTab; label: string }[] = [
   { id: 'teams', label: 'Equipos' }, { id: 'projects', label: 'Proyectos' },
   { id: 'settings', label: 'Ajustes' },
 ]
-const skeleton = Array.from({ length: 6 }, (_, index) => index)
 
 function Glyph({ name, size = 19 }: { name: Mark; size?: number }) {
   const paths: Record<Mark, ReactNode> = {
@@ -49,7 +49,6 @@ function Glyph({ name, size = 19 }: { name: Mark; size?: number }) {
     search: <><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/></>,
     grid: <><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></>,
     list: <><path d="M9 5h12M9 12h12M9 19h12"/><path d="M4 5h.01M4 12h.01M4 19h.01"/></>,
-    more: <><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></>,
     check: <path d="m4 12 5 5L20 6"/>,
     calendar: <><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M7 2v6M17 2v6M3 10h18"/></>,
   }
@@ -90,7 +89,6 @@ export function DepartmentsSurface({ workspaceId }: { workspaceId: number | null
   const [layout, setLayout] = useState<'grid' | 'list'>('grid')
   const [selectedId, setSelectedId] = useState<number | null>(null)
   const [activeTab, setActiveTab] = useState<PanelTab>('summary')
-  const [menuId, setMenuId] = useState<number | null>(null)
   const [editor, setEditor] = useState<Editor>(null)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [name, setName] = useState('')
@@ -112,7 +110,7 @@ export function DepartmentsSurface({ workspaceId }: { workspaceId: number | null
 
   useEffect(() => {
     let active = true
-    setLoading(true); setLoadError(''); setData(null); setSelectedId(null); setEditor(null); setMenuId(null)
+    setLoading(true); setLoadError(''); setData(null); setSelectedId(null); setEditor(null)
     if (!workspaceId) { setLoading(false); return }
     void api<Data>(path).then(result => {
       if (active) { setData(result); setSelectedId(result.departments[0]?.id ?? null) }
@@ -169,12 +167,12 @@ export function DepartmentsSurface({ workspaceId }: { workspaceId: number | null
 
   function choose(dep: Department) {
     setSelectedId(dep.id); setEditor(null); setActiveTab('summary')
-    setMenuId(null); setError(''); setNotice('')
+    setError(''); setNotice('')
   }
   function beginCreate() {
     setEditor('create'); setName(''); setDescription(''); setStatus('active'); setIcon('layers')
     setMemberIds([]); setTeamIds([]); setProjectIds([]); setLeadId(null)
-    setError(''); setNotice(''); setMenuId(null); setFiltersOpen(false)
+    setError(''); setNotice(''); setFiltersOpen(false)
   }
   function beginEdit(dep: Department) {
     setSelectedId(dep.id); setEditor('edit'); setName(dep.name); setDescription(dep.description ?? '')
@@ -183,7 +181,7 @@ export function DepartmentsSurface({ workspaceId }: { workspaceId: number | null
     setTeamIds(dep.teams.map(item => item.id))
     setProjectIds(dep.projects.map(item => item.id))
     setLeadId(dep.lead_user_id)
-    setError(''); setNotice(''); setMenuId(null)
+    setError(''); setNotice('')
   }
   function toggle(ids: number[], set: (ids: number[]) => void, id: number, checked: boolean) {
     set(checked ? [...ids, id] : ids.filter(item => item !== id))
@@ -245,10 +243,7 @@ export function DepartmentsSurface({ workspaceId }: { workspaceId: number | null
         </div>}
       </div>
     </header>
-    {loading ? <div className={styles.loading} role="status" aria-label="Cargando departamentos">
-      <div className={styles.loadingStats}>{skeleton.slice(0,4).map(i => <span key={i}/>)}</div>
-      <div className={styles.loadingGrid}>{skeleton.map(i => <span key={i}/>)}</div>
-    </div> : data && <>
+    {loading ? <AdministrationLoading section="departments"/> : data && <>
       <div className={styles.stats}>
         <Stat icon="users" title="Departamentos" value={data.departments.length}
           detail={stats.active + ' activos · ' + (data.departments.length - stats.active) + ' inactivos'} tone="mint"/>
@@ -323,17 +318,6 @@ export function DepartmentsSurface({ workspaceId }: { workspaceId: number | null
                       <span>{dep.description || 'Sin descripción'}</span>
                     </span>
                   </button>
-                  {canManage && <div className={styles.menuWrapper}>
-                    <button type="button" className={styles.moreButton} title={'Opciones de ' + dep.name}
-                      aria-label={'Opciones de ' + dep.name} aria-expanded={menuId === dep.id}
-                      onClick={() => setMenuId(menuId === dep.id ? null : dep.id)}>
-                      <Glyph name="more" size={17}/></button>
-                    {menuId === dep.id && <div className={styles.cardMenu}>
-                      <button type="button" onClick={() => beginEdit(dep)}><EditIcon/> Editar</button>
-                      <button type="button" onClick={() => { choose(dep); setConfirmDelete(true) }}>
-                        <TrashIcon/> Eliminar</button>
-                    </div>}
-                  </div>}
                 </div>
                 <button className={styles.cardMetrics} type="button" onClick={() => choose(dep)}
                   aria-label={'Ver datos de ' + dep.name}>

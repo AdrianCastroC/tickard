@@ -1,4 +1,7 @@
 .clientRoot { grid-template-rows:auto minmax(0,1fr); }
+.clientMain { grid-row:2; }
+.clientInspector { grid-row:2; }
+
 .headerIcon { display:grid;place-items:center; width:48px;height:48px;flex:0 0 48px;
  border-radius:10px;background:#eee6fb;color:#8850d9; }
 .headerIcon svg {width:27px;height:27px}
