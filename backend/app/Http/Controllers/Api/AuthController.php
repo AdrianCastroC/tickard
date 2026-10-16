@@ -30,7 +30,6 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
-use Illuminate\Validation\Rules\Password;
 use Illuminate\Validation\ValidationException;
 
 class AuthController extends ApiController
@@ -115,12 +114,9 @@ class AuthController extends ApiController
             'theme' => ['sometimes', Rule::in(['light', 'dark', 'system'])],
             'notify_in_app' => ['sometimes', 'boolean'],
             'notify_email' => ['sometimes', 'boolean'],
-            'current_password' => ['required_with:password', 'string', function ($attribute, $value, $fail) use ($request) {
-                if (! Hash::check((string) $value, $request->user()->password)) {
-                    $fail('La contraseña actual no es correcta.');
-                }
-            }],
-            'password' => ['sometimes', 'string', 'max:128', Password::min(10)->mixedCase()->numbers()->symbols(), 'confirmed'],
+            'current_password' => ['prohibited'],
+            'password' => ['prohibited'],
+            'password_confirmation' => ['prohibited'],
         ], [
             'nickname.prohibited' => 'El ID de la cuenta es permanente. Para utilizar otro necesitas crear otra cuenta.',
             'email.prohibited' => 'El correo no puede modificarse desde el perfil sin un proceso de verificación.',
@@ -132,11 +128,7 @@ class AuthController extends ApiController
         // particular, stale/dirty attributes from a rejected identity change
         // must never leak into an otherwise valid profile update.
         $user = $request->user()->fresh();
-        $payload = collect($data)->except(['current_password', 'password', 'password_confirmation'])->all();
-        if (! empty($data['password'])) {
-            $payload['password'] = $data['password'];
-        }
-        $user->update($payload);
+        $user->update($data);
 
         $workspaceId = $request->integer('workspace_id') ?: null;
 

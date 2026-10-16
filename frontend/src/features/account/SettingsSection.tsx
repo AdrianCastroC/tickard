@@ -14,8 +14,8 @@ export function SettingsSection({ profile, workspaceId, onProfile }: Props) {
     catch (err) { setError(err instanceof Error ? err.message : 'No se pudo guardar la configuración.') }
   }
   function themeButton(theme: UserTheme, label: string, Icon: typeof ComputerIcon) {
-    return <button type="button" className={profile.user.theme === theme ? 'on' : undefined}
-      aria-label={label} title={label} aria-pressed={profile.user.theme === theme}
+    return <button type="button" className={(profile.user.theme || 'system') === theme ? styles.on : undefined}
+      aria-label={label} title={label} aria-pressed={(profile.user.theme || 'system') === theme}
       onClick={() => void setTheme(onProfile, theme, workspaceId)}><Icon />{label}</button>
   }
   return <div className={`${styles.modalBody} ${styles.settingsBody}`}>
