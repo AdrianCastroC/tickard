@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 import { api } from '../../api'
 import { Avatar, formatDateLong } from '../../shared/ui'
 import { EditIcon, FilterFunnelIcon, SortIcon } from '../../shared/icons'
-import { ProjectLoadingIndicator } from '../workspace/ProjectLoadingIndicator'
+import { ProjectContentLoading } from '../workspace/ProjectContentLoading'
 import { WorkspaceInvitations } from '../workspace/WorkspaceInvitations'
 import styles from './MembersSurface.module.css'
 
@@ -268,7 +268,7 @@ export function MembersSurface({ workspaceId, workspaceName }: {
     } finally { setSaving(false) }
   }
 
-  return <section className={styles.root} aria-label="Miembros del Workspace"
+  return <section className={styles.root + ' workspace-members-view'} aria-label="Miembros del Workspace"
     data-invites={panel === 'invitations'}>
     <header className={styles.header}>
       <span className={styles.headerIcon}><Glyph name="people" size={27}/></span>
@@ -277,11 +277,17 @@ export function MembersSurface({ workspaceId, workspaceName }: {
 
     </header>
 
-    {loading ? <div className={styles.loading} role="status">
-      <div className={styles.loadingMetrics} aria-hidden="true">{[0, 1, 2, 3].map(x => <span key={x}/>)}</div>
-      <div className={styles.loadingList}><ProjectLoadingIndicator label="Cargando miembros"/>
-        {[0, 1, 2, 3, 4].map(x => <span key={x} aria-hidden="true"/>)}</div>
-      <div className={styles.loadingDetail} aria-hidden="true"/>
+    {loading ? <div className={styles.loadingOverlay}>
+      <ProjectContentLoading title="Cargando Miembros"
+        description="Preparando miembros, cargos y asignaciones del Workspace…">
+        <div className={styles.loading}>
+          <div className={styles.loadingMetrics} aria-hidden="true">{[0, 1, 2, 3].map(x => <span key={x}/>)}</div>
+          <div className={styles.loadingList} aria-hidden="true">
+            {[0, 1, 2, 3, 4].map(x => <span key={x}/>)}
+          </div>
+          <div className={styles.loadingDetail} aria-hidden="true"/>
+        </div>
+      </ProjectContentLoading>
     </div> : <>
       {data && <div className={styles.metrics}>
         <Metric icon="people" tone="blue" count={data.member_count} label="Miembros"
@@ -390,7 +396,7 @@ export function MembersSurface({ workspaceId, workspaceName }: {
                 onChange={event => toggleSelected(member.id, event.target.checked)}/></td>
               <td><button type="button" className={styles.tableName} onClick={() => chooseMember(member.id)}>
                 <Avatar id={member.id} name={member.name} src={member.avatar_url} size={32}/>
-                <span><strong title={member.name}>{member.name}</strong><small title={member.email}>{member.email}</small></span>
+                <span><strong title={member.name}>{member.name}</strong></span>
               </button></td>
               <td className={styles.jobCell} title={member.job_title ?? 'Cargo sin especificar'}>
                 {member.job_title || 'Sin especificar'}</td>
@@ -412,7 +418,7 @@ export function MembersSurface({ workspaceId, workspaceName }: {
           {displayed.map(member => <button type="button" key={member.id} className={styles.memberCard}
             data-selected={member.id === selectedId} onClick={() => chooseMember(member.id)}>
             <Avatar id={member.id} name={member.name} src={member.avatar_url} size={46}/>
-            <strong>{member.name}</strong><small>{member.email}</small>
+            <strong>{member.name}</strong>
             <span className={styles.cardJob}>{member.job_title || 'Cargo sin especificar'}</span>
             <Role role={member.role}/>
             <span className={styles.cardMeta}>{member.teams.length} equipos · {member.projects.length} proyectos</span>

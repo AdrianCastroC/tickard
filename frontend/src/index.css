@@ -3679,6 +3679,10 @@ h1, h2, h3, p { margin: 0; }
   overflow: hidden;
 }
 
+/* Workspace members scroll inside their table, without scrolling the page. */
+.frame:has(.workspace-members-view) {height:100dvh;min-height:0;}
+.main:has(.workspace-members-view) {min-height:0;overflow:hidden;}
+
 /* Global inbox owns its scroll region; the app header/sidebar remain fixed. */
 .frame:has(.inbox-view) { height:100dvh; min-height:0; }
 .main:has(.inbox-view) { min-height:0; overflow:hidden; }

@@ -45,7 +45,7 @@
 .viewSwitch button {display:grid;place-items:center;width:30px;height:29px;padding:0;border:0;
   border-radius:6px;background:transparent;color:var(--muted);cursor:pointer;}
 .viewSwitch button.viewActive {background:var(--accent);color:var(--accent-ink);}
-.tableScroll {flex:1 1 auto;min-height:0;min-width:0;overflow:auto;scrollbar-width:none;
+.tableScroll {flex:1 1 auto;min-height:0;min-width:0;max-height:100%;overflow:auto;overscroll-behavior:contain;scrollbar-width:none;
   border:1px solid var(--panel-border);border-radius:11px;background:var(--surface);}
 .tableScroll::-webkit-scrollbar,.cardScroll::-webkit-scrollbar {display:none;}
 .table {border-collapse:separate;border-spacing:0;width:100%;min-width:850px;font-size:11px;}
@@ -148,7 +148,9 @@
 .notice {color:var(--accent);}
 .error {color:#b44b4c;border-color:#b44b4c;}
 .empty {padding:25px 15px;font-size:11px;color:var(--muted);text-align:center;}
-.loading {grid-column:1 / -1;grid-row:2 / 4;display:grid;grid-template-columns:minmax(0,1fr) minmax(320px,31%);
+.loadingOverlay {grid-column:1 / -1;grid-row:2 / 4;min-width:0;min-height:0;overflow:hidden;}
+.loadingOverlay > section {height:100%;min-height:0;}
+.loading {height:100%;min-height:0;display:grid;grid-template-columns:minmax(0,1fr) minmax(320px,31%);
   grid-template-rows:105px minmax(0,1fr);gap:14px;min-height:0;}
 .loadingMetrics {grid-column:1;grid-row:1;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;}
 .loadingMetrics span,.loadingList > span,.loadingDetail {background:var(--line);border-radius:11px;opacity:.6;
