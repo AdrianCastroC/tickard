@@ -6,7 +6,7 @@
 .chevronOpen { transform:rotate(180deg); }
 .menu {
   position:fixed; z-index:10020;
-  width:min(250px,calc(100vw - 20px));
+  width:min(200px,calc(100vw - 20px));
   max-height:calc(100dvh - 22px);
   box-sizing:border-box; overflow-y:auto; overscroll-behavior:contain;
   scrollbar-width:none; background:var(--surface);
