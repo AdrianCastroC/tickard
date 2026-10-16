@@ -332,3 +332,8 @@
 @media(max-width:520px) {
   .tabs { gap:8px; padding-inline:12px; }
 }
+
+/* Departments: avatars stay separate in cards and summary instead of overlapping. */
+.departmentAvatars { display:flex; flex-wrap:wrap; align-items:center; gap:7px; padding:2px 0; max-width:100%; }
+.departmentAvatars > img { margin-left:0; box-sizing:border-box; flex:0 0 30px; }
+.departmentAvatars > .avatarMore { margin-left:0; flex:0 0 31px; }

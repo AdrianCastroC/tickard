@@ -60,7 +60,7 @@ function Glyph({ name, size = 19 }: { name: Mark; size?: number }) {
 
 function AvatarStack({ people, max = 5 }: { people: Person[]; max?: number }) {
   if (!people.length) return <span className={styles.noPeople}>Sin miembros</span>
-  return <div className={styles.avatars} aria-label={people.map(p => p.name).join(', ')}>
+  return <div className={`${styles.avatars} ${styles.departmentAvatars}`} aria-label={people.map(p => p.name).join(', ')}>
     {people.slice(0, max).map(person => <Avatar key={person.id} id={person.id}
       name={person.name} src={person.avatar_url} size={30} className={styles.avatar}/>)}
     {people.length > max && <span className={styles.avatarMore}>+{people.length - max}</span>}
@@ -491,16 +491,16 @@ export function DepartmentsSurface({ workspaceId }: { workspaceId: number | null
                   </div>
                 </div>
                 <div className={styles.detailGroup}>
-                  <div className={styles.groupHeading}><strong>Miembros ({selected.members.length})</strong>
-                    <button type="button" onClick={() => setActiveTab('members')}>Ver todos</button></div>
-                  <AvatarStack people={selected.members}/>
-                </div>
-                <div className={styles.detailGroup}>
                   <div className={styles.groupHeading}><strong>Equipos ({selected.teams.length})</strong>
                     <button type="button" onClick={() => setActiveTab('teams')}>Ver todos</button></div>
                   {selected.teams.slice(0, 4).map(team =>
-                    <div className={styles.detailEntry} key={team.id}><Glyph name="layers" size={16}/>{team.name}</div>)}
+                    <div className={styles.detailEntry} key={team.id}><Glyph name="layers" size={16}/><span>{team.name}</span></div>)}
                   {!selected.teams.length && <small className={styles.muted}>No hay equipos vinculados</small>}
+                </div>
+                <div className={styles.detailGroup}>
+                  <div className={styles.groupHeading}><strong>Miembros ({selected.members.length})</strong>
+                    <button type="button" onClick={() => setActiveTab('members')}>Ver todos</button></div>
+                  <AvatarStack people={selected.members}/>
                 </div>
                 <div className={styles.detailGroup}>
                   <div className={styles.groupHeading}><strong>Proyectos ({selected.projects.length})</strong>
