@@ -114,7 +114,7 @@ class WorkspaceBirthdayTest extends TestCase
         $client = ClientCompany::create(['workspace_id' => $outsiderWorkspace->id, 'name' => 'Cliente']);
         $otherProject = Project::create(['workspace_id' => $outsiderWorkspace->id,
             'client_company_id' => $client->id, 'name' => 'Web']);
-        $otherProject->members()->attach($viewer->id, ['role' => 'lector']);
+        ProjectMember::create(['project_id' => $otherProject->id, 'user_id' => $viewer->id, 'role' => 'lector']);
         $url = "/api/projects/{$otherProject->id}/calendar-events?start_date=2026-10-01&end_date=2026-10-31";
         $this->actingAs($viewer)->getJson($url)->assertOk()->assertJsonCount(0);
 
