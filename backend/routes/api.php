@@ -65,6 +65,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::get('/clients', [WorkspaceClientsController::class, 'index']);
     Route::post('/clients', [WorkspaceClientsController::class, 'store']);
+    Route::delete('/clients/pending/{invitation}', [WorkspaceClientsController::class, 'cancelPending']);
     Route::patch('/clients/{client}', [WorkspaceClientsController::class, 'update']);
     Route::delete('/clients/{client}', [WorkspaceClientsController::class, 'destroy']);
 

@@ -15,9 +15,10 @@ type Client = {
   id: number; name: string; client_type: ClientType; sector: string | null
   description: string | null; status: Status; created_at: string | null; updated_at: string | null
   primary_contact_user_id: number | null; primary_contact: Person | null
-  people: Person[]; people_count: number; projects: ProjectLink[]; projects_count: number
+  people: Person[]; people_count: number; needs_representative?: boolean; projects: ProjectLink[]; projects_count: number
 }
-type Data = { can_manage: boolean; clients: Client[] }
+type PendingClient = { id: number; name: string; representative: string | null; created_at: string | null }
+type Data = { can_manage: boolean; clients: Client[]; pending_clients: PendingClient[] }
 type Tab = 'summary' | 'members' | 'projects' | 'settings'
 const labels: Record<ClientType,string> = {
   company: 'Empresa', self_employed: 'Autónomo', individual: 'Particular', institution: 'Institución',
@@ -80,6 +81,7 @@ export function ClientsSurface({workspaceId}:{workspaceId:number|null}) {
   const [type,setType]=useState<ClientType>('company')
   const [status,setStatus]=useState<Status>('active')
   const [contactId,setContactId]=useState<number|null>(null)
+  const [representative,setRepresentative]=useState('')
   const [menuId,setMenuId]=useState<number|null>(null)
 
   const path='/clients?workspace_id='+workspaceId
@@ -129,30 +131,40 @@ export function ClientsSurface({workspaceId}:{workspaceId:number|null}) {
   function choose(c:Client){setSelectedId(c.id);setEditor(null);setTab('summary');setMenuId(null);setError('')}
   function beginCreate(){
     setEditor('create');setName('');setDescription('');setSector('');setType('company');setStatus('active')
-    setContactId(null);setFiltersOpen(false);setError('');setMenuId(null);setNotice('')
+    setContactId(null);setRepresentative('');setFiltersOpen(false);setError('');setMenuId(null);setNotice('')
   }
   function beginEdit(c:Client){
     setSelectedId(c.id);setEditor('edit');setName(c.name);setDescription(c.description??'')
     setSector(c.sector??'');setType(c.client_type);setStatus(c.status)
-    setContactId(c.primary_contact_user_id);setError('');setMenuId(null)
+    setContactId(c.primary_contact_user_id);setRepresentative('');setError('');setMenuId(null)
   }
   async function save(event:FormEvent<HTMLFormElement>){
     event.preventDefault()
-    if(!workspaceId||!canManage||busy||!name.trim())return
+    if(!workspaceId||!canManage||busy||!name.trim()||(editor==='create'&&!representative.trim()))return
     setBusy(true);setError('');setNotice('')
     try {
       const payload={workspace_id:workspaceId,name:name.trim(),description:description.trim()||null,
         sector:sector.trim()||null,client_type:type,status,primary_contact_user_id:contactId}
-      const created=editor==='create'?await api<{id:number}>('/clients',{
-        method:'POST',body:JSON.stringify(payload)}):null
+      const created=editor==='create'?await api<{invitation_id:number;status:string}>('/clients',{
+        method:'POST',body:JSON.stringify({...payload,representative:representative.trim(),primary_contact_user_id:undefined})}):null
       if(editor==='edit'&&selectedId)await api('/clients/'+selectedId,{
         method:'PATCH',body:JSON.stringify(payload)})
       await reload()
-      setSelectedId(created?.id??selectedId);setEditor(null);setTab('summary')
-      setNotice(created?'Cliente creado.':'Cliente actualizado.')
+      setSelectedId(created?null:selectedId);setEditor(null);setTab('summary')
+      setNotice(created?'Invitación enviada. La empresa se creará cuando el representante acepte.':'Cliente actualizado.')
     }catch(e){setError(e instanceof Error?e.message:'No se pudo guardar el cliente.')}
     finally{setBusy(false)}
   }
+  async function cancelPending(id:number) {
+    if(!workspaceId||!canManage||busy)return
+    setBusy(true);setError('')
+    try{
+      await api('/clients/pending/'+id,{method:'DELETE',body:JSON.stringify({workspace_id:workspaceId})})
+      await reload();setNotice('Invitación cancelada.')
+    }catch(e){setError(e instanceof Error?e.message:'No se pudo cancelar la invitación.')}
+    finally{setBusy(false)}
+  }
+
   async function remove(){
     if(!workspaceId||!canManage||busy||!confirmDeleteIds.length)return
     setBusy(true);setError('');setNotice('')
@@ -234,6 +246,13 @@ export function ClientsSurface({workspaceId}:{workspaceId:number|null}) {
           {canManage&&<button type="button" onClick={()=>setConfirmDeleteIds([...selectedRows])}>
             <TrashIcon/> Eliminar seleccionados</button>}
         </div>}
+        {data.pending_clients.length>0&&<section className={css.pendingArea} aria-label="Clientes pendientes de confirmación">
+          <h2>Pendientes de aceptación <span>({data.pending_clients.length})</span></h2>
+          {data.pending_clients.map(pending=><div key={pending.id} className={css.pendingRow}>
+            <span><strong>{pending.name}</strong><small>Invitación a {pending.representative??'un representante'} · Sin empresa creada todavía</small></span>
+            {canManage&&<button type="button" disabled={busy} onClick={()=>void cancelPending(pending.id)}>Cancelar</button>}
+          </div>)}
+        </section>}
         <div className={teamStyles.tableScroller}>
           {layout==='list'?<table className={teamStyles.table+' '+css.table}>
             <thead><tr><th><input type="checkbox" checked={allChecked} aria-label="Seleccionar clientes visibles"
@@ -249,7 +268,7 @@ export function ClientsSurface({workspaceId}:{workspaceId:number|null}) {
                 <Logo client={c}/><span><strong>{c.name}</strong><small>{c.description||c.sector||'Sin descripción'}</small></span>
               </button></td>
               <td><span className={css.typePill}>{labels[c.client_type]}</span></td>
-              <td>{c.primary_contact?<div className={css.contactCell}>
+              <td>{c.needs_representative?<span className={css.representativeWarning}>Sin representante</span>:c.primary_contact?<div className={css.contactCell}>
                 <Avatar id={c.primary_contact.id} name={c.primary_contact.name} src={c.primary_contact.avatar_url} size={29}/>
                 <span><strong>{c.primary_contact.name}</strong><small>{c.primary_contact.email}</small></span>
               </div>:<span className={styles.muted}>Sin asignar</span>}</td>
@@ -299,6 +318,11 @@ export function ClientsSurface({workspaceId}:{workspaceId:number|null}) {
           <div className={styles.formScroll}>
             <label className={styles.field}>Nombre<input autoFocus required maxLength={120} value={name}
               onChange={e=>setName(e.target.value)}/></label>
+            {editor==='create'&&<label className={styles.field}>Primer representante (correo o ID Tickard)
+              <input required maxLength={255} value={representative} placeholder="correo@empresa.com o usuario#00001"
+                onChange={event=>setRepresentative(event.target.value)}/>
+              <small className={styles.hint}>Debe tener cuenta registrada y correo verificado. Recibirá una invitación en Tickard; la empresa solo se creará si acepta.</small>
+            </label>}
             <label className={styles.field}>Descripción<textarea rows={3} maxLength={1500}
               value={description} onChange={e=>setDescription(e.target.value)}/></label>
             <label className={styles.field}>Sector o actividad (opcional)<input maxLength={120}
@@ -321,8 +345,8 @@ export function ClientsSurface({workspaceId}:{workspaceId:number|null}) {
           {error&&<p className={styles.formError} role="alert">{error}</p>}
           <footer className={styles.formActions}>
             <button type="button" className={styles.subtle} disabled={busy} onClick={()=>setEditor(null)}>Cancelar</button>
-            <button type="submit" className={styles.primary} disabled={busy||!name.trim()}>
-              <FloppyIcon/>{busy?'Guardando…':'Guardar'}</button>
+            <button type="submit" className={styles.primary} disabled={busy||!name.trim()||(editor==='create'&&!representative.trim())}>
+              <FloppyIcon/>{busy?'Guardando…':editor==='create'?'Enviar invitación':'Guardar'}</button>
           </footer>
         </form>:selected?<>
           <div className={styles.detailHead}><Logo client={selected} size="large"/>

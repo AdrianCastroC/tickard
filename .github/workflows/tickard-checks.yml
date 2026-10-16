@@ -49,4 +49,4 @@ jobs:
           cp .env.example .env
           php artisan key:generate
       - name: Test calendar and personnel permissions
-        run: php artisan test --filter='CalendarEventsTest|ProjectCalendarAssignmentsTest|ProjectPersonnelTest|ProjectBoardsOverviewTest|ProjectDashboardTest|WorkspaceInvitationsTest|RegistrationTest|MyTasksTest|NotificationsInboxTest|GlobalHomeTest|UserIdentityTest|AccountSecurityTest|WorkspaceDepartmentsTest|WorkspaceBirthdayTest|WorkspaceTeamsClientsTest|OptionalClientAccessTest'
+        run: php artisan test --filter='CalendarEventsTest|ProjectCalendarAssignmentsTest|ProjectPersonnelTest|ProjectBoardsOverviewTest|ProjectDashboardTest|WorkspaceInvitationsTest|RegistrationTest|MyTasksTest|NotificationsInboxTest|GlobalHomeTest|UserIdentityTest|AccountSecurityTest|WorkspaceDepartmentsTest|WorkspaceBirthdayTest|WorkspaceTeamsClientsTest|OptionalClientAccessTest|ClientCompanyInvitationTest'

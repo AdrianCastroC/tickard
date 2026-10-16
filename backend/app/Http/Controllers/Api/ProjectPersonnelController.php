@@ -143,8 +143,9 @@ class ProjectPersonnelController extends ApiController
             ->where('project_id', $project->id)->pluck('team_id')
             ->map(fn ($id) => (int) $id)->all();
         $workspaceMemberIds = $canManage
-            ? $project->workspace->members()->whereNull('client_company_id')
-                ->pluck('users.id')->all()
+            ? $project->workspace->members()->get()
+                ->reject(fn ($member) => WorkspaceClientAccess::isClient($member, $project->workspace))
+                ->pluck('id')->all()
             : [];
 
         return response()->json([
@@ -168,8 +169,8 @@ class ProjectPersonnelController extends ApiController
             ])->values(),
             'available_people' => $canManage
                 ? $project->workspace->members()
-                    ->whereNull('client_company_id')
                     ->get(['users.id', 'users.name', 'users.email'])
+                    ->reject(fn ($user) => WorkspaceClientAccess::isClient($user, $project->workspace))
                     ->map(fn ($user) => [
                         'id' => $user->id, 'name' => $user->name, 'email' => $user->email,
                     ])->values()
@@ -185,6 +186,9 @@ class ProjectPersonnelController extends ApiController
                 ->where('workspace_id', $project->workspace_id)],
             'role' => ['required', Rule::in(['responsable', 'editor', 'lector'])],
         ]);
+        $candidate = User::findOrFail($data['user_id']);
+        abort_if(WorkspaceClientAccess::isClient($candidate, $project->workspace), 422,
+            'Los usuarios cliente requieren acceso específico y no pueden añadirse como internos.');
         $member = ProjectMember::firstOrCreate([
             'project_id' => $project->id,
             'user_id' => $data['user_id'],
@@ -203,11 +207,14 @@ class ProjectPersonnelController extends ApiController
         abort_if(ProjectAccess::isWorkspaceOwner($user, $project), 403,
             'El propietario del Workspace no puede perder su rol desde un proyecto.');
         $member = $project->members()->where('user_id', $user->id)->firstOrFail();
+        $linkedClient = WorkspaceClientAccess::companyId($user, $project->workspace);
         if ($data['role'] === 'cliente') {
             abort_unless($project->client_access_enabled && $project->workspace->show_clients
-                && $user->client_company_id !== null
-                && (int) $user->client_company_id === (int) $project->client_company_id, 422,
+                && $linkedClient !== null
+                && $linkedClient === (int) $project->client_company_id, 422,
                 'Este proyecto no admite acceso de clientes de esa empresa.');
+        } elseif ($linkedClient !== null) {
+            abort(422, 'Un usuario cliente no puede asumir un rol interno del proyecto.');
         }
         if ($member->role === 'responsable' && $data['role'] !== 'responsable') {
             $this->ensureOtherResponsible($project, $member->id);
@@ -253,7 +260,8 @@ class ProjectPersonnelController extends ApiController
         $team = Team::where('workspace_id', $project->workspace_id)->findOrFail($data['team_id']);
         $userIds = $team->members()->whereHas('workspaces', fn ($query) =>
             $query->where('workspaces.id', $project->workspace_id)
-        )->whereNull('client_company_id')->pluck('users.id')->sort()->values()->all();
+        )->get()->reject(fn ($user) => WorkspaceClientAccess::isClient($user, $project->workspace))
+            ->pluck('id')->sort()->values()->all();
         $confirmed = collect($data['confirmed_member_ids'])->unique()->sort()->values()->all();
         if ($userIds !== $confirmed) {
             throw ValidationException::withMessages([

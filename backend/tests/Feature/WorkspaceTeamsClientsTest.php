@@ -168,9 +168,9 @@ class WorkspaceTeamsClientsTest extends TestCase
     public function test_client_crud_is_workspace_scoped_and_cannot_delete_used_company(): void
     {
         extract($this->fixture());
-        $created = $this->actingAs($owner)->postJson('/api/clients', [
-            'workspace_id' => $workspace->id, 'name' => 'Nuevo cliente',
-        ])->assertCreated()->json('id');
+        // Existing client fixtures can be created by seeders; HTTP creation must use an invitation.
+        $created = ClientCompany::create(['workspace_id' => $workspace->id, 'name' => 'Nuevo cliente'])->id;
+        $this->actingAs($owner);
         $this->getJson('/api/clients?workspace_id='.$workspace->id)
             ->assertOk()->assertJsonPath('can_manage', true);
         $this->patchJson('/api/clients/'.$created, [
@@ -189,9 +189,7 @@ class WorkspaceTeamsClientsTest extends TestCase
         $this->deleteJson('/api/clients/'.$company->id, ['workspace_id' => $workspace->id])
             ->assertUnprocessable()->assertJsonValidationErrors('client');
 
-        $empty = $this->postJson('/api/clients', [
-            'workspace_id' => $workspace->id, 'name' => 'Sin asignaciones',
-        ])->assertCreated()->json('id');
+        $empty = ClientCompany::create(['workspace_id' => $workspace->id, 'name' => 'Sin asignaciones'])->id;
         $this->deleteJson('/api/clients/'.$empty, ['workspace_id' => $workspace->id])
             ->assertNoContent();
         $this->assertDatabaseMissing('client_companies', ['id' => $empty]);

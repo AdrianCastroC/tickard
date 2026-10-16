@@ -9,6 +9,7 @@ type Invitation = {
   id: number; workspace_id: number; workspace_name: string
   project_id: number | null; project_name: string | null
   project_role: string | null; status: 'pending' | 'accepted' | 'rejected'
+  kind?: 'workspace' | 'client_company'; client_company_name?: string | null
   inviter: string | null; created_at: string; responded_at: string | null
 }
 type Notice = {
@@ -124,10 +125,10 @@ export function InboxSurface({ onAccepted, onOpenCard, onUnreadChanged }: Props)
       {(loading || pending.length > 0) && <section className={styles.panel}>
         <div className={styles.panelHeader}><h2>Invitaciones pendientes</h2><span>{pending.length}</span></div>
 
-        {pending.map(item => <div key={item.id} className={styles.item}>
+        {pending.map(item => <div key={item.kind+':'+item.id} className={styles.item}>
           <div className={styles.itemBody}>
-            <strong>{item.project_name ? `Proyecto «${item.project_name}»` : `Workspace «${item.workspace_name}»`}</strong>
-            <small>{item.project_name
+            <strong>{item.kind==='client_company' ? `Representar a «${item.client_company_name}»` : item.project_name ? `Proyecto «${item.project_name}»` : `Workspace «${item.workspace_name}»`}</strong>
+            <small>{item.kind==='client_company' ? `Cliente del Workspace «${item.workspace_name}» · La empresa se creará al aceptar` : item.project_name
               ? `${item.workspace_name} · ${item.project_role ?? 'Miembro'}`
               : 'Rol: Miembro'} · Invitación de {item.inviter ?? 'un miembro'}</small>
           </div>
@@ -169,8 +170,8 @@ export function InboxSurface({ onAccepted, onOpenCard, onUnreadChanged }: Props)
       </section>
       {answered.length > 0 && <section className={styles.panel}>
         <div className={styles.panelHeader}><h2>Invitaciones respondidas</h2><span>{answered.length}</span></div>
-        {answered.map(item => <div key={item.id} className={styles.item}>
-          <span className={styles.itemBody}><strong>{item.project_name ?? item.workspace_name}</strong>
+        {answered.map(item => <div key={item.kind+':'+item.id} className={styles.item}>
+          <span className={styles.itemBody}><strong>{item.client_company_name ? `Empresa «${item.client_company_name}»` : item.project_name ?? item.workspace_name}</strong>
             <small>{dateLabel(item.responded_at)}</small></span>
           <span className={styles.readStatus}>{item.status === 'accepted' ? 'Aceptada' : 'Rechazada'}</span>
         </div>)}

@@ -9,6 +9,7 @@ use App\Models\Team;
 use App\Models\User;
 use App\Models\Workspace;
 use App\Support\WorkspacePersonnelGuard as Guard;
+use App\Support\WorkspaceClientAccess;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -70,8 +71,9 @@ class WorkspaceTeamsController extends ApiController
             'members:id,name,avatar_path', 'departments:id,name', 'projects:id,name',
         ])->withCount('cards')
             ->where('workspace_id', $workspace->id)->orderBy('name')->get();
-        $people = $workspace->members()->whereNull('client_company_id')
-            ->orderBy('name')->get(['users.id', 'users.name', 'users.avatar_path']);
+        $people = $workspace->members()->orderBy('name')
+            ->get(['users.id', 'users.name', 'users.avatar_path'])
+            ->reject(fn ($user) => WorkspaceClientAccess::isClient($user, $workspace))->values();
         $departments = $workspace->departments()->orderBy('name')->get(['id', 'name', 'workspace_id']);
         $projects = $workspace->projects()->orderBy('name')->get(['id', 'name', 'workspace_id']);
         $present = fn (User $user) => [

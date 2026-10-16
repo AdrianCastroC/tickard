@@ -48,9 +48,9 @@ class ProjectsController extends ApiController
                     $client = ClientCompany::where('workspace_id', $workspace->id)
                         ->findOrFail($data['client_company_id']);
                 } elseif (filled($data['client_name'] ?? null)) {
-                    $client = ClientCompany::firstOrCreate([
-                        'workspace_id' => $workspace->id, 'name' => trim($data['client_name']),
-                    ]);
+                    $client = ClientCompany::where('workspace_id', $workspace->id)
+                        ->where('name', trim($data['client_name']))->first();
+                    abort_unless($client, 422, 'La empresa debe existir y tener un representante antes de asociarla al proyecto.');
                 }
             } elseif (! empty($data['client_company_id']) || filled($data['client_name'] ?? null)) {
                 abort(422, 'Activa el módulo Clientes antes de asociar una empresa.');

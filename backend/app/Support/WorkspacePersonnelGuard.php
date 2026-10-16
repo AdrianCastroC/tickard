@@ -3,6 +3,7 @@
 namespace App\Support;
 
 use App\Models\Workspace;
+use App\Support\WorkspaceClientAccess;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
 
@@ -14,7 +15,7 @@ class WorkspacePersonnelGuard
         $user = $request->user();
         $membership = $workspace->memberships()->where('user_id', $user->id)->first();
 
-        abort_unless($membership && $user->client_company_id === null, 403);
+        abort_unless($membership && ! WorkspaceClientAccess::isClient($user, $workspace), 403);
         if ($write) {
             abort_unless(self::canManage($request, $workspace), 403);
         }
@@ -32,8 +33,9 @@ class WorkspacePersonnelGuard
     public static function validPeople(Workspace $workspace, array $ids): array
     {
         $ids = array_values(array_unique(array_map('intval', $ids)));
-        $found = $workspace->members()->whereNull('client_company_id')
-            ->whereIn('users.id', $ids)->pluck('users.id')->map(fn ($id) => (int) $id)->all();
+        $found = $workspace->members()->whereIn('users.id', $ids)->get()
+            ->reject(fn ($user) => WorkspaceClientAccess::isClient($user, $workspace))
+            ->pluck('id')->map(fn ($id) => (int) $id)->all();
 
         if (count($found) !== count($ids)) {
             throw ValidationException::withMessages([

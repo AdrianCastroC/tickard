@@ -10,6 +10,8 @@ use App\Models\Workspace;
 use App\Models\WorkspaceInvitation;
 use App\Support\ProjectAccess;
 use App\Support\WorkspaceLimits;
+use App\Support\WorkspaceClientAccess;
+use App\Models\ClientCompany;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -37,6 +39,8 @@ class WorkspaceInvitationsController extends ApiController
             'project_id' => $invitation->project_id,
             'project_name' => $invitation->project?->name,
             'project_role' => $invitation->project_role,
+            'kind' => $invitation->client_company_name ? 'client_company' : 'workspace',
+            'client_company_name' => $invitation->client_company_name,
             'status' => $invitation->status,
             'user' => $invitation->recipient?->name,
             'handle' => $invitation->recipient?->publicHandle(),
@@ -50,7 +54,7 @@ class WorkspaceInvitationsController extends ApiController
     {
         return WorkspaceInvitation::visible()->with(['workspace', 'project', 'recipient', 'inviter'])
             ->where('workspace_id', $workspace->id)
-            ->where('project_id', $project?->id)
+            ->where('project_id', $project?->id)->whereNull('client_company_name')
             ->orderByDesc('id')->get()->map(fn ($item) => $this->present($item))->values();
     }
 
@@ -159,7 +163,7 @@ class WorkspaceInvitationsController extends ApiController
             if (! $user) { $errors[] = ['value' => $value, 'reason' => 'Usuario no encontrado']; continue; }
             if (isset($seen[$user->id])) continue;
             $seen[$user->id] = true;
-            if ($user->client_company_id !== null) {
+            if (WorkspaceClientAccess::isClient($user, $workspace)) {
                 $errors[] = ['value' => $value, 'reason' => 'Las cuentas de cliente requieren otro tipo de acceso'];
                 continue;
             }
@@ -232,6 +236,43 @@ class WorkspaceInvitationsController extends ApiController
             $invitation = WorkspaceInvitation::whereKey($invitation->id)->lockForUpdate()->firstOrFail();
             abort_unless($invitation->status === 'pending' && ! $invitation->revoked_at, 409,
                 'Esta invitación ya se ha respondido o cancelado.');
+            if ($invitation->client_company_name !== null) {
+                $name = trim($invitation->client_company_name);
+                abort_unless($workspace->show_clients, 422, 'Este Workspace ya no admite clientes.');
+                abort_if($invitation->expires_at?->isPast(), 409, 'La invitación ha caducado.');
+                if ($action === 'accept') {
+                    abort_unless($request->user()->email_verified_at !== null, 422,
+                        'Verifica tu correo antes de aceptar la invitación.');
+                    abort_unless(! $workspace->memberships()
+                        ->where('user_id', $request->user()->id)->exists(), 422,
+                        'Ya perteneces al Workspace. Una cuenta interna no puede convertirse automáticamente en cliente.');
+                    abort_unless(WorkspaceLimits::canAddMember($workspace), 422,
+                        'El Workspace no tiene plazas disponibles.');
+                    abort_unless(! ClientCompany::where('workspace_id', $workspace->id)
+                        ->where('name', $name)->exists(), 422,
+                        'Ya existe una empresa con este nombre.');
+                    $company = ClientCompany::create([
+                        'workspace_id' => $workspace->id,
+                        'name' => $name, 'client_type' => $invitation->client_type ?? 'company',
+                        'sector' => $invitation->client_sector,
+                        'description' => $invitation->client_description,
+                        'status' => 'active',
+                        'primary_contact_user_id' => $request->user()->id,
+                    ]);
+                    $workspace->memberships()->create([
+                        'user_id' => $request->user()->id,
+                        'role' => 'client', 'client_company_id' => $company->id,
+                    ]);
+                }
+                $invitation->update([
+                    'status' => $action === 'accept' ? 'accepted' : 'rejected',
+                    'responded_at' => now(), 'used_count' => $action === 'accept' ? 1 : 0,
+                ]);
+                return response()->json([
+                    'status' => $invitation->status, 'workspace_id' => $workspace->id,
+                    'client_company_id' => $company->id ?? null,
+                ]);
+            }
             if ($action === 'accept') {
                 $hasWorkspace = $workspace->memberships()->where('user_id', $request->user()->id)->exists();
                 if (! $hasWorkspace) {

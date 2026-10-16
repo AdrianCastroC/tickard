@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Models\CalendarEvent;
 use App\Models\Project;
 use App\Support\ProjectAccess;
+use App\Support\WorkspaceClientAccess;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -42,10 +43,10 @@ class CalendarEventsController extends ApiController
 
         $birthdayPeople = \App\Models\User::whereHas('workspaces', function ($query) use ($workspace) {
             $query->where('workspaces.id', $workspace->id);
-        })->whereNull('client_company_id')
-            ->where('share_birthday', true)
+        })->where('share_birthday', true)
             ->whereNotNull('birthday_month_day')
-            ->get(['id', 'name', 'avatar_path', 'birthday_month_day']);
+            ->get(['id', 'name', 'avatar_path', 'birthday_month_day'])
+            ->reject(fn ($user) => WorkspaceClientAccess::isClient($user, $workspace))->values();
 
         $startYear = (int) substr($dates['start_date'], 0, 4);
         $endYear = (int) substr($dates['end_date'], 0, 4);

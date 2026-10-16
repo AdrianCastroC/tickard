@@ -29,3 +29,18 @@
 .cardMeta{display:flex;gap:7px;align-items:center;justify-content:space-between}
 .clientRoot :global(.project-client-settings){max-width:560px}
 @media(max-width:740px){.clientRoot{grid-template-rows:auto minmax(0,1fr)}}
+
+.pendingArea { display:flex;flex:0 0 auto;flex-direction:column;gap:7px;max-height:155px;overflow:auto;
+ padding:10px 12px;border:1px solid var(--line);border-radius:9px;background:var(--surface); }
+.pendingArea h2 { display:flex;align-items:center;gap:5px;margin:0;color:var(--ink);
+ font-size:12px;font-weight:750; }
+.pendingArea h2 span { color:var(--muted);font-size:11px; }
+.pendingRow { display:flex;align-items:center;justify-content:space-between;gap:12px;
+ border-top:1px solid var(--line);padding:8px 0 1px; }
+.pendingRow>span { display:flex;flex-direction:column;gap:4px;min-width:0; }
+.pendingRow strong { font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis; }
+.pendingRow small { color:var(--muted);font-size:10px; }
+.pendingRow button {border:1px solid var(--line);border-radius:6px;padding:5px 8px;
+ background:var(--surface);color:var(--ink);font:inherit;font-size:10px;cursor:pointer; }
+.pendingRow button:disabled { opacity:.5;cursor:default; }
+.representativeWarning { color:#ad743a;background:#fff1dc;border-radius:6px;padding:5px 8px;font-size:10px; }

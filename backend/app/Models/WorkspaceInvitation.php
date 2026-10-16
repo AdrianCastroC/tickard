@@ -11,6 +11,7 @@ class WorkspaceInvitation extends Model
         'workspace_id', 'project_id', 'project_role', 'recipient_user_id',
         'invited_by', 'email', 'token_hash', 'max_uses', 'used_count',
         'expires_at', 'revoked_at', 'status', 'responded_at',
+        'client_company_name', 'client_type', 'client_sector', 'client_description',
     ];
 
     protected $hidden = ['token_hash'];

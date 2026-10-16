@@ -4,6 +4,7 @@ namespace App\Support;
 
 use App\Models\Project;
 use App\Models\User;
+use App\Support\WorkspaceClientAccess;
 
 class ProjectAccess
 {
@@ -22,12 +23,14 @@ class ProjectAccess
         }
         // A project with a client association does not automatically expose it.
         // Client accounts must belong to the linked company and both switches must be enabled.
-        if ($role === 'cliente' || $user->client_company_id !== null) {
+        $clientCompanyId = WorkspaceClientAccess::companyId($user, $project->workspace);
+        if ($role === 'cliente' || $clientCompanyId !== null) {
             if (! $project->client_access_enabled || ! $project->workspace->show_clients
                 || $user->email_verified_at === null
                 || ! $project->workspace->memberships()->where('user_id', $user->id)->exists()
                 || $project->client_company_id === null
-                || (int) $user->client_company_id !== (int) $project->client_company_id) {
+                || $clientCompanyId === null
+                || $clientCompanyId !== (int) $project->client_company_id) {
                 return null;
             }
         }
