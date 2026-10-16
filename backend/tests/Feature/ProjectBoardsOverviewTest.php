@@ -75,8 +75,11 @@ class ProjectBoardsOverviewTest extends TestCase
     public function test_client_only_sees_public_cards_and_assignees_and_outsider_cannot_view(): void
     {
         extract($this->setupProject());
+        $project->workspace->update(['show_clients' => true]);
+        $project->update(['client_access_enabled' => true]);
         $client = User::factory()->create(['is_admin' => false,
             'client_company_id' => $project->client_company_id]);
+        $project->workspace->memberships()->create(['user_id' => $client->id, 'role' => 'member']);
         ProjectMember::create(['project_id' => $project->id, 'user_id' => $client->id, 'role' => 'cliente']);
         $column = $board->columns()->where('workflow_state', 'pending')->firstOrFail();
         $public = Card::create(['board_id' => $board->id, 'column_id' => $column->id,

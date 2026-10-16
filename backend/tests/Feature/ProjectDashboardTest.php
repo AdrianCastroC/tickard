@@ -27,7 +27,11 @@ class ProjectDashboardTest extends TestCase
         $workspace = Workspace::create(['name' => 'Demo', 'owner_id' => $owner->id]);
         $workspace->memberships()->create(['user_id' => $owner->id, 'role' => 'owner']);
         $company = ClientCompany::create(['workspace_id' => $workspace->id, 'name' => 'Cliente']);
-        $project = Project::create(['workspace_id' => $workspace->id, 'client_company_id' => $company->id, 'name' => 'Proyecto']);
+        $project = Project::create(['workspace_id' => $workspace->id, 'client_company_id' => $company->id,
+            'name' => 'Proyecto', 'client_access_enabled' => true]);
+        $workspace->update(['show_clients' => true]);
+        $client->update(['client_company_id' => $company->id]);
+        $workspace->memberships()->create(['user_id' => $client->id, 'role' => 'member']);
         ProjectMember::create(['project_id' => $project->id, 'user_id' => $client->id, 'role' => 'cliente']);
         $board = Board::create(['project_id' => $project->id, 'name' => 'Diseño', 'position' => 0]);
         $board->createDefaultColumns();

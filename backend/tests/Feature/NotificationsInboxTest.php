@@ -106,7 +106,10 @@ class NotificationsInboxTest extends TestCase
         Mail::fake();
         $owner = User::factory()->create(['is_admin' => false]);
         [$workspace, $project, , $card] = $this->projectWithCard($owner);
-        $member = User::factory()->create(['is_admin' => false, 'notify_email' => false, 'notify_in_app' => true]);
+        $workspace->update(['show_clients' => true]);
+        $project->update(['client_access_enabled' => true]);
+        $member = User::factory()->create(['is_admin' => false, 'notify_email' => false, 'notify_in_app' => true,
+            'client_company_id' => $project->client_company_id]);
         $workspace->memberships()->create(['user_id' => $member->id, 'role' => 'member']);
         $project->members()->create(['user_id' => $member->id, 'role' => 'cliente']);
 

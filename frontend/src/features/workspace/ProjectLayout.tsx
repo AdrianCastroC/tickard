@@ -33,6 +33,7 @@ export function ProjectLayout({
   onBoardSelect = (id) => window.dispatchEvent(new CustomEvent('tickard:select-board', { detail: id })),
 }: Props) {
   const [deleting, setDeleting] = useState(false)
+  const canManage = project.role === 'responsable'
   const [clientAccessBusy, setClientAccessBusy] = useState(false)
   const [clientAccessError, setClientAccessError] = useState('')
   const [availableClients, setAvailableClients] = useState<{id:number;name:string}[]>([])
@@ -59,7 +60,6 @@ export function ProjectLayout({
       setClientAccessError(cause instanceof Error ? cause.message : 'No se pudo actualizar el acceso de clientes.')
     } finally { setClientAccessBusy(false) }
   }
-  const canManage = project.role === 'responsable'
   async function deleteProject(name: string) {
     await api(`/projects/${project.id}`, { method: 'DELETE', body: JSON.stringify({ confirmation_name: name }) })
     const next = await onRefresh() as { projects: Project[] }

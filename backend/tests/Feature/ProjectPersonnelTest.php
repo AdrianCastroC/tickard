@@ -32,8 +32,10 @@ class ProjectPersonnelTest extends TestCase
         }
         $client = ClientCompany::create(['workspace_id' => $workspace->id, 'name' => 'Cliente']);
         $project = Project::create([
-            'workspace_id' => $workspace->id, 'client_company_id' => $client->id, 'name' => 'Nébula Mobile',
+            'workspace_id' => $workspace->id, 'client_company_id' => $client->id,
+            'name' => 'Nébula Mobile', 'client_access_enabled' => true,
         ]);
+        $workspace->update(['show_clients' => true]);
         ProjectMember::create(['project_id' => $project->id, 'user_id' => $manager->id, 'role' => 'responsable']);
         ProjectMember::create(['project_id' => $project->id, 'user_id' => $editor->id, 'role' => 'editor']);
 
@@ -114,6 +116,7 @@ class ProjectPersonnelTest extends TestCase
         extract($this->fixture());
         $clientUser = User::factory()->create(['is_admin' => false,
             'client_company_id' => $project->client_company_id]);
+        $workspace->memberships()->create(['user_id' => $clientUser->id, 'role' => 'member']);
         ProjectMember::create(['project_id' => $project->id, 'user_id' => $clientUser->id, 'role' => 'cliente']);
         $board = Board::create(['project_id' => $project->id, 'name' => 'Servicio']);
         $board->createDefaultColumns();
@@ -200,6 +203,7 @@ class ProjectPersonnelTest extends TestCase
         $client = User::factory()->create([
             'is_admin' => false, 'client_company_id' => $project->client_company_id,
         ]);
+        $workspace->memberships()->create(['user_id' => $client->id, 'role' => 'member']);
         ProjectMember::create(['project_id' => $project->id, 'user_id' => $client->id, 'role' => 'cliente']);
         $board = Board::create(['project_id' => $project->id, 'name' => 'Tablero']);
         $board->createDefaultColumns();
