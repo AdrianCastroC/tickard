@@ -90,11 +90,11 @@ class WorkspaceDepartmentsTest extends TestCase
 
         $this->actingAs($owner)->postJson('/api/departments', [
             'workspace_id' => $workspace->id, 'name' => 'Soporte',
-            'member_ids' => [$other->id],
+            'member_ids' => [$other->id], 'lead_user_id' => $owner->id,
         ])->assertUnprocessable()->assertJsonValidationErrors('member_ids');
         $this->postJson('/api/departments', [
             'workspace_id' => $workspace->id, 'name' => 'Soporte',
-            'member_ids' => [$client->id],
+            'member_ids' => [$client->id], 'lead_user_id' => $owner->id,
         ])->assertUnprocessable()->assertJsonValidationErrors('member_ids');
     }
 
@@ -133,7 +133,7 @@ class WorkspaceDepartmentsTest extends TestCase
             'team_ids' => [], 'project_ids' => [],
         ])->assertNoContent();
         $this->assertDatabaseHas('departments', ['id' => $id, 'description' => 'Renovado',
-            'status' => 'inactive', 'icon' => 'palette', 'lead_user_id' => null]);
+            'status' => 'inactive', 'icon' => 'palette', 'lead_user_id' => $owner->id]);
         $this->assertDatabaseMissing('department_team', ['department_id' => $id, 'team_id' => $team->id]);
         $this->assertDatabaseMissing('department_project', ['department_id' => $id, 'project_id' => $project->id]);
         $this->assertDatabaseHas('projects', ['id' => $project->id]);
@@ -152,16 +152,19 @@ class WorkspaceDepartmentsTest extends TestCase
 
         $this->actingAs($owner)->postJson('/api/departments', [
             'workspace_id' => $workspace->id, 'name' => 'Prueba',
+            'member_ids' => [$owner->id], 'lead_user_id' => $owner->id,
             'team_ids' => [$otherTeam->id],
         ])->assertUnprocessable()->assertJsonValidationErrors('team_ids');
 
         $this->postJson('/api/departments', [
             'workspace_id' => $workspace->id, 'name' => 'Prueba',
+            'member_ids' => [$owner->id], 'lead_user_id' => $owner->id,
             'project_ids' => [$otherProject->id],
         ])->assertUnprocessable()->assertJsonValidationErrors('project_ids');
 
         $this->postJson('/api/departments', [
             'workspace_id' => $workspace->id, 'name' => 'Prueba',
+            'member_ids' => [$owner->id], 'lead_user_id' => $owner->id,
             'status' => 'unknown', 'icon' => 'javascript:alert(1)',
         ])->assertUnprocessable()->assertJsonValidationErrors(['status', 'icon']);
     }

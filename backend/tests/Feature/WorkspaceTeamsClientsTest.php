@@ -87,11 +87,11 @@ class WorkspaceTeamsClientsTest extends TestCase
         $this->getJson('/api/clients?workspace_id='.$workspace->id)->assertForbidden();
         $this->actingAs($owner)->postJson('/api/teams', [
             'workspace_id' => $workspace->id, 'name' => 'Invalido',
-            'member_ids' => [$outsider->id],
+            'member_ids' => [$outsider->id], 'lead_user_id' => $owner->id,
         ])->assertUnprocessable()->assertJsonValidationErrors('member_ids');
         $this->postJson('/api/teams', [
             'workspace_id' => $workspace->id, 'name' => 'Invalido',
-            'member_ids' => [$client->id],
+            'member_ids' => [$client->id], 'lead_user_id' => $owner->id,
         ])->assertUnprocessable()->assertJsonValidationErrors('member_ids');
     }
 
@@ -152,16 +152,19 @@ class WorkspaceTeamsClientsTest extends TestCase
 
         $this->actingAs($owner)->postJson('/api/teams', [
             'workspace_id' => $workspace->id, 'name' => 'Prueba',
+            'member_ids' => [$owner->id], 'lead_user_id' => $owner->id,
             'department_ids' => [$department->id],
         ])->assertUnprocessable()->assertJsonValidationErrors('department_ids');
 
         $this->postJson('/api/teams', [
             'workspace_id' => $workspace->id, 'name' => 'Prueba',
+            'member_ids' => [$owner->id], 'lead_user_id' => $owner->id,
             'project_ids' => [$outsideProject->id],
         ])->assertUnprocessable()->assertJsonValidationErrors('project_ids');
 
         $this->postJson('/api/teams', [
             'workspace_id' => $workspace->id, 'name' => 'Prueba',
+            'member_ids' => [$owner->id], 'lead_user_id' => $owner->id,
             'status' => 'unknown', 'icon' => 'not-an-icon',
         ])->assertUnprocessable()->assertJsonValidationErrors(['status', 'icon']);
     }
