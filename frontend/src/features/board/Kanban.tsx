@@ -5,7 +5,7 @@ import { SortableContext, arrayMove, useSortable, horizontalListSortingStrategy,
 import { CSS } from '@dnd-kit/utilities'
 import { api, type BoardCategory, type BoardPayload, type Card, type WorkflowState } from '../../api'
 import { Avatar, cardStripeStyle, DEFAULT_CARD_STRIPE, formatDate, formatDateLong, priorityLabel } from '../../shared/ui'
-import { ChevronIcon, DotsIcon, EditIcon, ExpandColumnIcon, CollapseColumnIcon, KanbanCategoryIcon, PaletteIcon, PinIcon, PlusIcon, PriorityBarsIcon, TrashIcon, UnpinIcon, VisibilityIcon, CalendarPickIcon } from '../../shared/icons'
+import { ChevronIcon, DotsIcon, EditIcon, ExpandColumnIcon, CollapseColumnIcon, KanbanCategoryIcon, PaletteIcon, PinIcon, PlusIcon, FloppyIcon, PriorityBarsIcon, TrashIcon, UnpinIcon, VisibilityIcon, CalendarPickIcon } from '../../shared/icons'
 import { filteredBoardColumns, orderedColumnCards } from './boardUtils'
 import { CardAttachmentsIndicator, CardProgressBar, KanbanMiniCard, MilestoneIndicator } from './KanbanMiniCard'
 function columnSortId(id: number) {
@@ -503,7 +503,7 @@ export function ColumnView({ column, categories, canEdit, canManage, pinned, onT
           <form className="rename" onSubmit={saveName} onPointerDown={(event) => event.stopPropagation()}>
             <input value={name} autoFocus onChange={(event) => setName(event.target.value)} />
             <div className="row">
-              <button className="primary" type="submit">Guardar</button>
+              <button className="primary save-button" type="submit"><FloppyIcon />Guardar</button>
               <button className="ghost" type="button" onClick={() => { setRenaming(false); setName(column.name); setMenuOpen(false) }}>Cancelar</button>
             </div>
           </form>

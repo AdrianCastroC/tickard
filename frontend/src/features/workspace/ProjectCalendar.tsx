@@ -5,7 +5,7 @@ import { api, ApiError, type BacklogResolution, type BoardPayload, type Calendar
 import { BacklogResolutionModal } from '../board/BacklogResolutionModal'
 import { CardDrawer } from '../cards/CardDetail'
 import { Avatar } from '../../shared/ui'
-import { FilterFunnelIcon, CloseIcon } from '../../shared/icons'
+import { FilterFunnelIcon, CloseIcon, FloppyIcon } from '../../shared/icons'
 import { ProjectCalendarAssigneeFilter, type CalendarAssigneeOption } from './ProjectCalendarAssigneeFilter'
 import { ProjectCalendarMultiFilter } from './ProjectCalendarMultiFilter'
 import { ProjectLoadingIndicator } from './ProjectLoadingIndicator'
@@ -777,7 +777,7 @@ function CalendarEventModal({ projectId, event, initialDay, canEdit, onClose, on
         <div className={styles.eventActions}>
           {canEdit && event && <button className={styles.deleteEvent} type="button" disabled={saving} onClick={() => void remove()}>Eliminar</button>}
           <button className="ghost" type="button" onClick={onClose} disabled={saving}>{canEdit ? 'Cancelar' : 'Cerrar'}</button>
-          {canEdit && <button className="primary" type="submit" disabled={saving || !form.title.trim() || form.start_date > form.end_date}>{saving ? 'Guardando…' : event ? 'Guardar cambios' : 'Crear evento'}</button>}
+          {canEdit && <button className={event ? 'primary save-button' : 'primary'} type="submit" disabled={saving || !form.title.trim() || form.start_date > form.end_date}>{event && <FloppyIcon />}{saving ? 'Guardando…' : event ? 'Guardar cambios' : 'Crear evento'}</button>}
         </div>
       </form>
     </div>

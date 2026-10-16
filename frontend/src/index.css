@@ -3686,3 +3686,7 @@ h1, h2, h3, p { margin: 0; }
 /* Inicio global: the dashboard owns its panel scrolling, not the page. */
 .frame:has(.global-home-view) { height:100dvh; min-height:0; }
 .main:has(.global-home-view) { min-height:0; overflow:hidden; }
+
+/* Common save action icon: same Font Awesome glyph in all Save buttons. */
+.save-button { display:inline-flex; align-items:center; justify-content:center; gap:6px; }
+.save-button .btn-ico { display:block; width:15px; height:15px; flex:0 0 15px; }

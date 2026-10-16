@@ -1,5 +1,6 @@
 import { type FormEvent, useState } from 'react'
 import { api, type BoardPayload } from '../../api'
+import { FloppyIcon } from '../../shared/icons'
 
 export function CategoriesDrawer({ board, onClose, onChange }: {
   board: BoardPayload
@@ -59,7 +60,7 @@ export function CategoriesDrawer({ board, onClose, onChange }: {
               {editing === category.id ? (
                 <form className="row" onSubmit={saveEdit}>
                   <input value={editName} onChange={(event) => setEditName(event.target.value)} autoFocus />
-                  <button className="primary" type="submit">Guardar</button>
+                  <button className="primary save-button" type="submit"><FloppyIcon />Guardar</button>
                   <button className="ghost" type="button" onClick={() => setEditing(null)}>Cancelar</button>
                 </form>
               ) : (

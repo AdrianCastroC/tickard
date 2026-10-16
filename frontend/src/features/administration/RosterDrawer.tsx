@@ -1,5 +1,6 @@
 import { type FormEvent, useEffect, useState } from 'react'
 import { api } from '../../api'
+import { FloppyIcon } from '../../shared/icons'
 
 export function RosterDrawer({
   title,
@@ -91,7 +92,7 @@ export function RosterDrawer({
           </label>
           {error && <p className="error">{error}</p>}
           <div className="row">
-            <button className="primary" type="submit">{editing ? 'Guardar' : `Crear ${noun}`}</button>
+            <button className={editing ? 'primary save-button' : 'primary'} type="submit">{editing && <FloppyIcon />}{editing ? 'Guardar' : `Crear ${noun}`}</button>
             {editing && <button className="ghost" type="button" onClick={() => { setEditing(null); setName(''); setMembers([]) }}>Cancelar</button>}
           </div>
         </form>
