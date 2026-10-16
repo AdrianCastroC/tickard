@@ -34,17 +34,17 @@ class WorkspaceMembersController extends ApiController
             ->join('departments as entity', 'entity.id', '=', 'link.department_id')
             ->where('entity.workspace_id', $workspace->id)
             ->whereIn('link.user_id', $ids)
-            ->select('link.user_id', 'entity.id', 'entity.name')->get()->groupBy('user_id');
+            ->select('link.user_id', 'entity.id', 'entity.name', 'entity.lead_user_id')->get()->groupBy('user_id');
         $teams = DB::table('team_user as link')
             ->join('teams as entity', 'entity.id', '=', 'link.team_id')
             ->where('entity.workspace_id', $workspace->id)
             ->whereIn('link.user_id', $ids)
-            ->select('link.user_id', 'entity.id', 'entity.name')->get()->groupBy('user_id');
+            ->select('link.user_id', 'entity.id', 'entity.name', 'entity.lead_user_id')->get()->groupBy('user_id');
         $projects = DB::table('project_members as link')
             ->join('projects as entity', 'entity.id', '=', 'link.project_id')
             ->where('entity.workspace_id', $workspace->id)
             ->whereIn('link.user_id', $ids)
-            ->select('link.user_id', 'entity.id', 'entity.name')->get()->groupBy('user_id');
+            ->select('link.user_id', 'entity.id', 'entity.name', 'link.role')->get()->groupBy('user_id');
 
         $members = $memberships->map(function ($membership) use ($workspace, $departments, $teams, $projects) {
             $user = $membership->user;
@@ -54,11 +54,14 @@ class WorkspaceMembersController extends ApiController
                 'name' => $user->name,
                 'handle' => $user->publicHandle(),
                 'avatar_url' => $user->avatarUrl(),
+                'email' => $user->email,
+                'professional_phone' => $user->professional_phone,
+                'joined_at' => $membership->created_at?->toDateString(),
                 'role' => (int) $workspace->owner_id === (int) $user->id ? 'owner' : ($isClient ? 'client' : $membership->role),
                 'is_client' => $isClient,
-                'departments' => ($departments->get($user->id) ?? collect())->map(fn ($x) => ['id' => $x->id, 'name' => $x->name])->values(),
-                'teams' => ($teams->get($user->id) ?? collect())->map(fn ($x) => ['id' => $x->id, 'name' => $x->name])->values(),
-                'projects' => ($projects->get($user->id) ?? collect())->map(fn ($x) => ['id' => $x->id, 'name' => $x->name])->values(),
+                'departments' => ($departments->get($user->id) ?? collect())->map(fn ($x) => ['id' => $x->id, 'name' => $x->name, 'is_lead' => (int) $x->lead_user_id === (int) $user->id])->values(),
+                'teams' => ($teams->get($user->id) ?? collect())->map(fn ($x) => ['id' => $x->id, 'name' => $x->name, 'is_lead' => (int) $x->lead_user_id === (int) $user->id])->values(),
+                'projects' => ($projects->get($user->id) ?? collect())->map(fn ($x) => ['id' => $x->id, 'name' => $x->name, 'role' => $x->role])->values(),
             ];
         })->sortBy(fn ($m) => [
             $m['role'] === 'owner' ? 0 : ($m['role'] === 'admin' ? 1 : 2),

@@ -119,8 +119,14 @@ class WorkspaceMembersTest extends TestCase
         $person = collect($result)->firstWhere('id', $member->id);
 
         $this->assertSame('Desarrollo', $person['departments'][0]['name']);
+        $this->assertTrue($person['departments'][0]['is_lead']);
         $this->assertSame('Frontend', $person['teams'][0]['name']);
+        $this->assertTrue($person['teams'][0]['is_lead']);
         $this->assertSame('Portal', $person['projects'][0]['name']);
+        $this->assertSame('editor', $person['projects'][0]['role']);
+        $this->assertSame($member->email, $person['email']);
+        $this->assertArrayHasKey('professional_phone', $person);
+        $this->assertArrayHasKey('joined_at', $person);
         $clientMember = collect($result)->firstWhere('id', $client->id);
         $this->assertSame('client', $clientMember['role']);
         $this->assertTrue($clientMember['is_client']);
