@@ -9,6 +9,7 @@ use App\Models\ProjectMember;
 use App\Models\Team;
 use App\Models\User;
 use App\Support\ProjectAccess;
+use App\Support\WorkspaceClientAccess;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
