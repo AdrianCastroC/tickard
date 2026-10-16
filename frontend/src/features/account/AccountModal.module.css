@@ -133,6 +133,9 @@
 }
 .identityText small { display:block; max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--muted); font-size:11px; }
 .identityText :global(.account-plan) { margin:2px 0 0; }
+.identityId { display:flex; flex-direction:column; align-items:flex-end; justify-content:center; gap:5px; min-width:0; max-width:48%; margin-left:auto; }
+.identityId > span { font-size:10px; font-weight:650; color:var(--muted); }
+.identityId .publicHandle { width:100%; min-width:0; max-width:226px; }
 .sectionIntro { display:flex; flex-direction:column; gap:3px; margin:0 0 11px; }
 .sectionIntro strong { font-size:12px; font-weight:750; color:var(--ink); }
 .sectionIntro small { font-size:10px; line-height:1.45; color:var(--muted); }
@@ -226,7 +229,7 @@
   .identity :global(.account-avatar) { flex-basis:50px; }
 }
 
-/* ID and email are read-only; identity is not editable through PATCH /me. */
+/* Permanent ID remains read-only; email uses a separate verified change flow. */
 .readonlyField { display:flex; flex-direction:column; gap:5px; min-width:0; color:var(--ink); font-size:11px; font-weight:600; }
 .readonlyValue {
   display:flex; align-items:center; min-height:36px; min-width:0;
@@ -265,3 +268,36 @@
   .navLogout button { width:auto; min-height:35px; padding:7px 9px; font-size:11px; }
   .navLogout button svg { width:16px; height:16px; flex-basis:16px; }
 }
+
+.emailChange { display:flex; flex-direction:column; align-items:flex-start; gap:9px; padding:11px; border:1px solid var(--line); background:var(--canvas); border-radius:9px; }
+.emailChange .field { width:100%; }
+.emailChange .field input { background:var(--surface); }
+.secondaryAction { min-height:34px; padding:7px 11px; border:1px solid var(--line); background:var(--surface); color:var(--ink); border-radius:8px; cursor:pointer; font:inherit; font-size:11px; font-weight:650; }
+.secondaryAction:hover { border-color:var(--accent); color:var(--accent); }
+.secondaryAction:focus-visible { outline:2px solid var(--accent); outline-offset:1px; }
+.secondaryAction:disabled { opacity:.55; cursor:not-allowed; }
+.emailPending { display:flex; flex-direction:column; gap:9px; padding:10px; border:1px solid var(--line); border-radius:9px; background:var(--canvas); }
+.emailPending small { color:var(--muted); font-size:11px; line-height:1.45; overflow-wrap:anywhere; font-weight:450; }
+.emailCodeRow { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+.emailCodeRow input { flex:1 1 135px; min-width:0; height:34px; padding:7px 10px; box-sizing:border-box; border:1px solid var(--line); border-radius:8px; background:var(--surface); color:var(--ink); font:inherit; font-size:12px; }
+.emailCodeRow input:focus-visible { outline:2px solid var(--accent); outline-offset:1px; }
+.fieldError { color:#a33631; font-size:11px; line-height:1.4; }
+.fieldSuccess { color:var(--accent); font-size:11px; line-height:1.4; }
+.passwordStrength { display:flex; flex-direction:column; gap:8px; }
+.strengthLabel { display:flex; align-items:center; justify-content:space-between; font-size:11px; color:var(--muted); }
+.strengthTrack { width:100%; height:6px; border-radius:10px; background:var(--line); overflow:hidden; }
+.strengthFill { display:block; height:100%; border-radius:10px; background:var(--accent); transition:width .16s ease; }
+.passwordRules { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:5px 10px; font-size:10px; color:var(--muted); }
+.passwordRules span { min-width:0; }
+.ruleValid { color:var(--accent); }
+@media (max-width:420px) {
+  .identity { flex-wrap:wrap; }
+  .identityId { width:100%; max-width:none; flex-direction:row; justify-content:flex-end; align-items:center; }
+  .identityId .publicHandle { width:auto; min-width:150px; }
+  .passwordRules { grid-template-columns:minmax(0,1fr); }
+}
+
+.strengthTrack[data-strength="1"] .strengthFill { background:#bf554f; }
+.strengthTrack[data-strength="2"] .strengthFill { background:#d18d37; }
+.strengthTrack[data-strength="3"] .strengthFill { background:#8ba847; }
+.strengthTrack[data-strength="4"] .strengthFill { background:var(--accent); }

@@ -30,6 +30,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Rules\Password;
 use Illuminate\Validation\ValidationException;
 
 class AuthController extends ApiController
@@ -114,8 +115,12 @@ class AuthController extends ApiController
             'theme' => ['sometimes', Rule::in(['light', 'dark', 'system'])],
             'notify_in_app' => ['sometimes', 'boolean'],
             'notify_email' => ['sometimes', 'boolean'],
-            'current_password' => ['required_with:password', 'current_password'],
-            'password' => ['sometimes', 'string', 'min:8', 'confirmed'],
+            'current_password' => ['required_with:password', 'string', function ($attribute, $value, $fail) use ($request) {
+                if (! Hash::check((string) $value, $request->user()->password)) {
+                    $fail('La contraseña actual no es correcta.');
+                }
+            }],
+            'password' => ['sometimes', 'string', 'max:128', Password::min(10)->mixedCase()->numbers()->symbols(), 'confirmed'],
         ], [
             'nickname.prohibited' => 'El ID de la cuenta es permanente. Para utilizar otro necesitas crear otra cuenta.',
             'email.prohibited' => 'El correo no puede modificarse desde el perfil sin un proceso de verificación.',

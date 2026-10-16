@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\AdministrationController;
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\EmailChangeController;
 use App\Http\Controllers\Api\CardsController;
 use App\Http\Controllers\Api\CalendarEventsController;
 use App\Http\Controllers\Api\CardDependenciesController;
@@ -37,6 +38,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/workspaces/{workspace}/invitations/delete', [WorkspaceInvitationsController::class, 'deleteMany']);
     Route::get('/me', [AuthController::class, 'me']);
     Route::patch('/me', [AuthController::class, 'updateMe']);
+    Route::get('/me/email-change', [EmailChangeController::class, 'status']);
+    Route::post('/me/email-change', [EmailChangeController::class, 'requestChange'])->middleware('throttle:3,10');
+    Route::post('/me/email-change/confirm', [EmailChangeController::class, 'confirm'])->middleware('throttle:5,1');
     Route::post('/me/avatar', [AuthController::class, 'updateAvatar']);
     Route::get('/notifications', [NotificationsController::class, 'index']);
     Route::post('/notifications/read', [NotificationsController::class, 'readAll']);
