@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react
 import { createPortal } from 'react-dom'
 import { api } from '../../api'
 import { Avatar } from '../../shared/ui'
-import { FloppyIcon, PlusIcon, TrashIcon } from '../../shared/icons'
+import { EditIcon, FloppyIcon, PlusIcon, TrashIcon } from '../../shared/icons'
 import styles from './DepartmentsSurface.module.css'
 
 type Person = { id: number; name: string; avatar_url: string | null }
@@ -238,7 +238,7 @@ export function DepartmentsSurface({ workspaceId }: { workspaceId: number | null
             <button type="button" className={styles.delete} onClick={() => setConfirmDelete(true)}>
               <TrashIcon/> Eliminar
             </button>
-            <button type="button" className={styles.primary} onClick={() => beginEdit(selected)}>Editar</button>
+            <button type="button" className={styles.primary} onClick={() => beginEdit(selected)}><EditIcon /> Editar</button>
           </footer>}
         </> : <div className={styles.placeholder}>
           <strong>{data.departments.length === 0 ? 'Empieza creando un departamento' : 'Selecciona un departamento'}</strong>
