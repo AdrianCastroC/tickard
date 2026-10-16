@@ -430,7 +430,7 @@ export function ProjectPersonnel({ project, profile }: { project: Project; profi
               return <tr key={person.id} className={selectedId === person.id ? styles.selectedRow : ''}>
                 <td><button type="button" className={styles.memberButton} onClick={() => { setSelectedId(person.id); setDetailTab('summary') }}>
                   <Avatar id={person.id} name={person.name} src={person.avatar_url} size={34}/>
-                  <span><strong>{person.name}{person.id === profile.user.id ? ' (Tú)' : ''}</strong><small>{person.is_workspace_owner ? 'Propietario del Workspace' : (person.email ?? roleName(person.role))}</small></span>
+                  <span><strong>{person.name}{person.id === profile.user.id ? ' (Tú)' : ''}</strong></span>
                 </button></td>
                 <td className={styles.jobCell} title={person.job_title ?? 'Sin cargo asignado'}>{person.job_title || 'Sin especificar'}</td>
                 <td><span className={`${styles.roleTag} ${person.role === 'responsable' ? styles.responsible : ''}`}>{person.is_workspace_owner ? 'Owner' : roleName(person.role)}</span></td>
