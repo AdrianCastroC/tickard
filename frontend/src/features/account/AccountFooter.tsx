@@ -92,16 +92,25 @@ export function AccountFooter({ profile, mini }: { profile: Profile; mini: boole
       <Avatar id={profile.user.id} name={profile.user.name} size={32}
         className="avatar" src={profile.user.avatar_url}/>
       {!mini && <span><strong>{profile.user.name}</strong><small>{plan}</small></span>}
-      {!mini && <span className="account-footer-chevron" aria-hidden="true">⌃</span>}
+      {!mini && <span className={`account-footer-chevron ${styles.chevron} ${open ? styles.chevronOpen : ''}`} aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+          strokeLinecap="round" strokeLinejoin="round">
+          <path d="m6 15 6-6 6 6" />
+        </svg>
+      </span>}
     </button>
     {open && createPortal(<div ref={menu} className={styles.menu} role="menu"
       aria-label="Opciones de mi cuenta"
       style={position ? { left: position.left, bottom: position.bottom } :
         { left: 0, bottom: 0, visibility: 'hidden' }}>
       <div className={styles.identity}>
-        <strong title={profile.user.name}>{profile.user.name}</strong>
-        <small title={profile.user.email}>{profile.user.email}</small>
-        <span className={styles.plan}>{plan}</span>
+        <Avatar id={profile.user.id} name={profile.user.name} size={44}
+          className={styles.identityAvatar} src={profile.user.avatar_url}/>
+        <div className={styles.identityDetails}>
+          <strong title={profile.user.name}>{profile.user.name}</strong>
+          <small title={profile.user.email}>{profile.user.email}</small>
+          <span className={styles.plan}>{plan}</span>
+        </div>
       </div>
       <div className={styles.items}>
         <button type="button" role="menuitem" onClick={() => openSection('profile')}>
