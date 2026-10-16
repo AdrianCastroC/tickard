@@ -203,6 +203,12 @@ class ProjectPersonnelController extends ApiController
         abort_if(ProjectAccess::isWorkspaceOwner($user, $project), 403,
             'El propietario del Workspace no puede perder su rol desde un proyecto.');
         $member = $project->members()->where('user_id', $user->id)->firstOrFail();
+        if ($data['role'] === 'cliente') {
+            abort_unless($project->client_access_enabled && $project->workspace->show_clients
+                && $user->client_company_id !== null
+                && (int) $user->client_company_id === (int) $project->client_company_id, 422,
+                'Este proyecto no admite acceso de clientes de esa empresa.');
+        }
         if ($member->role === 'responsable' && $data['role'] !== 'responsable') {
             $this->ensureOtherResponsible($project, $member->id);
         }

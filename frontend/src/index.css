@@ -3697,3 +3697,12 @@ h1, h2, h3, p { margin: 0; }
 .workspace-birthday-toggle > span { display:flex; flex-direction:column; gap:5px; font-size:12px; }
 .workspace-birthday-toggle small { font-size:11px; line-height:1.4; color:var(--muted); }
 .workspace-birthday-toggle input { flex:0 0 17px; width:17px; height:17px; accent-color:var(--accent); }
+
+/* Project-level client access is independent of workspace client management. */
+.project-client-settings { display:flex; flex-direction:column; gap:13px; margin:12px 0 20px;
+  padding:14px 16px; border:1px solid var(--line); border-radius:10px;
+  background:var(--surface); max-width:620px; }
+.project-client-settings h3 { margin:0; font-size:13px; }
+.project-client-settings .field { display:flex; flex-direction:column; gap:7px; font-size:11px; font-weight:650; }
+.project-client-settings .field select { max-width:390px; height:36px; padding:7px 10px; border:1px solid var(--line);
+  border-radius:8px; color:var(--ink); background:var(--canvas); }

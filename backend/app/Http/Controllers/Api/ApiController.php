@@ -100,6 +100,7 @@ protected function internalIds(array $ids): array
                 'role' => $workspace->pivot->role,
                 'plan' => $workspace->effectivePlan(),
                 'show_birthdays' => (bool) $workspace->show_birthdays,
+                'show_clients' => (bool) $workspace->show_clients,
             ])
             ->values();
 
@@ -116,7 +117,10 @@ protected function internalIds(array $ids): array
         return [
             'id' => $project->id,
             'name' => $project->name,
-            'client_name' => $project->clientCompany->name,
+            'workspace_id' => $project->workspace_id,
+            'client_company_id' => $project->client_company_id,
+            'client_access_enabled' => (bool) $project->client_access_enabled,
+            'client_name' => $project->clientCompany?->name,
             'role' => $role,
             'boards' => $project->boards->map(fn (Board $board) => [
                 'id' => $board->id,

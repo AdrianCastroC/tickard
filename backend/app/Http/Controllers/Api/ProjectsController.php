@@ -31,7 +31,9 @@ class ProjectsController extends ApiController
         $data = $request->validate([
             'workspace_id' => ['required', 'integer'],
             'name' => ['required', 'string', 'max:120'],
-            'client_name' => ['required', 'string', 'max:120'],
+            'client_name' => ['nullable', 'string', 'max:120'],
+            'client_company_id' => ['nullable', 'integer'],
+            'client_access_enabled' => ['sometimes', 'boolean'],
         ]);
 
         $workspace = Workspace::whereKey($data['workspace_id'])
@@ -40,15 +42,25 @@ class ProjectsController extends ApiController
             ->firstOrFail();
 
         $project = DB::transaction(function () use ($data, $workspace) {
-            $client = ClientCompany::create([
-                'workspace_id' => $workspace->id,
-                'name' => $data['client_name'],
-            ]);
+            $client = null;
+            if ($workspace->show_clients) {
+                if (! empty($data['client_company_id'])) {
+                    $client = ClientCompany::where('workspace_id', $workspace->id)
+                        ->findOrFail($data['client_company_id']);
+                } elseif (filled($data['client_name'] ?? null)) {
+                    $client = ClientCompany::firstOrCreate([
+                        'workspace_id' => $workspace->id, 'name' => trim($data['client_name']),
+                    ]);
+                }
+            } elseif (! empty($data['client_company_id']) || filled($data['client_name'] ?? null)) {
+                abort(422, 'Activa el módulo Clientes antes de asociar una empresa.');
+            }
 
             $project = Project::create([
                 'workspace_id' => $workspace->id,
                 'name' => $data['name'],
-                'client_company_id' => $client->id,
+                'client_company_id' => $client?->id,
+                'client_access_enabled' => (bool) ($data['client_access_enabled'] ?? false) && $client !== null,
             ]);
 
             $board = $project->boards()->create([
@@ -157,8 +169,26 @@ class ProjectsController extends ApiController
             'show_priority' => ['sometimes', 'boolean'],
             'show_labels' => ['sometimes', 'boolean'],
             'show_comments' => ['sometimes', 'boolean'],
+            'client_company_id' => ['sometimes', 'nullable', 'integer'],
+            'client_access_enabled' => ['sometimes', 'boolean'],
         ]);
 
+        if (array_key_exists('client_company_id', $data) || array_key_exists('client_access_enabled', $data)) {
+            $workspace = $project->workspace;
+            $clientId = array_key_exists('client_company_id', $data)
+                ? $data['client_company_id'] : $project->client_company_id;
+            $enabled = array_key_exists('client_access_enabled', $data)
+                ? $data['client_access_enabled'] : $project->client_access_enabled;
+            abort_if($enabled && (! $workspace->show_clients || ! $clientId), 422,
+                'Para permitir acceso de clientes, selecciona primero una empresa y habilita Clientes en el Workspace.');
+            if ($clientId !== null) {
+                abort_unless($workspace->clientCompanies()->whereKey($clientId)->exists(), 422,
+                    'La empresa seleccionada no pertenece a este Workspace.');
+            }
+            if ($clientId !== $project->client_company_id && $project->client_access_enabled) {
+                abort(422, 'Desactiva el acceso de clientes antes de cambiar la empresa.');
+            }
+        }
         $project->update($data);
 
         return $project->fresh();
@@ -212,6 +242,8 @@ class ProjectsController extends ApiController
             ],
         ]);
 
+        abort_if($data['role'] === 'cliente' && (! $project->client_access_enabled || ! $project->workspace->show_clients || ! $project->client_company_id), 422,
+            'Activa primero el acceso de clientes a este proyecto.');
         $invitation = Invitation::create([
             'email' => $data['email'],
             'name' => $data['name'] ?? null,
@@ -339,7 +371,8 @@ class ProjectsController extends ApiController
                 'name' => $board->name,
                 'project_id' => $project->id,
                 'project_name' => $project->name,
-                'client_name' => $project->clientCompany->name,
+                'client_name' => $project->clientCompany?->name,
+                'client_access_enabled' => (bool) $project->client_access_enabled,
             ],
 
             'visibility' => [

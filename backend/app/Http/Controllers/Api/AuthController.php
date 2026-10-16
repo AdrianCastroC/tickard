@@ -116,6 +116,7 @@ class AuthController extends ApiController
             'notify_email' => ['sometimes', 'boolean'],
             'birthday_month_day' => ['sometimes', 'nullable', 'regex:/^(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$/'],
             'share_birthday' => ['sometimes', 'boolean'],
+            'professional_phone' => ['sometimes', 'nullable', 'string', 'max:30', 'regex:/^\\+?[0-9 ().-]{6,30}$/'],
             'current_password' => ['prohibited'],
             'password' => ['prohibited'],
             'password_confirmation' => ['prohibited'],

@@ -30,6 +30,7 @@ class WorkspacesController extends Controller
                 'name' => $data['name'],
                 'owner_id' => $user->id,
                 'extra_seats' => 0,
+                'show_clients' => false,
             ]);
 
             $workspace->memberships()->create([
@@ -86,6 +87,15 @@ class WorkspacesController extends Controller
         $workspace->update(['show_birthdays' => $data['show_birthdays']]);
 
         return response()->json(['id' => $workspace->id, 'show_birthdays' => (bool) $workspace->show_birthdays]);
+    }
+
+    public function updateClientSettings(Request $request, Workspace $workspace): JsonResponse
+    {
+        abort_unless((int) $workspace->owner_id === (int) $request->user()->id, 403,
+            'Solo el propietario puede configurar este Workspace.');
+        $data = $request->validate(['show_clients' => ['required', 'boolean']]);
+        $workspace->update(['show_clients' => $data['show_clients']]);
+        return response()->json(['id' => $workspace->id, 'show_clients' => (bool) $workspace->show_clients]);
     }
 
     public function destroy(Request $request, Workspace $workspace): JsonResponse

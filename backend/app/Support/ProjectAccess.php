@@ -16,7 +16,22 @@ class ProjectAccess
             return 'responsable';
         }
 
-        return $user->memberships()->where('project_id', $project->id)->value('role');
+        $role = $user->memberships()->where('project_id', $project->id)->value('role');
+        if ($role === null) {
+            return null;
+        }
+        // A project with a client association does not automatically expose it.
+        // Client accounts must belong to the linked company and both switches must be enabled.
+        if ($role === 'cliente' || $user->client_company_id !== null) {
+            if (! $project->client_access_enabled || ! $project->workspace->show_clients
+                || $user->email_verified_at === null
+                || ! $project->workspace->memberships()->where('user_id', $user->id)->exists()
+                || $project->client_company_id === null
+                || (int) $user->client_company_id !== (int) $project->client_company_id) {
+                return null;
+            }
+        }
+        return $role;
     }
 
     public static function isWorkspaceOwner(User $user, Project $project): bool

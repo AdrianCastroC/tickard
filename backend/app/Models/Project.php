@@ -11,6 +11,7 @@ class Project extends Model
     protected $fillable = [
         'workspace_id',
         'client_company_id',
+        'client_access_enabled',
         'name',
         'show_description',
         'show_assignee',
@@ -23,6 +24,7 @@ class Project extends Model
     protected function casts(): array
     {
         return [
+            'client_access_enabled' => 'boolean',
             'show_description' => 'boolean',
             'show_assignee' => 'boolean',
             'show_due_date' => 'boolean',

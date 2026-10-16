@@ -1,0 +1,31 @@
+.clientRoot { grid-template-rows:auto minmax(0,1fr); }
+.headerIcon { display:grid;place-items:center; width:48px;height:48px;flex:0 0 48px;
+ border-radius:10px;background:#eee6fb;color:#8850d9; }
+.headerIcon svg {width:27px;height:27px}
+.logo,.logoLarge{display:grid;place-items:center;box-sizing:border-box;flex:0 0 auto;
+ color:#fff; background:linear-gradient(145deg,#174e5b,#06333f);
+ border-radius:9px;font-weight:800;letter-spacing:-.5px;font-size:13px}
+.logo{width:42px;height:42px}.logoLarge{width:47px;height:47px;font-size:17px}
+.typePill {display:inline-flex;align-items:center;width:max-content;max-width:100%;
+ padding:5px 8px;border-radius:6px;background:#e3efff;color:#2473ca;font-size:10px;font-weight:700;}
+.status {display:inline-flex;align-items:center;gap:5px;border-radius:6px;padding:5px 8px;
+ background:#dbf4e9;color:#0a8e64;font-size:10px;font-weight:700;white-space:nowrap;}
+.status i{width:7px;height:7px;flex:0 0 7px;border-radius:50%;background:currentColor}
+.status[data-status="inactive"]{background:#e5eaf0;color:#66768b}
+.status[data-status="archived"]{background:#f5e6dd;color:#aa6c48}
+.table{min-width:650px}
+.contactCell {display:flex;align-items:center;gap:8px;min-width:130px;max-width:215px}
+.contactCell > span:last-child{display:flex;flex-direction:column;gap:4px;min-width:0}
+.contactCell strong {font-size:11px;font-weight:680;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.contactCell small {font-size:10px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.contactDetail {display:flex;align-items:flex-start;gap:11px}
+.contactDetail > div {display:flex;flex-direction:column;gap:6px;min-width:0;word-break:break-word;font-size:11px}
+.contactDetail a{font-size:11px;color:var(--accent);text-decoration:none}
+.contactDetail a:hover{text-decoration:underline}
+.memberRow{display:flex;align-items:center;gap:9px;padding:7px 0;border-bottom:1px solid var(--line)}
+.memberRow >span:nth-child(2){display:flex;flex:1;flex-direction:column;gap:4px;min-width:0;}
+.memberRow strong{font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.memberRow small{font-size:10px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cardMeta{display:flex;gap:7px;align-items:center;justify-content:space-between}
+.clientRoot :global(.project-client-settings){max-width:560px}
+@media(max-width:740px){.clientRoot{grid-template-rows:auto minmax(0,1fr)}}

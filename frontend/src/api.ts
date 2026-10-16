@@ -195,8 +195,11 @@ export type CalendarEvent = {
 
 export type Project = {
   id: number
+  workspace_id: number
   name: string
-  client_name: string
+  client_name: string | null
+  client_company_id: number | null
+  client_access_enabled: boolean
   role: Role
   boards: { id: number; name: string }[]
 }
@@ -207,6 +210,7 @@ export type WorkspaceRef = {
   role: 'owner' | 'member'
   plan: 'free' | 'base' | 'pro' | 'business'
   show_birthdays: boolean
+  show_clients: boolean
 }
 
 export type Profile = {
@@ -217,6 +221,7 @@ export type Profile = {
     last_name: string | null
     handle: string
     email: string
+    professional_phone: string | null
     birthday_month_day: string | null
     share_birthday: boolean
     is_admin: boolean

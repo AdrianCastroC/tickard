@@ -1,220 +1,421 @@
-import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import { createPortal } from 'react-dom'
 import { api } from '../../api'
-import { EditIcon, FloppyIcon, PlusIcon, TrashIcon } from '../../shared/icons'
-import styles from './DepartmentsSurface.module.css'
+import { Avatar, formatDateLong } from '../../shared/ui'
+import { EditIcon, FilterFunnelIcon, FloppyIcon, PlusIcon, TrashIcon } from '../../shared/icons'
+import styles from './DepartmentsDashboard.module.css'
+import teamStyles from './TeamsDashboard.module.css'
+import css from './ClientsDashboard.module.css'
 
-type Company = { id: number; name: string; projects_count: number; people_count: number }
-type Data = { can_manage: boolean; clients: Company[] }
-type Mode = 'create' | 'edit' | null
+type Person = { id: number; name: string; email: string; professional_phone: string | null; avatar_url: string | null }
+type ProjectLink = { id: number; name: string }
+type ClientType = 'company' | 'self_employed' | 'individual' | 'institution'
+type Status = 'active' | 'inactive' | 'archived'
+type Client = {
+  id: number; name: string; client_type: ClientType; sector: string | null
+  description: string | null; status: Status; created_at: string | null; updated_at: string | null
+  primary_contact_user_id: number | null; primary_contact: Person | null
+  people: Person[]; people_count: number; projects: ProjectLink[]; projects_count: number
+}
+type Data = { can_manage: boolean; clients: Client[] }
+type Tab = 'summary' | 'members' | 'projects' | 'settings'
+const labels: Record<ClientType,string> = {
+  company: 'Empresa', self_employed: 'Autónomo', individual: 'Particular', institution: 'Institución',
+}
+const statuses: Record<Status,string> = { active: 'Activo', inactive: 'Inactivo', archived: 'Archivado' }
+const collator = new Intl.Collator('es',{sensitivity:'base',numeric:true})
+const skeleton = Array.from({length:5},(_,i)=>i)
 
-const collator = new Intl.Collator('es', { numeric: true, sensitivity: 'base' })
-const skeletonRows = Array.from({ length: 7 }, (_, index) => index)
-
-export function ClientsSurface({ workspaceId }: { workspaceId: number | null }) {
-  const [data, setData] = useState<Data | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [loadError, setLoadError] = useState('')
-  const [error, setError] = useState('')
-  const [feedback, setFeedback] = useState('')
-  const [busy, setBusy] = useState(false)
-  const [search, setSearch] = useState('')
-  const [selectedId, setSelectedId] = useState<number | null>(null)
-  const [mode, setMode] = useState<Mode>(null)
-  const [name, setName] = useState('')
-  const [confirmDelete, setConfirmDelete] = useState(false)
-
-  const path = '/clients?workspace_id=' + workspaceId
-  const load = useCallback(async () => {
-    if (!workspaceId) return
-    const response = await api<Data>(path)
-    setData(response)
-    setSelectedId(current => response.clients.some(client => client.id === current) ? current : null)
-  }, [workspaceId, path])
-
-  useEffect(() => {
-    let active = true
-    setData(null); setLoading(true); setLoadError(''); setSelectedId(null); setMode(null)
-    if (!workspaceId) { setLoading(false); return }
-    void api<Data>(path).then(response => {
-      if (active) setData(response)
-    }).catch(cause => {
-      if (active) setLoadError(cause instanceof Error ? cause.message : 'No se pudieron cargar los clientes.')
-    }).finally(() => { if (active) setLoading(false) })
-    return () => { active = false }
-  }, [workspaceId, path])
-
-  const shown = useMemo(() => (data?.clients ?? [])
-    .filter(client => client.name.toLocaleLowerCase('es').includes(search.trim().toLocaleLowerCase('es')))
-    .sort((a,b) => collator.compare(a.name,b.name)), [data,search])
-  const selected = data?.clients.find(client => client.id === selectedId) ?? null
-  const canManage = data?.can_manage ?? false
-  const editing = mode !== null
-
-  function beginCreate() {
-    setMode('create'); setSelectedId(null); setName(''); setFeedback(''); setError('')
+function Logo({client,size='normal'}:{client:Client;size?:'normal'|'large'}) {
+  const initials = client.name.split(/\s+/).filter(Boolean).slice(0,2).map(x=>x[0]).join('').toUpperCase()
+  return <span className={size==='large'?css.logoLarge:css.logo} aria-hidden="true">{initials}</span>
+}
+function ClientStatus({status}:{status:Status}) {
+  return <span className={css.status} data-status={status}><i/>{statuses[status]}</span>
+}
+function People({users,max=5}:{users:Person[];max?:number}) {
+  return <div className={styles.avatars}>
+    {users.slice(0,max).map(user=><Avatar key={user.id} id={user.id} name={user.name}
+      src={user.avatar_url} size={30} className={styles.avatar}/>)}
+    {users.length>max&&<span className={styles.avatarMore}>+{users.length-max}</span>}
+    {!users.length&&<span className={styles.muted}>Sin usuarios activos</span>}
+  </div>
+}
+function LineIcon({name}:{name:'folder'|'list'|'grid'|'search'|'users'|'building'|'more'}) {
+  const paths={
+    folder:<path d="M3 6a2 2 0 0 1 2-2h5l2 3h7a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6Z"/>,
+    list:<><path d="M9 5h12M9 12h12M9 19h12M4 5h.01M4 12h.01M4 19h.01"/></>,
+    grid:<><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></>,
+    search:<><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/></>,
+    users:<><circle cx="9" cy="8" r="3"/><path d="M2 20v-2a6 6 0 0 1 12 0v2H2ZM16 5a3 3 0 0 1 0 6M16 15a5 5 0 0 1 6 5"/></>,
+    building:<><rect x="5" y="3" width="14" height="18" rx="1"/><path d="M3 21h18M9 7h2M14 7h2M9 11h2M14 11h2M10 21v-6h4v6"/></>,
+    more:<><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></>,
   }
-  function beginEdit(client: Company) {
-    setMode('edit'); setSelectedId(client.id); setName(client.name); setFeedback(''); setError('')
-  }
-  function choose(client: Company) {
-    setMode(null); setSelectedId(client.id); setFeedback(''); setError('')
-  }
+  return <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor"
+    strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{paths[name]}</svg>
+}
 
-  async function save(event: FormEvent<HTMLFormElement>) {
+export function ClientsSurface({workspaceId}:{workspaceId:number|null}) {
+  const [data,setData]=useState<Data|null>(null)
+  const [loading,setLoading]=useState(true)
+  const [loadError,setLoadError]=useState('')
+  const [error,setError]=useState('')
+  const [notice,setNotice]=useState('')
+  const [busy,setBusy]=useState(false)
+  const [search,setSearch]=useState('')
+  const [statusFilter,setStatusFilter]=useState('all')
+  const [typeFilter,setTypeFilter]=useState('all')
+  const [sort,setSort]=useState('name')
+  const [filtersOpen,setFiltersOpen]=useState(false)
+  const filterRef=useRef<HTMLDivElement>(null)
+  const [layout,setLayout]=useState<'list'|'grid'>('list')
+  const [selectedId,setSelectedId]=useState<number|null>(null)
+  const [tab,setTab]=useState<Tab>('summary')
+  const [editor,setEditor]=useState<'create'|'edit'|null>(null)
+  const [selectedRows,setSelectedRows]=useState<number[]>([])
+  const [confirmDeleteIds,setConfirmDeleteIds]=useState<number[]>([])
+  const [name,setName]=useState('')
+  const [description,setDescription]=useState('')
+  const [sector,setSector]=useState('')
+  const [type,setType]=useState<ClientType>('company')
+  const [status,setStatus]=useState<Status>('active')
+  const [contactId,setContactId]=useState<number|null>(null)
+  const [menuId,setMenuId]=useState<number|null>(null)
+
+  const path='/clients?workspace_id='+workspaceId
+  const reload=useCallback(async()=>{
+    if(!workspaceId) return
+    const result=await api<Data>(path)
+    setData(result)
+    setSelectedId(id=>result.clients.some(c=>c.id===id)?id:result.clients[0]?.id??null)
+    setSelectedRows(ids=>ids.filter(id=>result.clients.some(c=>c.id===id)))
+  },[workspaceId,path])
+  useEffect(()=>{
+    let active=true
+    setLoading(true);setData(null);setLoadError('');setSelectedId(null);setSelectedRows([])
+    setEditor(null);setFiltersOpen(false)
+    if(!workspaceId){setLoading(false);return}
+    void api<Data>(path).then(result=>{
+      if(active){setData(result);setSelectedId(result.clients[0]?.id??null)}
+    }).catch(e=>{if(active)setLoadError(e instanceof Error?e.message:'No se pudieron cargar los clientes.')})
+      .finally(()=>{if(active)setLoading(false)})
+    return()=>{active=false}
+  },[workspaceId,path])
+  useEffect(()=>{
+    if(!filtersOpen)return
+    const outside=(event:PointerEvent)=>{
+      if(event.target instanceof Node&&!filterRef.current?.contains(event.target))setFiltersOpen(false)
+    }
+    const escape=(event:KeyboardEvent)=>{if(event.key==='Escape')setFiltersOpen(false)}
+    document.addEventListener('pointerdown',outside);document.addEventListener('keydown',escape)
+    return()=>{document.removeEventListener('pointerdown',outside);document.removeEventListener('keydown',escape)}
+  },[filtersOpen])
+  const visible=useMemo(()=>(data?.clients??[]).filter(c=>
+    (statusFilter==='all'||c.status===statusFilter)&&
+    (typeFilter==='all'||c.client_type===typeFilter)&&
+    (!search.trim()||[c.name,c.sector,c.description,c.primary_contact?.name]
+      .some(v=>v?.toLocaleLowerCase('es').includes(search.trim().toLocaleLowerCase('es'))))
+  ).sort((a,b)=>sort==='projects'?b.projects_count-a.projects_count||collator.compare(a.name,b.name):
+    sort==='recent'?(b.updated_at??'').localeCompare(a.updated_at??''):collator.compare(a.name,b.name)),
+    [data,search,statusFilter,typeFilter,sort])
+  const filterCount=Number(statusFilter!=='all')+Number(typeFilter!=='all')+Number(sort!=='name')
+  const selected=data?.clients.find(c=>c.id===selectedId)??null
+  const canManage=data?.can_manage===true
+  const allChecked=visible.length>0&&visible.every(c=>selectedRows.includes(c.id))
+  const tabs:{id:Tab;label:string}[]=[
+    {id:'summary',label:'Resumen'},{id:'members',label:'Miembros'},
+    {id:'projects',label:'Proyectos'},{id:'settings',label:'Ajustes'},
+  ]
+  function choose(c:Client){setSelectedId(c.id);setEditor(null);setTab('summary');setMenuId(null);setError('')}
+  function beginCreate(){
+    setEditor('create');setName('');setDescription('');setSector('');setType('company');setStatus('active')
+    setContactId(null);setFiltersOpen(false);setError('');setMenuId(null);setNotice('')
+  }
+  function beginEdit(c:Client){
+    setSelectedId(c.id);setEditor('edit');setName(c.name);setDescription(c.description??'')
+    setSector(c.sector??'');setType(c.client_type);setStatus(c.status)
+    setContactId(c.primary_contact_user_id);setError('');setMenuId(null)
+  }
+  async function save(event:FormEvent<HTMLFormElement>){
     event.preventDefault()
-    if (!workspaceId || !canManage || busy || !name.trim()) return
-    setBusy(true); setError(''); setFeedback('')
+    if(!workspaceId||!canManage||busy||!name.trim())return
+    setBusy(true);setError('');setNotice('')
     try {
-      const created = mode === 'create'
-        ? await api<{ id: number }>('/clients', {
-            method: 'POST', body: JSON.stringify({ workspace_id: workspaceId, name: name.trim() }),
-          })
-        : null
-      if (mode === 'edit' && selectedId) {
-        await api('/clients/' + selectedId, {
-          method: 'PATCH', body: JSON.stringify({ workspace_id: workspaceId, name: name.trim() }),
-        })
+      const payload={workspace_id:workspaceId,name:name.trim(),description:description.trim()||null,
+        sector:sector.trim()||null,client_type:type,status,primary_contact_user_id:contactId}
+      const created=editor==='create'?await api<{id:number}>('/clients',{
+        method:'POST',body:JSON.stringify(payload)}):null
+      if(editor==='edit'&&selectedId)await api('/clients/'+selectedId,{
+        method:'PATCH',body:JSON.stringify(payload)})
+      await reload()
+      setSelectedId(created?.id??selectedId);setEditor(null);setTab('summary')
+      setNotice(created?'Cliente creado.':'Cliente actualizado.')
+    }catch(e){setError(e instanceof Error?e.message:'No se pudo guardar el cliente.')}
+    finally{setBusy(false)}
+  }
+  async function remove(){
+    if(!workspaceId||!canManage||busy||!confirmDeleteIds.length)return
+    setBusy(true);setError('');setNotice('')
+    let removed=0
+    try{
+      for(const id of confirmDeleteIds){
+        await api('/clients/'+id,{method:'DELETE',body:JSON.stringify({workspace_id:workspaceId})})
+        removed++
       }
-      await load()
-      setSelectedId(created?.id ?? selectedId)
-      setMode(null)
-      setFeedback(created ? 'Cliente creado.' : 'Cliente actualizado.')
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : 'No se pudo guardar el cliente.')
-    } finally { setBusy(false) }
+      setConfirmDeleteIds([]);setSelectedRows([]);setEditor(null);await reload()
+      setNotice(removed===1?'Cliente eliminado.':removed+' clientes eliminados.')
+    }catch(e){
+      setConfirmDeleteIds([])
+      try{await reload()}catch{/* Keep original error. */}
+      setError(e instanceof Error?e.message:'No se pudieron eliminar los clientes.')
+      if(removed)setNotice(removed+' clientes eliminados antes del error.')
+    }finally{setBusy(false)}
   }
-
-  async function remove() {
-    if (!workspaceId || !selected || !canManage || busy) return
-    setBusy(true); setError(''); setFeedback('')
-    try {
-      await api('/clients/' + selected.id, {
-        method: 'DELETE', body: JSON.stringify({ workspace_id: workspaceId }),
-      })
-      setConfirmDelete(false); setSelectedId(null); setMode(null)
-      await load()
-      setFeedback('Cliente eliminado.')
-    } catch (cause) {
-      setConfirmDelete(false)
-      setError(cause instanceof Error ? cause.message : 'No se pudo eliminar el cliente.')
-    } finally { setBusy(false) }
+  function toggleVisible(checked:boolean){
+    const ids=new Set(visible.map(c=>c.id))
+    setSelectedRows(current=>checked?[...new Set([...current,...ids])]:current.filter(id=>!ids.has(id)))
   }
-
-  if (!workspaceId) return <section className={styles.root}><p>No hay un Workspace seleccionado.</p></section>
-
-  return <section className={styles.root} aria-label="Clientes del Workspace">
+  if(!workspaceId)return <section className={styles.root}>Selecciona un Workspace.</section>
+  return <section className={styles.root+' '+css.clientRoot} aria-label="Gestión de clientes">
     <header className={styles.heading}>
-      <div><h1>Clientes</h1><p>Empresas cliente del Workspace y sus proyectos asociados.</p></div>
-      {canManage && <button type="button" className={styles.primary} onClick={beginCreate}><PlusIcon/> Nuevo cliente</button>}
+      <div className={teamStyles.headline}>
+        <span className={css.headerIcon}><LineIcon name="building"/></span>
+        <span><h1>Clientes</h1><p>Gestiona los clientes de tu organización y sus proyectos.</p>
+          {notice&&<span role="status" className={styles.notice}>{notice}</span>}
+          {loadError&&<span className={styles.alert} role="alert">{loadError}
+            <button type="button" onClick={()=>{setLoading(true);setLoadError('')
+              void reload().catch(e=>setLoadError(e instanceof Error?e.message:'Error de carga.'))
+                .finally(()=>setLoading(false))}}>Reintentar</button></span>}
+        </span>
+      </div>
     </header>
-    {feedback && <p className={styles.feedback} role="status">{feedback}</p>}
-    {loadError && <div className={styles.errorBlock} role="alert">
-      {loadError}
-      <button type="button" onClick={() => {
-        setLoading(true); setLoadError('')
-        void load().catch(cause => setLoadError(cause instanceof Error ? cause.message : 'Error de carga.'))
-          .finally(() => setLoading(false))
-      }}>Reintentar</button>
-    </div>}
-    {loading ? <div className={styles.skeleton} role="status" aria-label="Cargando clientes">
-      <div className={styles.skeletonToolbar}><span/><span/></div>
-      <div className={styles.skeletonBody}>
-        <div>{skeletonRows.map(i => <i key={i}/>)}</div>
-        <div>{skeletonRows.slice(0,4).map(i => <i key={i}/>)}</div>
-      </div>
-    </div> : data && <div className={styles.workspace}>
-      <div className={styles.listSide}>
+    {loading?<div className={styles.loading} role="status" aria-label="Cargando clientes">
+      <div className={styles.loadingGrid}>{skeleton.map(i=><span key={i}/>)}</div>
+    </div>:data&&<div className={styles.workspace}>
+      <div className={styles.mainColumn} style={{ gridRow: 2 }}>
         <div className={styles.filters}>
-          <label className={styles.search}>
-            <span aria-hidden="true">⌕</span>
-            <input type="search" placeholder="Buscar empresa cliente" value={search}
-              onChange={event => setSearch(event.target.value)}/>
-          </label>
+          <label className={styles.search}><LineIcon name="search"/>
+            <input type="search" aria-label="Buscar clientes" placeholder="Buscar clientes…"
+              value={search} onChange={e=>setSearch(e.target.value)}/></label>
+          <div className={styles.filterControls} ref={filterRef}>
+            <button type="button" title="Filtros" aria-haspopup="dialog" aria-expanded={filtersOpen}
+              className={`icon-button board-filter-trigger ${styles.filterTrigger}${filtersOpen||filterCount?' on':''}`}
+              onClick={()=>setFiltersOpen(v=>!v)}><FilterFunnelIcon/>
+              {filterCount>0&&<span className="board-filter-active-dot" aria-hidden="true"/>}</button>
+            {filtersOpen&&<div className={styles.filterPopover} role="dialog" aria-label="Filtros de clientes">
+              <div className={styles.filterPopoverHeader}><strong>Filtros</strong>
+                {filterCount>0&&<button type="button" onClick={()=>{
+                  setStatusFilter('all');setTypeFilter('all');setSort('name')}}>Limpiar</button>}</div>
+              <label>Estado<select value={statusFilter} onChange={e=>setStatusFilter(e.target.value)}>
+                <option value="all">Todos</option>{Object.entries(statuses).map(([key,label])=>
+                <option key={key} value={key}>{label}</option>)}</select></label>
+              <label>Tipo<select value={typeFilter} onChange={e=>setTypeFilter(e.target.value)}>
+                <option value="all">Todos</option>{Object.entries(labels).map(([key,label])=>
+                <option key={key} value={key}>{label}</option>)}</select></label>
+              <label>Ordenar por<select value={sort} onChange={e=>setSort(e.target.value)}>
+                <option value="name">Nombre</option><option value="projects">Más proyectos</option>
+                <option value="recent">Más recientes</option></select></label>
+            </div>}
+          </div>
+          <div className={styles.viewSwitcher} role="group" aria-label="Vista de clientes">
+            <button type="button" aria-label="Vista de lista" aria-pressed={layout==='list'}
+              className={layout==='list'?styles.viewActive:undefined} onClick={()=>setLayout('list')}>
+              <LineIcon name="list"/></button>
+            <button type="button" aria-label="Vista de tarjetas" aria-pressed={layout==='grid'}
+              className={layout==='grid'?styles.viewActive:undefined} onClick={()=>setLayout('grid')}>
+              <LineIcon name="grid"/></button>
+          </div>
+          {canManage&&<button type="button" className={styles.primary} onClick={beginCreate}>
+            <PlusIcon/> Nuevo cliente</button>}
         </div>
-        <div className={styles.tableScroll}>
-          <table className={styles.table}>
-            <thead><tr><th>Empresa</th><th>Proyectos</th><th>Personas</th></tr></thead>
-            <tbody>{shown.map(client => <tr key={client.id}
-                className={selectedId === client.id && mode !== 'create' ? styles.selectedRow : undefined}>
-              <td><button type="button" className={styles.departmentButton}
-                title={client.name} aria-pressed={selectedId === client.id && mode !== 'create'}
-                onClick={() => choose(client)}>{client.name}</button></td>
-              <td><span className={styles.count}>{client.projects_count}</span></td>
-              <td><span className={styles.count}>{client.people_count}</span></td>
-            </tr>)}</tbody>
-          </table>
-          {!shown.length && <p className={styles.empty}>
-            {data.clients.length === 0 ? 'Todavía no hay empresas cliente.' : 'No hay coincidencias.'}
-          </p>}
-        </div>
-        <small className={styles.listFooter}>{shown.length} de {data.clients.length} clientes</small>
-      </div>
-      <aside className={styles.details}>
-        {editing ? <form className={styles.form} onSubmit={save}>
-          <div className={styles.detailsHead}>
-            <h2>{mode === 'create' ? 'Nuevo cliente' : 'Editar cliente'}</h2>
-            <button type="button" className={styles.close} onClick={() => setMode(null)} aria-label="Cancelar edición">×</button>
-          </div>
-          <div className={styles.detailsScroll}>
-            <label className={styles.field}>Nombre de la empresa
-              <input required autoFocus maxLength={120} value={name} onChange={event => setName(event.target.value)}/>
-            </label>
-            <small className={styles.hint}>Los proyectos se vinculan a una empresa desde su propia configuración.</small>
-          </div>
-          {error && <p className={styles.formError} role="alert">{error}</p>}
-          <footer className={styles.formFooter}>
-            <button className={styles.ghost} type="button" disabled={busy} onClick={() => setMode(null)}>Cancelar</button>
-            <button className={styles.primary} type="submit" disabled={busy || !name.trim()}>
-              <FloppyIcon/>{busy ? 'Guardando…' : 'Guardar'}
-            </button>
-          </footer>
-        </form> : selected ? <>
-          <div className={styles.detailsHead}><h2>{selected.name}</h2></div>
-          <div className={styles.detailsScroll}>
-            <div className={styles.detailBlock}>
-              <strong>Vinculaciones</strong>
-              <div className={styles.person}>Proyectos <span className={styles.count}>{selected.projects_count}</span></div>
-              <div className={styles.person}>Personas <span className={styles.count}>{selected.people_count}</span></div>
-              <small className={styles.hint}>
-                Una empresa con proyectos o usuarios vinculados no puede eliminarse.
-              </small>
-            </div>
-          </div>
-          {error && <p className={styles.formError} role="alert">{error}</p>}
-          {canManage && <footer className={styles.formFooter}>
-            <button type="button" className={styles.delete} disabled={selected.projects_count > 0 || selected.people_count > 0}
-              title={selected.projects_count > 0 || selected.people_count > 0 ? 'No se puede eliminar una empresa con proyectos o personas asociadas' : 'Eliminar cliente'}
-              onClick={() => setConfirmDelete(true)}>
-              <TrashIcon/> Eliminar
-            </button>
-            <button type="button" className={styles.primary} onClick={() => beginEdit(selected)}>
-              <EditIcon/> Editar
-            </button>
-          </footer>}
-        </> : <div className={styles.placeholder}>
-          <strong>{data.clients.length === 0 ? 'Añade la primera empresa cliente' : 'Selecciona una empresa'}</strong>
-          <p>Consulta sus proyectos y personas asociadas.</p>
-          {canManage && data.clients.length === 0 && <button type="button" className={styles.primary} onClick={beginCreate}>
-            <PlusIcon/> Nuevo cliente
-          </button>}
+        {selectedRows.length>0&&<div className={teamStyles.selectionToolbar}>
+          <strong>{selectedRows.length} seleccionados</strong>
+          <button type="button" onClick={()=>setSelectedRows([])}>Limpiar selección</button>
+          {canManage&&<button type="button" onClick={()=>setConfirmDeleteIds([...selectedRows])}>
+            <TrashIcon/> Eliminar seleccionados</button>}
         </div>}
+        <div className={teamStyles.tableScroller}>
+          {layout==='list'?<table className={teamStyles.table+' '+css.table}>
+            <thead><tr><th><input type="checkbox" checked={allChecked} aria-label="Seleccionar clientes visibles"
+              onChange={e=>toggleVisible(e.target.checked)}/></th>
+              <th>Cliente</th><th>Tipo</th><th>Contacto principal</th><th>Proyectos</th>
+              <th>Estado</th><th className={teamStyles.actionsCol}>Acciones</th>
+            </tr></thead>
+            <tbody>{visible.map(c=><tr key={c.id} data-selected={selectedId===c.id&&editor!=='create'}>
+              <td><input type="checkbox" aria-label={'Seleccionar '+c.name}
+                checked={selectedRows.includes(c.id)} onChange={e=>setSelectedRows(ids=>
+                  e.target.checked?[...new Set([...ids,c.id])]:ids.filter(id=>id!==c.id))}/></td>
+              <td><button type="button" className={teamStyles.teamCell} onClick={()=>choose(c)}>
+                <Logo client={c}/><span><strong>{c.name}</strong><small>{c.description||c.sector||'Sin descripción'}</small></span>
+              </button></td>
+              <td><span className={css.typePill}>{labels[c.client_type]}</span></td>
+              <td>{c.primary_contact?<div className={css.contactCell}>
+                <Avatar id={c.primary_contact.id} name={c.primary_contact.name} src={c.primary_contact.avatar_url} size={29}/>
+                <span><strong>{c.primary_contact.name}</strong><small>{c.primary_contact.email}</small></span>
+              </div>:<span className={styles.muted}>Sin asignar</span>}</td>
+              <td><button type="button" className={teamStyles.projectCount}
+                onClick={()=>{choose(c);setTab('projects')}}><LineIcon name="folder"/>{c.projects_count}</button></td>
+              <td><ClientStatus status={c.status}/></td>
+              <td><div className={teamStyles.rowActions}>
+                {canManage&&<button type="button" title={'Editar '+c.name} onClick={()=>beginEdit(c)}><EditIcon/></button>}
+                <div className={teamStyles.menuWrapper}><button type="button" title="Más opciones"
+                  aria-expanded={menuId===c.id} onClick={()=>setMenuId(menuId===c.id?null:c.id)}>
+                  <LineIcon name="more"/></button>
+                  {menuId===c.id&&<div className={teamStyles.rowMenu}>
+                    <button type="button" onClick={()=>choose(c)}>Ver detalles</button>
+                    {canManage&&<button type="button" onClick={()=>{choose(c);setConfirmDeleteIds([c.id])}}>
+                      <TrashIcon/> Eliminar</button>}
+                  </div>}</div>
+              </div></td>
+            </tr>)}</tbody>
+          </table>:<div className={teamStyles.cards}>{visible.map(c=>
+            <article className={styles.departmentCard} key={c.id} data-selected={c.id===selectedId}>
+              <div className={styles.cardTop}><button type="button" className={styles.cardSelect} onClick={()=>choose(c)}>
+                <Logo client={c}/><span className={styles.cardCopy}><strong>{c.name}</strong>
+                  <span>{c.description||c.sector||'Sin descripción'}</span></span>
+              </button>{canManage&&<button type="button" className={teamStyles.iconButton}
+                title={'Editar '+c.name} onClick={()=>beginEdit(c)}><EditIcon/></button>}</div>
+              <div className={css.cardMeta}><span className={css.typePill}>{labels[c.client_type]}</span>
+                <ClientStatus status={c.status}/></div>
+              <button className={styles.cardMetrics} type="button" onClick={()=>{choose(c);setTab('projects')}}>
+                <span><LineIcon name="folder"/><strong>{c.projects_count}</strong><small>Proyectos</small></span>
+                <span><LineIcon name="users"/><strong>{c.people_count}</strong><small>Usuarios</small></span>
+              </button>
+              {c.primary_contact&&<div className={css.contactCell}>
+                <Avatar id={c.primary_contact.id} name={c.primary_contact.name} src={c.primary_contact.avatar_url} size={27}/>
+                <span><strong>{c.primary_contact.name}</strong><small>Contacto principal</small></span>
+              </div>}
+            </article>)}</div>}
+          {visible.length===0&&<div className={styles.empty}><LineIcon name="building"/>
+            <strong>{data.clients.length?'Sin resultados':'Todavía no hay clientes'}</strong>
+            <p>{data.clients.length?'Prueba otros filtros.':'Crea la primera empresa cliente.'}</p></div>}
+        </div>
+        <small className={styles.results}>{visible.length} de {data.clients.length} clientes</small>
+      </div>
+      <aside className={styles.inspector} style={{ gridRow: "1 / 3" }} aria-label="Ficha del cliente">
+        {editor?<form className={styles.form} onSubmit={save}>
+          <div className={styles.formHeading}><strong>{editor==='create'?'Nuevo cliente':'Editar cliente'}</strong>
+            <button type="button" className={styles.close} aria-label="Cancelar edición" onClick={()=>setEditor(null)}>×</button></div>
+          <div className={styles.formScroll}>
+            <label className={styles.field}>Nombre<input autoFocus required maxLength={120} value={name}
+              onChange={e=>setName(e.target.value)}/></label>
+            <label className={styles.field}>Descripción<textarea rows={3} maxLength={1500}
+              value={description} onChange={e=>setDescription(e.target.value)}/></label>
+            <label className={styles.field}>Sector o actividad (opcional)<input maxLength={120}
+              value={sector} onChange={e=>setSector(e.target.value)}/></label>
+            <div className={styles.formRow}>
+              <label className={styles.field}>Tipo<select value={type} onChange={e=>setType(e.target.value as ClientType)}>
+                {Object.entries(labels).map(([key,label])=><option value={key} key={key}>{label}</option>)}</select></label>
+              <label className={styles.field}>Estado<select value={status} onChange={e=>setStatus(e.target.value as Status)}>
+                {Object.entries(statuses).map(([key,label])=><option value={key} key={key}>{label}</option>)}</select></label>
+            </div>
+            {editor==='edit'&&<label className={styles.field}>Contacto principal
+              <select value={contactId??''} onChange={e=>setContactId(e.target.value?Number(e.target.value):null)}>
+                <option value="">Sin asignar</option>
+                {selected?.people.map(person=><option value={person.id} key={person.id}>{person.name}</option>)}
+              </select>
+              <small className={styles.hint}>Solo usuarios activos y con correo verificado asociados a este cliente.</small>
+            </label>}
+            <p className={styles.hint}>Las personas se vinculan a esta empresa mediante sus cuentas de Tickard. No se crea una agenda independiente.</p>
+          </div>
+          {error&&<p className={styles.formError} role="alert">{error}</p>}
+          <footer className={styles.formActions}>
+            <button type="button" className={styles.subtle} disabled={busy} onClick={()=>setEditor(null)}>Cancelar</button>
+            <button type="submit" className={styles.primary} disabled={busy||!name.trim()}>
+              <FloppyIcon/>{busy?'Guardando…':'Guardar'}</button>
+          </footer>
+        </form>:selected?<>
+          <div className={styles.detailHead}><Logo client={selected} size="large"/>
+            <div className={styles.detailTitle}>
+              <div className={teamStyles.detailName}><strong>{selected.name}</strong><ClientStatus status={selected.status}/></div>
+              <p>{selected.description||selected.sector||'Sin descripción'}</p>
+            </div><button type="button" className={styles.close} aria-label="Cerrar ficha"
+              onClick={()=>setSelectedId(null)}>×</button>
+          </div>
+          <nav className={styles.tabs} aria-label="Secciones del cliente">
+            {tabs.map(t=><button type="button" key={t.id} className={tab===t.id?styles.activeTab:undefined}
+              aria-current={tab===t.id?'page':undefined} onClick={()=>setTab(t.id)}>{t.label}</button>)}
+          </nav>
+          <div className={styles.detailScroll}>
+            {tab==='summary'&&<>
+              <div className={styles.sectionTitle}><strong>Información</strong>
+                {canManage&&<button className={styles.editSmall} type="button" onClick={()=>beginEdit(selected)}><EditIcon/> Editar</button>}</div>
+              <dl className={styles.info}><dt>Nombre</dt><dd>{selected.name}</dd>
+                <dt>Tipo</dt><dd><span className={css.typePill}>{labels[selected.client_type]}</span></dd>
+                <dt>Sector</dt><dd>{selected.sector||'Sin indicar'}</dd>
+                <dt>Descripción</dt><dd>{selected.description||'Sin descripción'}</dd>
+                <dt>Estado</dt><dd><ClientStatus status={selected.status}/></dd>
+                <dt>Creado</dt><dd>{formatDateLong(selected.created_at)}</dd>
+                <dt>Actualizado</dt><dd>{formatDateLong(selected.updated_at)}</dd>
+              </dl>
+              <div className={styles.detailGroup}>
+                <div className={styles.groupHeading}><strong>Contacto principal</strong>
+                  {canManage&&<button type="button" onClick={()=>beginEdit(selected)}>Cambiar</button>}</div>
+                {selected.primary_contact?<div className={css.contactDetail}>
+                  <Avatar id={selected.primary_contact.id} name={selected.primary_contact.name}
+                    src={selected.primary_contact.avatar_url} size={37}/>
+                  <div><strong>{selected.primary_contact.name}</strong>
+                    <a href={'mailto:'+selected.primary_contact.email}>{selected.primary_contact.email}</a>
+                    {selected.primary_contact.professional_phone&&<a href={'tel:'+selected.primary_contact.professional_phone}>
+                      {selected.primary_contact.professional_phone}</a>}
+                  </div>
+                </div>:<span className={styles.muted}>No hay contacto principal asignado.</span>}
+              </div>
+              <div className={styles.detailGroup}>
+                <div className={styles.groupHeading}><strong>Usuarios del cliente ({selected.people_count})</strong>
+                  <button type="button" onClick={()=>setTab('members')}>Ver todos</button></div>
+                <People users={selected.people}/>
+              </div>
+              <div className={styles.detailGroup}>
+                <div className={styles.groupHeading}><strong>Proyectos ({selected.projects_count})</strong>
+                  <button type="button" onClick={()=>setTab('projects')}>Ver todos</button></div>
+                {selected.projects.slice(0,5).map(project=><div key={project.id} className={styles.detailEntry}>
+                  <LineIcon name="folder"/><span>{project.name}</span></div>)}
+                {!selected.projects.length&&<small className={styles.muted}>Sin proyectos asociados.</small>}
+              </div>
+            </>}
+            {tab==='members'&&<div className={styles.detailGroup}>
+              <strong>Usuarios activos y verificados ({selected.people_count})</strong>
+              {selected.people.map(person=><div key={person.id} className={css.memberRow}>
+                <Avatar id={person.id} name={person.name} src={person.avatar_url} size={33}/>
+                <span><strong>{person.name}</strong><small>{person.email}</small>
+                  {person.professional_phone&&<small>{person.professional_phone}</small>}</span>
+                {person.id===selected.primary_contact_user_id&&<small>Principal</small>}
+              </div>)}
+              {!selected.people.length&&<p className={styles.muted}>Esta empresa no tiene usuarios activos y verificados en el Workspace.</p>}
+            </div>}
+            {tab==='projects'&&<div className={styles.detailGroup}>
+              <strong>Proyectos asociados ({selected.projects_count})</strong>
+              {selected.projects.map(project=><div key={project.id} className={styles.detailEntry}>
+                <LineIcon name="folder"/><span>{project.name}</span></div>)}
+              {!selected.projects.length&&<p className={styles.muted}>No hay proyectos asociados.</p>}
+              <p className={styles.hint}>Asociar un proyecto a la empresa no concede acceso automáticamente a sus usuarios.</p>
+            </div>}
+            {tab==='settings'&&<div className={styles.detailGroup}>
+              <strong>Configuración</strong>
+              <p className={styles.muted}>Edita la información, cambia el contacto principal o archiva este cliente.</p>
+              {canManage&&<>
+                <button type="button" className={styles.editSmall} onClick={()=>beginEdit(selected)}><EditIcon/> Editar cliente</button>
+                <button type="button" className={styles.dangerLink} onClick={()=>setConfirmDeleteIds([selected.id])}
+                  disabled={selected.projects_count>0||selected.people.length>0}>
+                  <TrashIcon/> Eliminar cliente</button>
+                {(selected.projects_count>0||selected.people_count>0)&&<small className={styles.hint}>Solo se pueden eliminar clientes sin proyectos ni usuarios vinculados.</small>}
+              </>}
+            </div>}
+            {error&&<p role="alert" className={styles.formError}>{error}</p>}
+          </div>
+        </>:<div className={styles.placeholder}><LineIcon name="building"/><strong>Selecciona un cliente</strong>
+          <p>Consulta sus usuarios, contacto principal y proyectos asociados.</p></div>}
       </aside>
     </div>}
-    {confirmDelete && selected && createPortal(
-      <div className={styles.backdrop} onMouseDown={event => {
-        if (event.target === event.currentTarget && !busy) setConfirmDelete(false)
-      }}>
-        <div className={styles.confirmDialog} role="alertdialog" aria-modal="true" aria-labelledby="delete-client-title">
-          <h2 id="delete-client-title">Eliminar empresa cliente</h2>
-          <p>¿Eliminar «{selected.name}»? La acción no puede deshacerse.</p>
-          <div>
-            <button type="button" className={styles.ghost} disabled={busy} onClick={() => setConfirmDelete(false)}>Cancelar</button>
-            <button type="button" className={styles.danger} disabled={busy} onClick={() => void remove()}>
-              {busy ? 'Eliminando…' : 'Eliminar cliente'}
-            </button>
-          </div>
-        </div>
-      </div>, document.body)}
+    {confirmDeleteIds.length>0&&createPortal(<div className={styles.backdrop} onMouseDown={e=>{
+      if(e.target===e.currentTarget&&!busy)setConfirmDeleteIds([])
+    }}><div className={styles.confirmDialog} role="alertdialog" aria-modal="true" aria-labelledby="delete-client-title">
+      <h2 id="delete-client-title">{confirmDeleteIds.length===1?'Eliminar cliente':'Eliminar clientes'}</h2>
+      <p>Solo se eliminarán los clientes sin proyectos ni usuarios asociados. Esta acción no se puede deshacer.</p>
+      <div><button type="button" className={styles.subtle} disabled={busy} onClick={()=>setConfirmDeleteIds([])}>Cancelar</button>
+        <button type="button" className={styles.dangerButton} disabled={busy} onClick={()=>void remove()}>
+          {busy?'Eliminando…':'Eliminar'}</button></div>
+    </div></div>,document.body)}
   </section>
 }

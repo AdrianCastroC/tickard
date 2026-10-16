@@ -8,7 +8,12 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class ClientCompany extends Model
 {
-    protected $fillable = ['workspace_id', 'name'];
+    protected $fillable = ['workspace_id', 'name', 'client_type', 'sector', 'description', 'status', 'primary_contact_user_id'];
+
+    public function primaryContact(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'primary_contact_user_id');
+    }
 
     public function workspace(): BelongsTo
     {

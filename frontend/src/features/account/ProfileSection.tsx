@@ -15,6 +15,7 @@ export function ProfileSection({ profile, workspaceId, onProfile, onAvatar }: Pr
   const avatarRef = useRef<HTMLInputElement>(null)
   const [firstName, setFirstName] = useState(profile.user.first_name)
   const [lastName, setLastName] = useState(profile.user.last_name ?? '')
+  const [professionalPhone, setProfessionalPhone] = useState(profile.user.professional_phone ?? '')
   const [security, setSecurity] = useState<SecurityPurpose | null>(null)
   const [birthMonth, setBirthMonth] = useState(profile.user.birthday_month_day?.slice(0, 2) ?? '')
   const [birthDay, setBirthDay] = useState(profile.user.birthday_month_day?.slice(3, 5) ?? '')
@@ -34,6 +35,10 @@ export function ProfileSection({ profile, workspaceId, onProfile, onAvatar }: Pr
   const birthdayBusy = useRef(false)
   const birthdayQueued = useRef(false)
   const [birthdaySaving, setBirthdaySaving] = useState(false)
+  const [phoneSaving, setPhoneSaving] = useState(false)
+  const phoneSaved = useRef(profile.user.professional_phone ?? '')
+  const phoneDraft = useRef(profile.user.professional_phone ?? '')
+  const phoneBusy = useRef(false)
   const months = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
     'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre']
   const daysInMonth = birthMonth ? new Date(2000, Number(birthMonth), 0).getDate() : 31
@@ -145,6 +150,36 @@ export function ProfileSection({ profile, workspaceId, onProfile, onAvatar }: Pr
     }
   }
 
+  const persistPhone = useCallback(async () => {
+    const phone = phoneDraft.current.trim()
+    if (phone === phoneSaved.current || phoneBusy.current) return
+    if (phone && !/^\\+?[0-9 ().-]{6,30}$/.test(phone)) {
+      if (live.current) setError('Introduce un teléfono profesional válido o deja el campo vacío.')
+      return
+    }
+    phoneBusy.current = true
+    if (live.current) { setPhoneSaving(true); setError(''); setInfo('') }
+    try {
+      const next = await api<Profile>(mePath, {
+        method: 'PATCH', body: JSON.stringify({ professional_phone: phone || null }),
+      })
+      phoneSaved.current = next.user.professional_phone ?? ''
+      onProfileRef.current(next)
+      if (live.current) setInfo('Teléfono profesional guardado.')
+    } catch (cause) {
+      if (live.current) setError(cause instanceof Error ? cause.message : 'No se pudo guardar el teléfono.')
+    } finally {
+      phoneBusy.current = false
+      if (live.current) setPhoneSaving(false)
+    }
+  }, [mePath])
+
+  useEffect(() => {
+    if (professionalPhone.trim() === phoneSaved.current) return
+    const timeout = window.setTimeout(() => void persistPhone(), 900)
+    return () => window.clearTimeout(timeout)
+  }, [professionalPhone, persistPhone])
+
   function updateFirst(value: string) {
     draft.current.first = value
     setFirstName(value); setError(''); setInfo('')
@@ -205,6 +240,13 @@ export function ProfileSection({ profile, workspaceId, onProfile, onAvatar }: Pr
             <input value={lastName} onChange={event => updateLast(event.target.value)} onBlur={() => void persist()}
               autoComplete="family-name" maxLength={120}/>
           </label>
+          <label className={[styles.field, styles.fieldFull].join(' ')}>
+            Teléfono profesional (opcional)
+            <input type="tel" autoComplete="tel" maxLength={30} value={professionalPhone}
+              placeholder="Ej.: +34 981 123 456"
+              onChange={event => { phoneDraft.current = event.target.value; setProfessionalPhone(event.target.value) }}
+              onBlur={() => void persistPhone()}/>
+          </label>
           <div className={[styles.birthdaySettings, styles.fieldFull].join(' ')}>
             <span className={styles.birthdayLabel}>Cumpleaños (opcional)</span>
             <div className={styles.birthdayInputs}>
@@ -251,9 +293,9 @@ export function ProfileSection({ profile, workspaceId, onProfile, onAvatar }: Pr
           <button type="button" className={styles.secondaryAction} onClick={() => setSecurity('password')}>Cambiar contraseña</button>
         </div>
       </div>
-        {(saving || birthdaySaving || error || info) && <div className={styles.autoSaveStatus} role={error ? 'alert' : 'status'}>
+        {(saving || birthdaySaving || phoneSaving || error || info) && <div className={styles.autoSaveStatus} role={error ? 'alert' : 'status'}>
           {error ? <span className={styles.feedbackError}>{error}</span> :
-            <span className={styles.ok}>{saving || birthdaySaving ? 'Guardando cambios…' : info}</span>}
+            <span className={styles.ok}>{saving || birthdaySaving || phoneSaving ? 'Guardando cambios…' : info}</span>}
           {error && <button type="button" onClick={() => void persist()}>Reintentar</button>}
         </div>}
       </div>

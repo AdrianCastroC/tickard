@@ -15,6 +15,7 @@ class Workspace extends Model
         'owner_id',
         'extra_seats',
         'show_birthdays',
+        'show_clients',
     ];
 
     protected function casts(): array
@@ -22,6 +23,7 @@ class Workspace extends Model
         return [
             'extra_seats' => 'integer',
             'show_birthdays' => 'boolean',
+            'show_clients' => 'boolean',
         ];
     }
 
@@ -37,6 +39,7 @@ class Workspace extends Model
             'name' => 'Mi espacio',
             'owner_id' => $user->id,
             'extra_seats' => 0,
+            'show_clients' => false,
         ]);
 
         $workspace->memberships()->create([

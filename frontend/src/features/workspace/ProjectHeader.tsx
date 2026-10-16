@@ -12,7 +12,7 @@ export function ProjectHeader({ project, settingsActive, onSettings }: {
 }) {
   return <header className="project-hero">
     <div className="project-hero-identity"><div className="project-hero-icon" aria-hidden="true"><ProjectCubeIcon/></div>
-      <div><h1>{project.name}</h1><p className="subtitle">{project.client_name}</p></div>
+      <div><h1>{project.name}</h1>{project.client_name && <p className="subtitle">{project.client_name}</p>}</div>
     </div>
     {project.role === 'responsable' && <button className={`icon-button project-settings-button${settingsActive ? ' on' : ''}`}
       type="button" aria-label="Configuración del proyecto" aria-pressed={settingsActive}
