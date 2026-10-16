@@ -150,8 +150,9 @@ export function ProfileSection({ profile, workspaceId, onProfile, onAvatar }: Pr
           <em className="account-plan">{({ free: 'Free', base: 'Base', pro: 'Pro', business: 'Business' } as Record<string, string>)[profile.user.plan] ?? profile.user.plan}</em>
         </div>
         <div className={styles.identityId}>
-          <span>ID</span>
           <div className={styles.publicHandle}>
+            <span className={styles.handleLabel}>ID</span>
+            <span className={styles.handleSeparator} aria-hidden="true">|</span>
             <code title="ID permanente de la cuenta">{profile.user.handle}</code>
             <button type="button" className={styles.copyHandle} onClick={copyId}
               aria-label="Copiar ID" title="Copiar ID">
