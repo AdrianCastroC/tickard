@@ -2,6 +2,8 @@
 
 use App\Http\Controllers\Api\AdministrationController;
 use App\Http\Controllers\Api\WorkspaceDepartmentsController;
+use App\Http\Controllers\Api\WorkspaceTeamsController;
+use App\Http\Controllers\Api\WorkspaceClientsController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\AccountSecurityController;
 use App\Http\Controllers\Api\CardsController;
@@ -60,13 +62,15 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::patch('/departments/{department}', [WorkspaceDepartmentsController::class, 'update']);
     Route::delete('/departments/{department}', [WorkspaceDepartmentsController::class, 'destroy']);
 
-    Route::get('/clients', [AdministrationController::class, 'clients']);
-    Route::post('/clients', [AdministrationController::class, 'storeClient']);
+    Route::get('/clients', [WorkspaceClientsController::class, 'index']);
+    Route::post('/clients', [WorkspaceClientsController::class, 'store']);
+    Route::patch('/clients/{client}', [WorkspaceClientsController::class, 'update']);
+    Route::delete('/clients/{client}', [WorkspaceClientsController::class, 'destroy']);
 
-    Route::get('/teams', [AdministrationController::class, 'teams']);
-    Route::post('/teams', [AdministrationController::class, 'storeTeam']);
-    Route::patch('/teams/{team}', [AdministrationController::class, 'updateTeam']);
-    Route::delete('/teams/{team}', [AdministrationController::class, 'destroyTeam']);
+    Route::get('/teams', [WorkspaceTeamsController::class, 'index']);
+    Route::post('/teams', [WorkspaceTeamsController::class, 'store']);
+    Route::patch('/teams/{team}', [WorkspaceTeamsController::class, 'update']);
+    Route::delete('/teams/{team}', [WorkspaceTeamsController::class, 'destroy']);
 
     Route::post('/projects', [ProjectsController::class, 'storeProject']);
     Route::delete('/projects/{project}', [ProjectsController::class, 'deleteProject']);

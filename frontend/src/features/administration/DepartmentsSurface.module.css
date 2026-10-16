@@ -108,3 +108,5 @@
 @media(max-width:540px) { .root{padding:14px;} .heading{align-items:flex-start;flex-wrap:wrap}
   .filters {flex-wrap:wrap;} .filters select{max-width:none;width:100%;} .table th,.table td{padding:9px 7px;}
   .table th:nth-child(2),.table td:nth-child(2){display:none;} }
+
+.delete:disabled { opacity:.4; cursor:not-allowed; }
