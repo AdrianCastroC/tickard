@@ -34,6 +34,7 @@ class AccountSecurityTest extends TestCase
 
     public function test_email_change_needs_old_inbox_then_new_inbox_and_password(): void
     {
+        $this->withoutMiddleware(ThrottleRequests::class);
         $user = User::factory()->create(['email' => 'old@example.com', 'first_name' => 'Ana']);
         $id = $user->publicHandle();
         $oldCode = null;
@@ -108,6 +109,7 @@ class AccountSecurityTest extends TestCase
 
     public function test_password_change_requires_old_email_code_and_current_password(): void
     {
+        $this->withoutMiddleware(ThrottleRequests::class);
         $user = User::factory()->create(['email' => 'old@example.com']);
         $original = $user->publicHandle();
         $code = null;

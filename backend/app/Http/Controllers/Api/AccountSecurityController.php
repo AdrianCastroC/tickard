@@ -18,6 +18,12 @@ class AccountSecurityController extends ApiController
 {
     private function context(Request $request): string
     {
+        // Tie each verification to the actual bearer token. The authenticated
+        // user alone is not sufficient: another signed-in session must not
+        // be able to finish an already verified challenge.
+        if ($request->bearerToken()) {
+            return 'bearer:'.hash('sha256', $request->bearerToken());
+        }
         $token = $request->user()->currentAccessToken();
         if ($token instanceof PersonalAccessToken) {
             return 'token:'.$token->getKey();
