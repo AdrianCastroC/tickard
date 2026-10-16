@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\ValidationException;
 use Tests\TestCase;
 
@@ -11,14 +12,13 @@ class UserIdentityTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_registration_assigns_a_permanent_nickname_from_first_name_only(): void
+    public function test_registration_creates_permanent_full_id_from_original_first_name(): void
     {
         $base = [
             'first_name' => 'Adrián',
             'password' => 'secret123',
             'password_confirmation' => 'secret123',
         ];
-
         $this->postJson('/api/register', [
             ...$base, 'last_name' => 'Castro', 'email' => 'adrian-a@example.com',
         ])->assertCreated();
@@ -27,48 +27,48 @@ class UserIdentityTest extends TestCase
             ...$base, 'last_name' => 'Pérez', 'email' => 'adrian-b@example.com',
         ])->assertCreated();
 
-        $first = User::where('email', 'adrian-a@example.com')->firstOrFail();
-        $second = User::where('email', 'adrian-b@example.com')->firstOrFail();
+        $one = User::where('email', 'adrian-a@example.com')->firstOrFail();
+        $two = User::where('email', 'adrian-b@example.com')->firstOrFail();
 
-        $this->assertSame('adrian', $first->nickname);
-        $this->assertSame('adrian', $second->nickname);
-        $this->assertSame('adrian#'.str_pad((string) $first->id, 5, '0', STR_PAD_LEFT), $first->publicHandle());
-        $this->assertNotSame($first->publicHandle(), $second->publicHandle());
+        $this->assertSame('adrian#'.str_pad((string) $one->id, 5, '0', STR_PAD_LEFT), $one->publicHandle());
+        $this->assertSame('adrian#'.str_pad((string) $two->id, 5, '0', STR_PAD_LEFT), $two->publicHandle());
+        $this->assertNotSame($one->publicHandle(), $two->publicHandle());
+        $this->assertSame($one->publicHandle(), $one->fresh()->public_handle);
+        $this->assertFalse(Schema::hasColumn('users', 'nickname'));
+        $this->assertTrue(Schema::hasColumn('users', 'public_handle'));
     }
 
-    public function test_updating_names_does_not_modify_the_nickname_or_public_handle(): void
+    public function test_name_edits_do_not_change_stored_id_or_account_email(): void
     {
-        $user = User::factory()->create([
-            'first_name' => 'Ana', 'last_name' => 'Ruiz', 'nickname' => 'ana',
-        ]);
-        $originalHandle = $user->publicHandle();
-        $originalEmail = $user->email;
+        $user = User::factory()->create(['first_name' => 'Ana', 'last_name' => 'Ruiz']);
+        $handle = $user->publicHandle();
+        $email = $user->email;
 
         $this->actingAs($user)->patchJson('/api/me', [
             'first_name' => 'María', 'last_name' => 'López',
         ])->assertOk()
             ->assertJsonPath('user.name', 'María López')
-            ->assertJsonPath('user.nickname', 'ana')
-            ->assertJsonPath('user.handle', $originalHandle)
-            ->assertJsonPath('user.email', $originalEmail);
+            ->assertJsonPath('user.handle', $handle)
+            ->assertJsonPath('user.email', $email)
+            ->assertJsonMissingPath('user.nickname');
 
-        $this->assertSame('ana', $user->fresh()->nickname);
-        $this->assertSame($originalHandle, $user->fresh()->publicHandle());
+        $this->assertSame($handle, $user->fresh()->publicHandle());
         $this->assertSame('María López', $user->fresh()->name);
 
         $this->patchJson('/api/me', [
             'theme' => 'dark', 'notify_in_app' => true,
-        ])->assertOk()->assertJsonPath('user.handle', $originalHandle);
+        ])->assertOk()->assertJsonPath('user.handle', $handle);
     }
 
-    public function test_nickname_and_other_account_identity_fields_are_rejected_by_api(): void
+    public function test_fixed_identity_fields_are_rejected_by_profile_api(): void
     {
-        $user = User::factory()->create(['nickname' => 'ana']);
+        $user = User::factory()->create(['first_name' => 'Ana']);
         $oldEmail = $user->email;
         $oldHandle = $user->publicHandle();
 
         foreach ([
             'nickname' => 'otro',
+            'public_handle' => 'otro#99999',
             'email' => 'nuevo@example.com',
             'name' => 'Identidad nueva',
             'id' => 999,
@@ -79,16 +79,29 @@ class UserIdentityTest extends TestCase
         }
 
         $fresh = $user->fresh();
-        $this->assertSame('ana', $fresh->nickname);
         $this->assertSame($oldEmail, $fresh->email);
         $this->assertSame($oldHandle, $fresh->publicHandle());
     }
 
-    public function test_model_rejects_changes_to_a_preexisting_nickname_even_outside_profile_api(): void
+    public function test_user_model_cannot_modify_persisted_public_handle(): void
     {
-        $user = User::factory()->create(['nickname' => 'ana']);
+        $user = User::factory()->create(['first_name' => 'Ana']);
+        $oldHandle = $user->publicHandle();
+        try {
+            $user->forceFill(['public_handle' => 'maria#00001'])->save();
+            $this->fail('No debe poder cambiarse el ID permanente.');
+        } catch (ValidationException $e) {
+            $this->assertArrayHasKey('public_handle', $e->errors());
+        }
+        $this->assertSame($oldHandle, $user->fresh()->publicHandle());
+    }
 
-        $this->expectException(ValidationException::class);
-        $user->update(['nickname' => 'maria']);
+    public function test_legacy_nickname_is_not_stored_as_a_separate_user_column(): void
+    {
+        $this->assertFalse(Schema::hasColumn('users', 'nickname'));
+        $first = User::factory()->create(['first_name' => 'Ana']);
+        $second = User::factory()->create(['first_name' => 'Ana']);
+        $this->assertNotSame($first->publicHandle(), $second->publicHandle());
+        $this->assertSame($second->publicHandle(), $second->fresh()->public_handle);
     }
 }

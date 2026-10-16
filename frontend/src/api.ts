@@ -213,7 +213,6 @@ export type Profile = {
     name: string
     first_name: string
     last_name: string | null
-    nickname: string | null
     handle: string
     email: string
     is_admin: boolean

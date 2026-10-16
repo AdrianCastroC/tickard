@@ -14,7 +14,14 @@ type Props = {
 export function AccountHeader({ profile, workspaceId, query, onQueryChange, onProfile, breadcrumb, mini = false }: Props & { breadcrumb: string[]; mini?: boolean }) {
   const [section, setSection] = useState<AccountSection | null>(null)
   const [notes, setNotes] = useState<{ id: number; body: string }[]>([])
-  useEffect(() => { const open = () => setSection('profile'); window.addEventListener('tickard:open-account', open); return () => window.removeEventListener('tickard:open-account', open) }, [])
+  useEffect(() => {
+    const open = (event: Event) => {
+      const section = (event as CustomEvent<AccountSection | undefined>).detail
+      setSection(section === 'settings' || section === 'notifications' ? section : 'profile')
+    }
+    window.addEventListener('tickard:open-account', open)
+    return () => window.removeEventListener('tickard:open-account', open)
+  }, [])
 
   async function changeAvatar(file: File) {
     const path = workspaceId ? `/me/avatar?workspace_id=${workspaceId}` : '/me/avatar'

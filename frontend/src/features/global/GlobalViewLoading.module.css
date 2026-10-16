@@ -1,0 +1,45 @@
+.root { position:relative; isolation:isolate; flex:1 1 auto; width:100%; height:100%; min-height:0; min-width:0; overflow:hidden; background:var(--surface); border-radius:10px; }
+.preview { position:absolute; inset:0; display:flex; flex-direction:column; gap:13px; padding:4px; filter:blur(3px); opacity:.7; transform:scale(1.009); user-select:none; pointer-events:none; }
+.header { display:flex; flex:0 0 43px; align-items:center; justify-content:space-between; gap:12px; }
+.headerTitle { width:31%; max-width:240px; height:27px; border-radius:8px; background:var(--canvas); }
+.headerAction { width:22%; max-width:150px; height:32px; border-radius:8px; background:var(--canvas); }
+.stats { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:13px; flex:0 0 105px; }
+.stat { display:flex; flex-direction:column; align-items:flex-start; gap:11px; padding:14px; border-radius:11px; border:1px solid var(--line); background:var(--surface); }
+.stat span { width:60%; height:11px; border-radius:5px; background:var(--canvas); }
+.stat strong { width:27%; height:25px; border-radius:6px; background:var(--canvas); }
+.stat small { width:45%; height:9px; border-radius:5px; background:var(--canvas); }
+.panels { flex:1 1 auto; min-height:0; display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); grid-template-rows:repeat(2,minmax(0,1fr)); gap:13px; }
+.panel { display:flex; flex-direction:column; min-height:0; min-width:0; padding:15px; gap:13px; border:1px solid var(--line); border-radius:11px; background:var(--surface); overflow:hidden; }
+.panelTitle { width:40%; height:15px; background:var(--canvas); border-radius:5px; margin-bottom:4px; flex:0 0 15px; }
+.line { height:29px; min-height:29px; border-radius:7px; background:var(--canvas); }
+.line:nth-child(3n) { width:83%; }
+.line:nth-child(4n) { width:94%; }
+.tasks .panels,.inbox .panels { grid-template-columns:minmax(0,1fr); grid-template-rows:minmax(0,1fr); }
+.tasks .panel,.inbox .panel { gap:12px; }
+.tasks .line,.inbox .line { min-height:41px; height:41px; }
+.inbox .panel { gap:14px; }
+.veil { position:absolute; inset:0; background:radial-gradient(ellipse at center,
+  color-mix(in srgb,var(--surface) 86%,transparent) 0%,
+  color-mix(in srgb,var(--surface) 66%,transparent) 35%,
+  color-mix(in srgb,var(--surface) 35%,transparent) 100%); pointer-events:none; }
+.message { position:absolute; inset:0; z-index:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:13px; padding:20px; text-align:center; }
+.dots { position:relative; width:116px; height:116px; margin-bottom:7px; flex:0 0 116px; }
+.dotPosition { position:absolute; left:calc(50% - 8px); top:calc(50% - 8px); width:16px; height:16px;
+  transform:rotate(calc(var(--dot-index) * 30deg)) translateY(-43px); }
+.dot { display:block; width:100%; height:100%; border-radius:50%; background:var(--accent); opacity:.2;
+  animation:global-loading-pulse 1.2s linear infinite; animation-delay:calc(var(--dot-index) * 100ms); }
+.message h2 { margin:0; font-size:clamp(19px,2.3vw,26px); font-weight:750; line-height:1.2; letter-spacing:-.025em; color:var(--ink); }
+.message p { max-width:380px; margin:0; color:var(--muted); font-size:clamp(11px,1.3vw,14px); line-height:1.45; }
+@keyframes global-loading-pulse { 0% { opacity:1; transform:scale(1.2); }
+  15% { opacity:.8; transform:scale(1); } 45% { opacity:.4; transform:scale(.7); }
+  70%,100% { opacity:.2; transform:scale(.48); } }
+@media(max-width:670px) { .stats { grid-template-columns:repeat(2,minmax(0,1fr)); flex-basis:150px; gap:8px; }
+  .stat { padding:9px; gap:7px; } .panels { grid-template-columns:minmax(0,1fr); grid-template-rows:repeat(4,minmax(0,1fr)); gap:8px; }
+  .panel { padding:10px; gap:7px; } .line { height:20px; min-height:20px; }
+  .header { flex-basis:35px; } .dots { width:95px; height:95px; flex-basis:95px; }
+  .dotPosition { transform:rotate(calc(var(--dot-index) * 30deg)) translateY(-35px); }
+}
+@media(prefers-reduced-motion:reduce) { .dot { animation:none; opacity:.35; }
+  .dotPosition:nth-child(1) .dot { opacity:1; transform:scale(1.15); }
+  .dotPosition:nth-child(2) .dot { opacity:.8; transform:scale(1); }
+}

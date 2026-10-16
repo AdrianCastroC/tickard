@@ -18,7 +18,7 @@ class WorkspaceInvitationsTest extends TestCase
 
     private function fixture(): array
     {
-        $owner = User::factory()->create(['is_admin' => false, 'plan' => 'free', 'nickname' => 'owner']);
+        $owner = User::factory()->create(['is_admin' => false, 'plan' => 'free', 'first_name' => 'Owner']);
         $workspace = Workspace::createInitialFor($owner);
         $client = ClientCompany::create(['workspace_id' => $workspace->id, 'name' => 'Empresa']);
         $project = Project::create([
@@ -30,8 +30,8 @@ class WorkspaceInvitationsTest extends TestCase
     public function test_multiple_registered_users_can_be_invited_by_email_or_public_handle_without_email_delivery(): void
     {
         [$owner, $workspace, $project] = $this->fixture();
-        $a = User::factory()->create(['email' => 'uno@example.com', 'nickname' => 'uno']);
-        $b = User::factory()->create(['email' => 'dos@example.com', 'nickname' => 'dos']);
+        $a = User::factory()->create(['email' => 'uno@example.com', 'first_name' => 'Uno']);
+        $b = User::factory()->create(['email' => 'dos@example.com', 'first_name' => 'Dos']);
 
         $this->assertSame('dos#'.str_pad((string) $b->id, 5, '0', STR_PAD_LEFT), $b->publicHandle());
         $response = $this->actingAs($owner)->postJson("/api/workspaces/{$workspace->id}/invitations", [
@@ -56,7 +56,7 @@ class WorkspaceInvitationsTest extends TestCase
     public function test_project_invitation_assigns_selected_role_and_workspace_membership_in_one_acceptance(): void
     {
         [$owner, $workspace, $project] = $this->fixture();
-        $recipient = User::factory()->create(['nickname' => 'carlos']);
+        $recipient = User::factory()->create(['first_name' => 'Carlos']);
         $sent = $this->actingAs($owner)->postJson("/api/projects/{$project->id}/invitations", [
             'role' => 'lector', 'recipients' => [$recipient->publicHandle()],
         ])->assertCreated()->assertJsonPath('created.0.project_role', 'lector');
@@ -187,7 +187,7 @@ class WorkspaceInvitationsTest extends TestCase
 
     public function test_public_handle_remains_fixed_even_after_name_changes(): void
     {
-        $user = User::factory()->create(['name' => 'María', 'nickname' => 'maria']);
+        $user = User::factory()->create(['first_name' => 'María']);
         $originalHandle = $user->publicHandle();
 
         $this->actingAs($user)->patchJson('/api/me', ['nickname' => 'maria-dev'])
@@ -198,8 +198,28 @@ class WorkspaceInvitationsTest extends TestCase
             ->assertJsonPath('user.name', 'Ana García');
 
         $this->assertSame($user->id, $user->fresh()->id);
-        $this->assertSame('maria', $user->fresh()->nickname);
+        $this->assertSame($originalHandle, $user->fresh()->public_handle);
     }
+
+    public function test_invitations_resolve_saved_id_even_after_first_name_changes(): void
+    {
+        [$owner, $workspace] = $this->fixture();
+        $recipient = User::factory()->create(['first_name' => 'Ana']);
+        $originalId = $recipient->publicHandle();
+
+        $recipient->update(['first_name' => 'María', 'last_name' => 'Castro']);
+        $this->assertSame($originalId, $recipient->fresh()->publicHandle());
+
+        $this->actingAs($owner)->postJson("/api/workspaces/{$workspace->id}/invitations", [
+            'recipients' => [$originalId],
+        ])->assertCreated()->assertJsonCount(1, 'created')->assertJsonCount(0, 'errors');
+
+        $this->assertDatabaseHas('workspace_invitations', [
+            'workspace_id' => $workspace->id,
+            'recipient_user_id' => $recipient->id,
+        ]);
+    }
+
     public function test_invites_resolve_padded_primary_key_suffix(): void
     {
         [$owner, $workspace] = $this->fixture();

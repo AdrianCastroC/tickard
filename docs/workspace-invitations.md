@@ -4,7 +4,13 @@
 
 Invitaciones **solo para cuentas Tickard registradas**, identificadas por correo o identificador público `nick#ID`. No hay listas de amigos, enlaces compartibles, invitaciones a cuentas inexistentes ni SMTP.
 
-El identificador se muestra en **Perfil**. La tabla `users` tiene `first_name` obligatorio, `last_name` opcional y `nickname` **permanente**, asignado una sola vez al registrar la cuenta a partir de `first_name`. El handle es `nickname#ID`: el sufijo corresponde al **ID real de la tabla `users`**, completado con ceros a la izquierda hasta un **mínimo de 5 dígitos** (`ana#00001`, `maria#00125`, `juan#100000`). No se trunca si el ID supera las cinco cifras. La clave primaria `users.id` ya es única; por lo tanto, también lo es la combinación `nickname#ID` sin necesidad de otro índice.\n\nEl nickname de registro se obtiene únicamente del primer nombre. El campo `name` conserva el nombre completo para las vistas existentes. Una migración posterior elimina la antigua columna `public_id`, que contenía códigos independientes desde 100000, pero **mantiene todos los usuarios y sus IDs reales**.
+En **Mi perfil** se muestra una única línea llamada **ID**, con el valor completo (por ejemplo, `ana#00001`) y un botón para copiarlo. No hay un campo independiente de nickname.
+
+La base de datos guarda directamente el identificador completo y permanente en `users.public_handle` (índice `UNIQUE`). Se genera **una sola vez** al crear la cuenta, usando el primer nombre normalizado a minúsculas y el ID numérico real de `users.id`, completado con ceros a la izquierda hasta cinco dígitos como mínimo. Por ejemplo: `ana#00001`, `maria#00125`, `juan#100000`. Los IDs más largos nunca se truncan.
+
+El nombre y los apellidos pueden cambiarse posteriormente sin modificar `public_handle`. No puede cambiarse el ID desde el perfil, la API ni mediante actualizaciones ordinarias del modelo. Para disponer de otro ID hay que registrar otra cuenta.
+
+La migración `2026_10_16_090000_replace_nickname_with_immutable_public_handle.php` conserva **exactamente los identificadores ya utilizados**, calcula y guarda su valor antes de retirar la antigua columna `nickname`. Los IDs internos y las relaciones existentes no se modifican.
 
 ## Dos destinos, mismo flujo
 
@@ -37,7 +43,7 @@ Autenticadas con Sanctum:
 - `POST /api/projects/{project}/invitations/delete` — `{"ids":[1,2]}`.
 - `GET /api/my/invitations` — recibidas, para cualquier usuario autenticado.
 - `POST /api/my/invitations/{invitation}/respond` — `{"action":"accept"}` o `{"action":"reject"}`.
-- `PATCH /api/me` — permite editar `first_name`, `last_name`, contraseña y preferencias. Rechaza `nickname`, `email`, `handle`, `name` e `id`. Para cambiar de nickname es necesario crear otra cuenta.
+- `PATCH /api/me` — permite editar `first_name`, `last_name`, contraseña y preferencias. Rechaza `public_handle`, `nickname` (parámetro antiguo), `email`, `handle`, `name` e `id`.
 
 ## Instalación y pruebas
 

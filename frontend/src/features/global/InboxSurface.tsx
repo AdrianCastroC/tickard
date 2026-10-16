@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { api } from '../../api'
 import type { MyTask } from './MyTasksSurface'
+import { GlobalViewLoading } from './GlobalViewLoading'
 import styles from './InboxSurface.module.css'
 
 type CardTarget = Pick<MyTask, 'id' | 'board_id' | 'project_id' | 'workspace_id'>
@@ -109,6 +110,10 @@ export function InboxSurface({ onAccepted, onOpenCard, onUnreadChanged }: Props)
   const unread = notices.filter(item => !item.read_at).length
   const visibleNotes = showUnread ? notices.filter(item => !item.read_at) : notices
 
+  if (loading) return <section className={`${styles.root} inbox-view`} aria-label="Cargando Bandeja de entrada">
+    <GlobalViewLoading variant="inbox" title="Cargando Bandeja de entrada" description="Consultando tus invitaciones y notificaciones." />
+  </section>
+
   return <section className={`${styles.root} inbox-view`} aria-label="Bandeja de entrada">
     <header className={styles.heading}>
       <div><h1>Bandeja de entrada</h1><p>Invitaciones y actividad que requiere tu atención.</p></div>
@@ -118,7 +123,7 @@ export function InboxSurface({ onAccepted, onOpenCard, onUnreadChanged }: Props)
     <div className={styles.scroll}>
       {(loading || pending.length > 0) && <section className={styles.panel}>
         <div className={styles.panelHeader}><h2>Invitaciones pendientes</h2><span>{pending.length}</span></div>
-        {loading && <p className={styles.empty}>Cargando invitaciones…</p>}
+
         {pending.map(item => <div key={item.id} className={styles.item}>
           <div className={styles.itemBody}>
             <strong>{item.project_name ? `Proyecto «${item.project_name}»` : `Workspace «${item.workspace_name}»`}</strong>
@@ -146,7 +151,7 @@ export function InboxSurface({ onAccepted, onOpenCard, onUnreadChanged }: Props)
               onClick={() => void markAll()}>Marcar todas como leídas</button>
           </div>
         </div>
-        {loading && <p className={styles.empty}>Cargando avisos…</p>}
+
         {!loading && visibleNotes.length === 0 && <p className={styles.empty}>
           {showUnread ? 'No tienes avisos sin leer.' : 'Todavía no tienes avisos.'}
         </p>}

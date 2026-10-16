@@ -28,7 +28,7 @@ class RegistrationTest extends TestCase
         $this->assertSame('Ada Lovelace', $user->name);
         $this->assertSame('Ada', $user->first_name);
         $this->assertSame('Lovelace', $user->last_name);
-        $this->assertSame('ada', $user->nickname);
+        $this->assertSame('ada#'.str_pad((string) $user->id, 5, '0', STR_PAD_LEFT), $user->public_handle);
         $this->assertSame('ada#'.str_pad((string) $user->id, 5, '0', STR_PAD_LEFT), $user->publicHandle());
         $this->assertFalse($user->is_admin);
         $this->assertNull($user->client_company_id);
@@ -115,8 +115,9 @@ class RegistrationTest extends TestCase
         $this->assertNotSame($one->publicHandle(), $two->publicHandle());
         $this->assertDatabaseHas('users', ['id' => $two->id]);
         // The padding is a minimum width, never a truncation of larger IDs.
-        $example = new User(['nickname' => 'ana']);
+        $example = User::factory()->make(['first_name' => 'Ana', 'last_name' => null]);
         $example->id = 100000;
+        $example->save();
         $this->assertSame('ana#100000', $example->publicHandle());
     }
 

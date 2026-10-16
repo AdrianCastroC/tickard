@@ -2,6 +2,7 @@ import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 're
 import { createPortal } from 'react-dom'
 import { api } from '../../api'
 import { CloseIcon, FilterFunnelIcon } from '../../shared/icons'
+import { GlobalViewLoading } from './GlobalViewLoading'
 import styles from './MyTasksSurface.module.css'
 
 export type MyTask = {
@@ -200,6 +201,10 @@ export function MyTasksSurface({ onOpenTask, onOpenMeeting, initialState = 'all'
     finally { setOpeningId(null) }
   }
 
+  if (loading && !result) return <section className={`${styles.root} my-tasks-view`} aria-label="Cargando Mis tareas">
+    <GlobalViewLoading variant="tasks" title="Cargando Mis tareas" description="Preparando tus Cards y reuniones de hoy." />
+  </section>
+
   return <section className={`${styles.root} my-tasks-view`} aria-label="Mis tareas">
     <header className={styles.heading}>
       <div className={styles.headingTitle}>
@@ -304,9 +309,7 @@ export function MyTasksSurface({ onOpenTask, onOpenMeeting, initialState = 'all'
         <span>{result ? `${result.pagination.total} resultados` : 'Cargando…'}</span>
       </div>
       <div className={styles.listScroll} aria-busy={loading}>
-        {loading && !result && <div className={styles.skeleton} aria-label="Cargando tareas">
-          {Array.from({ length: 8 }, (_, index) => <div key={index}/>)}
-        </div>}
+
         {error && <div className={styles.error} role="alert">{error}
           <button type="button" onClick={() => setReload(value => value + 1)}>Reintentar</button>
         </div>}

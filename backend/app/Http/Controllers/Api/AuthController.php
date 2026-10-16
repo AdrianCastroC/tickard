@@ -68,7 +68,6 @@ class AuthController extends ApiController
             $user = User::create([
                 'first_name' => trim($data['first_name']),
                 'last_name' => trim($data['last_name'] ?? '') ?: null,
-                'nickname' => User::defaultNickname($data['first_name']),
                 'email' => $data['email'],
                 'password' => $data['password'],
             ]);
@@ -111,15 +110,17 @@ class AuthController extends ApiController
             'name' => ['prohibited'],
             'id' => ['prohibited'],
             'handle' => ['prohibited'],
+            'public_handle' => ['prohibited'],
             'theme' => ['sometimes', Rule::in(['light', 'dark', 'system'])],
             'notify_in_app' => ['sometimes', 'boolean'],
             'notify_email' => ['sometimes', 'boolean'],
             'current_password' => ['required_with:password', 'current_password'],
             'password' => ['sometimes', 'string', 'min:8', 'confirmed'],
         ], [
-            'nickname.prohibited' => 'El nickname es permanente. Para utilizar otro necesitas crear otra cuenta.',
+            'nickname.prohibited' => 'El ID de la cuenta es permanente. Para utilizar otro necesitas crear otra cuenta.',
             'email.prohibited' => 'El correo no puede modificarse desde el perfil sin un proceso de verificación.',
             'handle.prohibited' => 'El identificador público es permanente.',
+            'public_handle.prohibited' => 'El ID de la cuenta es permanente.',
         ]);
 
         // Apply only validated changes to a freshly loaded user. In

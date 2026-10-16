@@ -1,6 +1,6 @@
-import { useEffect, useEffectEvent } from 'react'
-import { api, type Profile } from '../../api'
-import { BellIcon, CloseIcon, ProfileUserIcon, SettingsIcon } from '../../shared/icons'
+import { useEffect, useEffectEvent, useState } from 'react'
+import { api, setToken, type Profile } from '../../api'
+import { BellIcon, CloseIcon, LogoutIcon, ProfileUserIcon, SettingsIcon } from '../../shared/icons'
 import styles from './AccountModal.module.css'
 import { NotificationsSection } from './NotificationsSection'
 import { ProfileSection } from './ProfileSection'
@@ -17,6 +17,21 @@ export function AccountModal({ section, profile, notes, workspaceId, onSection, 
       .then(items => { if (!cancelled) receiveNotes(items) })
     return () => { cancelled = true }
   }, [section])
+  const [signingOut, setSigningOut] = useState(false)
+  const [logoutError, setLogoutError] = useState('')
+  async function logout() {
+    if (signingOut) return
+    setSigningOut(true)
+    setLogoutError('')
+    try {
+      await api('/logout', { method: 'POST' })
+      setToken(null)
+      window.location.assign('/login')
+    } catch (cause) {
+      setLogoutError(cause instanceof Error ? cause.message : 'No se pudo cerrar la sesión.')
+      setSigningOut(false)
+    }
+  }
   const titles = { profile: 'Mi perfil', settings: 'Configuración', notifications: 'Notificaciones' } as const
   return <div className="modal-back" onClick={onClose}>
     <div className={`modal ${styles.modal}`} role="dialog" aria-modal="true"
@@ -25,6 +40,12 @@ export function AccountModal({ section, profile, notes, workspaceId, onSection, 
       <button type="button" className={section === 'profile' ? styles.active : undefined} onClick={() => onSection('profile')}><ProfileUserIcon /> Mi perfil</button>
       <button type="button" className={section === 'settings' ? styles.active : undefined} onClick={() => onSection('settings')}><SettingsIcon /> Configuración</button>
       <button type="button" className={section === 'notifications' ? styles.active : undefined} onClick={() => onSection('notifications')}><BellIcon /> Notificaciones {profile.unread > 0 && <i className="account-badge">{profile.unread}</i>}</button>
+      <div className={styles.navLogout}>
+        {logoutError && <p role="alert">{logoutError}</p>}
+        <button type="button" onClick={() => void logout()} disabled={signingOut}>
+          <LogoutIcon /> {signingOut ? 'Cerrando sesión…' : 'Cerrar sesión'}
+        </button>
+      </div>
     </div>
     <div className={styles.main}><div className={`row ${styles.head}`}><h2>{titles[section]}</h2><button className="icon-close" type="button" aria-label="Cerrar" onClick={onClose}><CloseIcon /></button></div>
       {section === 'profile' && <ProfileSection profile={profile} workspaceId={workspaceId} onProfile={onProfile} onAvatar={onAvatar} />}

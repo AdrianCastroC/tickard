@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { api, type Profile } from '../../api'
 import type { MyMeeting, MyTask } from './MyTasksSurface'
+import { GlobalViewLoading } from './GlobalViewLoading'
 import styles from './GlobalHome.module.css'
 
 export type HomeProject = {
@@ -146,6 +147,10 @@ export function GlobalHome({ profile, onShowTasks, onShowInbox, onOpenTask, onOp
     finally { setBusy(false) }
   }
 
+  if (loading && !data) return <section className={`${styles.root} global-home-view`} aria-label="Cargando Inicio">
+    <GlobalViewLoading variant="home" title="Cargando Inicio" description="Preparando tus tareas, proyectos y actividad." />
+  </section>
+
   return <section className={`${styles.root} global-home-view`} aria-label="Inicio global">
     <header className={styles.heading}>
       <div>
@@ -176,9 +181,7 @@ export function GlobalHome({ profile, onShowTasks, onShowInbox, onOpenTask, onOp
         <small>Ir a la bandeja <Icon name="arrow"/></small><i className={`${styles.kpiIcon} ${styles.bellIcon}`}><Icon name="bell"/></i>
       </button>
     </div>
-    {loading && !data ? <div className={styles.loading} aria-label="Cargando resumen" aria-busy="true">
-      <div/><div/><div/><div/>
-    </div> : <div className={styles.dashboard}>
+    <div className={styles.dashboard}>
       <div className={styles.topPanels}>
         {meetings.length > 0 && <section className={styles.panel}>
           <div className={styles.panelHeading}>
@@ -275,6 +278,6 @@ export function GlobalHome({ profile, onShowTasks, onShowInbox, onOpenTask, onOp
           </div>
         </section>
       </div>
-    </div>}
+    </div>
   </section>
 }

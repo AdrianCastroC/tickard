@@ -14,7 +14,7 @@ use Illuminate\Notifications\Notifiable;
 use Illuminate\Validation\ValidationException;
 use Laravel\Sanctum\HasApiTokens;
 
-#[Fillable(['name', 'first_name', 'last_name', 'nickname', 'email', 'password', 'is_admin', 'plan', 'client_company_id', 'theme', 'avatar_path', 'notify_in_app', 'notify_email'])]
+#[Fillable(['name', 'first_name', 'last_name', 'email', 'password', 'is_admin', 'plan', 'client_company_id', 'theme', 'avatar_path', 'notify_in_app', 'notify_email'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
@@ -27,8 +27,8 @@ class User extends Authenticatable
     public const PLAN_BUSINESS = 'business';
 
     /**
-     * The public suffix is the users.id primary key, padded to at least
-     * five digits. The database already guarantees its uniqueness.
+     * A permanent public handle is generated once at registration. It is
+     * stored in users.public_handle and never follows display-name edits.
      */
     protected static function booted(): void
     {
@@ -40,19 +40,20 @@ class User extends Authenticatable
             } elseif ($user->isDirty('name') || ! $user->first_name) {
                 [$user->first_name, $user->last_name] = self::splitName($user->name);
             }
+        });
 
-            if (! $user->nickname) {
-                $user->nickname = self::defaultNickname($user->first_name);
-            }
+        static::created(function (self $user): void {
+            $prefix = self::initialHandlePrefix($user->first_name);
+            $handle = $prefix.'#'.str_pad((string) $user->id, 5, '0', STR_PAD_LEFT);
+            // Bypass events only for first-time assignment following INSERT:
+            // subsequent application-level modifications are forbidden.
+            $user->forceFill(['public_handle' => $handle])->saveQuietly();
         });
 
         static::updating(function (self $user): void {
-            // A nickname is assigned once; changes to names, password or
-            // preferences must never alter an existing public identity.
-            // Legacy accounts without a nickname can receive it once.
-            if ($user->getRawOriginal('nickname') !== null && $user->isDirty('nickname')) {
+            if ($user->isDirty('public_handle')) {
                 throw ValidationException::withMessages([
-                    'nickname' => 'El nickname es permanente. Para utilizar otro necesitas crear otra cuenta.',
+                    'public_handle' => 'El ID de la cuenta es permanente.',
                 ]);
             }
         });
@@ -64,7 +65,7 @@ class User extends Authenticatable
         return [$parts[0] ?: 'Usuario', $parts[1] ?? null];
     }
 
-    public static function defaultNickname(string $firstName): string
+    public static function initialHandlePrefix(string $firstName): string
     {
         return substr(\Illuminate\Support\Str::slug($firstName, '-'), 0, 30) ?: 'usuario';
     }
@@ -119,9 +120,7 @@ class User extends Authenticatable
 
     public function publicHandle(): string
     {
-        $nick = \Illuminate\Support\Str::slug($this->nickname ?: $this->name, '-');
-
-        return ($nick ?: 'usuario').'#'.str_pad((string) $this->id, 5, '0', STR_PAD_LEFT);
+        return (string) $this->public_handle;
     }
 
     public function avatarUrl(): ?string
@@ -136,7 +135,6 @@ class User extends Authenticatable
             'name' => $this->name,
             'first_name' => $this->first_name,
             'last_name' => $this->last_name,
-            'nickname' => $this->nickname,
             'handle' => $this->publicHandle(),
             'email' => $this->email,
             'is_admin' => $this->is_admin,

@@ -134,10 +134,10 @@ class WorkspaceInvitationsController extends ApiController
         if (filter_var($value, FILTER_VALIDATE_EMAIL)) {
             return User::whereRaw('LOWER(email) = ?', [Str::lower($value)])->first();
         }
-        // The public discriminator is users.id, padded to at least 5 digits.
-        if (! preg_match('/^@?([a-z0-9_-]{1,30})#([0-9]{5,})$/i', $value, $match)) return null;
-        $user = User::find((int) $match[2]);
-        return $user && Str::lower($user->publicHandle()) === Str::lower(ltrim($value, '@')) ? $user : null;
+        // Resolve the stored immutable identifier instead of deriving the
+        // prefix from the user's current first name.
+        if (! preg_match('/^@?([a-z0-9_-]{1,30})#([0-9]{5,})$/i', $value)) return null;
+        return User::whereRaw('LOWER(public_handle) = ?', [Str::lower(ltrim($value, '@'))])->first();
     }
 
     private function storeInvites(Request $request, Workspace $workspace, ?Project $project)
