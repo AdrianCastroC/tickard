@@ -48,9 +48,10 @@
 .sortIcon { flex:0 0 12px; width:12px; height:12px; color:var(--muted) }
 .sortIcon path { opacity:.45 }
 .sortButton:hover .sortIcon path { opacity:.7 }
-.sortAscending path:first-child,.sortDescending path:last-child { opacity:1; fill:var(--accent) }
-.sortAscending path:last-child,.sortDescending path:first-child { opacity:.23 }
+.sortIcon[data-direction="asc"] path:first-child,.sortIcon[data-direction="desc"] path:last-child { opacity:1; fill:var(--accent) }
+.sortIcon[data-direction="asc"] path:last-child,.sortIcon[data-direction="desc"] path:first-child { opacity:.23 }
 .table td { padding:9px 11px; border-bottom:1px solid var(--line); white-space:nowrap; color:var(--muted); vertical-align:middle }
+.jobCell { max-width:180px; min-width:115px; overflow:hidden; text-overflow:ellipsis; }
 .table tr:last-child td { border-bottom:0 }
 .table tbody tr:hover { background:color-mix(in srgb,var(--accent) 6%,var(--surface)) }
 .table tbody tr.selectedRow { background:color-mix(in srgb,var(--accent) 10%,var(--surface)) }

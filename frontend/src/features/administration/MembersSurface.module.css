@@ -209,8 +209,11 @@
   border:0;padding:0;font:inherit;font-size:10px;font-weight:700;color:var(--muted);
   cursor:pointer;white-space:nowrap;}
 .sortButton:hover {color:var(--ink);}
-.sortActive {color:var(--accent);font-size:9px;}
-.sortInactive {color:var(--muted);opacity:.55;font-size:12px;}
+.sortIcon {width:12px;height:12px;flex:0 0 12px;color:var(--muted);}
+.sortIcon path {opacity:.45;}
+.sortButton:hover .sortIcon path {opacity:.7;}
+.sortIcon[data-direction="asc"] path:first-child,.sortIcon[data-direction="desc"] path:last-child {opacity:1;fill:var(--accent);}
+.sortIcon[data-direction="asc"] path:last-child,.sortIcon[data-direction="desc"] path:first-child {opacity:.23;}
 .jobCell {font-size:11px;max-width:150px;min-width:105px;overflow:hidden;
   text-overflow:ellipsis;white-space:nowrap;color:var(--ink);}
 .cardJob {color:var(--muted);font-size:11px;white-space:normal;}

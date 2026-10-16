@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { api } from '../../api'
 import { Avatar, formatDateLong } from '../../shared/ui'
-import { EditIcon, FilterFunnelIcon } from '../../shared/icons'
+import { EditIcon, FilterFunnelIcon, SortIcon } from '../../shared/icons'
 import { ProjectLoadingIndicator } from '../workspace/ProjectLoadingIndicator'
 import { WorkspaceInvitations } from '../workspace/WorkspaceInvitations'
 import styles from './MembersSurface.module.css'
@@ -218,9 +218,7 @@ export function MembersSurface({ workspaceId, workspaceName }: {
     return <th key={key} aria-sort={sortKey === key ? (sortDirection === 'asc' ? 'ascending' : 'descending') : 'none'}>
       <button type="button" className={styles.sortButton} onClick={() => changeSort(key)}
         title={'Ordenar por ' + title}>
-        {title}<span className={sortKey === key ? styles.sortActive : styles.sortInactive} aria-hidden="true">
-          {sortKey === key ? (sortDirection === 'asc' ? '▲' : '▼') : '↕'}
-        </span>
+        {title}<SortIcon direction={sortKey === key ? sortDirection : null} className={styles.sortIcon}/>
       </button>
     </th>
   }

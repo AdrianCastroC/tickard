@@ -197,6 +197,28 @@ class ProjectPersonnelTest extends TestCase
         ]);
     }
 
+    public function test_project_personnel_uses_job_title_from_its_own_workspace(): void
+    {
+        extract($this->fixture());
+
+        $workspace->memberships()->where('user_id', $editor->id)
+            ->firstOrFail()->update(['job_title' => 'Programador junior']);
+
+        $otherWorkspace = Workspace::create(['name' => 'Otra empresa', 'owner_id' => $outsider->id]);
+        $otherWorkspace->memberships()->create([
+            'user_id' => $editor->id, 'role' => 'member', 'job_title' => 'Director técnico',
+        ]);
+
+        $response = $this->actingAs($manager)->getJson("/api/projects/{$project->id}/personnel")
+            ->assertOk();
+
+        $person = collect($response->json('members'))->firstWhere('id', $editor->id);
+        $this->assertSame('Programador junior', $person['job_title']);
+        $this->assertNotSame('Director técnico', $person['job_title']);
+        $ownerPerson = collect($response->json('members'))->firstWhere('id', $manager->id);
+        $this->assertNull($ownerPerson['job_title']);
+    }
+
     public function test_clients_only_see_their_public_assignments_and_their_own_identity(): void
     {
         extract($this->fixture());
@@ -222,6 +244,7 @@ class ProjectPersonnelTest extends TestCase
             ->assertJsonCount(1, 'members')
             ->assertJsonCount(0, 'teams')
             ->assertJsonCount(0, 'available_people')
+            ->assertJsonPath('members.0.job_title', null)
             ->assertJsonMissing(['title' => 'Interna']);
     }
 }

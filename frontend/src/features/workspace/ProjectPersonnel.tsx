@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, 
 import { api, type Profile, type Project, type Role } from '../../api'
 import { WorkspaceInvitations } from './WorkspaceInvitations'
 import { Avatar } from '../../shared/ui'
-import { FilterFunnelIcon } from '../../shared/icons'
+import { FilterFunnelIcon, SortIcon } from '../../shared/icons'
 import styles from './ProjectPersonnel.module.css'
 import { ProjectSectionLoading } from './ProjectSectionLoading'
 
@@ -24,7 +24,7 @@ type Assignment = {
   updated_at: string | null
 }
 type Member = {
-  id: number; name: string; email: string | null; avatar_url: string | null; role: Role; is_workspace_owner: boolean
+  id: number; name: string; email: string | null; avatar_url: string | null; role: Role; is_workspace_owner: boolean; job_title: string | null
   teams: Group[]; departments: Group[]; stats: Stats; column_counts: Record<number, number>; tasks: Assignment[]
 }
 type PersonnelColumn = {
@@ -46,11 +46,12 @@ type PersonnelData = {
 }
 type ManagementTab = 'teams' | 'people' | 'invite'
 type DetailTab = 'summary' | 'tasks' | 'activity'
-type SortKey = 'name' | 'role' | 'department' | 'team' | 'tasks' | 'progress' | 'load'
+type SortKey = 'name' | 'job' | 'role' | 'department' | 'team' | 'tasks' | 'progress' | 'load'
 type SortDirection = 'asc' | 'desc'
 type SortState = { key: SortKey; direction: SortDirection }
 const SORT_COLUMNS: { key: SortKey; label: string; sortName: string }[] = [
   { key: 'name', label: 'Miembro', sortName: 'nombre' },
+  { key: 'job', label: 'Cargo', sortName: 'cargo' },
   { key: 'role', label: 'Rol', sortName: 'rol' },
   { key: 'department', label: 'Departamento', sortName: 'departamento' },
   { key: 'team', label: 'Equipo', sortName: 'equipo' },
@@ -99,16 +100,6 @@ function MiniIcon({ name }: { name: 'users' | 'tasks' | 'progress' | 'review' | 
 function ManageMembersIcon() {
   return <svg viewBox="0 0 640 640" fill="currentColor" aria-hidden="true">
     <path d="M256.5 72C322.8 72 376.5 125.7 376.5 192C376.5 258.3 322.8 312 256.5 312C190.2 312 136.5 258.3 136.5 192C136.5 125.7 190.2 72 256.5 72zM226.7 368L286.1 368L287.6 368C274.7 394.8 279.8 426.2 299.1 447.5C278.9 469.8 274.3 503.3 289.7 530.9L312.2 571.3C313.1 572.9 314.1 574.5 315.1 576L78.1 576C61.7 576 48.4 562.7 48.4 546.3C48.4 447.8 128.2 368 226.7 368zM432.6 311.6C432.6 298.3 443.3 287.6 456.6 287.6L504.6 287.6C517.9 287.6 528.6 298.3 528.6 311.6L528.6 317.7C528.6 336.6 552.7 350.5 569.1 341.1L574.1 338.2C585.7 331.5 600.6 335.6 607.1 347.3L629.5 387.5C635.7 398.7 632.1 412.7 621.3 419.5L616.6 422.4C600.4 432.5 600.4 462.3 616.6 472.5L621.2 475.4C632 482.2 635.7 496.2 629.5 507.4L607 547.8C600.5 559.5 585.6 563.7 574 556.9L569.1 554C552.7 544.5 528.6 558.5 528.6 577.4L528.6 583.5C528.6 596.8 517.9 607.5 504.6 607.5L456.6 607.5C443.3 607.5 432.6 596.8 432.6 583.5L432.6 577.6C432.6 558.6 408.4 544.6 391.9 554.1L387.1 556.9C375.5 563.6 360.7 559.5 354.1 547.8L331.5 507.4C325.3 496.2 328.9 482.1 339.8 475.3L344.2 472.6C360.5 462.5 360.5 432.5 344.2 422.4L339.7 419.6C328.8 412.8 325.2 398.7 331.4 387.5L353.9 347.2C360.4 335.5 375.3 331.4 386.8 338.1L391.6 340.9C408.1 350.4 432.3 336.4 432.3 317.4L432.3 311.5zM532.5 447.8C532.5 419.1 509.2 395.8 480.5 395.8C451.8 395.8 428.5 419.1 428.5 447.8C428.5 476.5 451.8 499.8 480.5 499.8C509.2 499.8 532.5 476.5 532.5 447.8z" />
-  </svg>
-}
-
-// Font Awesome Free v7.3.1 — sorting chevrons supplied for Tickard.
-// Split the original combined path so the active direction can be highlighted.
-function SortIcon({ direction }: { direction: SortDirection | null }) {
-  return <svg className={`${styles.sortIcon} ${direction === 'asc' ? styles.sortAscending : direction === 'desc' ? styles.sortDescending : ''}`}
-    viewBox="0 0 640 640" fill="currentColor" aria-hidden="true">
-    <path d="M130.4 268.2C135.4 280.2 147 288 160 288L480 288C492.9 288 504.6 280.2 509.6 268.2C514.6 256.2 511.8 242.5 502.7 233.3L342.7 73.3C330.2 60.8 309.9 60.8 297.4 73.3L137.4 233.3C128.2 242.5 125.5 256.2 130.5 268.2z" />
-    <path d="M130.4 371.7C125.4 383.7 128.2 397.4 137.3 406.6L297.3 566.6C309.8 579.1 330.1 579.1 342.6 566.6L502.6 406.6C511.8 397.4 514.5 383.7 509.5 371.7C504.5 359.7 492.9 352 480 352L160 352C147.1 352 135.4 359.8 130.4 371.8z" />
   </svg>
 }
 
@@ -304,6 +295,7 @@ export function ProjectPersonnel({ project, profile }: { project: Project; profi
     const value = (member: Member): string | number => {
       switch (sort.key) {
         case 'name': return member.name
+        case 'job': return member.job_title ?? ''
         case 'role': return member.is_workspace_owner ? 'Owner' : roleName(member.role)
         case 'department': return initials(member.departments)
         case 'team': return initials(member.teams)
@@ -313,10 +305,10 @@ export function ProjectPersonnel({ project, profile }: { project: Project; profi
       }
     }
     return [...filtered].sort((a, b) => {
-      // Unassigned departments/teams remain at the end in both directions.
-      if (sort.key === 'department' || sort.key === 'team') {
-        const emptyA = sort.key === 'department' ? a.departments.length === 0 : a.teams.length === 0
-        const emptyB = sort.key === 'department' ? b.departments.length === 0 : b.teams.length === 0
+      // Unassigned departments/teams and empty jobs remain at the end in both directions.
+      if (sort.key === 'department' || sort.key === 'team' || sort.key === 'job') {
+        const emptyA = sort.key === 'department' ? a.departments.length === 0 : sort.key === 'team' ? a.teams.length === 0 : !a.job_title
+        const emptyB = sort.key === 'department' ? b.departments.length === 0 : sort.key === 'team' ? b.teams.length === 0 : !b.job_title
         if (emptyA !== emptyB) return emptyA ? 1 : -1
       }
       const av = value(a)
@@ -421,7 +413,7 @@ export function ProjectPersonnel({ project, profile }: { project: Project; profi
             <thead><tr>{SORT_COLUMNS.map((column) => {
               const active = sort?.key === column.key
               const direction = active ? sort.direction : null
-              const alphabetic = ['name', 'role', 'department', 'team'].includes(column.key)
+              const alphabetic = ['name', 'job', 'role', 'department', 'team'].includes(column.key)
               const nextIsAscending = active && direction === 'desc'
               const nextOrder = alphabetic ? (nextIsAscending ? 'A a Z' : 'Z a A') : (nextIsAscending ? 'menor a mayor' : 'mayor a menor')
               return <th key={column.key} aria-sort={active ? (direction === 'asc' ? 'ascending' : 'descending') : undefined}>
@@ -429,7 +421,7 @@ export function ProjectPersonnel({ project, profile }: { project: Project; profi
                   onClick={() => toggleSort(column.key)}
                   aria-label={`Ordenar por ${column.sortName} de ${nextOrder}`}
                   title={`Ordenar por ${column.sortName} de ${nextOrder}`}>
-                  {column.label}<SortIcon direction={direction} />
+                  {column.label}<SortIcon direction={direction} className={styles.sortIcon}/>
                 </button>
               </th>
             })}</tr></thead>
@@ -440,6 +432,7 @@ export function ProjectPersonnel({ project, profile }: { project: Project; profi
                   <Avatar id={person.id} name={person.name} src={person.avatar_url} size={34}/>
                   <span><strong>{person.name}{person.id === profile.user.id ? ' (Tú)' : ''}</strong><small>{person.is_workspace_owner ? 'Propietario del Workspace' : (person.email ?? roleName(person.role))}</small></span>
                 </button></td>
+                <td className={styles.jobCell} title={person.job_title ?? 'Sin cargo asignado'}>{person.job_title || 'Sin especificar'}</td>
                 <td><span className={`${styles.roleTag} ${person.role === 'responsable' ? styles.responsible : ''}`}>{person.is_workspace_owner ? 'Owner' : roleName(person.role)}</span></td>
                 <td title={initials(person.departments)}>{initials(person.departments)}</td>
                 <td title={initials(person.teams)}>{initials(person.teams)}</td>

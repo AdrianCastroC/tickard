@@ -98,8 +98,14 @@ class ProjectPersonnelController extends ApiController
             ];
         };
 
+        // Reuse the Workspace-specific job title: it is not a project role or global profile field.
+        $jobTitles = DB::table('workspace_members')
+            ->where('workspace_id', $project->workspace_id)
+            ->whereIn('user_id', $memberships->pluck('user_id')->all())
+            ->pluck('job_title', 'user_id');
+
         $people = $memberships->map(function (ProjectMember $membership) use (
-            $assignedByUser, $teams, $departments, $countStates, $today, $client, $project
+            $assignedByUser, $teams, $departments, $countStates, $today, $client, $project, $jobTitles
         ) {
             $user = $membership->user;
             $assigned = ($assignedByUser->get($user->id) ?? collect())->unique('id')->values();
@@ -112,6 +118,7 @@ class ProjectPersonnelController extends ApiController
                 'id' => $user->id,
                 'name' => $user->name,
                 'email' => $client ? null : $user->email,
+                'job_title' => $client ? null : $jobTitles->get($user->id),
                 'avatar_url' => $user->avatarUrl(),
                 'role' => (int) $project->workspace->owner_id === (int) $user->id ? 'responsable' : $membership->role,
                 'is_workspace_owner' => (int) $project->workspace->owner_id === (int) $user->id,
