@@ -13,7 +13,7 @@ import { ProjectContentLoading } from './ProjectContentLoading'
 import styles from './ProjectCalendar.module.css'
 
 type State = Exclude<WorkflowState, 'backlog'>
-type EventKind = CalendarEvent['kind']
+type EventKind = Exclude<CalendarEvent['kind'], 'birthday'>
 type Item = {
   key: string; kind: 'card' | 'event'; card?: Card; event?: CalendarEvent
   boardId?: number; boardName: string; state?: State; color: string
@@ -149,8 +149,8 @@ function eventsFromApi(events: CalendarEvent[]): Item[] {
     key: 'event:' + event.id, kind: 'event' as const, event,
     boardName: '', start: event.start_date, end: event.end_date,
     title: event.title,
-    badge: event.kind === 'meeting' ? 'Reunión' : event.kind === 'appointment' ? 'Cita' : 'Evento',
-    color: event.kind === 'meeting' ? '#147a5f' : event.kind === 'appointment' ? '#437f93' : '#7d7292',
+    badge: event.kind === 'birthday' ? 'Cumpleaños' : event.kind === 'meeting' ? 'Reunión' : event.kind === 'appointment' ? 'Cita' : 'Evento',
+    color: event.kind === 'birthday' ? '#c48232' : event.kind === 'meeting' ? '#147a5f' : event.kind === 'appointment' ? '#437f93' : '#7d7292',
   }))
 }
 function sortEntries(a: Item, b: Item): number {
@@ -409,7 +409,7 @@ export function ProjectCalendar({ project, profile }: { project: Project; profil
       }
       return true
     }),
-    ...(showEvents ? eventsFromApi(events) : []),
+    ...eventsFromApi(events.filter(event => event.kind === 'birthday' || showEvents)),
   ].sort(sortEntries), [allCards, hiddenBoards, hiddenStates, events, showEvents, canViewAllTasks,
     profile.user.id, selectedAssigneeIds, includeUnassigned, project.role])
   const weeks = useMemo(() => range.weeks.map((days) => makeWeek(days, items)), [range, items])
@@ -615,17 +615,27 @@ export function ProjectCalendar({ project, profile }: { project: Project; profil
             top: String(34 + part.lane * 29) + 'px',
           })}
           title={part.item.badge + ' · ' + part.item.title + ' · ' + part.item.start + (part.item.start === part.item.end ? '' : ' — ' + part.item.end) + (canViewAllTasks && part.item.kind === 'card' ? ' · ' + assignmentNames(part.item.card?.assignees) : '')}
-          onClick={() => part.item.kind === 'event' ? setEventModal(part.item.event!) : openCard(part.item)}>
-          <span className={styles.segmentTitle}>{part.item.badge} · {part.item.title}</span>
+          onClick={() => part.item.kind === 'event' ? (part.item.event?.kind !== 'birthday' && setEventModal(part.item.event!)) : openCard(part.item)}>
+          <span className={styles.segmentTitle}>
+            {part.item.event?.birthday_user && <Avatar id={part.item.event.birthday_user.id}
+              name={part.item.event.birthday_user.name} src={part.item.event.birthday_user.avatar_url}
+              size={18} className={styles.birthdayAvatar} />}
+            {part.item.badge} · {part.item.title}
+          </span>
           {canViewAllTasks && part.item.kind === 'card' && <AssignmentChips people={part.item.card?.assignees} compact />}
           {part.width >= 2 && part.item.boardName && !canViewAllTasks && <span className={styles.segmentBoard}>{part.item.boardName}</span>}
         </button>)}</div>
       </div>)}
     </div> : <div ref={agendaRef} className={styles.agenda} role="region" aria-label="Agenda de tareas y eventos" tabIndex={0}>
       {monthItems.length === 0 ? <p className={styles.empty}>No hay tareas ni eventos programados en este mes con los filtros actuales.</p> :
-        monthItems.map((item) => <button key={item.key + ':' + item.start} type="button" className={styles.agendaItem} style={colorStyle(item.color)} onClick={() => item.kind === 'event' ? setEventModal(item.event!) : openCard(item)}>
+        monthItems.map((item) => <button key={item.key + ':' + item.start} type="button" className={styles.agendaItem} style={colorStyle(item.color)} onClick={() => item.kind === 'event' ? (item.event?.kind !== 'birthday' && setEventModal(item.event!)) : openCard(item)}>
           <span className={styles.agendaDate}>{item.start === item.end ? item.start : item.start + ' — ' + item.end}</span>
-          <span className={styles.agendaTitle}>{item.title}</span>
+          <span className={styles.agendaTitle}>
+            {item.event?.birthday_user && <Avatar id={item.event.birthday_user.id}
+              name={item.event.birthday_user.name} src={item.event.birthday_user.avatar_url}
+              size={18} className={styles.birthdayAvatar} />}
+            {item.title}
+          </span>
           <span className={styles.agendaBoard}>
             <span>{item.boardName || (item.event && !item.event.all_day ? [item.event.start_time, item.event.end_time].filter(Boolean).join('–') : 'Todo el día')}</span>
             {canViewAllTasks && item.kind === 'card' && <AssignmentChips people={item.card?.assignees} />}
@@ -637,7 +647,9 @@ export function ProjectCalendar({ project, profile }: { project: Project; profil
     {mode === 'month' && monthItems.length === 0 && <p className={styles.empty}>No hay tareas ni eventos programados en este mes con los filtros actuales.</p>}
     {mode === 'month' && selectedDay && <div className={styles.dayDetails}>
       <div className={styles.dayDetailsHeader}><strong>{prettyDay(selectedDay)}</strong><button type="button" aria-label="Cerrar tareas del día" onClick={() => setSelectedDay(null)}>×</button></div>
-      {dayItems.length ? dayItems.map((item) => <button className={styles.dayDetailItem} key={item.key + ':' + item.start} type="button" style={colorStyle(item.color)} onClick={() => item.kind === 'event' ? setEventModal(item.event!) : openCard(item)}><span>{item.badge} · {item.title}</span><small>{item.boardName}{canViewAllTasks && item.kind === 'card' && <AssignmentChips people={item.card?.assignees} />}</small></button>) : <p className="muted">Sin tareas ni eventos programados.</p>}
+      {dayItems.length ? dayItems.map((item) => <button className={styles.dayDetailItem} key={item.key + ':' + item.start} type="button" style={colorStyle(item.color)} onClick={() => item.kind === 'event' ? (item.event?.kind !== 'birthday' && setEventModal(item.event!)) : openCard(item)}><span>{item.event?.birthday_user && <Avatar id={item.event.birthday_user.id}
+              name={item.event.birthday_user.name} src={item.event.birthday_user.avatar_url}
+              size={18} className={styles.birthdayAvatar}/>} {item.badge} · {item.title}</span><small>{item.boardName}{canViewAllTasks && item.kind === 'card' && <AssignmentChips people={item.card?.assignees} />}</small></button>) : <p className="muted">Sin tareas ni eventos programados.</p>}
     </div>}
 
     {((loading && boards) || refreshing || eventLoading) && (
@@ -688,7 +700,7 @@ function CalendarEventModal({ projectId, event, initialDay, canEdit, onClose, on
   canEdit: boolean; onClose: () => void; onSaved: () => void
 }) {
   const [form, setForm] = useState<EventForm>(() => ({
-    kind: event?.kind ?? 'meeting', title: event?.title ?? '',
+    kind: event?.kind === 'birthday' ? 'meeting' : event?.kind ?? 'meeting', title: event?.title ?? '',
     description: event?.description ?? '', location: event?.location ?? '',
     start_date: event?.start_date ?? initialDay, end_date: event?.end_date ?? initialDay,
     all_day: event?.all_day ?? false, start_time: event?.start_time ?? '09:00', end_time: event?.end_time ?? '10:00',

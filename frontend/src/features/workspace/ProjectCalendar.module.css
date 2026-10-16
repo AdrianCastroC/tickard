@@ -251,3 +251,6 @@
   .segment .assigneeAvatar { max-width:16px;max-height:16px }
   .segment .assigneeExtra,.segment .unassigned { display:none }
 }
+
+/* Birthday entries are annual, all-day events with the member's real avatar. */
+.birthdayAvatar { display:inline-block; flex:0 0 18px; width:18px; height:18px; border-radius:50%; object-fit:cover; vertical-align:middle; margin-right:5px; }

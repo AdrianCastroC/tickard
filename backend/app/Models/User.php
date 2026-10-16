@@ -14,7 +14,7 @@ use Illuminate\Notifications\Notifiable;
 use Illuminate\Validation\ValidationException;
 use Laravel\Sanctum\HasApiTokens;
 
-#[Fillable(['name', 'first_name', 'last_name', 'email', 'password', 'is_admin', 'plan', 'client_company_id', 'theme', 'avatar_path', 'notify_in_app', 'notify_email'])]
+#[Fillable(['name', 'first_name', 'last_name', 'email', 'password', 'is_admin', 'plan', 'client_company_id', 'theme', 'avatar_path', 'notify_in_app', 'notify_email', 'birthday_month_day', 'share_birthday'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
@@ -78,6 +78,7 @@ class User extends Authenticatable
             'is_admin' => 'boolean',
             'notify_in_app' => 'boolean',
             'notify_email' => 'boolean',
+            'share_birthday' => 'boolean',
         ];
     }
 
@@ -137,6 +138,8 @@ class User extends Authenticatable
             'last_name' => $this->last_name,
             'handle' => $this->publicHandle(),
             'email' => $this->email,
+            'birthday_month_day' => $this->birthday_month_day,
+            'share_birthday' => (bool) $this->share_birthday,
             'is_admin' => $this->is_admin,
             'plan' => $this->plan,
             'theme' => $this->theme,

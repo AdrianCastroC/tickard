@@ -3690,3 +3690,10 @@ h1, h2, h3, p { margin: 0; }
 /* Common save action icon: same Font Awesome glyph in all Save buttons. */
 .save-button { display:inline-flex; align-items:center; justify-content:center; gap:6px; }
 .save-button .btn-ico { display:block; width:15px; height:15px; flex:0 0 15px; }
+
+.workspace-birthday-settings { max-width:580px; margin-top:26px; padding:16px 18px; border:1px solid var(--line); border-radius:10px; background:var(--surface); }
+.workspace-birthday-settings h2 { font-size:14px; margin:0 0 12px; }
+.workspace-birthday-toggle { display:flex; align-items:center; justify-content:space-between; gap:14px; cursor:pointer; }
+.workspace-birthday-toggle > span { display:flex; flex-direction:column; gap:5px; font-size:12px; }
+.workspace-birthday-toggle small { font-size:11px; line-height:1.4; color:var(--muted); }
+.workspace-birthday-toggle input { flex:0 0 17px; width:17px; height:17px; accent-color:var(--accent); }

@@ -25,13 +25,64 @@ class CalendarEventsController extends ApiController
             throw ValidationException::withMessages(['end_date' => 'El intervalo máximo es de 63 días.']);
         }
 
-        return $project->calendarEvents()
+        $events = $project->calendarEvents()
             ->whereDate('start_date', '<=', $dates['end_date'])
             ->whereDate('end_date', '>=', $dates['start_date'])
             ->orderBy('start_date')
             ->orderBy('start_time')
             ->get()
             ->map(fn (CalendarEvent $event) => $this->present($event));
+
+        // Birthdays are virtual annual events, not editable project events.
+        // A global user opt-in and this Workspace's switch are both required.
+        $workspace = $project->workspace;
+        if (! $workspace->show_birthdays) {
+            return $events;
+        }
+
+        $birthdayPeople = \App\Models\User::whereHas('workspaces', function ($query) use ($workspace) {
+            $query->where('workspaces.id', $workspace->id);
+        })->whereNull('client_company_id')
+            ->where('share_birthday', true)
+            ->whereNotNull('birthday_month_day')
+            ->get(['id', 'name', 'avatar_path', 'birthday_month_day']);
+
+        $startYear = (int) substr($dates['start_date'], 0, 4);
+        $endYear = (int) substr($dates['end_date'], 0, 4);
+        $birthdays = collect();
+
+        foreach ($birthdayPeople as $person) {
+            [$month, $day] = array_map('intval', explode('-', $person->birthday_month_day));
+            for ($year = $startYear; $year <= $endYear; $year++) {
+                // A February 29 birthday is celebrated on February 28 in non-leap years.
+                $observedDay = $month === 2 && $day === 29 && ! checkdate(2, 29, $year) ? 28 : $day;
+                $date = sprintf('%04d-%02d-%02d', $year, $month, $observedDay);
+                if ($date < $dates['start_date'] || $date > $dates['end_date']) {
+                    continue;
+                }
+                $birthdays->push([
+                    'id' => $person->id,
+                    'kind' => 'birthday',
+                    'title' => 'Cumpleaños de '.$person->name,
+                    'description' => null,
+                    'location' => null,
+                    'start_date' => $date,
+                    'end_date' => $date,
+                    'all_day' => true,
+                    'start_time' => null,
+                    'end_time' => null,
+                    'birthday_user' => [
+                        'id' => $person->id,
+                        'name' => $person->name,
+                        'avatar_url' => $person->avatarUrl(),
+                    ],
+                ]);
+            }
+        }
+
+        return $events->concat($birthdays)
+            ->sortBy(fn (array $entry) => $entry['start_date'].'|'.($entry['start_time'] ?? ''))
+            ->values();
     }
 
     public function store(Request $request, Project $project)

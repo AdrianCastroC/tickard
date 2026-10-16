@@ -181,7 +181,7 @@ export type CalendarEvent = {
   id: number
   project_id: number
   created_by: number | null
-  kind: 'meeting' | 'appointment' | 'other'
+  kind: 'meeting' | 'appointment' | 'other' | 'birthday'
   title: string
   description: string | null
   location: string | null
@@ -190,6 +190,7 @@ export type CalendarEvent = {
   all_day: boolean
   start_time: string | null
   end_time: string | null
+  birthday_user?: { id: number; name: string; avatar_url: string | null } | null
 }
 
 export type Project = {
@@ -205,6 +206,7 @@ export type WorkspaceRef = {
   name: string
   role: 'owner' | 'member'
   plan: 'free' | 'base' | 'pro' | 'business'
+  show_birthdays: boolean
 }
 
 export type Profile = {
@@ -215,6 +217,8 @@ export type Profile = {
     last_name: string | null
     handle: string
     email: string
+    birthday_month_day: string | null
+    share_birthday: boolean
     is_admin: boolean
     plan: 'free' | 'base' | 'pro' | 'business'
     theme: 'light' | 'dark' | 'system'

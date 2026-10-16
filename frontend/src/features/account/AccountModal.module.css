@@ -354,3 +354,17 @@
 /* Account profile saves name edits without a footer divider or save button. */
 .autoSaveStatus { display:flex; align-items:center; gap:10px; margin-top:14px; font-size:11px; line-height:1.4; }
 .autoSaveStatus button { background:transparent; color:var(--accent); border:0; padding:2px 0; font:inherit; font-weight:650; cursor:pointer; }
+
+.birthdaySettings { display:flex; flex-direction:column; gap:8px; min-width:0; padding:4px 0 1px; }
+.birthdayLabel { font-size:11px; font-weight:650; }
+.birthdayInputs { display:grid; grid-template-columns:2fr 1fr; gap:12px; }
+.birthdayInputs label { display:flex; flex-direction:column; gap:5px; min-width:0; font-size:11px; font-weight:600; }
+.birthdayInputs select { width:100%; height:36px; border:1px solid var(--line); border-radius:8px;
+  padding:6px 10px; background:var(--canvas); color:var(--ink); font:inherit; font-size:12px; }
+.birthdayShare { display:flex; justify-content:space-between; align-items:center; gap:12px; cursor:pointer;
+  margin-top:4px; padding:10px 0; }
+.birthdayShare > span { display:flex; min-width:0; flex-direction:column; gap:4px; }
+.birthdayShare strong { font-size:11px; font-weight:650; }
+.birthdayShare small { color:var(--muted); font-size:10px; line-height:1.4; }
+.birthdayShare input { flex:0 0 16px; height:16px; width:16px; accent-color:var(--accent); }
+.birthdayShare input:disabled { opacity:.5; cursor:not-allowed; }

@@ -14,12 +14,14 @@ class Workspace extends Model
         'name',
         'owner_id',
         'extra_seats',
+        'show_birthdays',
     ];
 
     protected function casts(): array
     {
         return [
             'extra_seats' => 'integer',
+            'show_birthdays' => 'boolean',
         ];
     }
 

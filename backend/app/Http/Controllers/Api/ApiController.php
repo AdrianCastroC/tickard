@@ -99,6 +99,7 @@ protected function internalIds(array $ids): array
                 'name' => $workspace->name,
                 'role' => $workspace->pivot->role,
                 'plan' => $workspace->effectivePlan(),
+                'show_birthdays' => (bool) $workspace->show_birthdays,
             ])
             ->values();
 

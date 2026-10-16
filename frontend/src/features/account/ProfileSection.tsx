@@ -16,6 +16,9 @@ export function ProfileSection({ profile, workspaceId, onProfile, onAvatar }: Pr
   const [firstName, setFirstName] = useState(profile.user.first_name)
   const [lastName, setLastName] = useState(profile.user.last_name ?? '')
   const [security, setSecurity] = useState<SecurityPurpose | null>(null)
+  const [birthMonth, setBirthMonth] = useState(profile.user.birthday_month_day?.slice(0, 2) ?? '')
+  const [birthDay, setBirthDay] = useState(profile.user.birthday_month_day?.slice(3, 5) ?? '')
+  const [shareBirthday, setShareBirthday] = useState(Boolean(profile.user.share_birthday))
   const [error, setError] = useState('')
   const [info, setInfo] = useState('')
   const [saving, setSaving] = useState(false)
@@ -26,6 +29,14 @@ export function ProfileSection({ profile, workspaceId, onProfile, onAvatar }: Pr
   const live = useRef(true)
   const queued = useRef(false)
   const onProfileRef = useRef(onProfile)
+  const birthdaySaved = useRef({ date: profile.user.birthday_month_day, share: Boolean(profile.user.share_birthday) })
+  const birthdayDraft = useRef({ date: profile.user.birthday_month_day, share: Boolean(profile.user.share_birthday) })
+  const birthdayBusy = useRef(false)
+  const birthdayQueued = useRef(false)
+  const [birthdaySaving, setBirthdaySaving] = useState(false)
+  const months = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+    'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre']
+  const daysInMonth = birthMonth ? new Date(2000, Number(birthMonth), 0).getDate() : 31
   onProfileRef.current = onProfile
 
   useEffect(() => {
@@ -78,6 +89,61 @@ export function ProfileSection({ profile, workspaceId, onProfile, onAvatar }: Pr
     const pending = window.setTimeout(() => { void persist() }, 800)
     return () => window.clearTimeout(pending)
   }, [firstName, lastName, persist])
+
+  const persistBirthday = useCallback(async () => {
+    const next = birthdayDraft.current
+    if (next.date === birthdaySaved.current.date && next.share === birthdaySaved.current.share) return
+    if (birthdayBusy.current) { birthdayQueued.current = true; return }
+    birthdayBusy.current = true
+    if (live.current) { setBirthdaySaving(true); setError(''); setInfo('') }
+    try {
+      const updated = await api<Profile>(mePath, {
+        method: 'PATCH',
+        body: JSON.stringify({
+          birthday_month_day: next.date,
+          share_birthday: next.date !== null && next.share,
+        }),
+      })
+      birthdaySaved.current = {
+        date: updated.user.birthday_month_day,
+        share: Boolean(updated.user.share_birthday),
+      }
+      onProfileRef.current(updated)
+      if (live.current) setInfo('Preferencias de cumpleaños guardadas.')
+    } catch (cause) {
+      if (live.current) {
+        setError(cause instanceof Error ? cause.message : 'No se pudo guardar el cumpleaños.')
+      }
+    } finally {
+      birthdayBusy.current = false
+      if (live.current) setBirthdaySaving(false)
+      if (birthdayQueued.current && live.current) {
+        birthdayQueued.current = false
+        void persistBirthday()
+      }
+    }
+  }, [mePath])
+
+  useEffect(() => {
+    // An incomplete selection must not overwrite a previously saved birthday.
+    if (Boolean(birthMonth) !== Boolean(birthDay)) return
+    if (birthMonth && Number(birthDay) > daysInMonth) return
+    const date = birthMonth && birthDay ? birthMonth + '-' + birthDay : null
+    birthdayDraft.current = { date, share: date !== null && shareBirthday }
+    if (birthdayDraft.current.date === birthdaySaved.current.date &&
+        birthdayDraft.current.share === birthdaySaved.current.share) return
+    const pending = window.setTimeout(() => void persistBirthday(), 650)
+    return () => window.clearTimeout(pending)
+  }, [birthMonth, birthDay, shareBirthday, daysInMonth, persistBirthday])
+
+  function changeBirthMonth(value: string) {
+    setBirthMonth(value)
+    if (!value) { setBirthDay(''); setShareBirthday(false) }
+    else if (birthDay && Number(birthDay) > new Date(2000, Number(value), 0).getDate()) {
+      setBirthDay('')
+      setShareBirthday(false)
+    }
+  }
 
   function updateFirst(value: string) {
     draft.current.first = value
@@ -139,6 +205,34 @@ export function ProfileSection({ profile, workspaceId, onProfile, onAvatar }: Pr
             <input value={lastName} onChange={event => updateLast(event.target.value)} onBlur={() => void persist()}
               autoComplete="family-name" maxLength={120}/>
           </label>
+          <div className={[styles.birthdaySettings, styles.fieldFull].join(' ')}>
+            <span className={styles.birthdayLabel}>Cumpleaños (opcional)</span>
+            <div className={styles.birthdayInputs}>
+              <label>Mes
+                <select aria-label="Mes del cumpleaños" value={birthMonth}
+                  onChange={event => changeBirthMonth(event.target.value)}>
+                  <option value="">Sin indicar</option>
+                  {months.map((month, i) => <option key={month}
+                    value={String(i + 1).padStart(2, '0')}>{month}</option>)}
+                </select>
+              </label>
+              <label>Día
+                <select aria-label="Día del cumpleaños" value={birthDay}
+                  disabled={!birthMonth} onChange={event => setBirthDay(event.target.value)}>
+                  <option value="">Elegir día</option>
+                  {Array.from({ length: daysInMonth }, (_, i) => String(i + 1).padStart(2, '0'))
+                    .map(day => <option key={day} value={day}>{Number(day)}</option>)}
+                </select>
+              </label>
+            </div>
+            <label className={styles.birthdayShare}>
+              <span><strong>Compartir mi cumpleaños</strong>
+                <small>Será visible en todos mis Workspaces que tengan habilitados los cumpleaños. No se muestra el año.</small>
+              </span>
+              <input type="checkbox" checked={shareBirthday} disabled={!birthMonth || !birthDay}
+                onChange={event => setShareBirthday(event.target.checked)}/>
+            </label>
+          </div>
           <div className={[styles.readonlyField, styles.fieldFull].join(' ')}>
             <span>Correo electrónico</span>
             <div className={styles.emailDisplay}>
@@ -157,9 +251,9 @@ export function ProfileSection({ profile, workspaceId, onProfile, onAvatar }: Pr
           <button type="button" className={styles.secondaryAction} onClick={() => setSecurity('password')}>Cambiar contraseña</button>
         </div>
       </div>
-        {(saving || error || info) && <div className={styles.autoSaveStatus} role={error ? 'alert' : 'status'}>
+        {(saving || birthdaySaving || error || info) && <div className={styles.autoSaveStatus} role={error ? 'alert' : 'status'}>
           {error ? <span className={styles.feedbackError}>{error}</span> :
-            <span className={styles.ok}>{saving ? 'Guardando cambios…' : info}</span>}
+            <span className={styles.ok}>{saving || birthdaySaving ? 'Guardando cambios…' : info}</span>}
           {error && <button type="button" onClick={() => void persist()}>Reintentar</button>}
         </div>}
       </div>

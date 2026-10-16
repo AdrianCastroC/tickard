@@ -114,6 +114,8 @@ class AuthController extends ApiController
             'theme' => ['sometimes', Rule::in(['light', 'dark', 'system'])],
             'notify_in_app' => ['sometimes', 'boolean'],
             'notify_email' => ['sometimes', 'boolean'],
+            'birthday_month_day' => ['sometimes', 'nullable', 'regex:/^(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$/'],
+            'share_birthday' => ['sometimes', 'boolean'],
             'current_password' => ['prohibited'],
             'password' => ['prohibited'],
             'password_confirmation' => ['prohibited'],
@@ -123,6 +125,23 @@ class AuthController extends ApiController
             'handle.prohibited' => 'El identificador público es permanente.',
             'public_handle.prohibited' => 'El ID de la cuenta es permanente.',
         ]);
+
+        if (array_key_exists('birthday_month_day', $data) && $data['birthday_month_day'] !== null) {
+            [$month, $day] = array_map('intval', explode('-', $data['birthday_month_day']));
+            if (! checkdate($month, $day, 2000)) {
+                throw ValidationException::withMessages(['birthday_month_day' => 'La fecha de cumpleaños no es válida.']);
+            }
+        }
+        if (array_key_exists('share_birthday', $data) && $data['share_birthday']) {
+            $birthday = $data['birthday_month_day'] ?? $request->user()->birthday_month_day;
+            if (! $birthday) {
+                throw ValidationException::withMessages(['share_birthday' => 'Indica primero tu cumpleaños para poder compartirlo.']);
+            }
+        }
+        if (array_key_exists('birthday_month_day', $data) && $data['birthday_month_day'] === null) {
+            // Clearing a birthday revokes sharing at the same time.
+            $data['share_birthday'] = false;
+        }
 
         // Apply only validated changes to a freshly loaded user. In
         // particular, stale/dirty attributes from a rejected identity change

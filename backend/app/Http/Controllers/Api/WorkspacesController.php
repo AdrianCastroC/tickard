@@ -74,6 +74,20 @@ class WorkspacesController extends Controller
         ]);
     }
 
+    public function updateBirthdaySettings(Request $request, Workspace $workspace): JsonResponse
+    {
+        abort_unless(
+            (int) $workspace->owner_id === (int) $request->user()->id,
+            403,
+            'Solo el propietario puede configurar este Workspace.'
+        );
+
+        $data = $request->validate(['show_birthdays' => ['required', 'boolean']]);
+        $workspace->update(['show_birthdays' => $data['show_birthdays']]);
+
+        return response()->json(['id' => $workspace->id, 'show_birthdays' => (bool) $workspace->show_birthdays]);
+    }
+
     public function destroy(Request $request, Workspace $workspace): JsonResponse
     {
         $user = $request->user();
