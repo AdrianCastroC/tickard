@@ -66,6 +66,9 @@ class AccountSecurityTest extends TestCase
 
     public function test_wrong_codes_are_counted_and_cannot_change_email(): void
     {
+        // Exercise the per-request five-attempt limit independently of the
+        // shared IP middleware throttle (covered by the route itself).
+        $this->withoutMiddleware(\Illuminate\Routing\Middleware\ThrottleRequests::class);
         Mail::shouldReceive('raw')->once();
         $user = User::factory()->create(['email' => 'old@example.com']);
         $this->actingAs($user)->postJson('/api/me/email-change', [
