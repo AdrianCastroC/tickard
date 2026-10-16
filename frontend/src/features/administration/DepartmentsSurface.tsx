@@ -1,8 +1,8 @@
-import { useCallback, useEffect, useMemo, useState, type FormEvent, type ReactNode } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { api } from '../../api'
 import { Avatar, formatDateLong } from '../../shared/ui'
-import { EditIcon, FloppyIcon, PlusIcon, TrashIcon } from '../../shared/icons'
+import { EditIcon, FilterFunnelIcon, FloppyIcon, PlusIcon, TrashIcon } from '../../shared/icons'
 import styles from './DepartmentsDashboard.module.css'
 
 type Person = { id: number; name: string; avatar_url: string | null }
@@ -85,6 +85,8 @@ export function DepartmentsSurface({ workspaceId }: { workspaceId: number | null
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
   const [sort, setSort] = useState<Sort>('name')
+  const [filtersOpen, setFiltersOpen] = useState(false)
+  const filterContainerRef = useRef<HTMLDivElement>(null)
   const [layout, setLayout] = useState<'grid' | 'list'>('grid')
   const [selectedId, setSelectedId] = useState<number | null>(null)
   const [activeTab, setActiveTab] = useState<PanelTab>('summary')
@@ -142,6 +144,25 @@ export function DepartmentsSurface({ workspaceId }: { workspaceId: number | null
       active: departments.filter(dep => dep.status === 'active').length,
     }
   }, [data])
+  const activeFilterCount = Number(statusFilter !== 'all') + Number(sort !== 'name')
+  useEffect(() => {
+    if (!filtersOpen) return
+    const closeOnOutside = (event: PointerEvent) => {
+      if (event.target instanceof Node && !filterContainerRef.current?.contains(event.target)) {
+        setFiltersOpen(false)
+      }
+    }
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setFiltersOpen(false)
+    }
+    document.addEventListener('pointerdown', closeOnOutside)
+    document.addEventListener('keydown', closeOnEscape)
+    return () => {
+      document.removeEventListener('pointerdown', closeOnOutside)
+      document.removeEventListener('keydown', closeOnEscape)
+    }
+  }, [filtersOpen])
+
   const selected = data?.departments.find(dep => dep.id === selectedId) ?? null
   const canManage = data?.can_manage === true
   const lead = selected?.members.find(person => person.id === selected.lead_user_id)
@@ -153,7 +174,7 @@ export function DepartmentsSurface({ workspaceId }: { workspaceId: number | null
   function beginCreate() {
     setEditor('create'); setName(''); setDescription(''); setStatus('active'); setIcon('layers')
     setMemberIds([]); setTeamIds([]); setProjectIds([]); setLeadId(null)
-    setError(''); setNotice(''); setMenuId(null)
+    setError(''); setNotice(''); setMenuId(null); setFiltersOpen(false)
   }
   function beginEdit(dep: Department) {
     setSelectedId(dep.id); setEditor('edit'); setName(dep.name); setDescription(dep.description ?? '')
@@ -213,15 +234,17 @@ export function DepartmentsSurface({ workspaceId }: { workspaceId: number | null
 
   return <section className={styles.root} aria-label="Gestión de departamentos">
     <header className={styles.heading}>
-      <div><h1>Departamentos</h1><p>Gestiona los departamentos de tu organización</p></div>
-      {canManage && <button type="button" className={styles.primary} onClick={beginCreate}><PlusIcon/> Nuevo departamento</button>}
+      <div>
+        <h1>Departamentos</h1>
+        <p>Gestiona los departamentos de tu organización</p>
+        {notice && <div role="status" className={styles.notice}>{notice}</div>}
+        {loadError && <div role="alert" className={styles.alert}>{loadError}
+          <button type="button" onClick={() => { setLoading(true); setLoadError(''); void load()
+            .catch(cause => setLoadError(cause instanceof Error ? cause.message : 'Error de carga.'))
+            .finally(() => setLoading(false)) }}>Reintentar</button>
+        </div>}
+      </div>
     </header>
-    {notice && <div role="status" className={styles.notice}>{notice}</div>}
-    {loadError && <div role="alert" className={styles.alert}>{loadError}
-      <button type="button" onClick={() => { setLoading(true); setLoadError(''); void load()
-        .catch(cause => setLoadError(cause instanceof Error ? cause.message : 'Error de carga.'))
-        .finally(() => setLoading(false)) }}>Reintentar</button>
-    </div>}
     {loading ? <div className={styles.loading} role="status" aria-label="Cargando departamentos">
       <div className={styles.loadingStats}>{skeleton.slice(0,4).map(i => <span key={i}/>)}</div>
       <div className={styles.loadingGrid}>{skeleton.map(i => <span key={i}/>)}</div>
@@ -240,18 +263,40 @@ export function DepartmentsSurface({ workspaceId }: { workspaceId: number | null
               <input type="search" value={search} onChange={event => setSearch(event.target.value)}
                 placeholder="Buscar departamentos…" aria-label="Buscar departamentos"/>
             </label>
-            <select aria-label="Filtrar por estado" value={statusFilter}
-              onChange={event => setStatusFilter(event.target.value)}>
-              <option value="all">Estado: Todos</option>
-              <option value="active">Activos</option>
-              <option value="inactive">Inactivos</option>
-            </select>
-            <select aria-label="Ordenar departamentos" value={sort}
-              onChange={event => setSort(event.target.value as Sort)}>
-              <option value="name">Ordenar: Nombre</option>
-              <option value="members">Más miembros</option>
-              <option value="recent">Más recientes</option>
-            </select>
+            <div className={styles.filterControls} ref={filterContainerRef}>
+              <button type="button"
+                className={`icon-button board-filter-trigger ${styles.filterTrigger}${filtersOpen || activeFilterCount ? ' on' : ''}`}
+                title="Filtros" aria-label={activeFilterCount ? `Filtros: ${activeFilterCount} activos` : 'Filtros de departamentos'}
+                aria-haspopup="dialog" aria-expanded={filtersOpen}
+                aria-controls={filtersOpen ? 'departments-filters-popover' : undefined}
+                onClick={() => setFiltersOpen(open => !open)}>
+                <FilterFunnelIcon/>
+                {activeFilterCount > 0 && <span className="board-filter-active-dot" aria-hidden="true"/>}
+              </button>
+              {filtersOpen && <div id="departments-filters-popover" className={styles.filterPopover}
+                role="dialog" aria-label="Filtros de departamentos">
+                <div className={styles.filterPopoverHeader}>
+                  <strong>Filtros</strong>
+                  {activeFilterCount > 0 && <button type="button" onClick={() => {
+                    setStatusFilter('all'); setSort('name')
+                  }}>Limpiar</button>}
+                </div>
+                <label>Estado
+                  <select value={statusFilter} onChange={event => setStatusFilter(event.target.value)}>
+                    <option value="all">Todos</option>
+                    <option value="active">Activos</option>
+                    <option value="inactive">Inactivos</option>
+                  </select>
+                </label>
+                <label>Ordenar por
+                  <select value={sort} onChange={event => setSort(event.target.value as Sort)}>
+                    <option value="name">Nombre</option>
+                    <option value="members">Más miembros</option>
+                    <option value="recent">Más recientes</option>
+                  </select>
+                </label>
+              </div>}
+            </div>
             <div className={styles.viewSwitcher} role="group" aria-label="Vista de departamentos">
               <button type="button" aria-label="Vista de tarjetas" aria-pressed={layout === 'grid'}
                 className={layout === 'grid' ? styles.viewActive : undefined} onClick={() => setLayout('grid')}>
@@ -260,6 +305,9 @@ export function DepartmentsSurface({ workspaceId }: { workspaceId: number | null
                 className={layout === 'list' ? styles.viewActive : undefined} onClick={() => setLayout('list')}>
                 <Glyph name="list" size={16}/></button>
             </div>
+            {canManage && <button type="button" className={styles.primary} onClick={beginCreate}>
+              <PlusIcon/> Nuevo departamento
+            </button>}
           </div>
           <div className={styles.cardScroller}>
             <div className={layout === 'grid' ? styles.cards : styles.cardsList}>
