@@ -61,6 +61,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/notifications/{notification}/read', [NotificationsController::class, 'read']);
 
     Route::get('/workspaces/{workspace}/roles', [WorkspaceRolesController::class, 'index']);
+    Route::patch('/workspaces/{workspace}/roles/builtin/{key}', [WorkspaceRolesController::class, 'setBuiltin']);
     Route::post('/workspaces/{workspace}/roles', [WorkspaceRolesController::class, 'store']);
     Route::patch('/workspaces/{workspace}/roles/{role}', [WorkspaceRolesController::class, 'update']);
     Route::delete('/workspaces/{workspace}/roles/{role}', [WorkspaceRolesController::class, 'destroy']);
