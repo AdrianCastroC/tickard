@@ -3068,7 +3068,7 @@ h1, h2, h3, p { margin: 0; }
   .wd-entity-grid {grid-template-columns:repeat(2,minmax(0,1fr));}
 }
 @media(prefers-color-scheme:dark) {
-  [data-theme="dark"] .wd-metric-icon,[data-theme="dark"] .wd-client-logo,[data-theme="dark"] .wd-entity-icon {
+  [data-theme="dark"] .wd-metric-icon,[data-theme="dark"] .wd-client-logo:not(:has(.wd-client-image)),[data-theme="dark"] .wd-entity-icon {
     filter:brightness(.85);
   }
 }
@@ -4230,5 +4230,17 @@ h1, h2, h3, p { margin: 0; }
 /* Brand assets from the demo seeder: keep logos proportional and transparent. */
 .wd-brand-tile:has(.wd-brand-logo) {background:var(--surface);border:1px solid var(--line);box-sizing:border-box;overflow:hidden;}
 .wd-brand-logo {display:block;max-width:100%;max-height:100%;width:100%;height:100%;object-fit:contain;padding:4px;box-sizing:border-box;}
-.wd-client-logo:has(.wd-client-image) {background:var(--surface);overflow:hidden;}
-.wd-client-image {display:block;width:100%;height:100%;object-fit:contain;padding:2px;box-sizing:border-box;}
+.wd-client-logo:has(.wd-client-image) {
+  background:#f7f9fc;
+  border:1px solid #e4eaf1;
+  box-sizing:border-box;
+  overflow:hidden;
+}
+.wd-client-image {
+  display:block;
+  width:100%;
+  height:100%;
+  object-fit:contain;
+  padding:3px;
+  box-sizing:border-box;
+}
