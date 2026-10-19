@@ -206,7 +206,7 @@ class CardsController extends ApiController
     public function storeCard(Request $request, Board $board)
     {
         $project = $board->project;
-        abort_unless(ProjectAccess::canEditCards($request->user(), $project), 403);
+        abort_unless(ProjectAccess::canCreateCards($request->user(), $project), 403);
 
         $data = $request->validate([
             'column_id' => ['required', 'integer'],
@@ -227,6 +227,12 @@ class CardsController extends ApiController
             'label_ids.*' => ['integer'],
         ]);
 
+        if (array_key_exists('assignee_ids', $data) || array_key_exists('team_ids', $data)) {
+            abort_unless(ProjectAccess::canAssignCards($request->user(), $project), 403);
+        }
+        if (! empty($data['start_date']) || ! empty($data['due_date'])) {
+            abort_unless(ProjectAccess::canChangeDates($request->user(), $project), 403);
+        }
         $column = Column::where('board_id', $board->id)->findOrFail($data['column_id']);
         $isMilestone = (bool) ($data['is_milestone'] ?? false);
         if ($isMilestone) {
@@ -319,6 +325,12 @@ class CardsController extends ApiController
             'label_ids.*' => ['integer'],
         ]);
 
+        if (array_key_exists('assignee_ids', $data) || array_key_exists('team_ids', $data)) {
+            abort_unless(ProjectAccess::canAssignCards($request->user(), $project), 403);
+        }
+        if (array_intersect(['start_date', 'due_date', 'started_at', 'completed_at'], array_keys($data))) {
+            abort_unless(ProjectAccess::canChangeDates($request->user(), $project), 403);
+        }
         $isMilestone = (bool) ($data['is_milestone'] ?? $card->is_milestone);
         $becomingMilestone = $isMilestone && ! $card->is_milestone;
         $progressColumn = null;
@@ -427,7 +439,7 @@ class CardsController extends ApiController
     public function moveCard(Request $request, Card $card, CardDependencyService $dependencies, CardBacklogService $backlog, MilestoneCompletionService $milestones)
     {
         $project = $card->board->project;
-        abort_unless(ProjectAccess::canEditCards($request->user(), $project), 403);
+        abort_unless(ProjectAccess::canChangeState($request->user(), $project), 403);
 
         $data = $request->validate([
             'column_id' => ['required', 'integer'],
@@ -543,7 +555,7 @@ class CardsController extends ApiController
 
     public function archiveCard(Request $request, Card $card)
     {
-        abort_unless(ProjectAccess::canEditCards($request->user(), $card->board->project), 403);
+        abort_unless(ProjectAccess::canDeleteCards($request->user(), $card->board->project), 403);
         $card->update(['archived_at' => now()]);
         $card->board->touchRevision();
 
@@ -552,7 +564,7 @@ class CardsController extends ApiController
 
     public function destroyCard(Request $request, Card $card)
     {
-        abort_unless(ProjectAccess::canEditCards($request->user(), $card->board->project), 403);
+        abort_unless(ProjectAccess::canDeleteCards($request->user(), $card->board->project), 403);
         $board = $card->board;
         $paths = $card->attachments()->pluck('disk_path')->all();
         $card->delete();
