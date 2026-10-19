@@ -434,25 +434,25 @@ export function WorkspaceOverview({ profile, workspaceId, onProfileRefresh, onOp
       <div className="wd-modal-back" onMouseDown={event => {
         if (event.target === event.currentTarget && !saving && !imageBusy) setSettingsOpen(false)
       }}>
-        <div className={`wd-modal workspace-settings-modal${settingsTab === 'roles' ? ' workspace-settings-roles-mode' : ''}`} role="dialog" aria-modal="true" aria-labelledby="workspace-settings-title">
+        <div className={`wd-modal workspace-settings-modal workspace-settings-wide${settingsTab === 'roles' ? ' workspace-settings-roles-mode' : ''}`} role="dialog" aria-modal="true" aria-labelledby="workspace-settings-title">
           <header className="wd-modal-head">
             <h2 id="workspace-settings-title">Configuración del Workspace</h2>
             <button type="button" aria-label="Cerrar configuración" disabled={saving || imageBusy}
               onClick={() => setSettingsOpen(false)}>×</button>
           </header>
-          <nav className="workspace-settings-tabs" aria-label="Secciones de configuración">
-            <button type="button" className={settingsTab === 'general' ? 'on' : ''} onClick={() => setSettingsTab('general')}>General</button>
-            <button type="button" className={settingsTab === 'roles' ? 'on' : ''} onClick={() => setSettingsTab('roles')}>Roles y permisos</button>
-          </nav>
+          <div className="workspace-settings-layout">
+            <nav className="workspace-settings-side" aria-label="Secciones de configuración">
+              <button type="button" className={settingsTab === 'general' ? 'on' : ''} onClick={() => setSettingsTab('general')}>General</button>
+              <button type="button" className={settingsTab === 'roles' ? 'on' : ''} onClick={() => setSettingsTab('roles')}>Roles y permisos</button>
+            </nav>
           <div className="workspace-settings-modal-body">
             {settingsTab === 'general' && <>
+            <div className="workspace-settings-section-heading"><h3>General</h3><p>Información y preferencias del Workspace.</p></div>
             {error && <p className="workspace-overview-alert" role="alert">{error}</p>}
             {notice && <p className="workspace-overview-notice" role="status">{notice}</p>}
 
       <section className="workspace-overview-section">
-        <div className="workspace-overview-section-title">
-          <h2>General</h2>
-        </div>
+        <div className="workspace-overview-section-title"><h2>Información del Workspace</h2></div>
         <div className="project-settings-logo-editor">
           <div className="project-settings-logo-preview" aria-label={summary.image_url ? 'Logo actual del Workspace' : 'Sin logo personalizado'}>
             {summary.image_url ? <img src={summary.image_url} alt={'Logo de ' + summary.name}/> : summary.name.charAt(0).toUpperCase()}
@@ -487,6 +487,14 @@ export function WorkspaceOverview({ profile, workspaceId, onProfileRefresh, onOp
             </button>
           </div>
         </form>
+      </section>
+      <section className="workspace-overview-section workspace-settings-preview-section">
+        <div className="workspace-overview-section-title"><h2>Vista previa</h2></div>
+        <p className="workspace-overview-hint">Así se muestra tu Workspace en tickard.</p>
+        <div className="workspace-settings-preview">
+          <div className="workspace-settings-preview-logo">{summary.image_url ? <img src={summary.image_url} alt=""/> : summary.name.charAt(0).toUpperCase()}</div>
+          <div><strong>{summary.name}</strong><small>{summary.plan.toUpperCase()} · {summary.stats.projects} proyectos · {summary.stats.members ?? 0} miembros</small></div>
+        </div>
       </section>
 
       <section className="workspace-overview-section">
@@ -525,6 +533,7 @@ export function WorkspaceOverview({ profile, workspaceId, onProfileRefresh, onOp
       </section>
             </>}
             {settingsTab === 'roles' && <WorkspaceRolesManager workspaceId={summary.id}/>}
+          </div>
           </div>
         </div>
       </div>,

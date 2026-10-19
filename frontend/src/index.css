@@ -4432,3 +4432,24 @@ h1, h2, h3, p { margin: 0; }
 .tickard-role-availability{display:flex;align-items:center;gap:8px;font-size:12px;}
 .tickard-roles-builtin-detail{display:flex;flex-direction:column;gap:12px;}
 @media(max-width:720px){.tickard-roles-workspace{grid-template-columns:1fr;}.tickard-roles-detail{min-height:120px;}}
+
+/* Workspace settings uses the same broad, navigation-led composition as other management views. */
+.workspace-settings-modal.workspace-settings-wide{width:min(1120px,calc(100vw - 40px));max-height:min(860px,calc(100dvh - 32px))}
+.workspace-settings-layout{display:grid;grid-template-columns:194px minmax(0,1fr);min-height:0;flex:1;overflow:hidden}
+.workspace-settings-side{border-right:1px solid var(--line);padding:16px 10px;display:flex;flex-direction:column;gap:5px;min-width:0}
+.workspace-settings-side button{padding:11px 12px;text-align:left;border:0;border-radius:9px;background:transparent;color:var(--ink);font-size:12px;font-weight:600;cursor:pointer}
+.workspace-settings-side button.on{background:color-mix(in srgb,var(--accent) 11%,var(--surface));color:var(--accent)}
+.workspace-settings-side button:focus-visible{outline:2px solid var(--accent)}
+.workspace-settings-layout > .workspace-settings-modal-body{padding:18px;flex:1}
+.workspace-settings-section-heading{margin:0 0 4px}
+.workspace-settings-section-heading h3{font-size:17px;margin:0 0 4px}
+.workspace-settings-section-heading p{font-size:12px;color:var(--muted);margin:0}
+.workspace-settings-preview{display:flex;gap:12px;align-items:center;border:1px solid var(--line);border-radius:9px;padding:12px}
+.workspace-settings-preview-logo{display:grid;place-items:center;flex:none;width:56px;height:56px;border:1px solid var(--line);border-radius:8px;overflow:hidden;font-size:24px;font-weight:750}
+.workspace-settings-preview-logo img{width:100%;height:100%;object-fit:contain}
+.workspace-settings-preview > div:last-child{display:flex;flex-direction:column;gap:6px;min-width:0}
+.workspace-settings-preview strong{font-size:15px}
+.workspace-settings-preview small{font-size:11px;color:var(--muted)}
+.workspace-settings-preview-section{border-color:var(--line)}
+@media(min-width:900px){.workspace-settings-wide .workspace-settings-modal-body:has(.workspace-settings-preview-section){display:grid;grid-template-columns:minmax(0,1.5fr) minmax(280px,1fr);align-content:start;gap:14px}.workspace-settings-wide .workspace-settings-section-heading,.workspace-settings-wide .workspace-settings-modal-body:has(.workspace-settings-preview-section) > .workspace-overview-section:not(.workspace-settings-preview-section){grid-column:1/-1}.workspace-settings-wide .workspace-settings-modal-body:has(.workspace-settings-preview-section) > .workspace-overview-section:first-of-type{grid-column:1;grid-row:auto}.workspace-settings-wide .workspace-settings-preview-section{grid-column:2;grid-row:2}.workspace-settings-wide .workspace-settings-modal-body:has(.workspace-settings-preview-section) > .workspace-overview-section:first-of-type{grid-row:2}}
+@media(max-width:640px){.workspace-settings-modal.workspace-settings-wide{width:calc(100vw - 16px)}.workspace-settings-layout{grid-template-columns:1fr;grid-template-rows:auto minmax(0,1fr)}.workspace-settings-side{flex-direction:row;border-right:0;border-bottom:1px solid var(--line);padding:8px;overflow-x:auto}.workspace-settings-side button{white-space:nowrap}.workspace-settings-layout > .workspace-settings-modal-body{padding:12px}}
