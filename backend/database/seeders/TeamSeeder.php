@@ -17,7 +17,7 @@ class TeamSeeder extends Seeder
         $ana = User::where('email', 'ana@gestor.test')->firstOrFail();
         $luis = User::where('email', 'luis@gestor.test')->firstOrFail();
         $marta = User::where('email', 'marta@gestor.test')->firstOrFail();
-        $workspace = $ana->workspaces()->where('name', 'Tickard Demo')->firstOrFail();
+        $workspace = $ana->workspaces()->where('name', 'Altaris')->firstOrFail();
         $development = Department::create(['workspace_id' => $workspace->id, 'name' => 'Desarrollo']);
         $development->members()->sync([$ana->id, $luis->id]);
         $product = Team::create(['workspace_id' => $workspace->id, 'name' => 'Producto']);
