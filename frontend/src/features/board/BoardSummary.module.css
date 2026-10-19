@@ -310,3 +310,6 @@
   .root .topPanels,.root .middlePanels,.root .bottomPanels {grid-template-columns:minmax(0,1fr);}
   .root .topPanels > .panel:last-child,.root .bottomPanels > .panel:last-child {grid-column:auto;}
 }
+
+.loadingRoot {display:flex;flex-direction:column;justify-content:flex-start;gap:10px;overflow:hidden;}
+.loadingRoot > * {flex:0 0 auto;min-height:0;}
