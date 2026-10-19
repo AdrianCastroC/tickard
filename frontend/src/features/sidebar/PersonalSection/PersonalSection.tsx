@@ -20,7 +20,7 @@ export function PersonalSection({ active, onOpen, showClients }: Props) {
         <NavIcon><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><path d="M16 3.128a4 4 0 0 1 0 7.744"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><circle cx="9" cy="7" r="4"/></NavIcon><span className="side-label-text">Equipos</span>
       </button>
       <button className={active === 'members' ? 'nav-item sub on' : 'nav-item sub'} type="button" title="Miembros" onClick={() => onOpen('members')}>
-        <ProfileUserIcon/><span className="side-label-text">Miembros</span>
+        <ProfileUserIcon className="nav-icon"/><span className="side-label-text">Miembros</span>
       </button>
       {showClients && <button className={active === 'clients' ? 'nav-item sub on' : 'nav-item sub'} type="button" title="Clientes" onClick={() => onOpen('clients')}>
         <NavIcon><path d="M16.051 12.616a1 1 0 0 1 1.909.024l.737 1.452a1 1 0 0 0 .737.535l1.634.256a1 1 0 0 1 .588 1.806l-1.172 1.168a1 1 0 0 0-.282.866l.259 1.613a1 1 0 0 1-1.541 1.134l-1.465-.75a1 1 0 0 0-.912 0l-1.465.75a1 1 0 0 1-1.539-1.133l.258-1.613a1 1 0 0 0-.282-.866l-1.156-1.153a1 1 0 0 1 .572-1.822l1.633-.256a1 1 0 0 0 .737-.535z"/><path d="M8 15H7a4 4 0 0 0-4 4v2"/><circle cx="10" cy="7" r="4"/></NavIcon><span className="side-label-text">Clientes</span>
