@@ -187,7 +187,7 @@ function Timeline({ boards, anchor, onOpenGantt, onBoardSelect }: {
       })}
       {!ordered.length && <p className={styles.timelineEmpty}>Este proyecto todavía no tiene tableros.</p>}
     </div>
-    <div className={styles.timelineFoot}><button type="button" onClick={onOpenGantt}>Consultar tareas y dependencias en el Gantt</button></div>
+    
   </section>
 }
 function LoadingPreview() {
@@ -260,7 +260,7 @@ export function ProjectSurface({ project, onOpenGantt, onOpenPersonnel, onBoardS
       <section className={styles.panel}><div className={styles.panelHead}><h2>Estado de tareas</h2></div>
         <Distribution rows={data.columns} total={summary.total}/></section>
       <section className={`${styles.panel} ${styles.milestonePanel}`}>
-        <div className={styles.panelHead}><h2>Hitos próximos</h2><button type="button" onClick={onOpenGantt}>Ver Gantt</button></div>
+        <div className={styles.panelHead}><h2>Hitos próximos</h2></div>
         <div className={styles.milestoneList}>{milestones.slice(0, 4).map((item) => <button type="button" key={item.id}
           className={styles.milestone} onClick={() => onOpenCard({ boardId: item.board_id, cardId: item.id, openCard: true })}
           title={`Abrir «${item.title}» en ${item.board_name}`}>
