@@ -113,7 +113,7 @@ class ProjectsController extends ApiController
 
     public function deleteProject(Request $request, Project $project)
     {
-        abort_unless(ProjectAccess::canManage($request->user(), $project), 403);
+        abort_unless(ProjectAccess::has($request->user(), $project, 'project.delete'), 403);
 
         $data = $request->validate([
             'confirmation_name' => ['required', 'string'],
