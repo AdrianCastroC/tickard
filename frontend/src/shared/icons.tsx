@@ -284,10 +284,10 @@ function CloseIcon() {
   )
 }
 
-function ProfileUserIcon() {
+function ProfileUserIcon({ className = 'account-ico' }: { className?: string }) {
   return (
     <svg
-      className="account-ico"
+      className={className}
       xmlns="http://www.w3.org/2000/svg"
       viewBox="0 0 24 24"
       fill="none"
