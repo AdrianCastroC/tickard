@@ -118,6 +118,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/projects/{project}/boards', [ProjectsController::class, 'storeBoard']);
     Route::delete('/boards/{board}', [ProjectsController::class, 'deleteBoard']);
 
+    Route::post('/projects/{project}/image', [ProjectsController::class, 'uploadProjectImage']);
+    Route::delete('/projects/{project}/image', [ProjectsController::class, 'deleteProjectImage']);
     Route::get('/projects/{project}/settings', [ProjectsController::class, 'projectSettings']);
     Route::patch('/projects/{project}', [ProjectsController::class, 'updateProject']);
     Route::post('/projects/{project}/labels', [ProjectsController::class, 'storeLabel']);

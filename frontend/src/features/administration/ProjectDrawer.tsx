@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useState } from 'react'
 import { api, type Project } from '../../api'
+import { ProjectCubeIcon } from '../../shared/icons'
 import { ProjectContentLoading } from '../workspace/ProjectContentLoading'
 
 type VisibilityKey = 'description' | 'assignee' | 'due_date' | 'priority' | 'labels' | 'comments'
 type ProjectSettingsPayload = {
   id: number
   name: string
+  image_url: string | null
   description: string | null
   client_company_id: number | null
   client_access_enabled: boolean
@@ -91,6 +93,53 @@ export function ProjectSettings({ project, onRefresh, onDelete }: {
     }
   }
 
+  async function changeImage(file: File | undefined) {
+    if (!file || busy) return
+    if (!['image/png', 'image/jpeg', 'image/webp'].includes(file.type)
+        || file.size > 2 * 1024 * 1024) {
+      setError('Elige una imagen JPG, PNG o WebP de hasta 2 MB.')
+      return
+    }
+    const body = new FormData()
+    body.append('image', file)
+    setBusy(true)
+    setError('')
+    setNotice('')
+    let uploaded = false
+    try {
+      await api('/projects/' + project.id + '/image', { method: 'POST', body })
+      uploaded = true
+      setSettings(await fetchSettings())
+      await onRefresh()
+      setNotice('Logo del proyecto actualizado.')
+    } catch (cause) {
+      setError(uploaded ? 'Logo guardado, pero no se pudo actualizar la vista. Recarga la página.'
+        : cause instanceof Error ? cause.message : 'No se pudo subir el logo.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function removeImage() {
+    if (busy || !settings?.image_url) return
+    setBusy(true)
+    setError('')
+    setNotice('')
+    let removed = false
+    try {
+      await api('/projects/' + project.id + '/image', { method: 'DELETE' })
+      removed = true
+      setSettings(await fetchSettings())
+      await onRefresh()
+      setNotice('Logo eliminado. Se vuelve a mostrar el icono del proyecto.')
+    } catch (cause) {
+      setError(removed ? 'Logo eliminado, pero no se pudo actualizar la vista. Recarga la página.'
+        : cause instanceof Error ? cause.message : 'No se pudo eliminar el logo.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
   if (!settings) return <section className="project-settings-view">
     {loading
       ? <ProjectContentLoading title="Cargando Configuración" description="Preparando los ajustes del proyecto…">
@@ -126,6 +175,31 @@ export function ProjectSettings({ project, onRefresh, onDelete }: {
         <div className="project-settings-section-title">
           <h3 id="project-settings-general">Datos generales</h3>
           <p>Identificación y organización del proyecto.</p>
+        </div>
+        <div className="project-settings-logo-editor">
+          <div className="project-settings-logo-preview" aria-label={settings.image_url ? 'Logo actual' : 'Sin logo personalizado'}>
+            {settings.image_url
+              ? <img src={settings.image_url} alt={'Logo de ' + settings.name}/>
+              : <ProjectCubeIcon/>}
+          </div>
+          <div className="project-settings-logo-controls">
+            <strong>Logo del proyecto</strong>
+            <small>Se muestra en la cabecera, la barra lateral y el resumen del Workspace.</small>
+            <div className="project-settings-logo-actions">
+              <label className={`project-settings-logo-upload${busy ? ' is-disabled' : ''}`}>
+                {busy ? 'Guardando…' : settings.image_url ? 'Cambiar imagen' : 'Subir imagen'}
+                <input type="file" accept="image/png,image/jpeg,image/webp"
+                  disabled={busy} aria-label="Subir logo del proyecto"
+                  onChange={event => {
+                    void changeImage(event.currentTarget.files?.[0])
+                    event.currentTarget.value = ''
+                  }}/>
+              </label>
+              {settings.image_url && <button type="button" className="ghost" disabled={busy}
+                onClick={() => void removeImage()}>Quitar imagen</button>}
+            </div>
+            <small>JPG, PNG o WebP · máximo 2 MB. Imagen completa, sin recortes.</small>
+          </div>
         </div>
         <form className="project-settings-name-form" onSubmit={event => {
           event.preventDefault()

@@ -33,3 +33,20 @@
 .people > * + * { margin-left: -6px; }
 .labels { display: flex; gap: 4px; flex-wrap: wrap; }
 .label { padding: 3px 7px; border-radius: 999px; background: var(--canvas); color: var(--muted); font-size: 11px; white-space: nowrap; }
+
+
+/* Keep the same sorting affordance as the personnel and member tables. */
+.sortButton {
+  display:flex;align-items:center;justify-content:space-between;gap:9px;
+  border:0;background:transparent;padding:0;width:100%;font:inherit;
+  font-weight:inherit;color:inherit;text-align:left;white-space:nowrap;cursor:pointer;
+}
+.sortButton:hover,.sortButtonActive {color:var(--accent);}
+.sortButton:focus-visible {outline:2px solid var(--accent);outline-offset:4px;border-radius:3px;}
+.sortIcon {flex:0 0 12px;width:12px;height:12px;color:var(--muted);}
+.sortIcon path {opacity:.45;}
+.sortButton:hover .sortIcon path {opacity:.75;}
+.sortIcon[data-direction="asc"] path:first-child,
+.sortIcon[data-direction="desc"] path:last-child {opacity:1;fill:var(--accent);}
+.sortIcon[data-direction="asc"] path:last-child,
+.sortIcon[data-direction="desc"] path:first-child {opacity:.23;}
