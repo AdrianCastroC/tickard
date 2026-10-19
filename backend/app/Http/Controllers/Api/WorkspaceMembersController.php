@@ -158,6 +158,15 @@ class WorkspaceMembersController extends ApiController
                 ->where('projects.workspace_id', $workspace->id)
                 ->where('link.user_id', $user->id)
                 ->distinct()->pluck('boards.id')->all();
+            $checklistBoardIds = DB::table('card_checklist_item_user as link')
+                ->join('card_checklist_items as item', 'item.id', '=', 'link.card_checklist_item_id')
+                ->join('cards', 'cards.id', '=', 'item.card_id')
+                ->join('boards', 'boards.id', '=', 'cards.board_id')
+                ->join('projects', 'projects.id', '=', 'boards.project_id')
+                ->where('projects.workspace_id', $workspace->id)
+                ->where('link.user_id', $user->id)
+                ->distinct()->pluck('boards.id')->all();
+            $affectedBoardIds = array_values(array_unique(array_merge($affectedBoardIds, $checklistBoardIds)));
 
             // Unassign Tasks and checklist items, including completed Cards,
             // without removing Cards or their historical activity and comments.
