@@ -134,7 +134,7 @@ class ProjectsController extends ApiController
 
     public function storeBoard(Request $request, Project $project)
     {
-        abort_unless(ProjectAccess::canManage($request->user(), $project), 403);
+        abort_unless(ProjectAccess::canManageBoards($request->user(), $project), 403);
 
         $data = $request->validate([
             'name' => ['required', 'string', 'max:120'],
@@ -162,7 +162,7 @@ class ProjectsController extends ApiController
     public function deleteBoard(Request $request, Board $board)
     {
         abort_unless(
-            ProjectAccess::canManage($request->user(), $board->project),
+            ProjectAccess::canManageBoards($request->user(), $board->project),
             403
         );
 
