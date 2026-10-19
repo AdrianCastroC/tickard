@@ -188,6 +188,21 @@
 .alert button { background:transparent; border:0; text-decoration:underline; cursor:pointer; color:inherit; }
 .backdrop { position:fixed; inset:0; z-index:11000; background:rgb(0 0 0 / 55%); padding:16px;
   display:grid; place-items:center; }
+/* Shared modal editor for departments, teams, and clients. */
+.editorDialog { --panel-border:var(--line); display:flex;flex-direction:column;
+  width:min(680px,calc(100vw - 32px));max-height:min(850px,calc(100dvh - 32px));
+  min-height:0;overflow:hidden;box-sizing:border-box;
+  background:var(--surface);color:var(--ink);border:1px solid var(--line);
+  border-radius:12px;box-shadow:0 18px 56px rgb(0 0 0 / 23%); }
+.editorDialog .form { min-height:0;overflow:hidden; }
+.editorDialog .formHeading { flex:0 0 auto;padding:17px 20px; }
+.editorDialog .formScroll { overscroll-behavior:contain;padding:18px 20px; }
+.editorDialog .formActions { padding:13px 20px; }
+@media(max-width:600px) {
+  .editorDialog { max-height:calc(100dvh - 24px);width:calc(100vw - 24px); }
+  .editorDialog .formScroll { padding:14px; }
+  .editorDialog .formHeading,.editorDialog .formActions { padding:13px 14px; }
+}
 .confirmDialog { width:min(420px,calc(100vw - 32px)); padding:20px; border-radius:12px;
   background:var(--surface); color:var(--ink); border:1px solid var(--panel-border); box-shadow:0 15px 50px rgb(0 0 0 / 20%); }
 .confirmDialog h2 { margin:0 0 10px; font-size:16px; }
