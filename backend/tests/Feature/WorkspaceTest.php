@@ -366,6 +366,7 @@ class WorkspaceTest extends TestCase
         $workspace->update(['name' => 'Tickard Demo', 'show_clients' => true]);
         $aster = ClientCompany::create(['workspace_id' => $workspace->id, 'name' => 'Aster Labs']);
         $norte = ClientCompany::create(['workspace_id' => $workspace->id, 'name' => 'Norte Digital']);
+        $nebula = Project::create(['workspace_id' => $workspace->id, 'name' => 'Nébula Mobile']);
 
         $otherOwner = User::factory()->create(['is_admin' => false]);
         $otherWorkspace = Workspace::createInitialFor($otherOwner);
@@ -391,6 +392,12 @@ class WorkspaceTest extends TestCase
         $this->assertDatabaseHas('client_companies', [
             'id' => $otherClient->id, 'image_path' => null,
         ]);
+        $this->assertDatabaseHas('projects', [
+            'id' => $nebula->id,
+            'image_path' => "workspace-entities/{$workspace->id}/projects/nebula-mobile.png",
+        ]);
+        $this->assertSame(1, Project::where('workspace_id', $workspace->id)
+            ->where('name', 'Nébula Mobile')->count());
         $this->assertSame(1, Workspace::where('id', $workspace->id)->count());
         $this->assertSame(2, ClientCompany::where('workspace_id', $workspace->id)->count());
 
@@ -398,6 +405,7 @@ class WorkspaceTest extends TestCase
             "workspace-entities/{$workspace->id}/workspace/altaris.png",
             "workspace-entities/{$workspace->id}/clients/aster-labs.png",
             "workspace-entities/{$workspace->id}/clients/norte-digital.png",
+            "workspace-entities/{$workspace->id}/projects/nebula-mobile.png",
         ] as $path) {
             Storage::disk('public')->assertExists($path);
         }
@@ -408,12 +416,18 @@ class WorkspaceTest extends TestCase
             ->assertJsonPath('workspaces.0.name', 'Altaris')
             ->assertJsonPath('workspaces.0.image_url',
                 "/storage/workspace-entities/{$workspace->id}/workspace/altaris.png");
+        $this->getJson('/api/me?workspace_id='.$workspace->id)
+            ->assertOk()
+            ->assertJsonPath('projects.0.image_url',
+                "/storage/workspace-entities/{$workspace->id}/projects/nebula-mobile.png");
 
         $this->getJson("/api/workspaces/{$workspace->id}/overview")
             ->assertOk()
             ->assertJsonPath('image_url',
                 "/storage/workspace-entities/{$workspace->id}/workspace/altaris.png")
-            ->assertJsonCount(2, 'dashboard.clients');
+            ->assertJsonCount(2, 'dashboard.clients')
+            ->assertJsonPath('dashboard.projects.0.image_url',
+                "/storage/workspace-entities/{$workspace->id}/projects/nebula-mobile.png");
     }
 
 }
