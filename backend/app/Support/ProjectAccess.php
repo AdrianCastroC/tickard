@@ -53,7 +53,7 @@ class ProjectAccess
         }
         return match ($permission) {
             'project.view' => true,
-            'project.manage', 'project.members', 'boards.manage' => $role === 'responsable',
+            'project.manage', 'project.delete', 'project.members', 'boards.manage' => $role === 'responsable',
             'cards.edit', 'files.upload' => in_array($role, ['responsable', 'editor'], true),
             'cards.comment' => true,
             default => false,
