@@ -17,7 +17,8 @@ class ProjectAccess
             return 'responsable';
         }
 
-        $role = $user->memberships()->where('project_id', $project->id)->value('role');
+        $member = $user->memberships()->where('project_id', $project->id)->first();
+        $role = $member?->role;
         if ($role === null) {
             return null;
         }
@@ -34,7 +35,29 @@ class ProjectAccess
                 return null;
             }
         }
+        if ($member?->custom_role_id !== null) {
+            $custom = $member->customRole;
+            if (! $custom || $custom->scope !== 'project' || (int) $custom->workspace_id !== (int) $project->workspace_id) return null;
+        }
         return $role;
+    }
+
+    public static function has(User $user, Project $project, string $permission): bool
+    {
+        $role = self::role($user, $project);
+        if ($role === null) return false;
+        if ($role === 'responsable' && ($user->is_admin || self::isWorkspaceOwner($user, $project))) return true;
+        $member = $user->memberships()->where('project_id', $project->id)->first();
+        if ($member?->custom_role_id !== null) {
+            return in_array($permission, $member->customRole?->permissions ?? [], true);
+        }
+        return match ($permission) {
+            'project.view' => true,
+            'project.manage', 'project.members', 'boards.manage' => $role === 'responsable',
+            'cards.edit', 'files.upload' => in_array($role, ['responsable', 'editor'], true),
+            'cards.comment' => true,
+            default => false,
+        };
     }
 
     public static function isWorkspaceOwner(User $user, Project $project): bool
@@ -48,21 +71,21 @@ class ProjectAccess
 
     public static function canView(User $user, Project $project): bool
     {
-        return self::role($user, $project) !== null;
+        return self::has($user, $project, 'project.view');
     }
 
     public static function canEditCards(User $user, Project $project): bool
     {
-        return in_array(self::role($user, $project), ['responsable', 'editor'], true);
+        return self::has($user, $project, 'cards.edit');
     }
 
     public static function canComment(User $user, Project $project): bool
     {
-        return self::role($user, $project) !== null;
+        return self::has($user, $project, 'cards.comment');
     }
 
     public static function canManage(User $user, Project $project): bool
     {
-        return self::role($user, $project) === 'responsable';
+        return self::has($user, $project, 'project.manage');
     }
 }
