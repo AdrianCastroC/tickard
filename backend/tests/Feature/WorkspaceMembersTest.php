@@ -2,6 +2,9 @@
 
 namespace Tests\Feature;
 
+use App\Models\Board;
+use App\Models\Card;
+use App\Models\CardChecklistItem;
 use App\Models\ClientCompany;
 use App\Models\Department;
 use App\Models\Project;
@@ -10,6 +13,7 @@ use App\Models\Team;
 use App\Models\User;
 use App\Models\Workspace;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 class WorkspaceMembersTest extends TestCase
@@ -192,6 +196,206 @@ class WorkspaceMembersTest extends TestCase
         $this->assertDatabaseHas('workspace_members', [
             'workspace_id' => $workspace->id, 'user_id' => $member->id, 'job_title' => null,
         ]);
+    }
+
+
+    public function test_only_owner_can_remove_internal_members_and_owner_and_clients_are_protected(): void
+    {
+        extract($this->fixture());
+        $url = "/api/workspaces/{$workspace->id}/members/";
+
+        $this->actingAs($owner)->getJson("/api/workspaces/{$workspace->id}/members")
+            ->assertOk()->assertJsonPath('can_remove_members', true);
+        $this->actingAs($admin)->getJson("/api/workspaces/{$workspace->id}/members")
+            ->assertOk()->assertJsonPath('can_remove_members', false);
+
+        $this->actingAs($member)->deleteJson($url.$admin->id)->assertForbidden();
+        $this->actingAs($outside)->deleteJson($url.$member->id)->assertForbidden();
+        $this->actingAs($admin)->deleteJson($url.$member->id)->assertForbidden();
+
+        $this->actingAs($owner)->deleteJson($url.$owner->id)->assertUnprocessable();
+        $this->deleteJson($url.$client->id)->assertUnprocessable();
+        $this->deleteJson($url.$outside->id)->assertNotFound();
+
+        foreach ([$owner, $admin, $member, $client] as $person) {
+            $this->assertDatabaseHas('workspace_members', [
+                'workspace_id' => $workspace->id, 'user_id' => $person->id,
+            ]);
+        }
+    }
+
+    public function test_removing_member_revokes_all_scoped_access_but_keeps_tasks_history_and_other_workspaces(): void
+    {
+        extract($this->fixture());
+        $department = Department::create([
+            'workspace_id' => $workspace->id, 'name' => 'Desarrollo',
+            'lead_user_id' => $member->id,
+        ]);
+        $department->members()->attach([$member->id, $admin->id]);
+        $team = Team::create([
+            'workspace_id' => $workspace->id, 'name' => 'Backend',
+            'lead_user_id' => $member->id,
+        ]);
+        $team->members()->attach([$member->id, $admin->id]);
+
+        $project = Project::create([
+            'workspace_id' => $workspace->id,
+            'client_company_id' => $company->id, 'name' => 'Aplicación',
+        ]);
+        ProjectMember::create([
+            'project_id' => $project->id, 'user_id' => $member->id, 'role' => 'editor',
+        ]);
+        ProjectMember::create([
+            'project_id' => $project->id, 'user_id' => $admin->id, 'role' => 'editor',
+        ]);
+        $board = Board::create(['project_id' => $project->id, 'name' => 'Sprint']);
+        $board->createDefaultColumns();
+        $column = $board->columns()->where('workflow_state', 'pending')->firstOrFail();
+        $card = Card::create([
+            'board_id' => $board->id, 'column_id' => $column->id,
+            'title' => 'Trabajo compartido',
+        ]);
+        $card->assignees()->attach([$member->id, $admin->id]);
+        $checklist = CardChecklistItem::create([
+            'card_id' => $card->id, 'body' => 'Revisar implementación',
+        ]);
+        $checklist->assignees()->attach([$member->id, $admin->id]);
+        $onlyMine = Card::create([
+            'board_id' => $board->id, 'column_id' => $column->id,
+            'title' => 'Tarea pendiente de reasignación',
+        ]);
+        $onlyMine->assignees()->attach($member->id);
+        DB::table('comments')->insert([
+            'card_id' => $card->id, 'user_id' => $member->id,
+            'body' => 'Comentario histórico', 'is_internal' => true,
+        ]);
+        DB::table('activities')->insert([
+            'card_id' => $card->id, 'user_id' => $member->id,
+            'type' => 'assigned',
+        ]);
+
+        $otherOwner = User::factory()->create(['is_admin' => false]);
+        $otherWorkspace = Workspace::createInitialFor($otherOwner);
+        $otherWorkspace->memberships()->create([
+            'user_id' => $member->id, 'role' => 'member',
+        ]);
+        $otherCompany = ClientCompany::create([
+            'workspace_id' => $otherWorkspace->id, 'name' => 'Otra empresa',
+        ]);
+        $otherProject = Project::create([
+            'workspace_id' => $otherWorkspace->id,
+            'client_company_id' => $otherCompany->id, 'name' => 'Otro proyecto',
+        ]);
+        ProjectMember::create([
+            'project_id' => $otherProject->id, 'user_id' => $member->id, 'role' => 'editor',
+        ]);
+        $otherDepartment = Department::create([
+            'workspace_id' => $otherWorkspace->id, 'name' => 'Otro departamento',
+            'lead_user_id' => $member->id,
+        ]);
+        $otherDepartment->members()->attach($member->id);
+        $otherTeam = Team::create([
+            'workspace_id' => $otherWorkspace->id, 'name' => 'Otro equipo',
+            'lead_user_id' => $member->id,
+        ]);
+        $otherTeam->members()->attach($member->id);
+        $otherBoard = Board::create([
+            'project_id' => $otherProject->id, 'name' => 'Otro tablero',
+        ]);
+        $otherBoard->createDefaultColumns();
+        $otherColumn = $otherBoard->columns()->where('workflow_state', 'pending')->firstOrFail();
+        $otherCard = Card::create([
+            'board_id' => $otherBoard->id, 'column_id' => $otherColumn->id,
+            'title' => 'Tarea externa',
+        ]);
+        $otherCard->assignees()->attach($member->id);
+        $otherChecklist = CardChecklistItem::create([
+            'card_id' => $otherCard->id, 'body' => 'Checklist externa',
+        ]);
+        $otherChecklist->assignees()->attach($member->id);
+
+        $this->actingAs($owner)
+            ->deleteJson("/api/workspaces/{$workspace->id}/members/{$member->id}")
+            ->assertNoContent();
+
+        $this->assertDatabaseMissing('workspace_members', [
+            'workspace_id' => $workspace->id, 'user_id' => $member->id,
+        ]);
+        $this->assertDatabaseMissing('project_members', [
+            'project_id' => $project->id, 'user_id' => $member->id,
+        ]);
+        $this->assertDatabaseMissing('department_user', [
+            'department_id' => $department->id, 'user_id' => $member->id,
+        ]);
+        $this->assertDatabaseMissing('team_user', [
+            'team_id' => $team->id, 'user_id' => $member->id,
+        ]);
+        $this->assertDatabaseHas('departments', [
+            'id' => $department->id, 'lead_user_id' => null,
+        ]);
+        $this->assertDatabaseHas('teams', [
+            'id' => $team->id, 'lead_user_id' => null,
+        ]);
+        $this->assertDatabaseMissing('card_user', [
+            'card_id' => $card->id, 'user_id' => $member->id,
+        ]);
+        $this->assertDatabaseMissing('card_user', [
+            'card_id' => $onlyMine->id, 'user_id' => $member->id,
+        ]);
+        $this->assertDatabaseMissing('card_checklist_item_user', [
+            'card_checklist_item_id' => $checklist->id, 'user_id' => $member->id,
+        ]);
+        $this->assertDatabaseHas('card_user', [
+            'card_id' => $card->id, 'user_id' => $admin->id,
+        ]);
+        $this->assertDatabaseHas('card_checklist_item_user', [
+            'card_checklist_item_id' => $checklist->id, 'user_id' => $admin->id,
+        ]);
+        $this->assertDatabaseHas('cards', ['id' => $card->id, 'title' => 'Trabajo compartido']);
+        $this->assertDatabaseHas('cards', ['id' => $onlyMine->id]);
+        $this->assertDatabaseHas('card_checklist_items', ['id' => $checklist->id]);
+        $this->assertDatabaseHas('comments', [
+            'card_id' => $card->id, 'user_id' => $member->id, 'body' => 'Comentario histórico',
+        ]);
+        $this->assertDatabaseHas('activities', [
+            'card_id' => $card->id, 'user_id' => $member->id,
+        ]);
+        $this->assertDatabaseHas('users', ['id' => $member->id]);
+        $this->assertDatabaseHas('workspace_members', [
+            'workspace_id' => $otherWorkspace->id, 'user_id' => $member->id,
+        ]);
+        $this->assertDatabaseHas('project_members', [
+            'project_id' => $otherProject->id, 'user_id' => $member->id,
+        ]);
+        $this->assertDatabaseHas('department_user', [
+            'department_id' => $otherDepartment->id, 'user_id' => $member->id,
+        ]);
+        $this->assertDatabaseHas('team_user', [
+            'team_id' => $otherTeam->id, 'user_id' => $member->id,
+        ]);
+        $this->assertDatabaseHas('departments', [
+            'id' => $otherDepartment->id, 'lead_user_id' => $member->id,
+        ]);
+        $this->assertDatabaseHas('teams', [
+            'id' => $otherTeam->id, 'lead_user_id' => $member->id,
+        ]);
+        $this->assertDatabaseHas('card_user', [
+            'card_id' => $otherCard->id, 'user_id' => $member->id,
+        ]);
+        $this->assertDatabaseHas('card_checklist_item_user', [
+            'card_checklist_item_id' => $otherChecklist->id, 'user_id' => $member->id,
+        ]);
+
+        $this->actingAs($member)
+            ->getJson("/api/projects/{$project->id}/personnel")->assertForbidden();
+        $this->getJson("/api/workspaces/{$workspace->id}/members")->assertForbidden();
+        $this->actingAs($owner)
+            ->getJson("/api/workspaces/{$workspace->id}/members")
+            ->assertOk()->assertJsonPath('member_count', 3);
+
+        // Repeating the request is safe: it cannot remove anyone else.
+        $this->deleteJson("/api/workspaces/{$workspace->id}/members/{$member->id}")
+            ->assertNotFound();
     }
 
 }
