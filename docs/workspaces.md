@@ -267,6 +267,10 @@ El dashboard principal sigue la referencia de Tickard Demo: identidad y métrica
 
 El endpoint existente `GET /api/workspaces/{workspace}/overview` incorpora `dashboard` con cifras de Cards no archivadas y completadas, hasta 6 proyectos recientes, 7 tareas pendientes, 6 eventos recientes, y muestras acotadas de miembros, equipos, departamentos y clientes. Se filtran los proyectos accesibles por el usuario: miembros normales solo ven sus Cards asignadas y clientes solo sus Cards públicas asignadas en proyectos externos habilitados. No se devuelven textos de comentarios ni actividades internas; las cuentas sin permisos administrativos no reciben listados de personal ni empresas.
 
+La tarjeta **Miembros del Workspace** se alinea con las métricas y limita sus avatares al espacio disponible; incluye acceso a las invitaciones. Las tarjetas de proyectos recientes muestran nombre y **descripción general** junto al icono, barra de progreso de tareas completadas, número de tareas, avatares de miembros y la **última fecha de vencimiento** entre las Cards visibles (no un estado propio de proyecto). «Nuevo proyecto» abre un modal de creación con nombre y descripción; la edición de la descripción también está disponible en Configuración del proyecto. Los botones de clientes y miembros conducen a los formularios existentes con sus permisos.
+
+Las actividades muestran la misma foto de cuenta que en el resto de Tickard. Si un usuario no ha subido ninguna, se emplea el mismo identificador estable de usuario para el avatar de reserva, evitando fotos distintas según la vista.
+
 El botón **Configuración** abre los ajustes existentes del propietario (nombre, cumpleaños, Clientes y eliminación). Así los formularios no ocupan espacio en la vista principal. **Anuncios del Workspace** presenta un estado vacío porque aún no existe un modelo de anuncios; no se simulan publicaciones. Se conserva el loading y el scroll interno.
 
 
