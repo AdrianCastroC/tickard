@@ -27,10 +27,6 @@ type Dashboard = {
   activity: BoardActivity[]
 }
 
-const STATE_LABELS: Record<WorkflowState, string> = {
-  backlog: 'Backlog', pending: 'Por hacer', in_progress: 'En progreso',
-  review: 'En revisión', done: 'Completado',
-}
 const STATE_COLORS: Record<WorkflowState, string> = {
   backlog: '#94a3b8', pending: '#4b90e6', in_progress: '#efa34b',
   review: '#9867d9', done: '#22a783',
@@ -45,14 +41,6 @@ function dateText(date: string | null) {
   return new Date(date.slice(0, 10) + 'T12:00:00').toLocaleDateString('es-ES', {
     day: 'numeric', month: 'short', year: 'numeric',
   })
-}
-
-function isOverdue(date: string, state: WorkflowState) {
-  if (state === 'done' || state === 'backlog') return false
-  const now = new Date()
-  const localDate = [now.getFullYear(), String(now.getMonth() + 1).padStart(2, '0'),
-    String(now.getDate()).padStart(2, '0')].join('-')
-  return date.slice(0, 10) < localDate
 }
 
 export function BoardSummary({ board, onConfigure, onOpenView, onOpenCard }: {
