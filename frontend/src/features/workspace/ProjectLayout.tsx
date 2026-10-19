@@ -28,7 +28,7 @@ type Props = {
 }
 
 export function ProjectLayout({
-  project, board, context = 'project', projectView, onProjectViewChange, boardState, filters, profile,
+  project, context = 'project', projectView, onProjectViewChange, boardState, filters, profile,
   query, onBoardDeleted, onNavigateExternalCard, ganttFocus, onContextChange, onRefresh, onDeleted,
   onBoardSelect = (id) => window.dispatchEvent(new CustomEvent('tickard:select-board', { detail: id })),
 }: Props) {
