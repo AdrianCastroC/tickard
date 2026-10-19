@@ -162,18 +162,13 @@ export function ProjectSettings({ project, onRefresh, onDelete }: {
 
   const companySelected = settings.client_company_id !== null
   return <section className="project-settings-view" aria-label="Configuración del proyecto" aria-busy={busy}>
-    <div className="project-settings-heading">
-      <h2>Configuración del proyecto</h2>
-      <p>Administra los datos generales, el acceso externo y la información que pueden consultar los clientes.</p>
-    </div>
-
     {error && <p role="alert" className="project-settings-alert">{error}</p>}
     {notice && <p role="status" className="project-settings-notice">{notice}</p>}
 
     <div className="project-settings-grid">
       <section className="project-settings-section" aria-labelledby="project-settings-general">
         <div className="project-settings-section-title">
-          <h3 id="project-settings-general">Datos generales</h3>
+          <h3 id="project-settings-general">General</h3>
           <p>Identificación y organización del proyecto.</p>
         </div>
         <div className="project-settings-logo-editor">
