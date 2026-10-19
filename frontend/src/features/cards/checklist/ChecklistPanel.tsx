@@ -95,10 +95,12 @@ function CheckItemDateMenu({ value, onChange, onClose, minDate, maxDate }: {
   )
 }
 
-function SortableCheckItem({ item, editing, canEdit, members, cardDueDate, onToggle, onPatch, onRemove }: {
+function SortableCheckItem({ item, editing, canEdit, canAssign, canDates, members, cardDueDate, onToggle, onPatch, onRemove }: {
   item: ChecklistItem
   editing: boolean
   canEdit: boolean
+  canAssign: boolean
+  canDates: boolean
   members: Person[]
   cardDueDate?: string | null
   onToggle: () => void
@@ -150,18 +152,18 @@ function SortableCheckItem({ item, editing, canEdit, members, cardDueDate, onTog
           <button
             type="button"
             className="check-faces"
-            disabled={!editing}
+            disabled={!canAssign}
             aria-label="Asignar miembros"
             aria-expanded={pickingPeople}
             onClick={() => {
-              if (!editing) return
+              if (!canAssign) return
               setPickingPeople((open) => !open)
               setPickingDate(false)
               setMenuOpen(false)
             }}
           >
             {assignees.length === 0 ? (
-              editing ? (
+              canAssign ? (
                 <span className="check-add-face" aria-hidden="true">
                   <UserPlusIcon className="check-user-plus" />
                 </span>
@@ -187,15 +189,15 @@ function SortableCheckItem({ item, editing, canEdit, members, cardDueDate, onTog
           )}
         </div>
         <div className={`check-date${pickingDate ? ' open' : ''}`}>
-          {(editing || item.due_date) && (
+          {(canDates || item.due_date) && (
             <button
               type="button"
               className="check-date-btn"
-              disabled={!editing}
+              disabled={!canDates}
               aria-label="Fecha de vencimiento"
               aria-expanded={pickingDate}
               onClick={() => {
-                if (!editing) return
+                if (!canDates) return
                 setPickingDate((open) => !open)
                 setPickingPeople(false)
                 setMenuOpen(false)
@@ -244,7 +246,7 @@ function SortableCheckItem({ item, editing, canEdit, members, cardDueDate, onTog
   )
 }
 
-export function ChecklistPanel({ card, module, editing, canEdit, members, dragProps, onChange, onRemove }: {
+export function ChecklistPanel({ card, module, editing, canEdit, canAssign, canDates, members, dragProps, onChange, onRemove }: {
   card: Card
   module: CardModule
   editing: boolean
@@ -437,6 +439,8 @@ export function ChecklistPanel({ card, module, editing, canEdit, members, dragPr
                     item={item}
                     editing={editing}
                     canEdit={canEdit}
+                    canAssign={canAssign}
+                    canDates={canDates}
                     members={members}
                     cardDueDate={card.due_date}
                     onToggle={() => { void patchItem(item.id, { is_done: !item.is_done }) }}
