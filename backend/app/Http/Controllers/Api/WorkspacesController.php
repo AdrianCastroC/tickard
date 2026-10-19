@@ -74,6 +74,11 @@ class WorkspacesController extends Controller
             : $workspace->projects()
                 ->whereHas('members', fn ($query) =>
                     $query->where('user_id', $user->id))
+                ->when($isClient, fn ($query) => $query
+                    ->where('client_access_enabled', true)
+                    ->where('client_company_id', WorkspaceClientAccess::companyId($user, $workspace)))
+                ->when($isClient && (! $workspace->show_clients || ! $user->email_verified_at),
+                    fn ($query) => $query->whereRaw('1 = 0'))
                 ->count();
 
         return response()->json([
