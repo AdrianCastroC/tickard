@@ -4499,3 +4499,95 @@ h1, h2, h3, p { margin: 0; }
 .workspace-settings-roles-mode .tickard-roles-workspace,.tickard-roles-workspace{grid-template-columns:minmax(210px,.65fr) minmax(0,1.7fr)}
 @media(max-width:1100px){.tickard-roles-category-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:720px){.tickard-roles-category-grid{grid-template-columns:1fr}.tickard-roles-workspace{grid-template-columns:1fr}.workspace-settings-side-spacer{display:none}}
+
+/* Configuración del Workspace: exclusivamente la paleta de tickard (claro y oscuro). */
+.workspace-settings-wide {
+  color:var(--ink);
+  background:var(--surface);
+}
+.workspace-settings-wide .wd-modal-head {
+  background:var(--surface);
+  border-bottom-color:var(--line);
+  color:var(--ink);
+}
+.workspace-settings-wide .workspace-settings-side {
+  background:color-mix(in srgb,var(--side) 30%,var(--surface));
+  border-color:var(--line);
+}
+.workspace-settings-wide .workspace-settings-side button {
+  color:var(--muted);
+}
+.workspace-settings-wide .workspace-settings-side button:hover:not(.on) {
+  color:var(--ink);
+  background:color-mix(in srgb,var(--accent) 6%,var(--surface));
+}
+.workspace-settings-wide .workspace-settings-side button.on:not(.workspace-settings-danger-tab) {
+  color:var(--accent);
+  background:color-mix(in srgb,var(--accent) 13%,var(--surface));
+}
+.workspace-settings-wide .workspace-settings-modal-body {
+  background:var(--surface);
+}
+.workspace-settings-wide .workspace-overview-section,
+.workspace-settings-wide .tickard-roles-detail,
+.workspace-settings-wide .tickard-roles-category-card,
+.workspace-settings-wide .tickard-role-item,
+.workspace-settings-wide .tickard-roles-permissions-panel {
+  color:var(--ink);
+  border-color:var(--line);
+  background:var(--surface);
+}
+.workspace-settings-wide .tickard-role-item.is-selected {
+  background:color-mix(in srgb,var(--accent) 9%,var(--surface));
+  border-color:color-mix(in srgb,var(--accent) 35%,var(--line));
+}
+.workspace-settings-wide .tickard-roles-system-label {
+  color:var(--accent);
+  background:color-mix(in srgb,var(--accent) 12%,var(--surface));
+}
+.workspace-settings-wide .tickard-roles-category-card h4,
+.workspace-settings-wide .tickard-roles-builtin-detail h3,
+.workspace-settings-wide .tickard-role-name {
+  color:var(--ink);
+}
+.workspace-settings-wide .tickard-roles-category-card p,
+.workspace-settings-wide .tickard-roles-builtin-detail p,
+.workspace-settings-wide .tickard-role-item small {
+  color:var(--muted);
+}
+.workspace-settings-wide .tickard-roles-category-check input,
+.workspace-settings-wide .tickard-role-availability input,
+.workspace-settings-wide .tickard-roles-permission-row input,
+.workspace-settings-wide .project-settings-toggle input {
+  accent-color:var(--accent);
+}
+.workspace-settings-wide .tickard-roles-category-card:has(input:checked) {
+  border-color:color-mix(in srgb,var(--accent) 16%,var(--line));
+}
+.workspace-settings-wide .tickard-role-form,
+.workspace-settings-wide .tickard-role-form input,
+.workspace-settings-wide .tickard-role-form select,
+.workspace-settings-wide .workspace-overview-rename input,
+.workspace-settings-wide .workspace-overview-rename textarea {
+  border-color:var(--line);
+  color:var(--ink);
+}
+.workspace-settings-wide .tickard-role-form input,
+.workspace-settings-wide .tickard-role-form select,
+.workspace-settings-wide .workspace-overview-rename input,
+.workspace-settings-wide .workspace-overview-rename textarea {
+  background:var(--canvas);
+}
+.workspace-settings-wide .primary,
+.workspace-settings-wide .tickard-role-actions .primary {
+  background:var(--accent);
+  color:var(--accent-ink);
+}
+.workspace-settings-wide .ghost {
+  background:var(--surface);
+  border-color:var(--line);
+  color:var(--ink);
+}
+.workspace-settings-wide .ghost:hover {
+  background:color-mix(in srgb,var(--accent) 9%,var(--surface));
+}
