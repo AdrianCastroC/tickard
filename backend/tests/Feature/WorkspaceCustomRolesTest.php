@@ -309,4 +309,45 @@ class WorkspaceCustomRolesTest extends TestCase
         $this->actingAs($colleague)->deleteJson("/api/attachments/{$attachment->id}")->assertNoContent();
     }
 
+    public function test_builtin_permission_changes_are_effective_and_isolated_by_workspace(): void
+    {
+        [$owner, $workspace] = $this->setupWorkspace();
+        [$otherOwner, $otherWorkspace] = $this->setupWorkspace();
+        $member = User::factory()->create(['is_admin' => false]);
+        $workspace->memberships()->create(['user_id' => $member->id, 'role' => 'member']);
+        $project = Project::create(['workspace_id' => $workspace->id, 'name' => 'Tareas']);
+        $board = Board::create(['project_id' => $project->id, 'name' => 'Tablero']);
+        $board->createDefaultColumns();
+        $column = $board->columns()->firstOrFail();
+        ProjectMember::create(['project_id' => $project->id, 'user_id' => $member->id, 'role' => 'editor']);
+        $roles = "/api/workspaces/{$workspace->id}/roles";
+        $this->actingAs($owner)->getJson($roles)
+            ->assertOk()->assertJsonPath('builtin_roles.4.member_count', 1);
+        $this->patchJson($roles.'/builtin/editor', [
+            'permissions' => ['project.view', 'cards.comment'],
+        ])->assertOk()->assertJsonPath('permissions.1', 'cards.comment');
+        $this->assertFalse(ProjectAccess::canCreateCards($member, $project));
+        $this->actingAs($member)->postJson("/api/boards/{$board->id}/cards", [
+            'column_id' => $column->id, 'title' => 'Bloqueada',
+        ])->assertForbidden();
+        $this->actingAs($otherOwner)->getJson("/api/workspaces/{$otherWorkspace->id}/roles")
+            ->assertOk()->assertJsonPath('builtin_roles.4.permissions.0', 'project.view');
+        $this->actingAs($owner)->patchJson($roles.'/builtin/editor', [
+            'permissions' => ['project.view', 'cards.comment', 'cards.create'],
+        ])->assertOk();
+        $this->assertTrue(ProjectAccess::canCreateCards($member, $project));
+        $this->actingAs($member)->postJson("/api/boards/{$board->id}/cards", [
+            'column_id' => $column->id, 'title' => 'Permitida',
+        ])->assertCreated();
+        $this->actingAs($owner)->patchJson($roles.'/builtin/owner', [
+            'permissions' => ['workspace.view'],
+        ])->assertUnprocessable();
+        $this->patchJson($roles.'/builtin/editor', [
+            'permissions' => ['project.view', 'workspace.manage'],
+        ])->assertUnprocessable();
+        $this->patchJson($roles.'/builtin/editor', [
+            'permissions' => ['cards.create'],
+        ])->assertUnprocessable();
+    }
+
 }
