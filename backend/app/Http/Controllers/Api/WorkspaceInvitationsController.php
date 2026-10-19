@@ -86,7 +86,7 @@ class WorkspaceInvitationsController extends ApiController
 
     public function projectIndex(Request $request, Project $project)
     {
-        abort_unless(ProjectAccess::canManage($request->user(), $project), 403);
+        abort_unless(ProjectAccess::canManageMembers($request->user(), $project), 403);
 
         $project->load('workspace.owner');
         $owner = $project->workspace->owner;
@@ -151,7 +151,7 @@ class WorkspaceInvitationsController extends ApiController
     private function storeInvites(Request $request, Workspace $workspace, ?Project $project)
     {
         $owner = $this->isOwner($request->user(), $workspace);
-        abort_unless($owner || ($project && ProjectAccess::canManage($request->user(), $project)), 403);
+        abort_unless($owner || ($project && ProjectAccess::canManageMembers($request->user(), $project)), 403);
 
         $data = $request->validate([
             'recipients' => ['required', 'array', 'min:1', 'max:50'],
@@ -325,7 +325,7 @@ class WorkspaceInvitationsController extends ApiController
     private function deleteInvites(Request $request, Workspace $workspace, ?Project $project)
     {
         abort_unless($this->isOwner($request->user(), $workspace)
-            || ($project && ProjectAccess::canManage($request->user(), $project)), 403);
+            || ($project && ProjectAccess::canManageMembers($request->user(), $project)), 403);
         $ids = $request->validate(['ids' => ['required', 'array', 'min:1', 'max:100'],
             'ids.*' => ['required', 'integer', 'distinct']])['ids'];
         // Only pending/rejected invitations can be deleted manually.
