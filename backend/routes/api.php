@@ -19,6 +19,7 @@ use App\Http\Controllers\Api\ProjectFilesController;
 use App\Http\Controllers\Api\ProjectPersonnelController;
 use App\Http\Controllers\Api\ProjectBoardsOverviewController;
 use App\Http\Controllers\Api\ProjectDashboardController;
+use App\Http\Controllers\Api\BoardDashboardController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\WorkspacesController;
 use App\Http\Controllers\Api\MyTasksController;
@@ -121,6 +122,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::patch('/projects/{project}', [ProjectsController::class, 'updateProject']);
     Route::post('/projects/{project}/labels', [ProjectsController::class, 'storeLabel']);
 
+    Route::get('/boards/{board}/dashboard', [BoardDashboardController::class, 'index']);
     Route::get('/boards/{board}', [ProjectsController::class, 'showBoard']);
     Route::post('/boards/{board}/columns', [CardsController::class, 'storeColumn']);
     Route::post('/boards/{board}/categories', [CardsController::class, 'storeCategory']);
