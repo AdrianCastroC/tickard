@@ -224,4 +224,53 @@ class WorkspaceCustomRolesTest extends TestCase
         $this->deleteJson("/api/cards/{$card->id}")->assertNoContent();
     }
 
+    public function test_checklist_permissions_are_enforced_for_individual_fields_and_module_operations(): void
+    {
+        [$owner, $workspace] = $this->setupWorkspace();
+        $user = User::factory()->create(['is_admin' => false]);
+        $workspace->memberships()->create(['user_id' => $user->id, 'role' => 'member']);
+        $project = Project::create(['workspace_id' => $workspace->id, 'name' => 'Proyecto']);
+        $board = Board::create(['project_id' => $project->id, 'name' => 'Sprint']);
+        $board->createDefaultColumns();
+        $column = $board->columns()->where('workflow_state', 'in_progress')->firstOrFail();
+        $card = Card::create(['board_id' => $board->id, 'column_id' => $column->id, 'title' => 'Card']);
+        $module = $card->modules()->create(['type' => 'checklist', 'title' => 'Pasos', 'position' => 1]);
+        $item = $module->checklistItems()->create([
+            'card_id' => $card->id, 'body' => 'Verificar', 'position' => 1,
+        ]);
+        $role = WorkspaceCustomRole::create([
+            'workspace_id' => $workspace->id, 'scope' => 'project',
+            'name' => 'Asignador', 'permissions' => ['project.view', 'cards.assign'], 'enabled' => true,
+        ]);
+        ProjectMember::create(['project_id' => $project->id, 'user_id' => $user->id,
+            'role' => 'lector', 'custom_role_id' => $role->id]);
+
+        $this->actingAs($user)->patchJson("/api/checklist/{$item->id}", [
+            'assignee_ids' => [$user->id],
+        ])->assertOk();
+        $this->patchJson("/api/checklist/{$item->id}", ['is_done' => true])->assertForbidden();
+        $this->patchJson("/api/checklist/{$item->id}", ['due_date' => '2026-11-20'])->assertForbidden();
+        $this->postJson("/api/cards/{$card->id}/checklist", [
+            'module_id' => $module->id, 'body' => 'Otro',
+        ])->assertForbidden();
+        $this->deleteJson("/api/modules/{$module->id}")->assertForbidden();
+
+        $role->update(['permissions' => ['project.view', 'cards.dates']]);
+        $this->patchJson("/api/checklist/{$item->id}", [
+            'due_date' => '2026-11-20',
+        ])->assertOk();
+        $this->patchJson("/api/checklist/{$item->id}", [
+            'assignee_ids' => [$user->id],
+        ])->assertForbidden();
+
+        $role->update(['permissions' => ['project.view', 'cards.edit']]);
+        $this->patchJson("/api/checklist/{$item->id}", ['is_done' => true])->assertOk();
+        $this->postJson("/api/cards/{$card->id}/checklist", [
+            'module_id' => $module->id, 'body' => 'Otro',
+        ])->assertCreated();
+        $this->patchJson("/api/checklist/{$item->id}", [
+            'assignee_ids' => [$user->id],
+        ])->assertForbidden();
+    }
+
 }
