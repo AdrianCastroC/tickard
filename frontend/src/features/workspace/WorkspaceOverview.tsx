@@ -279,7 +279,7 @@ export function WorkspaceOverview({ profile, workspaceId, onProfileRefresh, onOp
               <div className="wd-project-actions">
                 <button type="button" className="wd-project-all"
                   onClick={() => setAllProjectsOpen(true)}>Ver todos →</button>
-                {summary.can_manage && <button type="button" className="wd-new-project"
+                {(summary.can_manage || profile.workspaces.some(item => item.id === summary.id && item.permissions?.includes('workspace.projects'))) && <button type="button" className="wd-new-project"
                   onClick={() => setNewProject(true)}>
                   <NavIcon><path d="M12 5v14M5 12h14"/></NavIcon> Nuevo proyecto
                 </button>}
