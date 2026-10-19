@@ -246,10 +246,10 @@ export function WorkspaceOverview({ profile, workspaceId, onProfileRefresh, onOp
         <div className="wd-avatar-viewport">
           <button type="button" className="wd-avatar-group"
             onClick={() => onOpenSection('members')} aria-label="Ver miembros">
-            {dashboard.members.map(member =>
+            {dashboard.members.slice(0, 5).map(member =>
               <Avatar key={member.id} id={member.id} name={member.name} src={member.avatar_url} size={38}/>)}
-            {(summary.stats.members ?? 0) > dashboard.members.length &&
-              <span className="wd-extra">+{(summary.stats.members ?? 0) - dashboard.members.length}</span>}
+            {(summary.stats.members ?? 0) > Math.min(5, dashboard.members.length) &&
+              <span className="wd-extra">+{(summary.stats.members ?? 0) - Math.min(5, dashboard.members.length)}</span>}
           </button>
         </div>
         <div className="wd-rail-list">
