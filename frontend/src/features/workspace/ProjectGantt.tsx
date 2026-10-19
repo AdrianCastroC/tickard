@@ -8,6 +8,33 @@ import { ProjectLoadingIndicator } from './ProjectLoadingIndicator'
 import { ProjectContentLoading } from './ProjectContentLoading'
 
 type ProjectSnapshot = { projectId: number; boardIds: string; boards: BoardPayload[] }
+
+// The skeleton depicts only the static Gantt structure, never fake Cards.
+// It is reused before data arrives and while the browser lays out the grid.
+function ProjectGanttSkeleton({ measuring = false }: { measuring?: boolean }) {
+  return <ProjectContentLoading
+    title={measuring ? 'Preparando Diagrama de Gantt' : 'Cargando Diagrama de Gantt'}
+    description={measuring
+      ? 'Ajustando el calendario y trazando las dependencias…'
+      : 'Preparando tareas, dependencias y fechas del proyecto…'}>
+    <div className="project-gantt-skeleton">
+      <div className="project-gantt-skeleton-left">
+        <span className="project-gantt-skeleton-header" />
+        <span className="project-gantt-skeleton-header" />
+        {Array.from({ length: 16 }, (_, index) =>
+          <span key={index}
+            className={index % 4 === 0 ? 'project-gantt-skeleton-group' : 'project-gantt-skeleton-row'} />)}
+      </div>
+      <div className="project-gantt-skeleton-right">
+        <span className="project-gantt-skeleton-header" />
+        <span className="project-gantt-skeleton-header" />
+        {Array.from({ length: 16 }, (_, index) =>
+          <span key={index}
+            className={index % 4 === 0 ? 'project-gantt-skeleton-group' : 'project-gantt-skeleton-row'} />)}
+      </div>
+    </div>
+  </ProjectContentLoading>
+}
 type Props = {
   project: Project
   profile: Profile
@@ -25,6 +52,8 @@ export function ProjectGantt({ project, profile, onNavigateExternalCard }: Props
   const [detailError, setDetailError] = useState<string | null>(null)
   const [detailLoading, setDetailLoading] = useState(false)
   const [refreshKey, setRefreshKey] = useState(0)
+  const [mountedKey, setMountedKey] = useState<string | null>(null)
+  const [readyKey, setReadyKey] = useState<string | null>(null)
   const ganttViewportRef = useRef<HTMLDivElement>(null)
   const load = useCallback(async (signal?: AbortSignal, fresh = false) => {
     // Keep the existing server permission checks for every board.
@@ -61,6 +90,23 @@ export function ProjectGantt({ project, profile, onNavigateExternalCard }: Props
   const boards = snapshot?.projectId === project.id && snapshot.boardIds === boardIds
     ? snapshot.boards : null
   const columns = useMemo(() => boards?.flatMap((board) => board.columns) ?? [], [boards])
+  const renderKey = boards ? `${project.id}:${boardIds}` : null
+  // The data-fetching render must have a chance to paint the skeleton
+  // before a potentially expensive multi-year grid mounts.
+  useEffect(() => {
+    if (!renderKey) return
+    let firstFrame = 0
+    let secondFrame = 0
+    firstFrame = requestAnimationFrame(() => {
+      secondFrame = requestAnimationFrame(() => setMountedKey(renderKey))
+    })
+    return () => {
+      cancelAnimationFrame(firstFrame)
+      cancelAnimationFrame(secondFrame)
+    }
+  }, [renderKey])
+  const chartMounted = renderKey !== null && mountedKey === renderKey
+  const chartReady = renderKey !== null && readyKey === renderKey
   // Only a selected Card needs full comments, activities, modules and
   // checklists. Do not preload them across every board in the project.
   useEffect(() => {
@@ -122,33 +168,7 @@ export function ProjectGantt({ project, profile, onNavigateExternalCard }: Props
     return () => window.removeEventListener('resize', resizeViewport)
   }, [boards?.length])
 
-  if (loading && !boards) return (
-    <ProjectContentLoading
-      title="Cargando Diagrama de Gantt"
-      description="Preparando tareas, dependencias y fechas del proyecto…"
-    >
-      <div className="project-gantt-skeleton">
-        <div className="project-gantt-skeleton-left">
-          <span className="project-gantt-skeleton-header" />
-          <span className="project-gantt-skeleton-header" />
-          {Array.from({ length: 16 }, (_, index) => (
-            <span key={index} className={index % 4 === 0 ? 'project-gantt-skeleton-group' : 'project-gantt-skeleton-row'} />
-          ))}
-        </div>
-        <div className="project-gantt-skeleton-right">
-          <span className="project-gantt-skeleton-header" />
-          <span className="project-gantt-skeleton-header" />
-          {Array.from({ length: 16 }, (_, index) => (
-            <span key={index} className={index % 4 === 0 ? 'project-gantt-skeleton-group' : 'project-gantt-skeleton-row'}>
-              {index % 4 !== 0 && (
-                <i style={{ width: `${20 + index % 5 * 9}%`, marginLeft: `${index % 4 * 10}%` }} />
-              )}
-            </span>
-          ))}
-        </div>
-      </div>
-    </ProjectContentLoading>
-  )
+  if (loading && !boards) return <ProjectGanttSkeleton />
   if (error) return <section className="project-panel" role="alert">
     <p>No se pudo cargar el Gantt del proyecto: {error}</p>
     <button type="button" className="ghost" onClick={() => setRefreshKey((value) => value + 1)}>Reintentar</button>
@@ -159,17 +179,25 @@ export function ProjectGantt({ project, profile, onNavigateExternalCard }: Props
     {((loading && boards) || refreshing) && (
       <ProjectLoadingIndicator label="Actualizando Gantt…" floating />
     )}
-    <div ref={ganttViewportRef} className="project-gantt-viewport" tabIndex={0} aria-label="Área desplazable del Gantt del proyecto">
-      <GanttView key={`project-${project.id}`}
-        board={boards[0]} cards={columns} projectBoards={boards}
-        canEdit={false}
-        onOpen={(card) => {
-          const source = boards.find((payload) => payload.columns.some((column) =>
-            column.cards.some((item) => item.id === card.id)))
-          if (source) setSelected({ cardId: card.id, boardId: source.board.id })
-        }}
-        onNavigateExternalCard={onNavigateExternalCard}
-        onChange={refresh} />
+    <div ref={ganttViewportRef} className="project-gantt-viewport" tabIndex={chartReady ? 0 : -1}
+      aria-busy={!chartReady} aria-label="Área desplazable del Gantt del proyecto">
+      {chartMounted && <div className={`project-gantt-render${chartReady ? '' : ' project-gantt-render-pending'}`}
+        aria-hidden={!chartReady}>
+        <GanttView key={`project-${project.id}`}
+          board={boards[0]} cards={columns} projectBoards={boards}
+          canEdit={false}
+          onOpen={(card) => {
+            const source = boards.find((payload) => payload.columns.some((column) =>
+              column.cards.some((item) => item.id === card.id)))
+            if (source) setSelected({ cardId: card.id, boardId: source.board.id })
+          }}
+          onNavigateExternalCard={onNavigateExternalCard}
+          onReady={() => setReadyKey(renderKey)}
+          onChange={refresh} />
+      </div>}
+      {!chartReady && <div className="project-gantt-preparation">
+        <ProjectGanttSkeleton measuring />
+      </div>}
     </div>
     {selected && (detailLoading || detailError) && createPortal(
       <div className="modal-back" role="status">
