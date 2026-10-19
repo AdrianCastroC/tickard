@@ -195,7 +195,7 @@ class ProjectPersonnelController extends ApiController
             'user_id' => ['required', 'integer', Rule::exists('workspace_members', 'user_id')
                 ->where('workspace_id', $project->workspace_id)],
             'role' => ['required', Rule::in(['responsable', 'editor', 'lector'])],
-            'custom_role_id' => ['nullable', 'integer', Rule::exists('workspace_custom_roles', 'id')->where('workspace_id', $project->workspace_id)->where('scope', 'project')],
+            'custom_role_id' => ['nullable', 'integer', Rule::exists('workspace_custom_roles', 'id')->where('workspace_id', $project->workspace_id)->whereIn('scope', ['project', 'both'])],
         ]);
         abort_if(! empty($data['custom_role_id']) && $data['role'] !== 'lector', 422,
             'Los roles personalizados se asignan sin privilegios del rol base.');
