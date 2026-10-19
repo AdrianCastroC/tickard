@@ -106,7 +106,7 @@ class ProjectsController extends ApiController
         }
 
         return response()->json(
-            $this->projectSummary($project, 'responsable'),
+            $this->projectSummary($project, 'responsable', $request->user()),
             201
         );
     }
