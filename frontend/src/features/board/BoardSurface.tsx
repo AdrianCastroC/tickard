@@ -78,6 +78,7 @@ export function BoardSurface({ state, filters, activeBoardId, project, profile, 
     if (!activeBoardId) return
     setViewModes((current) => ({ ...current, [activeBoardId]: value }))
     localStorage.setItem(`tickard:board-view:${activeBoardId}`, value)
+    if (value === 'summary') filters.setOpen(false)
   }
 
   return <>
@@ -87,7 +88,7 @@ export function BoardSurface({ state, filters, activeBoardId, project, profile, 
       canEdit={canEdit} backlog={backlog} filtersActive={filters.active} filtersOpen={Boolean(view && filters.open)}
       filterButtonRef={filterButtonRef} viewMode={viewMode} onViewModeChange={changeViewMode}
       onToggleFilters={() => filters.setOpen((current) => !current)} onAdd={setCreateColumn} />
-    <FiltersBar open={Boolean(view && filters.open)} active={filters.active}
+    <FiltersBar open={Boolean(view && filters.open && viewMode !== 'summary')} active={filters.active}
       anchorRef={filterButtonRef} onClose={() => filters.setOpen(false)}
       onClear={() => {
         filters.setAssignee('')
@@ -103,10 +104,8 @@ export function BoardSurface({ state, filters, activeBoardId, project, profile, 
       onLabel={filters.setLabel} onPriority={filters.setPriority} />
     {!view && !activeBoardId && <div className="empty-board"><div><h2>{profile.user.is_admin ? 'Inicia un proyecto' : 'Espera a que te asignen un proyecto'}</h2><p className="muted">{profile.user.is_admin ? 'Crea el primer proyecto desde el lateral y abre su tablero.' : 'Cuando un responsable te añada, el proyecto saldrá en el lateral.'}</p></div></div>}
     {activeBoardId && !view && <div className="empty-board"><p className="muted">Cargando el tablero…</p></div>}
-    {view && <div className={`workspace${embedded ? ' board-embedded' : ''}`}>
+    {view && <div className={`workspace${embedded ? ' board-embedded' : ''}${viewMode === 'summary' ? ' board-summary-mode' : ''}`}>
       {viewMode === 'summary' && <BoardSummary board={view}
-        onConfigure={canManage ? () => setShowConfig(true) : undefined}
-        onOpenView={changeViewMode}
         onOpenCard={cardId => {
           const card = view.columns.flatMap(column => column.cards).find(item => item.id === cardId)
           if (card) setSelected({ card, mode: 'view' })
