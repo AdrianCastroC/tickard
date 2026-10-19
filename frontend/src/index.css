@@ -4142,3 +4142,84 @@ h1, h2, h3, p { margin: 0; }
 .gantt-failure details {max-width:100%;font-size:11px;color:var(--muted);}
 .gantt-failure code {display:block;max-width:100%;margin-top:9px;overflow-wrap:anywhere;}
 .gantt-failure > div {display:flex;flex-wrap:wrap;gap:10px;}
+
+
+/*
+ * Compact Workspace dashboard: keep organization panels on screen.
+ * On smaller viewports, the existing internal .wd-content scroll is preserved.
+ */
+.wd-recent-projects {padding:11px 12px;}
+.wd-recent-projects > .wd-panel-head {margin-bottom:8px;}
+.wd-recent-projects .wd-projects {gap:7px;align-items:stretch;}
+.wd-recent-projects .wd-project {min-height:122px;padding:9px 10px;gap:7px;}
+.wd-recent-projects .wd-project-intro {flex:0 0 auto;gap:8px;}
+.wd-recent-projects .wd-project-logo {width:34px;height:34px;flex:0 0 34px;}
+.wd-recent-projects .wd-project-logo .nav-icon {width:18px;height:18px;}
+.wd-recent-projects .wd-project-heading {gap:3px;}
+.wd-recent-projects .wd-project-heading small {line-height:1.3;}
+.wd-recent-projects .wd-project-progress {margin-top:auto;}
+.wd-recent-projects .wd-project-footer {justify-content:flex-start;gap:6px 9px;}
+.wd-recent-projects .wd-project-avatars {margin-left:auto;}
+.wd-recent-projects .wd-project-deadline {margin-left:auto;font-variant-numeric:tabular-nums;}
+.wd-recent-projects .wd-projects {max-height:260px;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:none;}
+.wd-recent-projects .wd-projects::-webkit-scrollbar {display:none;}
+
+@media (min-width:1181px) and (min-height:660px) {
+  .workspace-overview-page > .wd-dashboard > .wd-content {
+    display:grid;grid-template-rows:auto minmax(0,1fr);gap:9px;
+    min-height:0;min-width:0;overflow:hidden;
+  }
+  .wd-dashboard .wd-content > .wd-metrics {min-height:0;gap:8px;}
+  .wd-dashboard .wd-content > .wd-metrics .wd-metric {min-height:78px;padding:10px;}
+  .wd-dashboard .wd-content > .wd-metrics .wd-metric-icon {
+    width:35px;height:35px;flex-basis:35px;
+  }
+  .wd-dashboard .wd-content > .wd-metrics .wd-metric-icon .nav-icon {width:20px;height:20px;}
+  .wd-dashboard .wd-content > .wd-primary {
+    display:grid;grid-template-rows:auto minmax(0,1fr) 122px;
+    gap:9px;min-height:0;min-width:0;overflow:hidden;
+  }
+  .wd-dashboard .wd-content .wd-recent-projects {min-height:0;overflow:hidden;}
+  .wd-dashboard .wd-content .wd-recent-projects .wd-projects {max-height:152px;}
+  .wd-dashboard .wd-content > .wd-primary > .wd-pair {
+    display:grid;grid-template-columns:repeat(2,minmax(0,1fr));
+    min-height:0;min-width:0;gap:9px;overflow:hidden;
+  }
+  .wd-dashboard .wd-content > .wd-primary > .wd-pair > .wd-panel {
+    display:flex;flex-direction:column;gap:0;min-width:0;min-height:0;
+    padding:10px 12px;overflow:hidden;
+  }
+  .wd-dashboard .wd-content .wd-pair .wd-panel-head {flex:0 0 auto;margin-bottom:7px;}
+  .wd-dashboard .wd-content .wd-workstream .wd-tasks,
+  .wd-dashboard .wd-content .wd-workstream .wd-activities {
+    flex:1 1 auto;min-height:0;overflow-x:hidden;overflow-y:auto;
+    overscroll-behavior:contain;scrollbar-width:none;
+  }
+  .wd-dashboard .wd-content .wd-workstream .wd-tasks::-webkit-scrollbar,
+  .wd-dashboard .wd-content .wd-workstream .wd-activities::-webkit-scrollbar,
+  .wd-dashboard .wd-content .wd-organization .wd-entity-grid::-webkit-scrollbar,
+  .wd-dashboard .wd-content .wd-organization .wd-departments::-webkit-scrollbar {display:none;}
+  .wd-dashboard .wd-content .wd-workstream .wd-task {min-height:35px;}
+  .wd-dashboard .wd-content .wd-workstream .wd-activity {min-height:39px;padding:5px 3px;}
+  .wd-dashboard .wd-content .wd-organization .wd-entity-grid,
+  .wd-dashboard .wd-content .wd-organization .wd-departments {
+    flex:1 1 auto;min-height:0;overflow-x:hidden;overflow-y:auto;
+    overscroll-behavior:contain;scrollbar-width:none;
+  }
+  .wd-dashboard .wd-content .wd-organization .wd-entity-grid {grid-auto-rows:min-content;}
+  .wd-dashboard .wd-content .wd-organization .wd-entity {padding:7px;gap:3px;}
+  .wd-dashboard .wd-content .wd-organization .wd-entity-icon {height:26px;width:26px;font-size:15px;}
+  .wd-dashboard .wd-content .wd-organization .wd-department {padding:7px;}
+  .wd-dashboard .wd-content .wd-organization .wd-department .wd-entity-icon {height:27px;width:27px;flex:0 0 27px;}
+}
+
+/* Short windows or narrow monitors: no clipping; only the central pane scrolls. */
+@media (max-width:1180px), (max-height:659px) {
+  .workspace-overview-page > .wd-dashboard > .wd-content {
+    display:flex;flex-direction:column;min-height:0;overflow-y:auto;overflow-x:hidden;
+    overscroll-behavior:contain;
+  }
+  .wd-dashboard .wd-content > .wd-primary {display:flex;flex-direction:column;flex:0 0 auto;overflow:visible;}
+  .wd-dashboard .wd-content > .wd-primary > .wd-pair {flex:0 0 auto;overflow:visible;}
+  .wd-dashboard .wd-content > .wd-primary > .wd-pair > .wd-panel {overflow:visible;}
+}
