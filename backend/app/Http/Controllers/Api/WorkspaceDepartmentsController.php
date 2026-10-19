@@ -90,7 +90,7 @@ class WorkspaceDepartmentsController extends ApiController
         ];
 
         return response()->json([
-            'can_manage' => Guard::canManage($request, $workspace),
+            'can_manage' => Guard::canManage($request, $workspace, 'workspace.departments'),
             'departments' => $departments->map(fn (Department $department) => [
                 'id' => $department->id,
                 'name' => $department->name,
@@ -122,7 +122,7 @@ class WorkspaceDepartmentsController extends ApiController
     public function store(Request $request)
     {
         $workspaceId = (int) $request->validate(['workspace_id' => ['required', 'integer']])['workspace_id'];
-        $workspace = Guard::resolve($request, $workspaceId, true);
+        $workspace = Guard::resolve($request, $workspaceId, true, 'workspace.departments');
         $data = $this->validatePayload($request, $workspace);
 
         $department = DB::transaction(function () use ($workspace, $data) {
@@ -145,7 +145,7 @@ class WorkspaceDepartmentsController extends ApiController
     public function update(Request $request, Department $department)
     {
         $workspaceId = (int) $request->validate(['workspace_id' => ['required', 'integer']])['workspace_id'];
-        $workspace = Guard::resolve($request, $workspaceId, true);
+        $workspace = Guard::resolve($request, $workspaceId, true, 'workspace.departments');
         abort_unless((int) $department->workspace_id === (int) $workspace->id, 404);
         $data = $this->validatePayload($request, $workspace, $department);
 
@@ -167,7 +167,7 @@ class WorkspaceDepartmentsController extends ApiController
     public function destroy(Request $request, Department $department)
     {
         $data = $request->validate(['workspace_id' => ['required', 'integer']]);
-        $workspace = Guard::resolve($request, (int) $data['workspace_id'], true);
+        $workspace = Guard::resolve($request, (int) $data['workspace_id'], true, 'workspace.departments');
         abort_unless((int) $department->workspace_id === (int) $workspace->id, 404);
         $department->delete();
         return response()->noContent();
