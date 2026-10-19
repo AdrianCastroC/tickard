@@ -51,16 +51,7 @@ class ProjectAccess
         if ($member?->custom_role_id !== null) {
             return in_array($permission, $member->customRole?->permissions ?? [], true);
         }
-        if (in_array($permission, ['cards.create', 'cards.delete', 'cards.assign', 'cards.dates', 'cards.state'], true)) {
-            return in_array($role, ['responsable', 'editor'], true);
-        }
-        return match ($permission) {
-            'project.view' => true,
-            'project.manage', 'project.delete', 'project.members', 'boards.manage' => $role === 'responsable',
-            'cards.edit', 'files.upload' => in_array($role, ['responsable', 'editor'], true),
-            'cards.comment' => true,
-            default => false,
-        };
+        return BuiltinRolePermissions::has($project->workspace, $role, $permission);
     }
 
     public static function permissions(User $user, Project $project): array
