@@ -265,7 +265,13 @@ class WorkspacesController extends Controller
                 ->where('client_companies.workspace_id', $workspace->id)
                 ->groupBy('client_companies.id', 'client_companies.name')
                 ->orderBy('client_companies.name')->limit(5)
-                ->get(['client_companies.id', 'client_companies.name', DB::raw('COUNT(projects.id) as projects')])
+                ->get(['client_companies.id', 'client_companies.name', 'client_companies.image_path', DB::raw('COUNT(projects.id) as projects')])
+                ->map(fn ($client) => [
+                    'id' => $client->id,
+                    'name' => $client->name,
+                    'projects' => $client->projects,
+                    'image_url' => $client->image_path ? '/storage/'.$client->image_path : null,
+                ])
             : collect();
 
         return [
