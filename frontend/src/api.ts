@@ -222,6 +222,7 @@ export type WorkspaceRef = {
   name: string
   image_url?: string | null
   role: 'owner' | 'admin' | 'member' | 'client'
+  permissions?: string[]
   plan: 'free' | 'base' | 'pro' | 'business'
   show_birthdays: boolean
   show_clients: boolean
