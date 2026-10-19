@@ -1384,9 +1384,14 @@ type GanttProps = {
   focus?: GanttCardFocus | null
   projectBoards?: BoardPayload[]
   onChange: () => Promise<void>
+  // Project-level loading remains visible until the measured timeline and
+  // dependency routes have actually committed and painted.
+  onReady?: () => void
 }
 
-export function GanttView({ board, cards, canEdit, onOpen, onNavigateExternalCard, focus, projectBoards, onChange }: GanttProps) {
+export function GanttView({ board, cards, canEdit, onOpen, onNavigateExternalCard, focus, projectBoards, onChange, onReady }: GanttProps) {
+  const onReadyRef = useRef(onReady)
+  onReadyRef.current = onReady
   const allCards = useMemo(() => cards.flatMap((column) =>
     column.workflow_state === 'backlog' ? [] : column.cards), [cards])
   const groups = useMemo(() => projectBoards ? projectCategoryGroups(projectBoards) : categoryGroups(board, cards), [board, cards, projectBoards])
@@ -2021,6 +2026,36 @@ export function GanttView({ board, cards, canEdit, onOpen, onNavigateExternalCar
       )
     })
   }, [cardRows, dependencyGeometry, ganttDependencies, plannedDependencyRoutes])
+
+  // Unlike fetching the compact board payloads, measuring a multi-year
+  // project Gantt and calculating SVG dependency routes happen in the
+  // browser. Only signal readiness once both the rendered date range and its
+  // measured geometry agree, then let the browser paint two frames.
+  // Never gate the regular editable board Gantt on this optional callback.
+  useEffect(() => {
+    if (!projectBoards || !onReadyRef.current) return
+    const measured =
+      dependencyGeometry.width > 0 && dependencyGeometry.height > 0 &&
+      dependencyGeometry.rangeStart === range.start &&
+      dependencyGeometry.rangeEnd === range.end &&
+      dependencyGeometry.zoom === zoom &&
+      dependencyGeometry.leftCollapsed === leftCollapsed
+    if (!measured) return
+
+    let firstFrame = 0
+    let secondFrame = 0
+    firstFrame = requestAnimationFrame(() => {
+      secondFrame = requestAnimationFrame(() => {
+        const rect = timelineGridRef.current?.getBoundingClientRect()
+        if (rect && rect.width > 0 && rect.height > 0) onReadyRef.current?.()
+      })
+    })
+    return () => {
+      cancelAnimationFrame(firstFrame)
+      cancelAnimationFrame(secondFrame)
+    }
+  }, [Boolean(projectBoards), dependencyGeometry, range.start, range.end,
+    zoom, leftCollapsed, plannedDependencyRoutes, externalRoutes])
 
   async function changeDependency(dependency: GanttDependency, type: GanttDependency['type']) {
     await api(`/card-dependencies/${dependency.id}`, { method: 'PATCH', body: JSON.stringify({ type }) })
