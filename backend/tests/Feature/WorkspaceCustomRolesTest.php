@@ -212,7 +212,7 @@ class WorkspaceCustomRolesTest extends TestCase
 
         $role->update(['permissions' => ['project.view', 'cards.assign', 'cards.dates', 'cards.state']]);
         $this->patchJson("/api/cards/{$card->id}", ['assignee_ids' => [$member->id]])->assertNoContent();
-        $this->patchJson("/api/cards/{$card->id}", ['due_date' => '2026-11-01'])->assertNoContent();
+        $this->patchJson("/api/cards/{$card->id}", ['start_date' => '2026-10-20', 'due_date' => '2026-11-01'])->assertNoContent();
         $this->postJson("/api/cards/{$card->id}/move", [
             'column_id' => $done->id, 'position' => 0,
         ])->assertNoContent();
