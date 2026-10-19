@@ -95,7 +95,7 @@ export function WorkspaceInvitations({ workspaceId, workspaceName, projectId, on
               {projectId
                 ? <><option value="responsable">Responsable</option><option value="editor">Editor</option><option value="lector">Lector</option></>
                 : <option value="editor">Miembro</option>}
-              {customRoles.map(item=><option key={item.id} value={`custom:${item.id}`}>{item.name}</option>)
+              {customRoles.map(item=><option key={item.id} value={`custom:${item.id}`}>{item.name}</option>)}
             </select>
           </label>
           <button type="submit" className={styles.primary} disabled={busy||!input.trim()}>{busy?'Enviando…':'Enviar invitaciones'}</button>
