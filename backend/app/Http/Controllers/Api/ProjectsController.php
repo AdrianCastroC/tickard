@@ -467,6 +467,7 @@ class ProjectsController extends ApiController
             'revision' => $board->revision,
             'view' => 'kanban',
             'role' => $role,
+            'permissions' => ProjectAccess::permissions($request->user(), $project),
 
             'board' => [
                 'id' => $board->id,
