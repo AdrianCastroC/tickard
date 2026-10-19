@@ -14,10 +14,9 @@ class WorkspaceRolesController extends ApiController
     private function workspace(Request $request, Workspace $workspace, bool $write = false): Workspace
     {
         abort_if(WorkspaceClientAccess::isClient($request->user(), $workspace), 403);
-        abort_unless($request->user()->is_admin
-            || $workspace->memberships()->where('user_id', $request->user()->id)->exists(), 403);
+        abort_unless($workspace->memberships()->where('user_id', $request->user()->id)->exists(), 403);
         if ($write) {
-            abort_unless($request->user()->is_admin || (int) $workspace->owner_id === (int) $request->user()->id, 403);
+            abort_unless((int) $workspace->owner_id === (int) $request->user()->id, 403);
         }
         return $workspace;
     }
@@ -26,7 +25,7 @@ class WorkspaceRolesController extends ApiController
     {
         $this->workspace($request, $workspace);
         return response()->json([
-            'can_manage' => $request->user()->is_admin || (int) $workspace->owner_id === (int) $request->user()->id,
+            'can_manage' => (int) $workspace->owner_id === (int) $request->user()->id,
             'permissions' => [
                 'project' => RolePermissions::PROJECT,
                 'workspace' => RolePermissions::WORKSPACE,
