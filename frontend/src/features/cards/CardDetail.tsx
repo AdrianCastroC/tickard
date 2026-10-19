@@ -91,6 +91,7 @@ export function CardDrawer({ card, mode, board, currentUser, canEdit, canMove, c
   const colorInputRef = useRef<HTMLInputElement>(null)
   const editing = mode === 'edit' && (canEdit || canMove || canDates || canAssign || canDelete)
   const editingContent = editing && canEdit
+  void canComment
   const team = board.members.filter((member) => member.role !== 'cliente')
   const columnName = board.columns.find((column) => column.id === card.column_id)?.name ?? '—'
   const isBacklog = board.columns.find((column) => column.id === card.column_id)?.workflow_state === 'backlog'
