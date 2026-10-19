@@ -60,6 +60,12 @@ class ProjectAccess
         };
     }
 
+    public static function permissions(User $user, Project $project): array
+    {
+        return array_values(array_filter(RolePermissions::PROJECT,
+            fn (string $permission) => self::has($user, $project, $permission)));
+    }
+
     public static function isWorkspaceOwner(User $user, Project $project): bool
     {
         if (! $project->workspace_id) {
