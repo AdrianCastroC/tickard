@@ -10,10 +10,11 @@ export function ProjectHeader({ project, settingsActive, onSettings }: {
     </div>
       <div><h1>{project.name}</h1>{project.client_name && <p className="subtitle">{project.client_name}</p>}</div>
     </div>
-    {project.role === 'responsable' && <button className={`icon-button project-settings-button${settingsActive ? ' on' : ''}`}
+    {project.role === 'responsable' && <button className="wd-settings-btn"
       type="button" aria-label="Configuración del proyecto" aria-pressed={settingsActive}
       title="Configuración del proyecto" onClick={onSettings}>
       <SettingsIcon/>
+      Configuración
     </button>}
   </header>
 }
