@@ -65,7 +65,7 @@ export function BoardSummary({ board, onOpenCard }: {
     return () => controller.abort()
   }, [board.board.id, board.revision, retry])
 
-  if (!data) return <section className={styles.root}>
+  if (!data) return <section className={`${styles.root} ${styles.loadingRoot}`}>
     {error
       ? <div className={styles.loadError} role="alert">
           <h2>No se pudo cargar el resumen del tablero</h2>
