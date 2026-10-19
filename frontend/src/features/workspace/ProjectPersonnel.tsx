@@ -24,7 +24,7 @@ type Assignment = {
   updated_at: string | null
 }
 type Member = {
-  id: number; name: string; email: string | null; avatar_url: string | null; role: Role; is_workspace_owner: boolean; job_title: string | null
+  id: number; name: string; email: string | null; avatar_url: string | null; role: Role; custom_role_id: number | null; custom_role_name: string | null; is_workspace_owner: boolean; job_title: string | null
   teams: Group[]; departments: Group[]; stats: Stats; column_counts: Record<number, number>; tasks: Assignment[]
 }
 type PersonnelColumn = {
@@ -296,7 +296,7 @@ export function ProjectPersonnel({ project, profile }: { project: Project; profi
       switch (sort.key) {
         case 'name': return member.name
         case 'job': return member.job_title ?? ''
-        case 'role': return member.is_workspace_owner ? 'Owner' : roleName(member.role)
+        case 'role': return member.is_workspace_owner ? 'Owner' : member.custom_role_name || roleName(member.role)
         case 'department': return initials(member.departments)
         case 'team': return initials(member.teams)
         case 'tasks': return member.stats.total
@@ -433,7 +433,7 @@ export function ProjectPersonnel({ project, profile }: { project: Project; profi
                   <span><strong>{person.name}{person.id === profile.user.id ? ' (Tú)' : ''}</strong></span>
                 </button></td>
                 <td className={styles.jobCell} title={person.job_title ?? 'Sin cargo asignado'}>{person.job_title || 'Sin especificar'}</td>
-                <td><span className={`${styles.roleTag} ${person.role === 'responsable' ? styles.responsible : ''}`}>{person.is_workspace_owner ? 'Owner' : roleName(person.role)}</span></td>
+                <td><span className={`${styles.roleTag} ${person.role === 'responsable' ? styles.responsible : ''}`}>{person.is_workspace_owner ? 'Owner' : person.custom_role_name || roleName(person.role)}</span></td>
                 <td title={initials(person.departments)}>{initials(person.departments)}</td>
                 <td title={initials(person.teams)}>{initials(person.teams)}</td>
                 <td><div className={styles.assignedBar}><StatusBar member={person} groups={columnGroups} compact /><small>{person.stats.total} tareas</small></div></td>
@@ -473,7 +473,7 @@ export function ProjectPersonnel({ project, profile }: { project: Project; profi
       {selected && <aside className={styles.details}>
         <div className={styles.personHeading}>
           <Avatar id={selected.id} name={selected.name} src={selected.avatar_url} size={52}/>
-          <div><strong>{selected.name}</strong><span className={styles.roleTag}>{selected.is_workspace_owner ? 'Propietario del Workspace' : roleName(selected.role)}</span></div>
+          <div><strong>{selected.name}</strong><span className={styles.roleTag}>{selected.is_workspace_owner ? 'Propietario del Workspace' : selected.custom_role_name || roleName(selected.role)}</span></div>
           <button type="button" aria-label="Cerrar detalle" className={styles.closeDetail} onClick={() => setSelectedId(null)}><MiniIcon name="close" /></button>
         </div>
         <div className={styles.detailTabs}>
@@ -519,9 +519,23 @@ function TaskList({ tasks, showUpdated = false }: { tasks: Assignment[]; showUpd
 function ManagementModal({ project, data, onClose, onChanged }: { project: Project; data: PersonnelData; onClose: () => void; onChanged: () => Promise<void> }) {
   const [tab, setTab] = useState<ManagementTab>('teams')
   const [teamId, setTeamId] = useState<number | ''>('')
-  const [addRole, setAddRole] = useState<Role>('editor')
+  const [customRoles, setCustomRoles] = useState<{ id: number; name: string }[]>([])
+  useEffect(() => {
+    let active = true
+    void api<{ roles: { id: number; name: string; scope: string }[] }>(`/workspaces/${project.workspace_id}/roles`)
+      .then(result => { if (active) setCustomRoles(result.roles.filter(item => item.scope === 'project')) })
+      .catch(() => { if (active) setCustomRoles([]) })
+    return () => { active = false }
+  }, [project.workspace_id])
+  const options = [...MANAGE_ROLES.map(item => ({ value: item.key, label: item.name })),
+    ...customRoles.map(item => ({ value: `custom:${item.id}`, label: item.name }))]
+  const toPayload = (value: string) => value.startsWith('custom:')
+    ? { role: 'lector', custom_role_id: Number(value.slice(7)) } : { role: value, custom_role_id: null }
+  const displayRole = (value: string) => value.startsWith('custom:')
+    ? customRoles.find(item => item.id === Number(value.slice(7)))?.name ?? value : roleName(value as Role)
+  const [addRole, setAddRole] = useState<string>('editor')
   const [userId, setUserId] = useState<number | ''>('')
-  const [memberRole, setMemberRole] = useState<Role>('editor')
+  const [memberRole, setMemberRole] = useState<string>('editor')
   const [inviteName, setInviteName] = useState('')
   const [inviteEmail, setInviteEmail] = useState('')
   const [inviteRole, setInviteRole] = useState<Role>('editor')
@@ -543,11 +557,11 @@ function ManagementModal({ project, data, onClose, onChanged }: { project: Proje
   async function assignTeam() {
     if (!targetTeam || (targetTeam.linked && !additions.length)) return
     const verb = targetTeam.linked ? 'Incorporar nuevos miembros del equipo' : 'Vincular el equipo'
-    if (!window.confirm(`${verb} "${targetTeam.name}" en ${project.name}?\n\nNuevas incorporaciones (${additions.length}) con rol ${roleName(addRole)}: ${additions.map((person) => person.name).join(', ') || 'ninguna'}\n\nLos roles de los miembros existentes permanecerán intactos. Nadie perderá su acceso.`)) return
+    if (!window.confirm(`${verb} "${targetTeam.name}" en ${project.name}?\n\nNuevas incorporaciones (${additions.length}) con rol ${displayRole(addRole)}: ${additions.map((person) => person.name).join(', ') || 'ninguna'}\n\nLos roles de los miembros existentes permanecerán intactos. Nadie perderá su acceso.`)) return
     await action(async () => {
       await api(`/projects/${project.id}/personnel/teams`, {
         method: 'POST', body: JSON.stringify({
-          team_id: targetTeam.id, role: addRole, confirmed_member_ids: targetTeam.members.map((person) => person.id),
+          team_id: targetTeam.id, ...toPayload(addRole), confirmed_member_ids: targetTeam.members.map((person) => person.id),
         }),
       })
     })
@@ -556,16 +570,16 @@ function ManagementModal({ project, data, onClose, onChanged }: { project: Proje
     if (!userId) return
     await action(async () => {
       await api(`/projects/${project.id}/personnel/members`, {
-        method: 'POST', body: JSON.stringify({ user_id: userId, role: memberRole }),
+        method: 'POST', body: JSON.stringify({ user_id: userId, ...toPayload(memberRole) }),
       })
       setUserId('')
     })
   }
-  async function changeRole(member: Member, next: Role) {
-    if (member.role === next) return
-    if (!window.confirm(`¿Cambiar el rol de ${member.name} a ${roleName(next)}?`)) return
+  async function changeRole(member: Member, next: string) {
+    if ((member.custom_role_id ? `custom:${member.custom_role_id}` : member.role) === next) return
+    if (!window.confirm(`¿Cambiar el rol de ${member.name} a ${displayRole(next)}?`)) return
     await action(() => api(`/projects/${project.id}/personnel/members/${member.id}`, {
-      method: 'PATCH', body: JSON.stringify({ role: next }),
+      method: 'PATCH', body: JSON.stringify(toPayload(next)),
     }))
   }
   async function removeMember(member: Member) {
@@ -606,8 +620,8 @@ function ManagementModal({ project, data, onClose, onChanged }: { project: Proje
           </small>
         </div>}
         <label>Rol para los nuevos integrantes
-          <select value={addRole} onChange={(event) => setAddRole(event.target.value as Role)}>
-            {MANAGE_ROLES.map((item) => <option key={item.key} value={item.key}>{item.name}</option>)}
+          <select value={addRole} onChange={(event) => setAddRole(event.target.value)}>
+            {options.map(item => <option key={item.value} value={item.value}>{item.label}</option>)}
           </select>
         </label>
         <button type="button" className={styles.modalPrimary}
@@ -636,16 +650,17 @@ function ManagementModal({ project, data, onClose, onChanged }: { project: Proje
           <select value={userId} onChange={(event) => setUserId(event.target.value ? Number(event.target.value) : '')}>
             <option value="">Seleccionar persona…</option>{available.map((person) => <option key={person.id} value={person.id}>{person.name}</option>)}
           </select></label>
-        <label>Rol <select value={memberRole} onChange={(event) => setMemberRole(event.target.value as Role)}>
-          {MANAGE_ROLES.map((item) => <option key={item.key} value={item.key}>{item.name}</option>)}
+        <label>Rol <select value={memberRole} onChange={(event) => setMemberRole(event.target.value)}>
+          {options.map(item => <option key={item.value} value={item.value}>{item.label}</option>)}
         </select></label>
         <button type="button" className={styles.modalPrimary} disabled={!userId || busy} onClick={() => void addPerson()}>Añadir miembro</button>
         <strong className={styles.modalSectionTitle}>Miembros actuales</strong>
         <div className={styles.manageMembers}>{data.members.map((member) => <div key={member.id}>
           <Avatar id={member.id} name={member.name} src={member.avatar_url} size={28}/>
           <span>{member.name}</span>
-          <select aria-label={`Rol de ${member.name}`} disabled={busy || member.is_workspace_owner} value={member.role} onChange={(event) => void changeRole(member,event.target.value as Role)}>
+          <select aria-label={`Rol de ${member.name}`} disabled={busy || member.is_workspace_owner} value={member.custom_role_id ? `custom:${member.custom_role_id}` : member.role} onChange={(event) => void changeRole(member,event.target.value)}>
             {ROLES.map((item) => <option key={item.key} value={item.key}>{item.name}</option>)}
+            {customRoles.map(item => <option key={item.id} value={`custom:${item.id}`}>{item.name}</option>)}
           </select>
           <button type="button" disabled={busy || member.is_workspace_owner} aria-label={`Retirar a ${member.name}`} onClick={() => void removeMember(member)}>Retirar</button>
         </div>)}</div>

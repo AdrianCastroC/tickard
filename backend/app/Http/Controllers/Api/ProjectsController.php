@@ -16,6 +16,7 @@ use App\Models\Workspace;
 use App\Support\CardPresenter;
 use App\Support\ProjectAccess;
 use App\Support\ProjectFileStorage;
+use App\Support\WorkspacePersonnelGuard;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
@@ -49,8 +50,7 @@ class ProjectsController extends ApiController
             )
             ->firstOrFail();
 
-        abort_unless($request->user()->is_admin
-            || (int) $workspace->owner_id === (int) $request->user()->id, 403);
+        abort_unless(WorkspacePersonnelGuard::canManage($request, $workspace, 'workspace.projects'), 403);
 
         $imagePath = null;
         try {
@@ -106,14 +106,14 @@ class ProjectsController extends ApiController
         }
 
         return response()->json(
-            $this->projectSummary($project, 'responsable'),
+            $this->projectSummary($project, 'responsable', $request->user()),
             201
         );
     }
 
     public function deleteProject(Request $request, Project $project)
     {
-        abort_unless(ProjectAccess::canManage($request->user(), $project), 403);
+        abort_unless(ProjectAccess::has($request->user(), $project, 'project.delete'), 403);
 
         $data = $request->validate([
             'confirmation_name' => ['required', 'string'],
@@ -134,7 +134,7 @@ class ProjectsController extends ApiController
 
     public function storeBoard(Request $request, Project $project)
     {
-        abort_unless(ProjectAccess::canManage($request->user(), $project), 403);
+        abort_unless(ProjectAccess::canManageBoards($request->user(), $project), 403);
 
         $data = $request->validate([
             'name' => ['required', 'string', 'max:120'],
@@ -162,7 +162,7 @@ class ProjectsController extends ApiController
     public function deleteBoard(Request $request, Board $board)
     {
         abort_unless(
-            ProjectAccess::canManage($request->user(), $board->project),
+            ProjectAccess::canManageBoards($request->user(), $board->project),
             403
         );
 
@@ -467,6 +467,7 @@ class ProjectsController extends ApiController
             'revision' => $board->revision,
             'view' => 'kanban',
             'role' => $role,
+            'permissions' => ProjectAccess::permissions($request->user(), $project),
 
             'board' => [
                 'id' => $board->id,

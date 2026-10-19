@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import type { Profile, Project } from '../../api'
+import { canProject, type Profile, type Project } from '../../api'
 import { CategoriesDrawer } from '../administration'
 import { CardDrawer } from '../cards/CardDetail'
 import { BoardHeader } from '../workspace/BoardHeader'
@@ -42,8 +42,8 @@ export function BoardSurface({ state, filters, activeBoardId, project, profile, 
   const [ganttRetry, setGanttRetry] = useState(0)
   const handledGanttFocus = useRef<number | null>(null)
   const filterButtonRef = useRef<HTMLButtonElement>(null)
-  const canEdit = view?.role === 'responsable' || view?.role === 'editor'
-  const canManage = view?.role === 'responsable'
+  const canEdit = Boolean(view && canProject(view, 'cards.edit'))
+  const canManage = Boolean(view && canProject(view, 'boards.manage'))
   const clientView = view?.role === 'cliente'
   const backlog = view?.columns.find((column) => column.workflow_state === 'backlog') ?? view?.columns[0]
   const filteredColumns = useMemo(() => view ? filteredBoardColumns(view, query, filters.assignee, filters.teamId, filters.label, filters.priority) : [], [view, query, filters.assignee, filters.teamId, filters.label, filters.priority])

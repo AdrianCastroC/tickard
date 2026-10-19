@@ -11,7 +11,7 @@ type Linked = { id: number; name: string; is_lead?: boolean; role?: string }
 type Member = {
   id: number; name: string; handle: string; email: string; job_title: string | null
   professional_phone: string | null; joined_at: string | null; avatar_url: string | null
-  role: string; is_client: boolean
+  role: string; custom_role_id: number | null; custom_role_name: string | null; is_client: boolean
   departments: Linked[]; teams: Linked[]; projects: Linked[]
 }
 type MemberData = {
@@ -121,7 +121,16 @@ export function MembersSurface({ workspaceId, workspaceName, openInvitations = f
   const [editingMember, setEditingMember] = useState(false)
   const [editError, setEditError] = useState('')
   const [draftJob, setDraftJob] = useState('')
-  const [draftRole, setDraftRole] = useState<'admin' | 'member'>('member')
+  const [draftRole, setDraftRole] = useState<string>('member')
+  const [customWorkspaceRoles, setCustomWorkspaceRoles] = useState<{ id: number; name: string }[]>([])
+  useEffect(() => {
+    if (workspaceId === null) return
+    let active = true
+    void api<{ roles: { id: number; name: string; scope: string }[] }>(`/workspaces/${workspaceId}/roles`)
+      .then(result => { if (active) setCustomWorkspaceRoles(result.roles.filter(item => item.scope === 'workspace')) })
+      .catch(() => { if (active) setCustomWorkspaceRoles([]) })
+    return () => { active = false }
+  }, [workspaceId])
   const [saving, setSaving] = useState(false)
   const [savingJob, setSavingJob] = useState(false)
   const [removingMember, setRemovingMember] = useState<Member | null>(null)
@@ -157,7 +166,7 @@ export function MembersSurface({ workspaceId, workspaceName, openInvitations = f
 
   const selected = data?.members.find(member => member.id === selectedId) ?? null
   useEffect(() => {
-    setDraftRole(selected?.role === 'admin' ? 'admin' : 'member')
+    setDraftRole(selected?.custom_role_id ? `custom:${selected.custom_role_id}` : selected?.role === 'admin' ? 'admin' : 'member')
   }, [selected?.id, selected?.role])
 
   useEffect(() => { setDraftJob(selected?.job_title ?? ''); setEditingMember(false); setEditError('') }, [selected?.id, selected?.job_title])
@@ -167,7 +176,7 @@ export function MembersSurface({ workspaceId, workspaceName, openInvitations = f
   function beginEditMember() {
     if (!selected || (!canEditJob && !canEditRole)) return
     setDraftJob(selected.job_title ?? '')
-    setDraftRole(selected.role === 'admin' ? 'admin' : 'member')
+    setDraftRole(selected.custom_role_id ? `custom:${selected.custom_role_id}` : selected.role === 'admin' ? 'admin' : 'member')
     setEditError('')
     setEditingMember(true)
   }
@@ -260,7 +269,7 @@ export function MembersSurface({ workspaceId, workspaceName, openInvitations = f
     if (workspaceId === null || !selected || savingJob || saving) return
     const nextJob = draftJob.trim()
     const jobChanged = canEditJob && nextJob !== (selected.job_title ?? '')
-    const roleChanged = canEditRole && draftRole !== selected.role
+    const roleChanged = canEditRole && draftRole !== (selected.custom_role_id ? `custom:${selected.custom_role_id}` : selected.role)
     if (!jobChanged && !roleChanged) { setEditingMember(false); return }
     if (nextJob.length > 120) { setEditError('El cargo no puede superar los 120 caracteres.'); return }
     setSavingJob(true); setEditError(''); setError(''); setNotice('')
@@ -272,7 +281,9 @@ export function MembersSurface({ workspaceId, workspaceName, openInvitations = f
       }
       if (roleChanged) {
         await api('/workspaces/' + workspaceId + '/members/' + selected.id + '/role', {
-          method: 'PATCH', body: JSON.stringify({ role: draftRole }),
+          method: 'PATCH', body: JSON.stringify(draftRole.startsWith('custom:')
+            ? { role: 'member', custom_role_id: Number(draftRole.slice(7)) }
+            : { role: draftRole, custom_role_id: null }),
         })
       }
       await load()
@@ -490,7 +501,7 @@ export function MembersSurface({ workspaceId, workspaceName, openInvitations = f
                   <span className={styles.extraBadge}>+{member.departments.length + member.teams.length - 3}</span>}
                 {member.departments.length + member.teams.length === 0 && <small>Sin asignar</small>}
               </button></td>
-              <td><Role role={member.role}/></td>
+              <td><Role role={member.custom_role_name ?? member.role}/></td>
               <td className={styles.countCell}>{member.projects.length}</td>
               <td className={styles.dateCell}>{member.joined_at ? formatDateLong(member.joined_at) : '—'}</td>
             </tr>)}</tbody>
@@ -502,7 +513,7 @@ export function MembersSurface({ workspaceId, workspaceName, openInvitations = f
             <Avatar id={member.id} name={member.name} src={member.avatar_url} size={46}/>
             <strong>{member.name}</strong>
             <span className={styles.cardJob}>{member.job_title || 'Cargo sin especificar'}</span>
-            <Role role={member.role}/>
+            <Role role={member.custom_role_name ?? member.role}/>
             <span className={styles.cardMeta}>{member.teams.length} equipos · {member.projects.length} proyectos</span>
           </button>)}
           {!displayed.length && <p className={styles.empty}>No hay miembros que coincidan con los filtros.</p>}
@@ -516,7 +527,7 @@ export function MembersSurface({ workspaceId, workspaceName, openInvitations = f
             <Avatar id={selected.id} name={selected.name} src={selected.avatar_url} size={60}/>
             <div className={styles.memberHeadText}>
               <strong>{selected.name}</strong><small>{selected.email}</small>
-              <Role role={selected.role}/>
+              <Role role={selected.custom_role_name ?? selected.role}/>
             </div>
             <button type="button" className={styles.close} title="Cerrar ficha" aria-label="Cerrar ficha"
               onClick={() => setSelectedId(null)}><Glyph name="close" size={17}/></button>
@@ -556,7 +567,7 @@ export function MembersSurface({ workspaceId, workspaceName, openInvitations = f
               <section className={styles.detailGroup}>
                 <div className={styles.sectionHeading}><strong>Roles y permisos</strong>
                   <button type="button" onClick={() => setTab('permissions')}>Ver permisos</button></div>
-                <Role role={selected.role}/>
+                <Role role={selected.custom_role_name ?? selected.role}/>
               </section>
               <Links title="Equipos" items={selected.teams} onMore={() => setTab('teams')}/>
               <Links title="Proyectos" items={selected.projects} onMore={() => setTab('projects')}/>
@@ -573,7 +584,7 @@ export function MembersSurface({ workspaceId, workspaceName, openInvitations = f
             </>}
             {tab === 'permissions' && <section className={styles.detailGroup}>
               <div className={styles.sectionHeading}><strong>Permisos del Workspace</strong></div>
-              <Role role={selected.role}/>
+              <Role role={selected.custom_role_name ?? selected.role}/>
               <p>El rol del Workspace es independiente de los permisos en cada proyecto.</p>
               {canEditRole && <div className={styles.sectionHeading}>
                 <button type="button" onClick={beginEditMember}><EditIcon/> Editar rol</button>
@@ -616,8 +627,9 @@ export function MembersSurface({ workspaceId, workspaceName, openInvitations = f
               </label>}
               {canEditRole && <label className={styles.field}>Rol en el Workspace
                 <select autoFocus={!canEditJob} value={draftRole} disabled={savingJob}
-                  onChange={event => setDraftRole(event.target.value as 'admin' | 'member')}>
+                  onChange={event => setDraftRole(event.target.value)}>
                   <option value="member">Miembro</option><option value="admin">Administrador</option>
+                   {customWorkspaceRoles.map(item => <option key={item.id} value={`custom:${item.id}`}>{item.name}</option>)}
                 </select>
               </label>}
               {canEditRole && <p className={styles.muted}>Los permisos del Workspace son independientes de los roles de cada proyecto.</p>}

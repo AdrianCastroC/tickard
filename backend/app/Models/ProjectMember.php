@@ -7,7 +7,12 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class ProjectMember extends Model
 {
-    protected $fillable = ['project_id', 'user_id', 'role'];
+    protected $fillable = ['project_id', 'user_id', 'role', 'custom_role_id'];
+
+    public function customRole(): BelongsTo
+    {
+        return $this->belongsTo(WorkspaceCustomRole::class, 'custom_role_id');
+    }
 
     public function user(): BelongsTo
     {

@@ -10,7 +10,7 @@ export function ProjectsSection({ profile, workspaceId, onOpenProject, onProject
   const [open, setOpen] = useState(true)
   const [newProject, setNewProject] = useState(false)
   const workspace = profile.workspaces.find(item => item.id === workspaceId)
-  const canCreate = profile.user.is_admin || workspace?.role === 'owner'
+  const canCreate = profile.user.is_admin || workspace?.role === 'owner' || !!workspace?.permissions?.includes('workspace.projects')
 
   async function createdProject(id: number) {
     const data = await onProjectsChanged()

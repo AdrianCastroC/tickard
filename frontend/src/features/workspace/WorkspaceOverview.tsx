@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import { api, type Profile, type WorkspaceRef } from '../../api'
 import { ProjectContentLoading } from './ProjectContentLoading'
 import { CreateProjectModal } from './CreateProjectModal'
+import { WorkspaceRolesManager } from './WorkspaceRolesManager'
 import { Avatar, formatRelative } from '../../shared/ui'
 import { NavIcon, SettingsIcon } from '../../shared/icons'
 import { DeleteWorkspaceModal } from '../sidebar/WorkspaceSelector/DeleteWorkspaceModal'
@@ -278,7 +279,7 @@ export function WorkspaceOverview({ profile, workspaceId, onProfileRefresh, onOp
               <div className="wd-project-actions">
                 <button type="button" className="wd-project-all"
                   onClick={() => setAllProjectsOpen(true)}>Ver todos →</button>
-                {summary.can_manage && <button type="button" className="wd-new-project"
+                {(summary.can_manage || profile.workspaces.some(item => item.id === summary.id && item.permissions?.includes('workspace.projects'))) && <button type="button" className="wd-new-project"
                   onClick={() => setNewProject(true)}>
                   <NavIcon><path d="M12 5v14M5 12h14"/></NavIcon> Nuevo proyecto
                 </button>}
@@ -502,6 +503,11 @@ export function WorkspaceOverview({ profile, workspaceId, onProfileRefresh, onOp
                 '/workspaces/' + summary.id + '/client-settings', 'Configuración de clientes actualizada.')}/>
           </label>
         </div>
+      </section>
+
+      <section className="workspace-overview-section">
+        <div className="workspace-overview-section-title"><h2>Roles y permisos</h2></div>
+        <WorkspaceRolesManager workspaceId={summary.id}/>
       </section>
 
       <section className="workspace-overview-section workspace-overview-danger">

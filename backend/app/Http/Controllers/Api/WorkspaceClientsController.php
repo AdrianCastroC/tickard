@@ -78,7 +78,7 @@ class WorkspaceClientsController extends ApiController
             ->whereNull('revoked_at')->with('recipient:id,name,email')->orderByDesc('id')->get();
 
         return response()->json([
-            'can_manage' => Guard::canManage($request, $workspace),
+            'can_manage' => Guard::canManage($request, $workspace, 'workspace.clients'),
             'pending_clients' => $pending->map(fn ($invitation) => [
                 'id' => $invitation->id, 'name' => $invitation->client_company_name,
                 'representative' => $invitation->recipient?->name,
@@ -112,7 +112,7 @@ class WorkspaceClientsController extends ApiController
     public function store(Request $request)
     {
         $workspace = Guard::resolve($request,
-            (int) $request->validate(['workspace_id' => ['required', 'integer']])['workspace_id'], true);
+            (int) $request->validate(['workspace_id' => ['required', 'integer']])['workspace_id'], true, 'workspace.clients');
         abort_unless($workspace->show_clients, 404);
         $data = $this->validated($request, $workspace);
         $identity = $request->validate([
@@ -163,7 +163,7 @@ class WorkspaceClientsController extends ApiController
     public function cancelPending(Request $request, WorkspaceInvitation $invitation)
     {
         $workspace = Guard::resolve($request,
-            (int) $request->validate(['workspace_id' => ['required', 'integer']])['workspace_id'], true);
+            (int) $request->validate(['workspace_id' => ['required', 'integer']])['workspace_id'], true, 'workspace.clients');
         abort_unless($invitation->workspace_id === $workspace->id
             && $invitation->client_company_name !== null, 404);
         abort_unless($invitation->status === 'pending' && ! $invitation->revoked_at, 409);
@@ -174,7 +174,7 @@ class WorkspaceClientsController extends ApiController
     public function update(Request $request, ClientCompany $client)
     {
         $workspace = Guard::resolve($request,
-            (int) $request->validate(['workspace_id' => ['required', 'integer']])['workspace_id'], true);
+            (int) $request->validate(['workspace_id' => ['required', 'integer']])['workspace_id'], true, 'workspace.clients');
         abort_unless($workspace->show_clients, 404);
         abort_unless((int) $client->workspace_id === (int) $workspace->id, 404);
         $data = $this->validated($request, $workspace, $client);
@@ -191,7 +191,7 @@ class WorkspaceClientsController extends ApiController
     public function destroy(Request $request, ClientCompany $client)
     {
         $workspace = Guard::resolve($request,
-            (int) $request->validate(['workspace_id' => ['required', 'integer']])['workspace_id'], true);
+            (int) $request->validate(['workspace_id' => ['required', 'integer']])['workspace_id'], true, 'workspace.clients');
         abort_unless($workspace->show_clients, 404);
         abort_unless((int) $client->workspace_id === (int) $workspace->id, 404);
         if ($client->projects()->exists() || $workspace->memberships()

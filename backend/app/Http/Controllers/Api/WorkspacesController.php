@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Workspace;
 use App\Support\WorkspaceClientAccess;
+use App\Support\WorkspacePersonnelGuard;
 use App\Support\WorkspaceLimits;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -47,7 +48,7 @@ class WorkspacesController extends Controller
         return response()->json([
             'id' => $workspace->id,
             'name' => $workspace->name,
-            'role' => 'owner',
+            'role' => $workspace->memberships()->where('user_id', $user->id)->value('role'),
             'plan' => $workspace->effectivePlan(),
         ], 201);
     }
@@ -69,6 +70,7 @@ class WorkspacesController extends Controller
         $isOwner = (int) $workspace->owner_id === (int) $user->id;
         $canSeeOrganization = ! $isClient && (
             $isOwner || $membership->role === 'admin' || $user->is_admin
+            || WorkspacePersonnelGuard::canManage($request, $workspace, 'workspace.projects')
         );
 
         $projectsCount = $canSeeOrganization
@@ -89,7 +91,7 @@ class WorkspacesController extends Controller
             'image_url' => $workspace->image_path ? '/storage/'.$workspace->image_path : null,
             'role' => $membership->role,
             'plan' => $workspace->effectivePlan(),
-            'can_manage' => $isOwner,
+            'can_manage' => WorkspacePersonnelGuard::canConfigure($request, $workspace),
             'can_view_personnel' => $canSeeOrganization,
             'show_birthdays' => (bool) $workspace->show_birthdays,
             'show_clients' => (bool) $workspace->show_clients,
@@ -289,9 +291,9 @@ class WorkspacesController extends Controller
         $user = $request->user();
 
         abort_unless(
-            $workspace->owner_id === $user->id,
+            WorkspacePersonnelGuard::canConfigure($request, $workspace),
             403,
-            'Solo el propietario puede editar este workspace.'
+            'Sin permiso para editar este Workspace.'
         );
 
         $data = $request->validate([
@@ -315,7 +317,7 @@ class WorkspacesController extends Controller
 
     public function uploadImage(Request $request, Workspace $workspace): JsonResponse
     {
-        abort_unless((int) $workspace->owner_id === (int) $request->user()->id, 403);
+        abort_unless(WorkspacePersonnelGuard::canConfigure($request, $workspace), 403);
         $request->validate([
             'image' => ['required', File::types(['jpg', 'jpeg', 'png', 'webp'])->max(2048)],
         ]);
@@ -335,7 +337,7 @@ class WorkspacesController extends Controller
 
     public function deleteImage(Request $request, Workspace $workspace): JsonResponse
     {
-        abort_unless((int) $workspace->owner_id === (int) $request->user()->id, 403);
+        abort_unless(WorkspacePersonnelGuard::canConfigure($request, $workspace), 403);
         $old = $workspace->image_path;
         $workspace->update(['image_path' => null]);
         if ($old) Storage::disk('public')->delete($old);
@@ -345,9 +347,9 @@ class WorkspacesController extends Controller
     public function updateBirthdaySettings(Request $request, Workspace $workspace): JsonResponse
     {
         abort_unless(
-            (int) $workspace->owner_id === (int) $request->user()->id,
+            WorkspacePersonnelGuard::canConfigure($request, $workspace),
             403,
-            'Solo el propietario puede configurar este Workspace.'
+            'Sin permiso para configurar este Workspace.'
         );
 
         $data = $request->validate(['show_birthdays' => ['required', 'boolean']]);
@@ -358,8 +360,8 @@ class WorkspacesController extends Controller
 
     public function updateClientSettings(Request $request, Workspace $workspace): JsonResponse
     {
-        abort_unless((int) $workspace->owner_id === (int) $request->user()->id, 403,
-            'Solo el propietario puede configurar este Workspace.');
+        abort_unless(WorkspacePersonnelGuard::canConfigure($request, $workspace), 403,
+            'Sin permiso para configurar este Workspace.');
         $data = $request->validate(['show_clients' => ['required', 'boolean']]);
         $workspace->update(['show_clients' => $data['show_clients']]);
         return response()->json(['id' => $workspace->id, 'show_clients' => (bool) $workspace->show_clients]);

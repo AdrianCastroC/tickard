@@ -4397,3 +4397,19 @@ h1, h2, h3, p { margin: 0; }
 /* Pantalla inicial: reutiliza el indicador de carga de las vistas, sin desbordar. */
 .tickard-startup-loading {width:100%;height:100dvh;min-height:0;overflow:hidden;background:var(--surface);}
 .tickard-startup-loading > section {height:100%;min-height:0;}
+
+/* Editor de roles por Workspace */
+.tickard-roles {display:flex;flex-direction:column;gap:12px;min-width:0;}
+.tickard-roles-tabs {display:flex;gap:5px;}
+.tickard-roles-tabs button {padding:7px 13px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink);cursor:pointer;}
+.tickard-roles-tabs button.on {background:color-mix(in srgb,var(--accent) 12%,var(--surface));border-color:var(--accent);color:var(--accent);}
+.tickard-role-item {display:flex;justify-content:space-between;gap:12px;align-items:center;padding:10px;border:1px solid var(--line);border-radius:9px;}
+.tickard-role-item > div:first-child {display:flex;flex-direction:column;gap:4px;min-width:0;}
+.tickard-role-item strong {font-size:12px;}
+.tickard-role-item small {color:var(--muted);font-size:11px;}
+.tickard-role-actions {display:flex;align-items:center;justify-content:flex-end;gap:8px;flex-wrap:wrap;}
+.tickard-role-form {display:flex;flex-direction:column;gap:12px;padding:12px;border:1px solid var(--line);border-radius:10px;}
+.tickard-role-form > label {display:flex;flex-direction:column;gap:5px;font-size:12px;font-weight:650;}
+.tickard-role-form > label input {width:100%;box-sizing:border-box;}
+.tickard-role-permissions {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;}
+@media(max-width:600px){.tickard-role-permissions{grid-template-columns:1fr;}}

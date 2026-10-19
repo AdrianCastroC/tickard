@@ -22,6 +22,7 @@ use App\Http\Controllers\Api\ProjectDashboardController;
 use App\Http\Controllers\Api\BoardDashboardController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\WorkspacesController;
+use App\Http\Controllers\Api\WorkspaceRolesController;
 use App\Http\Controllers\Api\MyTasksController;
 use App\Http\Controllers\Api\GlobalHomeController;
 use App\Http\Controllers\Api\NotificationsController;
@@ -59,6 +60,10 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/notifications/read', [NotificationsController::class, 'readAll']);
     Route::post('/notifications/{notification}/read', [NotificationsController::class, 'read']);
 
+    Route::get('/workspaces/{workspace}/roles', [WorkspaceRolesController::class, 'index']);
+    Route::post('/workspaces/{workspace}/roles', [WorkspaceRolesController::class, 'store']);
+    Route::patch('/workspaces/{workspace}/roles/{role}', [WorkspaceRolesController::class, 'update']);
+    Route::delete('/workspaces/{workspace}/roles/{role}', [WorkspaceRolesController::class, 'destroy']);
     Route::post('/workspaces', [WorkspacesController::class, 'store']);
     Route::get('/workspaces/{workspace}/overview', [WorkspacesController::class, 'overview']);
     Route::patch('/workspaces/{workspace}', [WorkspacesController::class, 'update']);
