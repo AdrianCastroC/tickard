@@ -20,6 +20,7 @@ export function WorkspaceRolesManager({ workspaceId }: { workspaceId: number }) 
   const [scope, setScope] = useState<Scope>('project')
   const [enabled, setEnabled] = useState(true)
   const [selected, setSelected] = useState<number | 'new' | null>(null)
+  const [selectedBuiltin, setSelectedBuiltin] = useState<string | null>('owner')
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
   const [permissions, setPermissions] = useState<string[]>(['project.view'])
@@ -37,6 +38,7 @@ export function WorkspaceRolesManager({ workspaceId }: { workspaceId: number }) 
   function edit(role?: Role) {
     const nextScope = role?.scope ?? scope
     setScope(nextScope)
+    setSelectedBuiltin(null)
     setSelected(role?.id ?? 'new')
     setName(role?.name ?? '')
     setDescription(role?.description ?? '')
@@ -81,9 +83,11 @@ export function WorkspaceRolesManager({ workspaceId }: { workspaceId: number }) 
   if (!data) return <p className="workspace-overview-hint" role="status">{error || 'Cargando roles y permisos…'}</p>
   return <div className="tickard-roles">
     <p className="workspace-overview-hint">Roles preestablecidos y personalizados de este Workspace. Puedes elegir la vigencia de cada nuevo rol. Owner y Cliente son roles protegidos.</p>
+    <div className="tickard-roles-workspace">
+      <div className="tickard-roles-catalog">
     <strong>Roles preestablecidos</strong>
-    {data.builtin_roles.map(role => <div className="tickard-role-item" key={role.key}>
-      <div><strong>{role.name}</strong><small>{role.scope === 'workspace' ? 'Workspace' : 'Proyecto'} · {role.locked ? 'Protegido' : role.enabled ? 'Activo' : 'Inactivo'}</small></div>
+    {data.builtin_roles.map(role => <div className={`tickard-role-item${selectedBuiltin === role.key ? ' is-selected' : ''}`} key={role.key}>
+      <div><button type="button" className="tickard-role-name" onClick={() => {setSelected(null);setSelectedBuiltin(role.key)}}>{role.name}</button><small>{role.scope === 'workspace' ? 'Workspace' : 'Proyecto'} · {role.locked ? 'Protegido' : role.enabled ? 'Activo' : 'Inactivo'}</small></div>
       {data.can_manage && <label className="tickard-role-availability">
         <span>{role.enabled ? 'Activo' : 'Inactivo'}</span>
         <input type="checkbox" checked={role.enabled} disabled={role.locked || busy}
@@ -102,7 +106,20 @@ export function WorkspaceRolesManager({ workspaceId }: { workspaceId: number }) 
       </div>}
     </div>)}
     {!data.roles.length && <p className="workspace-overview-hint">Todavía no hay roles personalizados.</p>}
-    {selected !== null && <form className="tickard-role-form" onSubmit={event => void save(event)}>
+      </div>
+      <div className="tickard-roles-detail">
+      {selectedBuiltin && (() => {
+        const builtin = data.builtin_roles.find(item=>item.key===selectedBuiltin)
+        if (!builtin) return null
+        return <section className="tickard-roles-builtin-detail">
+          <strong>{builtin.name}</strong>
+          <p className="workspace-overview-hint">{builtin.locked ? 'Rol protegido del sistema' : 'Rol preestablecido'} · Vigencia: {builtin.scope === 'workspace' ? 'Workspace' : 'Proyecto'}</p>
+          <p className="workspace-overview-hint">Los permisos de este rol se mantienen por compatibilidad. Su disponibilidad para nuevas asignaciones se gestiona desde el listado.</p>
+          <div className="tickard-role-availability"><span>{builtin.enabled ? 'Activo' : 'Inactivo'}</span><input type="checkbox" checked={builtin.enabled} disabled={builtin.locked || !data.can_manage || busy} onChange={event=>void toggleBuiltin(builtin.key,event.target.checked)}/></div>
+        </section>
+      })()}
+      {selected === null && !selectedBuiltin && <p className="workspace-overview-hint">Selecciona un rol para ver sus permisos o crea uno nuevo.</p>}
+      {selected !== null && <form className="tickard-role-form" onSubmit={event => void save(event)}>
       <label>Nombre del rol<input required maxLength={80} minLength={2} value={name} disabled={busy}
         onChange={event => setName(event.target.value)}/></label>
       <label>Descripción<input maxLength={255} value={description} disabled={busy}
@@ -134,6 +151,8 @@ export function WorkspaceRolesManager({ workspaceId }: { workspaceId: number }) 
       <div className="tickard-role-actions"><button type="button" className="ghost" onClick={() => setSelected(null)} disabled={busy}>Cancelar</button>
         <button type="submit" className="primary" disabled={busy || !name.trim()}>{busy ? 'Guardando…' : 'Guardar rol'}</button></div>
     </form>}
+      </div>
+    </div>
     {error && <p role="alert" className="workspace-overview-alert">{error}</p>}
     {notice && <p role="status" className="workspace-overview-notice">{notice}</p>}
   </div>
