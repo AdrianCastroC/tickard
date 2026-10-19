@@ -261,6 +261,28 @@ No es necesaria ninguna migración: se reutilizan los campos actuales de `projec
 
 ---
 
+
+### Identidad visual de la demo Altaris
+
+La demo usa el Workspace **Altaris** (antes Tickard Demo) y los clientes **Aster Labs** y **Norte Digital**. Sus logos originales están versionados en la carpeta raíz `docs/`:
+
+- `docs/Altaris_logo.png`
+- `docs/AsterLabs_logo.png`
+- `docs/NorteDigital_logo.png`
+
+`DatabaseSeeder` ejecuta `DemoBrandAssetsSeeder` al final: copia los archivos al disco público de Laravel y asigna `image_path` al Workspace y a los dos clientes, sin crear identidades duplicadas. En instalaciones con la demo ya poblada, no hace falta reiniciar la base de datos. Tras actualizar el repositorio:
+
+```bash
+cd backend
+php artisan migrate
+php artisan storage:link
+php artisan db:seed --class=DemoBrandAssetsSeeder
+```
+
+El paso `storage:link` solo es necesario si no existe ya el enlace a `public/storage`. La seeder de branding es **repetible**, reutiliza el Workspace de Ana y actualiza las imágenes de los clientes existentes. No relanza Nébula Mobile ni modifica tareas, comentarios o proyectos. El frontend toma las imágenes de `/storage/...` en el selector del Workspace, la cabecera de Altaris y los paneles de clientes.
+
+---
+
 ### Vista general del Workspace
 
 El dashboard principal sigue la referencia de Tickard Demo: identidad y métricas en cabecera; proyectos recientes, tareas pendientes, actividad, equipos y departamentos en el área central; miembros, clientes y anuncios en el panel derecho. Cada bloque consume datos reales del backend y respeta el Workspace activo.
@@ -457,7 +479,7 @@ Además, pertenecen como miembros a:
 
 ### Datos compartidos de la demo
 
-Los datos compartidos actuales pertenecen a `Tickard Demo`, incluyendo:
+Los datos compartidos actuales pertenecen a `Altaris`, incluyendo:
 
 - Norte Digital;
 - departamentos;

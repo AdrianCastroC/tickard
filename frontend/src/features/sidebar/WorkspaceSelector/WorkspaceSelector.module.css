@@ -29,3 +29,6 @@
 .optionsMenu button { width: 100%; border: 0; border-radius: 7px; padding: 8px 10px; background: transparent; display: flex; align-items: center; gap: 8px; text-align: left; }.optionsMenu button:hover { background: var(--canvas); }
 .separator { height: 1px; margin: 5px 3px; background: var(--line); }.createLink { min-height: 36px; padding: 7px 10px; border-radius: 7px; color: var(--accent); font-weight: 600; border: 0; background: transparent; display: flex; align-items: center; gap: 9px; width: 100%; text-align: left; }.createLink:hover { background: var(--canvas); }
 .createLink :global(.plus-icon) { width: 14px; height: 14px; }
+
+.headerLogo {width:26px;height:26px;flex:0 0 26px;object-fit:contain;border-radius:5px;}
+.menuLogo {width:25px;height:25px;flex:0 0 25px;object-fit:contain;border-radius:5px;}

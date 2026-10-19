@@ -16,7 +16,7 @@ class CardSeeder extends Seeder
         $ana = User::where('email', 'ana@gestor.test')->firstOrFail();
         $luis = User::where('email', 'luis@gestor.test')->firstOrFail();
         $marta = User::where('email', 'marta@gestor.test')->firstOrFail();
-        $board = $ana->workspaces()->where('name', 'Tickard Demo')->firstOrFail()->projects()->where('name', 'Portal de clientes')->firstOrFail()->boards()->where('name', 'Entrega marzo')->firstOrFail();
+        $board = $ana->workspaces()->where('name', 'Altaris')->firstOrFail()->projects()->where('name', 'Portal de clientes')->firstOrFail()->boards()->where('name', 'Entrega marzo')->firstOrFail();
         $columns = $board->columns()->get()->keyBy('name');
         $labels = Label::where('project_id', $board->project_id)->get()->keyBy('name');
         $this->card($columns->firstWhere('workflow_state', 'backlog'), 'Revisar textos legales', 'media', false, '2026-10-18', [$marta], [$labels['Diseño']]);

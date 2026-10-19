@@ -38,7 +38,7 @@ use RuntimeException;
 class NebulaMobileDemoSeeder extends Seeder
 {
     private const PROJECT = 'Nébula Mobile';
-    private const WORKSPACE = 'Tickard Demo';
+    private const WORKSPACE = 'Altaris';
     private const CLIENT = 'Aster Labs';
     private const DEMO_DATE = '2026-10-08';
 

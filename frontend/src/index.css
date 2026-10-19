@@ -4226,3 +4226,9 @@ h1, h2, h3, p { margin: 0; }
   .wd-dashboard .wd-content > .wd-primary > .wd-pair {flex:0 0 auto;overflow:visible;}
   .wd-dashboard .wd-content > .wd-primary > .wd-pair > .wd-panel {overflow:visible;}
 }
+
+/* Brand assets from the demo seeder: keep logos proportional and transparent. */
+.wd-brand-tile:has(.wd-brand-logo) {background:var(--surface);border:1px solid var(--line);box-sizing:border-box;overflow:hidden;}
+.wd-brand-logo {display:block;max-width:100%;max-height:100%;width:100%;height:100%;object-fit:contain;padding:4px;box-sizing:border-box;}
+.wd-client-logo:has(.wd-client-image) {background:var(--surface);overflow:hidden;}
+.wd-client-image {display:block;width:100%;height:100%;object-fit:contain;padding:2px;box-sizing:border-box;}

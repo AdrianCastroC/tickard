@@ -23,11 +23,12 @@ type WorkspaceDashboard = {
   members: { id: number; name: string; avatar_url: string | null }[]
   teams: DashboardEntity[]
   departments: DashboardEntity[]
-  clients: { id: number; name: string; projects: number }[]
+  clients: { id: number; name: string; projects: number; image_url: string | null }[]
 }
 type WorkspaceSummary = {
   id: number
   name: string
+  image_url: string | null
   role: WorkspaceRef['role']
   plan: WorkspaceRef['plan']
   can_manage: boolean
@@ -183,7 +184,7 @@ export function WorkspaceOverview({ profile, workspaceId, onProfileRefresh, onOp
   </section>
 
   const currentWorkspace: WorkspaceRef = profile.workspaces.find(item => item.id === summary.id)
-    ?? { id: summary.id, name: summary.name, role: summary.role, plan: summary.plan,
+    ?? { id: summary.id, name: summary.name, image_url: summary.image_url, role: summary.role, plan: summary.plan,
       show_birthdays: summary.show_birthdays, show_clients: summary.show_clients }
 
   const dashboard = summary.dashboard
@@ -215,7 +216,11 @@ export function WorkspaceOverview({ profile, workspaceId, onProfileRefresh, onOp
 
   return <section className="workspace-overview workspace-overview-page">
     <header className="wd-header">
-      <div className="wd-brand-tile" aria-hidden="true">{summary.name.charAt(0).toUpperCase()}</div>
+      <div className="wd-brand-tile" aria-hidden="true">
+        {summary.image_url
+          ? <img src={summary.image_url} alt="" className="wd-brand-logo"/>
+          : summary.name.charAt(0).toUpperCase()}
+      </div>
       <div className="wd-heading">
         <span className="wd-eyebrow">WORKSPACE · PLAN {PLAN_LABEL[summary.plan]}</span>
         <h1>{summary.name}</h1>
@@ -385,7 +390,11 @@ export function WorkspaceOverview({ profile, workspaceId, onProfileRefresh, onOp
             <div className="wd-client-list">
               {dashboard.clients.length ? dashboard.clients.map((client,i) =>
                 <button type="button" key={client.id} onClick={() => onOpenSection('clients')}>
-                  <span className={`wd-client-logo wd-client-logo-${i%4}`}>{client.name.charAt(0).toUpperCase()}</span>
+                  <span className={`wd-client-logo wd-client-logo-${i%4}`}>
+                    {client.image_url
+                      ? <img src={client.image_url} alt="" className="wd-client-image"/>
+                      : client.name.charAt(0).toUpperCase()}
+                  </span>
                   <strong>{client.name}</strong>
                   <small>{client.projects} proyectos</small>
                 </button>) : <p className="wd-empty">No hay empresas cliente registradas.</p>}

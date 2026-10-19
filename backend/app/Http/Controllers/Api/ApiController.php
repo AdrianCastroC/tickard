@@ -97,6 +97,7 @@ protected function internalIds(array $ids): array
             ->map(fn (Workspace $workspace) => [
                 'id' => $workspace->id,
                 'name' => $workspace->name,
+                'image_url' => $workspace->image_path ? '/storage/'.$workspace->image_path : null,
                 'role' => $workspace->pivot->role,
                 'plan' => $workspace->effectivePlan(),
                 'show_birthdays' => (bool) $workspace->show_birthdays,

@@ -11,6 +11,8 @@ use App\Models\ProjectMember;
 use App\Models\Team;
 use App\Models\User;
 use App\Models\Workspace;
+use Database\Seeders\DemoBrandAssetsSeeder;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -352,6 +354,66 @@ class WorkspaceTest extends TestCase
         $this->patchJson('/api/projects/'.$id, [
             'description' => str_repeat('X', 2001),
         ])->assertUnprocessable()->assertJsonValidationErrors('description');
+    }
+
+    public function test_altaris_brand_seeder_reuses_workspace_and_clients_and_publishes_logos(): void
+    {
+        Storage::fake('public');
+        $owner = User::factory()->create([
+            'email' => 'ana@gestor.test', 'is_admin' => false,
+        ]);
+        $workspace = Workspace::createInitialFor($owner);
+        $workspace->update(['name' => 'Tickard Demo', 'show_clients' => true]);
+        $aster = ClientCompany::create(['workspace_id' => $workspace->id, 'name' => 'Aster Labs']);
+        $norte = ClientCompany::create(['workspace_id' => $workspace->id, 'name' => 'Norte Digital']);
+
+        $otherOwner = User::factory()->create(['is_admin' => false]);
+        $otherWorkspace = Workspace::createInitialFor($otherOwner);
+        $otherClient = ClientCompany::create([
+            'workspace_id' => $otherWorkspace->id, 'name' => 'Aster Labs',
+        ]);
+
+        $this->seed(DemoBrandAssetsSeeder::class);
+        $this->seed(DemoBrandAssetsSeeder::class);
+
+        $this->assertDatabaseHas('workspaces', [
+            'id' => $workspace->id, 'name' => 'Altaris',
+            'image_path' => "workspace-entities/{$workspace->id}/workspace/altaris.png",
+        ]);
+        $this->assertDatabaseHas('client_companies', [
+            'id' => $aster->id,
+            'image_path' => "workspace-entities/{$workspace->id}/clients/aster-labs.png",
+        ]);
+        $this->assertDatabaseHas('client_companies', [
+            'id' => $norte->id,
+            'image_path' => "workspace-entities/{$workspace->id}/clients/norte-digital.png",
+        ]);
+        $this->assertDatabaseHas('client_companies', [
+            'id' => $otherClient->id, 'image_path' => null,
+        ]);
+        $this->assertSame(1, Workspace::where('id', $workspace->id)->count());
+        $this->assertSame(2, ClientCompany::where('workspace_id', $workspace->id)->count());
+
+        foreach ([
+            "workspace-entities/{$workspace->id}/workspace/altaris.png",
+            "workspace-entities/{$workspace->id}/clients/aster-labs.png",
+            "workspace-entities/{$workspace->id}/clients/norte-digital.png",
+        ] as $path) {
+            Storage::disk('public')->assertExists($path);
+        }
+
+        $this->actingAs($owner)
+            ->getJson('/api/me?workspace_id='.$workspace->id)
+            ->assertOk()
+            ->assertJsonPath('workspaces.0.name', 'Altaris')
+            ->assertJsonPath('workspaces.0.image_url',
+                "/storage/workspace-entities/{$workspace->id}/workspace/altaris.png");
+
+        $this->getJson("/api/workspaces/{$workspace->id}/overview")
+            ->assertOk()
+            ->assertJsonPath('image_url',
+                "/storage/workspace-entities/{$workspace->id}/workspace/altaris.png")
+            ->assertJsonCount(2, 'dashboard.clients');
     }
 
 }

@@ -207,6 +207,7 @@ export type Project = {
 export type WorkspaceRef = {
   id: number
   name: string
+  image_url?: string | null
   role: 'owner' | 'admin' | 'member' | 'client'
   plan: 'free' | 'base' | 'pro' | 'business'
   show_birthdays: boolean

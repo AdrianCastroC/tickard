@@ -84,6 +84,7 @@ class WorkspacesController extends Controller
         return response()->json([
             'id' => $workspace->id,
             'name' => $workspace->name,
+            'image_url' => $workspace->image_path ? '/storage/'.$workspace->image_path : null,
             'role' => $membership->role,
             'plan' => $workspace->effectivePlan(),
             'can_manage' => $isOwner,
@@ -262,9 +263,15 @@ class WorkspacesController extends Controller
         $clients = $workspace->show_clients
             ? DB::table('client_companies')->leftJoin('projects', 'projects.client_company_id', '=', 'client_companies.id')
                 ->where('client_companies.workspace_id', $workspace->id)
-                ->groupBy('client_companies.id', 'client_companies.name')
+                ->groupBy('client_companies.id', 'client_companies.name', 'client_companies.image_path')
                 ->orderBy('client_companies.name')->limit(5)
-                ->get(['client_companies.id', 'client_companies.name', DB::raw('COUNT(projects.id) as projects')])
+                ->get(['client_companies.id', 'client_companies.name', 'client_companies.image_path', DB::raw('COUNT(projects.id) as projects')])
+                ->map(fn ($client) => [
+                    'id' => $client->id,
+                    'name' => $client->name,
+                    'projects' => $client->projects,
+                    'image_url' => $client->image_path ? '/storage/'.$client->image_path : null,
+                ])
             : collect();
 
         return [
