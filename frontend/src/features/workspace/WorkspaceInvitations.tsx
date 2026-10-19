@@ -24,12 +24,12 @@ export function WorkspaceInvitations({ workspaceId, workspaceName, projectId, on
   const [error,setError] = useState('')
   const [input,setInput] = useState('')
   const [role,setRole] = useState('editor')
-  const [customRoles,setCustomRoles] = useState<{id:number;name:string;scope:string}[]>([])
+  const [customRoles,setCustomRoles] = useState<{id:number;name:string;scope:string;enabled:boolean}[]>([])
   useEffect(()=>{
     if (!workspaceId) { setCustomRoles([]); return }
     let alive=true
-    void api<{roles:{id:number;name:string;scope:string}[]}>(`/workspaces/${workspaceId}/roles`)
-      .then(result=>{if(alive)setCustomRoles(result.roles.filter(item=>item.scope===(projectId?'project':'workspace')))})
+    void api<{roles:{id:number;name:string;scope:string;enabled:boolean}[]}>(`/workspaces/${workspaceId}/roles`)
+      .then(result=>{if(alive)setCustomRoles(result.roles.filter(item=>item.enabled && (item.scope===(projectId?'project':'workspace') || item.scope==='both')))})
       .catch(()=>{if(alive)setCustomRoles([])})
     return ()=>{alive=false}
   },[workspaceId,projectId])

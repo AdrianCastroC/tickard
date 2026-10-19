@@ -6,6 +6,7 @@ use App\Models\User;
 use App\Models\Workspace;
 use App\Models\WorkspaceInvitation;
 use App\Support\WorkspaceClientAccess;
+use App\Support\RoleAvailability;
 use App\Support\WorkspacePersonnelGuard;
 use App\Support\WorkspaceLimits;
 use Illuminate\Http\Request;
@@ -114,13 +115,19 @@ class WorkspaceMembersController extends ApiController
         $data = $request->validate([
             'role' => ['required', Rule::in(['member', 'admin'])],
             'custom_role_id' => ['nullable', 'integer', Rule::exists('workspace_custom_roles', 'id')
-                ->where('workspace_id', $workspace->id)->where('scope', 'workspace')],
+                ->where('workspace_id', $workspace->id)->whereIn('scope', ['workspace', 'both'])],
         ]);
         abort_if(! empty($data['custom_role_id']) && $data['role'] !== 'member', 422,
             'Los roles personalizados no pueden heredar permisos de administrador.');
         abort_if((int) $user->id === (int) $workspace->owner_id, 422,
             'No puedes modificar el rol del propietario del Workspace.');
 
+        if (! empty($data['custom_role_id'])) {
+            $custom = \App\Models\WorkspaceCustomRole::findOrFail($data['custom_role_id']);
+            abort_unless(RoleAvailability::custom($custom, $workspace, 'workspace'), 422, 'El rol personalizado no está activo.');
+        } else {
+            abort_unless(RoleAvailability::builtin($workspace, $data['role']), 422, 'El rol está desactivado.');
+        }
         DB::transaction(function () use ($workspace, $user, $data) {
             $member = $workspace->memberships()->where('user_id', $user->id)->lockForUpdate()->firstOrFail();
             abort_if($member->role === 'owner' || WorkspaceClientAccess::isClient($user, $workspace), 422,

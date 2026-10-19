@@ -126,8 +126,8 @@ export function MembersSurface({ workspaceId, workspaceName, openInvitations = f
   useEffect(() => {
     if (workspaceId === null) return
     let active = true
-    void api<{ roles: { id: number; name: string; scope: string }[] }>(`/workspaces/${workspaceId}/roles`)
-      .then(result => { if (active) setCustomWorkspaceRoles(result.roles.filter(item => item.scope === 'workspace')) })
+    void api<{ roles: { id: number; name: string; scope: string; enabled: boolean }[] }>(`/workspaces/${workspaceId}/roles`)
+      .then(result => { if (active) setCustomWorkspaceRoles(result.roles.filter(item => item.enabled && (item.scope === 'workspace' || item.scope === 'both'))) })
       .catch(() => { if (active) setCustomWorkspaceRoles([]) })
     return () => { active = false }
   }, [workspaceId])

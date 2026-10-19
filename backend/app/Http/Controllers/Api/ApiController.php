@@ -103,7 +103,7 @@ protected function internalIds(array $ids): array
                 $custom = $membership?->customRole;
                 $permissions = $isClient ? [] : ((int) $workspace->owner_id === (int) $user->id
                     ? RolePermissions::WORKSPACE
-                    : ($custom && $custom->scope === 'workspace' && (int) $custom->workspace_id === (int) $workspace->id
+                    : ($custom && in_array($custom->scope, ['workspace', 'both'], true) && (int) $custom->workspace_id === (int) $workspace->id
                         ? $custom->permissions
                         : ($membership?->role === 'admin'
                             ? array_values(array_diff(RolePermissions::WORKSPACE, ['workspace.manage']))

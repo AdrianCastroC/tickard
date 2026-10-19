@@ -522,8 +522,8 @@ function ManagementModal({ project, data, onClose, onChanged }: { project: Proje
   const [customRoles, setCustomRoles] = useState<{ id: number; name: string }[]>([])
   useEffect(() => {
     let active = true
-    void api<{ roles: { id: number; name: string; scope: string }[] }>(`/workspaces/${project.workspace_id}/roles`)
-      .then(result => { if (active) setCustomRoles(result.roles.filter(item => item.scope === 'project')) })
+    void api<{ roles: { id: number; name: string; scope: string; enabled: boolean }[] }>(`/workspaces/${project.workspace_id}/roles`)
+      .then(result => { if (active) setCustomRoles(result.roles.filter(item => item.enabled && (item.scope === 'project' || item.scope === 'both'))) })
       .catch(() => { if (active) setCustomRoles([]) })
     return () => { active = false }
   }, [project.workspace_id])

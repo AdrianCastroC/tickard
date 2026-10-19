@@ -9,6 +9,7 @@ use App\Models\ProjectMember;
 use App\Models\Team;
 use App\Models\User;
 use App\Support\ProjectAccess;
+use App\Support\RoleAvailability;
 use App\Support\WorkspaceClientAccess;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -195,10 +196,11 @@ class ProjectPersonnelController extends ApiController
             'user_id' => ['required', 'integer', Rule::exists('workspace_members', 'user_id')
                 ->where('workspace_id', $project->workspace_id)],
             'role' => ['required', Rule::in(['responsable', 'editor', 'lector'])],
-            'custom_role_id' => ['nullable', 'integer', Rule::exists('workspace_custom_roles', 'id')->where('workspace_id', $project->workspace_id)->where('scope', 'project')],
+            'custom_role_id' => ['nullable', 'integer', Rule::exists('workspace_custom_roles', 'id')->where('workspace_id', $project->workspace_id)->whereIn('scope', ['project', 'both'])],
         ]);
         abort_if(! empty($data['custom_role_id']) && $data['role'] !== 'lector', 422,
             'Los roles personalizados se asignan sin privilegios del rol base.');
+        $this->assertRoleAvailable($project, $data);
         $candidate = User::findOrFail($data['user_id']);
         abort_if(WorkspaceClientAccess::isClient($candidate, $project->workspace), 422,
             'Los usuarios cliente requieren acceso específico y no pueden añadirse como internos.');
@@ -227,6 +229,7 @@ class ProjectPersonnelController extends ApiController
             'El propietario del Workspace no puede perder su rol desde un proyecto.');
         $member = $project->members()->where('user_id', $user->id)->firstOrFail();
         $linkedClient = WorkspaceClientAccess::companyId($user, $project->workspace);
+        $this->assertRoleAvailable($project, $data);
         if ($data['role'] === 'cliente') {
             abort_unless($project->client_access_enabled && $project->workspace->show_clients
                 && $linkedClient !== null
@@ -288,6 +291,7 @@ class ProjectPersonnelController extends ApiController
 
         abort_if(! empty($data['custom_role_id']) && $data['role'] !== 'lector', 422,
             'Los roles personalizados se asignan sin privilegios del rol base.');
+        $this->assertRoleAvailable($project, $data);
         $team = Team::where('workspace_id', $project->workspace_id)->findOrFail($data['team_id']);
         $userIds = $team->members()->whereHas('workspaces', fn ($query) =>
             $query->where('workspaces.id', $project->workspace_id)
@@ -329,6 +333,16 @@ class ProjectPersonnelController extends ApiController
         // Intentionally leave individual memberships untouched; a member may
         // have been added directly or still be assigned work in this project.
         return response()->noContent();
+    }
+
+    private function assertRoleAvailable(Project $project, array $data): void
+    {
+        if (! empty($data['custom_role_id'])) {
+            $role = \App\Models\WorkspaceCustomRole::findOrFail($data['custom_role_id']);
+            abort_unless(RoleAvailability::custom($role, $project->workspace, 'project'), 422, 'El rol personalizado no está activo.');
+        } else {
+            abort_unless(RoleAvailability::builtin($project->workspace, $data['role']), 422, 'El rol está desactivado.');
+        }
     }
 
     private function authorizeManage(Request $request, Project $project): void

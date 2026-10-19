@@ -4420,3 +4420,15 @@ h1, h2, h3, p { margin: 0; }
 .workspace-settings-tabs button.on {color:var(--accent);border-bottom-color:var(--accent);}
 .workspace-settings-tabs button:focus-visible {outline:2px solid var(--accent);outline-offset:-2px;}
 @media(max-width:480px){.workspace-settings-tabs {padding:6px 10px 0;}.workspace-settings-tabs button {padding:9px 10px;}}
+
+/* Unified role directory: list on the left, editor on the right. */
+.workspace-settings-modal.workspace-settings-roles-mode{width:min(960px,calc(100vw - 32px));}
+.tickard-roles-workspace{display:grid;grid-template-columns:minmax(220px,0.85fr) minmax(0,1.3fr);gap:14px;min-width:0;align-items:start;}
+.tickard-roles-catalog,.tickard-roles-detail{display:flex;flex-direction:column;gap:10px;min-width:0;}
+.tickard-roles-detail{border:1px solid var(--line);border-radius:10px;padding:12px;}
+.tickard-roles .tickard-role-item.is-selected{border-color:var(--accent);}
+.tickard-role-name{border:0;background:transparent;padding:0;text-align:left;font:inherit;font-size:12px;font-weight:700;color:var(--ink);cursor:pointer;}
+.tickard-role-name:hover{text-decoration:underline;}
+.tickard-role-availability{display:flex;align-items:center;gap:8px;font-size:12px;}
+.tickard-roles-builtin-detail{display:flex;flex-direction:column;gap:12px;}
+@media(max-width:720px){.tickard-roles-workspace{grid-template-columns:1fr;}.tickard-roles-detail{min-height:120px;}}
