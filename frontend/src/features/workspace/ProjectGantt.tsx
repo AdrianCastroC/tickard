@@ -231,6 +231,7 @@ export function ProjectGantt({ project, profile, onNavigateExternalCard }: Props
         canMove={false} canDates={false} canAssign={false} canDelete={false}
         canUpload={canProject(cardData.board, 'files.upload')}
         canComment={canProject(cardData.board, 'cards.comment')}
+        canManageProject={canProject(cardData.board, 'project.manage')}
         onClose={() => setSelected(null)}
         onEdit={() => {}}
         onView={() => {}}

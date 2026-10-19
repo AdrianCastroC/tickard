@@ -675,6 +675,7 @@ export function ProjectCalendar({ project, profile }: { project: Project; profil
       canDelete={canProject(cardData.board, 'cards.delete')}
       canUpload={canProject(cardData.board, 'files.upload')}
       canComment={canProject(cardData.board, 'cards.comment')}
+      canManageProject={canProject(cardData.board, 'project.manage')}
       onClose={() => setSelected(null)} onEdit={() => setEditMode('edit')} onView={() => setEditMode('view')}
       onChange={refresh} onMove={moveCard}
       onOpenRelatedCard={(cardId, boardId) => {

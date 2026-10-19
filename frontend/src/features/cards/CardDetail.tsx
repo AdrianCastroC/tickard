@@ -55,7 +55,7 @@ function ColumnStatusIcon({ name, color = '#3b82f6' }: { name?: string; color?: 
 
 
 
-export function CardDrawer({ card, mode, board, currentUser, canEdit, canMove, canDates, canAssign, canDelete, canUpload, canComment, onClose, onEdit, onView, onChange, onMove, onOpenRelatedCard }: {
+export function CardDrawer({ card, mode, board, currentUser, canEdit, canMove, canDates, canAssign, canDelete, canUpload, canComment, canManageProject, onClose, onEdit, onView, onChange, onMove, onOpenRelatedCard }: {
   card: Card
   mode: 'view' | 'edit'
   board: BoardPayload
@@ -67,6 +67,7 @@ export function CardDrawer({ card, mode, board, currentUser, canEdit, canMove, c
   canDelete: boolean
   canUpload: boolean
   canComment: boolean
+  canManageProject: boolean
   onClose: () => void
   onEdit: () => void
   onView: () => void
@@ -370,7 +371,7 @@ export function CardDrawer({ card, mode, board, currentUser, canEdit, canMove, c
                               card={card}
                               editing={editingContent}
                               canEdit={canUpload}
-                               canManage={canEdit && canDelete}
+                               canManage={canManageProject}
                                currentUserId={currentUser.id}
                               dragProps={dragProps}
                               onChange={onChange}
