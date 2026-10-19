@@ -36,6 +36,18 @@ class WorkspacePersonnelGuard
             && in_array($permission, $custom->permissions ?? [], true);
     }
 
+    public static function canConfigure(Request $request, Workspace $workspace): bool
+    {
+        $user = $request->user();
+        if (WorkspaceClientAccess::isClient($user, $workspace)) return false;
+        if ((int) $workspace->owner_id === (int) $user->id) return true;
+        $membership = $workspace->memberships()->where('user_id', $user->id)->first();
+        $custom = $membership?->customRole;
+        return $custom !== null && $custom->scope === 'workspace'
+            && (int) $custom->workspace_id === (int) $workspace->id
+            && in_array('workspace.manage', $custom->permissions ?? [], true);
+    }
+
     public static function validPeople(Workspace $workspace, array $ids): array
     {
         $ids = array_values(array_unique(array_map('intval', $ids)));
