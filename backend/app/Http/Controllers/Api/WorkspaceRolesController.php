@@ -116,9 +116,9 @@ class WorkspaceRolesController extends ApiController
     {
         $this->workspace($request, $workspace, true);
         abort_unless($role->workspace_id === $workspace->id, 404);
-        abort_if($role->scope === 'project' && \App\Models\ProjectMember::where('custom_role_id', $role->id)->exists(), 422,
+        abort_if(in_array($role->scope, ['project', 'both'], true) && \App\Models\ProjectMember::where('custom_role_id', $role->id)->exists(), 422,
             'Reasigna antes a los miembros que utilizan este rol.');
-        abort_if($role->scope === 'workspace' && \App\Models\WorkspaceMember::where('custom_role_id', $role->id)->exists(), 422,
+        abort_if(in_array($role->scope, ['workspace', 'both'], true) && \App\Models\WorkspaceMember::where('custom_role_id', $role->id)->exists(), 422,
             'Reasigna antes a los miembros que utilizan este rol.');
         abort_if(\App\Models\WorkspaceInvitation::where('custom_role_id', $role->id)
             ->where('status', 'pending')->whereNull('revoked_at')->exists(), 422,
