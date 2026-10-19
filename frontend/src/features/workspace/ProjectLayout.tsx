@@ -71,7 +71,7 @@ export function ProjectLayout({
       <ProjectHeader project={project} settingsActive={projectView === 'settings'}
         onSettings={() => changeView(projectView === 'settings' ? 'overview' : 'settings')}/>
       <ProjectNavigation value={projectView} onChange={changeView}/>
-      <div className={`project-view${projectView === 'boards' ? ' project-view-boards' : projectView === 'overview' ? ' project-view-overview' : ''}`}>{projectContent}</div>
+      <div className={`project-view${projectView === 'boards' ? ' project-view-boards' : projectView === 'overview' ? ' project-view-overview' : projectView === 'settings' ? ' project-view-settings' : ''}`}>{projectContent}</div>
     </>}
     {boardContent}
     {deleting && <DeleteProjectModal project={project} onClose={() => setDeleting(false)} onConfirm={deleteProject}/>}
