@@ -188,4 +188,118 @@ class ProjectDashboardTest extends TestCase
             ->assertJsonCount(2, 'boards');
     }
 
+
+    public function test_board_summary_is_scoped_to_one_board_and_uses_actual_states_and_metadata(): void
+    {
+        extract($this->fixture());
+        $pending = $board->columns()->where('workflow_state', 'pending')->firstOrFail();
+        $progress = $board->columns()->where('workflow_state', 'in_progress')->firstOrFail();
+        $done = $board->columns()->where('workflow_state', 'done')->firstOrFail();
+
+        $todo = Card::create(['board_id' => $board->id, 'column_id' => $pending->id,
+            'title' => 'Entregar diseño', 'is_internal' => false, 'priority' => 'alta',
+            'due_date' => now()->subDays(3)->toDateString()]);
+        $finished = Card::create(['board_id' => $board->id, 'column_id' => $done->id,
+            'title' => 'Diseño finalizado', 'is_internal' => false, 'priority' => 'media']);
+        Card::create(['board_id' => $board->id, 'column_id' => $progress->id,
+            'title' => 'Prueba sin plazo', 'is_internal' => false]);
+
+        $otherBoard = Board::create(['project_id' => $project->id,
+            'name' => 'Otro tablero', 'position' => 2]);
+        $otherBoard->createDefaultColumns();
+        $otherPending = $otherBoard->columns()->where('workflow_state', 'pending')->firstOrFail();
+        Card::create(['board_id' => $otherBoard->id, 'column_id' => $otherPending->id,
+            'title' => 'Fuera del tablero', 'is_internal' => false, 'priority' => 'urgente']);
+
+        $label = \App\Models\Label::create([
+            'project_id' => $project->id, 'name' => 'Diseño', 'tone' => 'blue',
+        ]);
+        $todo->labels()->attach($label->id);
+        $todo->assignees()->attach($owner->id);
+
+        \App\Models\CardAttachment::create([
+            'card_id' => $todo->id, 'user_id' => $owner->id,
+            'original_name' => 'mockup.png', 'disk_path' => 'test/mockup.png',
+            'mime_type' => 'image/png', 'size' => 350,
+        ]);
+        \App\Models\CardDependency::create([
+            'predecessor_card_id' => $todo->id, 'successor_card_id' => $finished->id,
+            'type' => 'fs',
+        ]);
+
+        $this->actingAs($owner)->getJson("/api/boards/{$board->id}/dashboard")
+            ->assertOk()
+            ->assertJsonPath('summary.total', 3)
+            ->assertJsonPath('summary.completed', 1)
+            ->assertJsonPath('summary.pending', 1)
+            ->assertJsonPath('summary.in_progress', 1)
+            ->assertJsonPath('summary.overdue', 1)
+            ->assertJsonPath('summary.with_date', 1)
+            ->assertJsonPath('summary.without_date', 2)
+            ->assertJsonPath('summary.blocked', 0)
+            ->assertJsonCount(5, 'columns')
+            ->assertJsonPath('deadlines.0.title', 'Entregar diseño')
+            ->assertJsonFragment(['priority' => 'media', 'total' => 2])
+            ->assertJsonFragment(['priority' => 'alta', 'total' => 1])
+            ->assertJsonPath('labels.0.name', 'Diseño')
+            ->assertJsonPath('labels.0.total', 1)
+            ->assertJsonPath('members.0.id', $owner->id)
+            ->assertJsonPath('files.0.name', 'mockup.png')
+            ->assertJsonMissing(['title' => 'Fuera del tablero']);
+    }
+
+    public function test_board_summary_respects_client_privacy_and_prevents_other_project_access(): void
+    {
+        extract($this->fixture());
+        $pending = $board->columns()->where('workflow_state', 'pending')->firstOrFail();
+        $public = Card::create(['board_id' => $board->id, 'column_id' => $pending->id,
+            'title' => 'Incidencia pública', 'is_internal' => false, 'priority' => 'media']);
+        $private = Card::create(['board_id' => $board->id, 'column_id' => $pending->id,
+            'title' => 'Incidencia privada', 'is_internal' => true, 'priority' => 'urgente']);
+        \App\Models\CardAttachment::create([
+            'card_id' => $public->id, 'original_name' => 'publico.pdf',
+            'disk_path' => 'test/publico.pdf', 'size' => 400,
+        ]);
+        \App\Models\CardAttachment::create([
+            'card_id' => $private->id, 'original_name' => 'secreto.pdf',
+            'disk_path' => 'test/secreto.pdf', 'size' => 400,
+        ]);
+        Activity::create(['card_id' => $public->id, 'user_id' => $client->id,
+            'type' => 'commented', 'meta' => ['internal' => true]]);
+        Activity::create(['card_id' => $public->id, 'user_id' => $client->id,
+            'type' => 'moved', 'meta' => []]);
+        Activity::create(['card_id' => $private->id, 'user_id' => $owner->id,
+            'type' => 'created', 'meta' => []]);
+
+        $this->actingAs($client)->getJson("/api/boards/{$board->id}/dashboard")
+            ->assertOk()
+            ->assertJsonPath('summary.total', 1)
+            ->assertJsonPath('summary.blocked', 0)
+            ->assertJsonCount(1, 'files')
+            ->assertJsonPath('files.0.name', 'publico.pdf')
+            ->assertJsonCount(1, 'activity')
+            ->assertJsonPath('activity.0.card_title', 'Incidencia pública')
+            ->assertJsonCount(1, 'priorities')
+            ->assertJsonPath('priorities.0.priority', 'media')
+            ->assertJsonMissing(['name' => 'secreto.pdf']);
+
+        $this->actingAs($outsider)->getJson("/api/boards/{$board->id}/dashboard")
+            ->assertForbidden();
+    }
+
+    public function test_board_summary_has_real_empty_columns_and_zero_metrics(): void
+    {
+        extract($this->fixture());
+        $this->actingAs($owner)->getJson("/api/boards/{$board->id}/dashboard")
+            ->assertOk()
+            ->assertJsonPath('summary.total', 0)
+            ->assertJsonPath('summary.start_date', null)
+            ->assertJsonPath('summary.blocked', 0)
+            ->assertJsonCount(5, 'columns')
+            ->assertJsonCount(0, 'files')
+            ->assertJsonCount(0, 'activity')
+            ->assertJsonCount(0, 'members')
+            ->assertJsonCount(0, 'priorities');
+    }
+
 }

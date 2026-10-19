@@ -104,7 +104,13 @@ export function BoardSurface({ state, filters, activeBoardId, project, profile, 
     {!view && !activeBoardId && <div className="empty-board"><div><h2>{profile.user.is_admin ? 'Inicia un proyecto' : 'Espera a que te asignen un proyecto'}</h2><p className="muted">{profile.user.is_admin ? 'Crea el primer proyecto desde el lateral y abre su tablero.' : 'Cuando un responsable te añada, el proyecto saldrá en el lateral.'}</p></div></div>}
     {activeBoardId && !view && <div className="empty-board"><p className="muted">Cargando el tablero…</p></div>}
     {view && <div className={`workspace${embedded ? ' board-embedded' : ''}`}>
-      {viewMode === 'summary' && <BoardSummary board={view} projectName={project?.name} onConfigure={() => setShowConfig(true)} />}
+      {viewMode === 'summary' && <BoardSummary board={view}
+        onConfigure={canManage ? () => setShowConfig(true) : undefined}
+        onOpenView={changeViewMode}
+        onOpenCard={cardId => {
+          const card = view.columns.flatMap(column => column.cards).find(item => item.id === cardId)
+          if (card) setSelected({ card, mode: 'view' })
+        }} />}
       {viewMode === 'list' && <div className="board-list-scroll" role="region" aria-label="Lista de tareas" tabIndex={0}>
         <ListView board={view} cards={filteredColumns} onOpen={(card) => setSelected({ card, mode: 'view' })} />
       </div>}
