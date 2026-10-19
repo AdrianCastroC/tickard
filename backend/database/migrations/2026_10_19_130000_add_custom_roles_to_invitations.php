@@ -9,7 +9,7 @@ return new class extends Migration {
     {
         Schema::table('workspace_invitations', function (Blueprint $table) {
             $table->foreignId('custom_role_id')->nullable()
-                ->constrained('workspace_custom_roles')->nullOnDelete();
+                ->constrained('workspace_custom_roles')->restrictOnDelete();
         });
     }
 
