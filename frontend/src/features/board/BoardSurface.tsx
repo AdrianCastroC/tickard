@@ -144,7 +144,7 @@ export function BoardSurface({ state, filters, activeBoardId, project, profile, 
     </div>}
     {createPortal(<>
       {selected && view && openCard && <CardDrawer key={openCard.id} card={openCard} mode={selected.mode}
-        board={view} currentUser={profile.user} canEdit={canEdit} canMove={canMove} canDates={canDates} canAssign={canAssign} canDelete={canDelete} canUpload={canUpload} canComment={canComment}
+        board={view} currentUser={profile.user} canEdit={canEdit} canMove={canMove} canDates={canDates} canAssign={canAssign} canDelete={canDelete} canUpload={canUpload} canComment={canComment} canManageProject={Boolean(view && canProject(view, 'project.manage'))}
         onClose={() => setSelected(null)}
         onEdit={() => setSelected({ card: openCard, mode: 'edit' })}
         onView={() => setSelected({ card: openCard, mode: 'view' })}
