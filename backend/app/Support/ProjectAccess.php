@@ -37,7 +37,7 @@ class ProjectAccess
         }
         if ($member?->custom_role_id !== null) {
             $custom = $member->customRole;
-            if (! $custom || $custom->scope !== 'project' || (int) $custom->workspace_id !== (int) $project->workspace_id) return null;
+            if (! $custom || ! in_array($custom->scope, ['project', 'both'], true) || (int) $custom->workspace_id !== (int) $project->workspace_id) return null;
         }
         return $role;
     }
