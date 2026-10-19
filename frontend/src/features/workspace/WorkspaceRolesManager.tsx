@@ -15,9 +15,28 @@ const LABELS: Record<string, string> = {
   'cards.edit': 'Crear y editar Cards', 'cards.comment': 'Comentar Cards',
   'files.upload': 'Subir archivos',
 }
+
+const GROUPS = [
+  { id: 'workspace', name: 'Workspace', description: 'Organización, miembros, equipos y clientes', prefix: 'workspace.' },
+  { id: 'project', name: 'Proyectos', description: 'Acceso, configuración y personal del proyecto', prefix: 'project.' },
+  { id: 'boards', name: 'Tableros', description: 'Administración de tableros y columnas', prefix: 'boards.' },
+  { id: 'cards', name: 'Tareas', description: 'Edición y colaboración en Cards', prefix: 'cards.' },
+  { id: 'files', name: 'Archivos', description: 'Archivos y adjuntos del proyecto', prefix: 'files.' },
+] as const
+type GroupId = typeof GROUPS[number]['id']
+const BUILTIN_PERMISSIONS: Record<string, string[]> = {
+  owner: ['*'],
+  admin: ['workspace.view','workspace.members','workspace.projects','workspace.clients','workspace.teams','workspace.departments'],
+  member: ['workspace.view'],
+  responsable: ['project.view','project.manage','project.delete','project.members','boards.manage','cards.edit','cards.comment','files.upload'],
+  editor: ['project.view','cards.edit','cards.comment','files.upload'],
+  lector: ['project.view','cards.comment'],
+  cliente: ['project.view','cards.comment'],
+}
 export function WorkspaceRolesManager({ workspaceId }: { workspaceId: number }) {
   const [data, setData] = useState<Result | null>(null)
   const [scope, setScope] = useState<Scope>('project')
+  const [group, setGroup] = useState<GroupId>('workspace')
   const [enabled, setEnabled] = useState(true)
   const [selected, setSelected] = useState<number | 'new' | null>(null)
   const [selectedBuiltin, setSelectedBuiltin] = useState<string | null>('owner')
@@ -39,6 +58,7 @@ export function WorkspaceRolesManager({ workspaceId }: { workspaceId: number }) 
     const nextScope = role?.scope ?? scope
     setScope(nextScope)
     setSelectedBuiltin(null)
+    setGroup('workspace')
     setSelected(role?.id ?? 'new')
     setName(role?.name ?? '')
     setDescription(role?.description ?? '')
@@ -82,7 +102,7 @@ export function WorkspaceRolesManager({ workspaceId }: { workspaceId: number }) 
   }
   if (!data) return <p className="workspace-overview-hint" role="status">{error || 'Cargando roles y permisos…'}</p>
   return <div className="tickard-roles">
-    <p className="workspace-overview-hint">Roles preestablecidos y personalizados de este Workspace. Puedes elegir la vigencia de cada nuevo rol. Owner y Cliente son roles protegidos.</p>
+    <div className="tickard-roles-intro"><h3>Roles del Workspace</h3><p>Selecciona un rol para revisar sus permisos y ámbitos de aplicación.</p></div>
     <div className="tickard-roles-workspace">
       <div className="tickard-roles-catalog">
     <strong>Roles preestablecidos</strong>
@@ -109,13 +129,20 @@ export function WorkspaceRolesManager({ workspaceId }: { workspaceId: number }) 
       </div>
       <div className="tickard-roles-detail">
       {selectedBuiltin && (() => {
-        const builtin = data.builtin_roles.find(item=>item.key===selectedBuiltin)
+        const builtin = data.builtin_roles.find(item => item.key === selectedBuiltin)
         if (!builtin) return null
+        const allPermissions = [...data.permissions.workspace, ...data.permissions.project]
+        const granted = BUILTIN_PERMISSIONS[builtin.key] ?? []
         return <section className="tickard-roles-builtin-detail">
-          <strong>{builtin.name}</strong>
-          <p className="workspace-overview-hint">{builtin.locked ? 'Rol protegido del sistema' : 'Rol preestablecido'} · Vigencia: {builtin.scope === 'workspace' ? 'Workspace' : 'Proyecto'}</p>
-          <p className="workspace-overview-hint">Los permisos de este rol se mantienen por compatibilidad. Su disponibilidad para nuevas asignaciones se gestiona desde el listado.</p>
-          <div className="tickard-role-availability"><span>{builtin.enabled ? 'Activo' : 'Inactivo'}</span><input type="checkbox" checked={builtin.enabled} disabled={builtin.locked || !data.can_manage || busy} onChange={event=>void toggleBuiltin(builtin.key,event.target.checked)}/></div>
+          <div className="tickard-roles-detail-head"><div><h3>{builtin.name}</h3><p>{builtin.locked ? 'Rol protegido del sistema' : 'Rol preestablecido'} · {builtin.scope === 'workspace' ? 'Workspace' : 'Proyecto'}</p></div><span className="tickard-roles-system-label">Rol del sistema</span></div>
+          <div className="tickard-roles-detail-tabs"><strong>Permisos</strong><span>Ámbito: {builtin.scope === 'workspace' ? 'Workspace' : 'Proyectos'}</span></div>
+          <div className="tickard-roles-permissions-layout">
+            <nav aria-label="Categorías de permisos" className="tickard-roles-categories">{GROUPS.map(item=><button type="button" key={item.id} className={group === item.id ? 'on' : ''} onClick={()=>setGroup(item.id)}>{item.name}</button>)}</nav>
+            <div className="tickard-roles-permissions-panel"><h4>{GROUPS.find(item=>item.id===group)?.name}</h4><p>Permisos efectivos del rol; los permisos del sistema todavía no son editables.</p>
+              {allPermissions.filter(permission=>permission.startsWith(GROUPS.find(item=>item.id===group)?.prefix ?? '')).map(permission=><div className="tickard-roles-permission-row" key={permission}><span>{LABELS[permission] ?? permission}</span><input type="checkbox" disabled checked={granted.includes('*') || granted.includes(permission)}/></div>)}
+            </div>
+          </div>
+          <p className="workspace-overview-hint">Puedes {builtin.locked ? 'consultar' : 'activar o desactivar'} este rol sin modificar los permisos de los miembros que ya lo tienen asignado.</p>
         </section>
       })()}
       {selected === null && !selectedBuiltin && <p className="workspace-overview-hint">Selecciona un rol para ver sus permisos o crea uno nuevo.</p>}
@@ -140,14 +167,16 @@ export function WorkspaceRolesManager({ workspaceId }: { workspaceId: number }) 
         </select>
       </label>
       <label className="tickard-role-availability"><span>Rol activo</span><input type="checkbox" checked={enabled} disabled={busy} onChange={event=>setEnabled(event.target.checked)}/></label>
-      <strong>Permisos</strong>
-      <div className="tickard-role-permissions">{(scope === 'both' ? [...data.permissions.workspace,...data.permissions.project] : data.permissions[scope]).map(permission =>
+      <strong>Permisos por categoría</strong>
+      <div className="tickard-roles-permissions-layout">
+        <nav aria-label="Categorías de permisos" className="tickard-roles-categories">{GROUPS.map(item=><button type="button" key={item.id} className={group === item.id ? 'on' : ''} onClick={()=>setGroup(item.id)}>{item.name}</button>)}</nav>
+      <div className="tickard-role-permissions">{(scope === 'both' ? [...data.permissions.workspace,...data.permissions.project] : data.permissions[scope]).filter(permission => permission.startsWith(GROUPS.find(item => item.id === group)?.prefix ?? '')).map(permission =>
         <label key={permission} className="project-settings-toggle">
           <span><strong>{LABELS[permission] || permission}</strong></span>
           <input type="checkbox" disabled={busy || (permission === 'project.view' && scope !== 'workspace') || (permission === 'workspace.view' && scope !== 'project')}
             checked={permissions.includes(permission)}
             onChange={event => setPermissions(old => event.target.checked ? [...old, permission] : old.filter(p => p !== permission))}/>
-        </label>)}</div>
+        </label>)}</div></div>
       <div className="tickard-role-actions"><button type="button" className="ghost" onClick={() => setSelected(null)} disabled={busy}>Cancelar</button>
         <button type="submit" className="primary" disabled={busy || !name.trim()}>{busy ? 'Guardando…' : 'Guardar rol'}</button></div>
     </form>}
