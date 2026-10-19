@@ -23,7 +23,7 @@ class CardsController extends ApiController
 {
     public function storeColumn(Request $request, Board $board)
     {
-        abort_unless(ProjectAccess::canManage($request->user(), $board->project), 403);
+        abort_unless(ProjectAccess::canManageBoards($request->user(), $board->project), 403);
         $data = $request->validate(['name' => ['required', 'string', 'max:80']]);
         $position = ((int) $board->columns()->max('position')) + 1;
         $column = $board->columns()->create([
@@ -43,7 +43,7 @@ class CardsController extends ApiController
 
     public function updateColumn(Request $request, Column $column, CardDependencyService $dependencies, MilestoneCompletionService $milestones)
     {
-        abort_unless(ProjectAccess::canManage($request->user(), $column->board->project), 403);
+        abort_unless(ProjectAccess::canManageBoards($request->user(), $column->board->project), 403);
         $data = $request->validate([
             'name' => ['sometimes', 'string', 'max:80'],
             'color' => ['sometimes', 'nullable', 'string', 'regex:/^#[0-9A-Fa-f]{6}$/'],
@@ -115,7 +115,7 @@ class CardsController extends ApiController
 
     public function moveColumn(Request $request, Column $column)
     {
-        abort_unless(ProjectAccess::canManage($request->user(), $column->board->project), 403);
+        abort_unless(ProjectAccess::canManageBoards($request->user(), $column->board->project), 403);
         $data = $request->validate(['position' => ['required', 'integer', 'min:0']]);
         $board = $column->board;
 
@@ -135,7 +135,7 @@ class CardsController extends ApiController
 
     public function destroyColumn(Request $request, Column $column)
     {
-        abort_unless(ProjectAccess::canManage($request->user(), $column->board->project), 403);
+        abort_unless(ProjectAccess::canManageBoards($request->user(), $column->board->project), 403);
 
         if (
             $column->workflow_state === 'backlog'
@@ -163,7 +163,7 @@ class CardsController extends ApiController
 
     public function storeCategory(Request $request, Board $board)
     {
-        abort_unless(ProjectAccess::canManage($request->user(), $board->project), 403);
+        abort_unless(ProjectAccess::canManageBoards($request->user(), $board->project), 403);
         $data = $request->validate(['name' => ['required', 'string', 'max:80']]);
         $position = ((int) $board->categories()->max('position')) + 1;
         $category = $board->categories()->create([
@@ -181,7 +181,7 @@ class CardsController extends ApiController
 
     public function updateCategory(Request $request, BoardCategory $category)
     {
-        abort_unless(ProjectAccess::canManage($request->user(), $category->board->project), 403);
+        abort_unless(ProjectAccess::canManageBoards($request->user(), $category->board->project), 403);
         $data = $request->validate(['name' => ['required', 'string', 'max:80']]);
         $category->update(['name' => $data['name']]);
         $category->board->touchRevision();
@@ -195,7 +195,7 @@ class CardsController extends ApiController
 
     public function destroyCategory(Request $request, BoardCategory $category)
     {
-        abort_unless(ProjectAccess::canManage($request->user(), $category->board->project), 403);
+        abort_unless(ProjectAccess::canManageBoards($request->user(), $category->board->project), 403);
         $board = $category->board;
         $category->delete();
         $board->touchRevision();
