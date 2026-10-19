@@ -2,8 +2,8 @@ import { useEffect, useState, type FormEvent } from 'react'
 import { api } from '../../api'
 
 type Scope = 'workspace' | 'project' | 'both'
-type Role = { id: number; scope: Scope; name: string; description: string | null; permissions: string[]; enabled: boolean }
-type Result = { can_manage: boolean; permissions: Record<Scope, string[]>; roles: Role[]; builtin_roles: {key:string;name:string;scope:'workspace'|'project';locked:boolean;enabled:boolean}[] }
+type Role = { id: number; scope: Scope; name: string; description: string | null; permissions: string[]; enabled: boolean; member_count?: number; members?: {id:number;name:string}[] }
+type Result = { can_manage: boolean; permissions: Record<Scope, string[]>; roles: Role[]; builtin_roles: {key:string;name:string;scope:'workspace'|'project';locked:boolean;enabled:boolean;permissions:string[];member_count:number;members:{id:number;name:string}[]}[] }
 const LABELS: Record<string, string> = {
   'workspace.view': 'Ver Workspace', 'workspace.manage': 'Configurar Workspace',
   'workspace.members': 'Administrar miembros', 'workspace.projects': 'Gestionar proyectos',
@@ -26,21 +26,14 @@ const GROUPS = [
   { id: 'cards', name: 'Tareas', description: 'Edición y colaboración en Cards', prefix: 'cards.' },
   { id: 'files', name: 'Archivos', description: 'Archivos y adjuntos del proyecto', prefix: 'files.' },
 ] as const
-const BUILTIN_PERMISSIONS: Record<string, string[]> = {
-  owner: ['*'],
-  admin: ['workspace.view','workspace.members','workspace.projects','workspace.clients','workspace.teams','workspace.departments'],
-  member: ['workspace.view'],
-  responsable: ['project.view','project.manage','project.delete','project.members','boards.manage','cards.edit','cards.comment','files.upload'],
-  editor: ['project.view','cards.edit','cards.comment','files.upload'],
-  lector: ['project.view','cards.comment'],
-  cliente: ['project.view','cards.comment'],
-}
 export function WorkspaceRolesManager({ workspaceId }: { workspaceId: number }) {
   const [data, setData] = useState<Result | null>(null)
   const [scope, setScope] = useState<Scope>('project')
   const [enabled, setEnabled] = useState(true)
   const [selected, setSelected] = useState<number | 'new' | null>(null)
   const [selectedBuiltin, setSelectedBuiltin] = useState<string | null>('owner')
+  const [builtinDraft, setBuiltinDraft] = useState<string[]>([])
+  const [detailTab, setDetailTab] = useState<'permissions'|'members'|'scope'>('permissions')
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
   const [permissions, setPermissions] = useState<string[]>(['project.view'])
@@ -55,10 +48,18 @@ export function WorkspaceRolesManager({ workspaceId }: { workspaceId: number }) 
       .catch(e => { if (active) setError(e instanceof Error ? e.message : 'No se pudieron cargar los roles.') })
     return () => { active = false }
   }, [workspaceId])
+  function chooseBuiltin(key: string) {
+    setSelected(null)
+    setSelectedBuiltin(key)
+    setBuiltinDraft(data?.builtin_roles.find(item => item.key === key)?.permissions ?? [])
+    setDetailTab('permissions')
+    setError(''); setNotice('')
+  }
   function edit(role?: Role) {
     const nextScope = role?.scope ?? scope
     setScope(nextScope)
     setSelectedBuiltin(null)
+    setDetailTab('permissions')
     setSelected(role?.id ?? 'new')
     setName(role?.name ?? '')
     setDescription(role?.description ?? '')
@@ -100,6 +101,20 @@ export function WorkspaceRolesManager({ workspaceId }: { workspaceId: number }) 
     } catch (e) {setError(e instanceof Error ? e.message : 'No se pudo actualizar el rol.')}
     finally {setBusy(false)}
   }
+  async function saveBuiltin(key: string) {
+    if (!data?.can_manage || busy) return
+    setBusy(true); setError(''); setNotice('')
+    try {
+      const result = await api<{permissions:string[]}>(`/workspaces/${workspaceId}/roles/builtin/${key}`, {
+        method:'PATCH', body: JSON.stringify({permissions:builtinDraft}),
+      })
+      setData(old => old && ({...old, builtin_roles: old.builtin_roles.map(role =>
+        role.key === key ? {...role,permissions:result.permissions} : role)}))
+      setBuiltinDraft(result.permissions)
+      setNotice('Permisos actualizados. Se aplican en las próximas solicitudes.')
+    } catch(e) {setError(e instanceof Error ? e.message : 'No se pudieron guardar los permisos.')}
+    finally {setBusy(false)}
+  }
   if (!data) return <p className="workspace-overview-hint" role="status">{error || 'Cargando roles y permisos…'}</p>
   return <div className="tickard-roles">
     <div className="tickard-roles-intro"><h3>Roles del Workspace</h3><p>Selecciona un rol para revisar sus permisos y ámbitos de aplicación.</p></div>
@@ -107,7 +122,7 @@ export function WorkspaceRolesManager({ workspaceId }: { workspaceId: number }) 
       <div className="tickard-roles-catalog">
     <strong>Roles preestablecidos</strong>
     {data.builtin_roles.map(role => <div className={`tickard-role-item${selectedBuiltin === role.key ? ' is-selected' : ''}`} key={role.key}>
-      <div><button type="button" className="tickard-role-name" onClick={() => {setSelected(null);setSelectedBuiltin(role.key)}}>{role.name}</button><small>{role.scope === 'workspace' ? 'Workspace' : 'Proyecto'} · {role.locked ? 'Protegido' : role.enabled ? 'Activo' : 'Inactivo'}</small></div>
+      <div><button type="button" className="tickard-role-name" onClick={() => chooseBuiltin(role.key)}>{role.name}</button><small>{role.scope === 'workspace' ? 'Workspace' : 'Proyecto'} · {role.locked ? 'Protegido' : role.enabled ? 'Activo' : 'Inactivo'} · {role.member_count} miembros</small></div>
       {data.can_manage && <label className="tickard-role-availability">
         <span>{role.enabled ? 'Activo' : 'Inactivo'}</span>
         <input type="checkbox" checked={role.enabled} disabled={role.locked || busy}
@@ -132,23 +147,37 @@ export function WorkspaceRolesManager({ workspaceId }: { workspaceId: number }) 
         const builtin = data.builtin_roles.find(item => item.key === selectedBuiltin)
         if (!builtin) return null
         const allPermissions = [...data.permissions.workspace, ...data.permissions.project]
-        const granted = BUILTIN_PERMISSIONS[builtin.key] ?? []
+        const granted = selectedBuiltin === builtin.key && builtinDraft.length ? builtinDraft : builtin.permissions
+        const requiredPermission = builtin.scope === 'workspace' ? 'workspace.view' : 'project.view'
+        const canEditBuiltin = data.can_manage && !builtin.locked
         return <section className="tickard-roles-builtin-detail">
           <div className="tickard-roles-detail-head"><div><h3>{builtin.name}</h3><p>{builtin.locked ? 'Rol protegido del sistema' : 'Rol preestablecido'} · {builtin.scope === 'workspace' ? 'Workspace' : 'Proyecto'}</p></div><span className="tickard-roles-system-label">Rol del sistema</span></div>
-          <div className="tickard-roles-detail-tabs"><strong>Permisos</strong><span>Ámbito: {builtin.scope === 'workspace' ? 'Workspace' : 'Proyectos'}</span></div>
+          <div className="tickard-roles-detail-tabs"><div className="tickard-role-actions">
+            <button type="button" className="ghost" onClick={()=>setDetailTab('permissions')} aria-pressed={detailTab==='permissions'}>Permisos</button>
+            <button type="button" className="ghost" onClick={()=>setDetailTab('members')} aria-pressed={detailTab==='members'}>Miembros ({builtin.member_count})</button>
+            <button type="button" className="ghost" onClick={()=>setDetailTab('scope')} aria-pressed={detailTab==='scope'}>Ámbito</button>
+          </div></div>
+          {detailTab==='members' && <div className="tickard-roles-members">{builtin.members.length ? builtin.members.map(person=><p key={person.id}>{person.name}</p>):<p className="workspace-overview-hint">Nadie tiene asignado este rol.</p>}</div>}
+          {detailTab==='scope' && <p>Este rol se utiliza a nivel de {builtin.scope === 'workspace' ? 'Workspace' : 'proyecto'}. Los permisos están restringidos a ese ámbito.</p>}
+          {detailTab==='permissions' && <>
           <div className="tickard-roles-category-grid">
             {GROUPS.map(item => {
               const rows = allPermissions.filter(permission => permission.startsWith(item.prefix))
+              if (!rows.length) return null
               return <section className="tickard-roles-category-card" key={item.id}>
                 <h4>{item.name}</h4><p>{item.description}</p>
                 {rows.map(permission => <label key={permission} className="tickard-roles-category-check">
-                  <input type="checkbox" disabled checked={granted.includes('*') || granted.includes(permission)}/>
+                  <input type="checkbox" disabled={!canEditBuiltin || busy || permission===requiredPermission}
+                    checked={granted.includes(permission)}
+                    onChange={event=>setBuiltinDraft(old=>event.target.checked?[...old,permission]:old.filter(entry=>entry!==permission))}/>
                   <span>{LABELS[permission] ?? permission}</span>
                 </label>)}
               </section>
             })}
           </div>
-          <p className="workspace-overview-hint">Puedes {builtin.locked ? 'consultar' : 'activar o desactivar'} este rol sin modificar los permisos de los miembros que ya lo tienen asignado.</p>
+          {canEditBuiltin && <div className="tickard-role-actions"><button type="button" className="primary" disabled={busy || JSON.stringify([...builtin.permissions].sort())===JSON.stringify([...granted].sort())} onClick={()=>void saveBuiltin(builtin.key)}>{busy?'Guardando…':'Guardar permisos'}</button></div>}
+          {builtin.locked && <p className="workspace-overview-hint">Rol protegido: sus permisos no se pueden modificar.</p>}
+          </>
         </section>
       })()}
       {selected === null && !selectedBuiltin && <p className="workspace-overview-hint">Selecciona un rol para ver sus permisos o crea uno nuevo.</p>}
