@@ -7,11 +7,11 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class WorkspaceCustomRole extends Model
 {
-    protected $fillable = ['workspace_id', 'scope', 'name', 'description', 'permissions'];
+    protected $fillable = ['workspace_id', 'scope', 'name', 'description', 'permissions', 'enabled'];
 
     protected function casts(): array
     {
-        return ['permissions' => 'array'];
+        return ['permissions' => 'array', 'enabled' => 'boolean'];
     }
 
     public function workspace(): BelongsTo
