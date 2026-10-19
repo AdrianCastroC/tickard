@@ -3095,6 +3095,21 @@ h1, h2, h3, p { margin: 0; }
 .wd-panel-add .nav-icon {width:15px;height:15px;}
 .wd-project-actions {display:flex;align-items:center;gap:12px;min-width:0;}
 .wd-project-actions > span {font-size:10px;color:var(--muted);white-space:nowrap;}
+.wd-project-actions .wd-project-all {border:0;background:transparent;padding:5px 0;
+  color:var(--accent);font:inherit;font-size:10px;font-weight:650;white-space:nowrap;cursor:pointer;}
+.wd-project-all:hover {text-decoration:underline;}
+.wd-project-list {display:flex;flex-direction:column;gap:3px;min-height:0;max-height:60dvh;
+  padding:12px 20px;overflow-y:auto;overscroll-behavior:contain;}
+.wd-project-list > button {display:flex;align-items:center;gap:11px;min-height:42px;
+  padding:9px 10px;border:1px solid transparent;border-bottom-color:var(--line);
+  color:var(--ink);background:transparent;border-radius:7px;font:inherit;
+  font-size:12px;text-align:left;cursor:pointer;}
+.wd-project-list > button:hover {background:var(--canvas);border-color:var(--accent);}
+.wd-project-list > button .nav-icon {width:18px;height:18px;color:var(--accent);}
+.wd-project-list > button span:nth-child(2) {flex:1;min-width:0;overflow:hidden;
+  white-space:nowrap;text-overflow:ellipsis;}
+.wd-project-list > button span:last-child {color:var(--accent);}
+
 .wd-project-actions .wd-new-project {display:flex;align-items:center;gap:6px;
   min-height:33px;padding:7px 11px;border:0;border-radius:7px;background:var(--accent);
   color:#fff;font:inherit;font-size:11px;font-weight:700;cursor:pointer;}
