@@ -55,12 +55,18 @@ function ColumnStatusIcon({ name, color = '#3b82f6' }: { name?: string; color?: 
 
 
 
-export function CardDrawer({ card, mode, board, currentUser, canEdit, onClose, onEdit, onView, onChange, onMove, onOpenRelatedCard }: {
+export function CardDrawer({ card, mode, board, currentUser, canEdit, canMove, canDates, canAssign, canDelete, canUpload, canComment, onClose, onEdit, onView, onChange, onMove, onOpenRelatedCard }: {
   card: Card
   mode: 'view' | 'edit'
   board: BoardPayload
   currentUser: Profile['user']
   canEdit: boolean
+  canMove: boolean
+  canDates: boolean
+  canAssign: boolean
+  canDelete: boolean
+  canUpload: boolean
+  canComment: boolean
   onClose: () => void
   onEdit: () => void
   onView: () => void
@@ -83,7 +89,8 @@ export function CardDrawer({ card, mode, board, currentUser, canEdit, onClose, o
   const [addModuleOpen, setAddModuleOpen] = useState(false)
   const modulesCreatedInEdit = useRef<number[]>([])
   const colorInputRef = useRef<HTMLInputElement>(null)
-  const editing = mode === 'edit' && canEdit
+  const editing = mode === 'edit' && (canEdit || canMove || canDates || canAssign || canDelete)
+  const editingContent = editing && canEdit
   const team = board.members.filter((member) => member.role !== 'cliente')
   const columnName = board.columns.find((column) => column.id === card.column_id)?.name ?? '—'
   const isBacklog = board.columns.find((column) => column.id === card.column_id)?.workflow_state === 'backlog'
@@ -169,6 +176,7 @@ export function CardDrawer({ card, mode, board, currentUser, canEdit, onClose, o
   async function saveAll() {
     const nextTitle = title.trim()
     if (!nextTitle) return
+    if (!canEdit) { onView(); return }
     setSaving(true)
     try {
       modulesCreatedInEdit.current = []
@@ -254,7 +262,7 @@ export function CardDrawer({ card, mode, board, currentUser, canEdit, onClose, o
         <div className="card-modal-body">
           <div className="card-modal-main">
             <div className="card-modal-main-header">
-              {editing ? (
+              {editingContent ? (
                 <input
                   className="card-modal-title-input"
                   value={title}
@@ -271,7 +279,7 @@ export function CardDrawer({ card, mode, board, currentUser, canEdit, onClose, o
                   )}
                 </div>
               )}
-              {editing && (
+              {editingContent && (
                 <div className="card-modal-tools">
                   <button
                     className={`icon-close${card.is_internal === false ? ' is-public' : ''}`}
@@ -318,7 +326,7 @@ export function CardDrawer({ card, mode, board, currentUser, canEdit, onClose, o
                 </h3>
               </div>
               {!descCollapsed && (
-                editing ? (
+                editingContent ? (
                   <DescriptionEditor value={description} onChange={setDescription} />
                 ) : descriptionHtml ? (
                   <div className="card-modal-copy rich" dangerouslySetInnerHTML={{ __html: descriptionHtml }} />
@@ -338,14 +346,14 @@ export function CardDrawer({ card, mode, board, currentUser, canEdit, onClose, o
                     />
                   )}
                   {visibleModules.map((module) => (
-                    <SortableModuleShell key={module.id} id={module.id} disabled={!editing}>
+                    <SortableModuleShell key={module.id} id={module.id} disabled={!editingContent}>
                       {(dragProps) => {
                         if (module.type === 'checklist') {
                           return (
                             <ChecklistPanel
                               card={card}
                               module={module}
-                              editing={editing}
+                              editing={editingContent}
                               canEdit={canEdit}
                               members={team}
                               dragProps={dragProps}
@@ -358,9 +366,9 @@ export function CardDrawer({ card, mode, board, currentUser, canEdit, onClose, o
                           return (
                             <FilesPanel
                               card={card}
-                              editing={editing}
-                              canEdit={canEdit}
-                               canManage={board.role === 'responsable'}
+                              editing={editingContent}
+                              canEdit={canUpload}
+                               canManage={canEdit && canDelete}
                                currentUserId={currentUser.id}
                               dragProps={dragProps}
                               onChange={onChange}
@@ -369,7 +377,7 @@ export function CardDrawer({ card, mode, board, currentUser, canEdit, onClose, o
                           )
                         }
                         return (
-                          <CommentsPanel card={card} board={board} currentUser={currentUser} editing={editing} comments={comments} onCommentsChange={setComments} onChange={onChange} dragProps={dragProps} onRemove={() => removeModule(module.id)} />
+                          <CommentsPanel card={card} board={board} currentUser={currentUser} editing={editingContent} comments={comments} onCommentsChange={setComments} onChange={onChange} dragProps={dragProps} onRemove={() => removeModule(module.id)} />
                         )
                       }}
                     </SortableModuleShell>
@@ -379,7 +387,7 @@ export function CardDrawer({ card, mode, board, currentUser, canEdit, onClose, o
             </DndContext>
             </div>
 
-            {editing && (
+            {editingContent && (
               <div className="card-modal-footer">
                 <div className="module-add">
                   <button
@@ -420,7 +428,7 @@ export function CardDrawer({ card, mode, board, currentUser, canEdit, onClose, o
                     <SaveIcon />
                   </button>
                 ) : (
-                  canEdit && (
+                  (canEdit || canMove || canDates || canAssign || canDelete) && (
                     <button className="icon-close" type="button" aria-label="Editar" onClick={onEdit}>
                       <EditIcon />
                     </button>
@@ -434,7 +442,7 @@ export function CardDrawer({ card, mode, board, currentUser, canEdit, onClose, o
             <div className="card-modal-side-scroll">
             <div className="side-field">
               <span className="side-label"><StatusIcon /> Estado</span>
-              {editing ? (
+              {editing && canMove ? (
                 <SideSelect
                   value={card.column_id}
                   onChange={changeColumn}
@@ -452,7 +460,7 @@ export function CardDrawer({ card, mode, board, currentUser, canEdit, onClose, o
 
             <div className="side-field">
               <span className="side-label">◆ Hito</span>
-              {editing ? (
+              {editingContent && canMove && canDates ? (
                 <>
                   <label className="row"><input type="checkbox" checked={Boolean(card.is_milestone)} onChange={(event) => { void toggleMilestone(event.target.checked) }} /> Es un hito</label>
                   {!card.is_milestone && !card.due_date && (
@@ -475,7 +483,7 @@ export function CardDrawer({ card, mode, board, currentUser, canEdit, onClose, o
             </div>
             <div className="side-field">
               <span className="side-label"><PriorityIcon /> Prioridad</span>
-              {editing ? (
+              {editingContent ? (
                 <PriorityPicker
                   value={card.priority}
                   onChange={(priority) => save({ priority })}
@@ -508,7 +516,7 @@ export function CardDrawer({ card, mode, board, currentUser, canEdit, onClose, o
                 <span className="faces">
                   {(card.assignees?.length ?? 0) === 0 && <span className="muted">Sin asignar</span>}
                   {card.assignees?.map((person) => (
-                    editing ? (
+                    editing && canAssign ? (
                       <button
                         key={person.id}
                         type="button"
@@ -525,7 +533,7 @@ export function CardDrawer({ card, mode, board, currentUser, canEdit, onClose, o
                     )
                   ))}
                 </span>
-                {editing && (
+                {editing && canAssign && (
                   <button
                     className="add-face"
                     type="button"
@@ -537,7 +545,7 @@ export function CardDrawer({ card, mode, board, currentUser, canEdit, onClose, o
                   </button>
                 )}
               </div>
-              {editing && pickingAssignees && (
+              {editing && canAssign && pickingAssignees && (
                 <div className="assignee-list">
                   {team.map((member) => {
                     const on = card.assignees?.some((person) => person.id === member.id)
@@ -555,7 +563,7 @@ export function CardDrawer({ card, mode, board, currentUser, canEdit, onClose, o
 
             <div className="side-field">
               <span className="side-label"><CalendarIcon /> Inicio</span>
-              {editing ? (
+              {editing && canDates ? (
                 <DateTimePicker value={card.started_at} onChange={(value) => save({ started_at: value })} />
               ) : (
                 <div className="side-value"><strong>{formatStartedAt(card.started_at)}</strong></div>
@@ -564,7 +572,7 @@ export function CardDrawer({ card, mode, board, currentUser, canEdit, onClose, o
 
             <div className="side-field">
               <span className="side-label"><CalendarIcon /> {card.is_milestone ? 'Fecha objetivo' : 'Periodo'}</span>
-              {editing ? (
+              {editing && canDates ? (
                 isBacklog ? <span className="muted">Disponible cuando la tarea salga de backlog.</span> : card.is_milestone ? (
                   <input type="date" aria-label="Fecha objetivo del hito" value={card.due_date ?? ''} onChange={(event) => { if (event.target.value) void save({ due_date: event.target.value }) }} />
                 ) : <DateRangePicker start={card.start_date} end={card.due_date} onChange={(start, due) => save({ start_date: start, due_date: due })} />
@@ -573,10 +581,10 @@ export function CardDrawer({ card, mode, board, currentUser, canEdit, onClose, o
               )}
             </div>
 
-            {(editing || categoryName) && (
+            {(editingContent || categoryName) && (
               <div className="side-field">
                 <span className="side-label"><CategoryIcon /> Categoría</span>
-                {editing && (board.categories ?? []).length > 0 ? (
+                {editingContent && (board.categories ?? []).length > 0 ? (
                   <SideSelect
                     value={card.category_id ? String(card.category_id) : ''}
                     onChange={(next) => save({ category_id: next ? Number(next) : null })}
@@ -599,7 +607,7 @@ export function CardDrawer({ card, mode, board, currentUser, canEdit, onClose, o
               <div className="side-tags">
                 {(card.labels?.length ?? 0) === 0 && <span className="muted">Sin etiquetas</span>}
                 {card.labels?.map((item) => (
-                  editing ? (
+                  editingContent ? (
                     <button
                       key={item.id}
                       type="button"
@@ -627,7 +635,7 @@ export function CardDrawer({ card, mode, board, currentUser, canEdit, onClose, o
                   </button>
                 )}
               </div>
-              {editing && pickingLabels && (
+              {editingContent && pickingLabels && (
                 <div className="assignee-list">
                   {(board.labels ?? []).length === 0 && <span className="muted">No hay etiquetas en el proyecto.</span>}
                   {(board.labels ?? []).map((item) => {
@@ -643,13 +651,13 @@ export function CardDrawer({ card, mode, board, currentUser, canEdit, onClose, o
               )}
             </div>
 
-            {(editing || (board.teams ?? []).length > 0 || (card.teams?.length ?? 0) > 0) && (
+            {(editing && canAssign || (board.teams ?? []).length > 0 || (card.teams?.length ?? 0) > 0) && (
               <div className="side-field">
                 <span className="side-label"><TeamsIcon /> Equipos</span>
                 <div className="side-tags">
                   {(card.teams?.length ?? 0) === 0 && <span className="muted">Sin equipos</span>}
                   {card.teams?.map((item) => (
-                    editing ? (
+                    editing && canAssign ? (
                       <button
                         key={item.id}
                         type="button"
@@ -665,7 +673,7 @@ export function CardDrawer({ card, mode, board, currentUser, canEdit, onClose, o
                       <span key={item.id} className="chip equipo">{item.name}</span>
                     )
                   ))}
-                  {editing && (board.teams ?? []).length > 0 && (
+                  {editing && canAssign && (board.teams ?? []).length > 0 && (
                     <button
                       className="add-face"
                       type="button"
@@ -677,7 +685,7 @@ export function CardDrawer({ card, mode, board, currentUser, canEdit, onClose, o
                     </button>
                   )}
                 </div>
-                {editing && pickingTeams && (
+                {editing && canAssign && pickingTeams && (
                   <div className="assignee-list">
                     {(board.teams ?? []).map((item) => {
                       const on = card.teams?.some((team) => team.id === item.id)
@@ -695,7 +703,7 @@ export function CardDrawer({ card, mode, board, currentUser, canEdit, onClose, o
 
             </div>
 
-            {editing && (
+            {editing && canDelete && (
               <div className="card-modal-footer side-actions">
                 <button className="ghost" type="button" onClick={archiveCard}>
                   <ArchiveIcon /> Archivar
