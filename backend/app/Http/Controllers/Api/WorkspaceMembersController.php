@@ -6,6 +6,7 @@ use App\Models\User;
 use App\Models\Workspace;
 use App\Models\WorkspaceInvitation;
 use App\Support\WorkspaceClientAccess;
+use App\Support\WorkspacePersonnelGuard;
 use App\Support\WorkspaceLimits;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -19,7 +20,8 @@ class WorkspaceMembersController extends ApiController
         abort_unless($membership, 403);
 
         $owner = (int) $workspace->owner_id === (int) $request->user()->id;
-        abort_unless($owner || $membership->role === 'admin' || (bool) $request->user()->is_admin, 403);
+        abort_unless($owner || $membership->role === 'admin' || (bool) $request->user()->is_admin
+            || WorkspacePersonnelGuard::canManage($request, $workspace, 'workspace.members'), 403);
 
         return $owner;
     }
@@ -82,7 +84,7 @@ class WorkspaceMembersController extends ApiController
             'pending_invitations' => $pending,
             'can_manage_roles' => $isOwner,
             'can_remove_members' => $isOwner,
-            'can_manage_jobs' => $isOwner || $workspace->memberships()->where('user_id', $request->user()->id)->where('role', 'admin')->exists(),
+            'can_manage_jobs' => WorkspacePersonnelGuard::canManage($request, $workspace, 'workspace.members'),
         ]);
     }
 
