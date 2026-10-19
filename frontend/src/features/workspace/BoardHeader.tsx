@@ -30,7 +30,7 @@ export function BoardHeader({
       <div className="views">
         <BoardViews value={viewMode} onChange={onViewModeChange} />
         <div className="task-actions">
-          <button
+          {viewMode !== 'summary' && <button
             ref={filterButtonRef}
             className={`icon-button board-filter-trigger${filtersOpen || filtersActive ? ' on' : ''}`}
             type="button"
@@ -43,7 +43,7 @@ export function BoardHeader({
           >
             <FilterFunnelIcon />
             {filtersActive && <span className="board-filter-active-dot" aria-hidden="true" />}
-          </button>
+          </button>}
           {canEdit && backlog && (
             <button className="primary" type="button" onClick={() => onAdd(backlog)}>
               <PlusIcon /> Nueva tarea
