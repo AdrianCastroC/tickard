@@ -84,6 +84,7 @@ class WorkspacesController extends Controller
         return response()->json([
             'id' => $workspace->id,
             'name' => $workspace->name,
+            'image_url' => $workspace->image_path ? '/storage/'.$workspace->image_path : null,
             'role' => $membership->role,
             'plan' => $workspace->effectivePlan(),
             'can_manage' => $isOwner,
