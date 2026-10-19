@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
+import { createPortal } from 'react-dom'
 import { api, type Profile, type WorkspaceRef } from '../../api'
 import { ProjectContentLoading } from './ProjectContentLoading'
 import { Avatar, formatRelative } from '../../shared/ui'
@@ -6,9 +7,13 @@ import { NavIcon } from '../../shared/icons'
 import { DeleteWorkspaceModal } from '../sidebar/WorkspaceSelector/DeleteWorkspaceModal'
 
 type Section = 'members' | 'departments' | 'teams' | 'clients'
-type DashboardProject = { id: number; name: string; total: number; completed: number }
+type DashboardProject = {
+  id: number; name: string; description: string | null; total: number; completed: number
+  latest_due_date: string | null; member_count: number
+  members: { id: number; name: string; avatar_url: string | null }[]
+}
 type DashboardTask = { id: number; title: string; project_id: number; project_name: string; board_id: number; due_date: string | null; state: string }
-type DashboardActivity = { id: number; type: string; user_name: string; avatar_url: string | null; created_at: string; card_id: number; card_title: string; board_id: number; project_id: number; project_name: string }
+type DashboardActivity = { id: number; type: string; user_id: number | null; user_name: string; avatar_url: string | null; created_at: string; card_id: number; card_title: string; board_id: number; project_id: number; project_name: string }
 type DashboardEntity = { id: number; name: string; members: number }
 type WorkspaceDashboard = {
   cards: { total: number; completed: number }
@@ -46,10 +51,13 @@ type Props = {
   onOpenProject: (id: number) => void
   onOpenTask: (task: Pick<DashboardTask, 'id' | 'board_id' | 'project_id'>) => void
   onOpenTasks: () => void
+  onCreatedProject: (id: number) => Promise<void>
+  onInviteMembers: () => void
+  onCreateClient: () => void
   onDeleted: (workspaceId: number) => Promise<void>
 }
 
-export function WorkspaceOverview({ profile, workspaceId, onProfileRefresh, onOpenSection, onOpenProject, onOpenTask, onOpenTasks, onDeleted }: Props) {
+export function WorkspaceOverview({ profile, workspaceId, onProfileRefresh, onOpenSection, onOpenProject, onOpenTask, onOpenTasks, onCreatedProject, onInviteMembers, onCreateClient, onDeleted }: Props) {
   const [summary, setSummary] = useState<WorkspaceSummary | null>(null)
   const [mode, setMode] = useState<'dashboard' | 'settings'>('dashboard')
   const [loading, setLoading] = useState(true)
@@ -61,6 +69,12 @@ export function WorkspaceOverview({ profile, workspaceId, onProfileRefresh, onOp
   const [confirmation, setConfirmation] = useState('')
   const [removing, setRemoving] = useState(false)
   const [removalError, setRemovalError] = useState('')
+  const [newProject, setNewProject] = useState(false)
+  const [allProjectsOpen, setAllProjectsOpen] = useState(false)
+  const [projectName, setProjectName] = useState('')
+  const [projectDescription, setProjectDescription] = useState('')
+  const [creatingProject, setCreatingProject] = useState(false)
+  const [newProjectError, setNewProjectError] = useState('')
 
   const fetchSummary = useCallback(async () => {
     if (workspaceId === null) throw new Error('No hay un Workspace seleccionado.')
@@ -71,6 +85,7 @@ export function WorkspaceOverview({ profile, workspaceId, onProfileRefresh, onOp
     let mounted = true
     setLoading(true); setError(''); setNotice(''); setSummary(null)
     setRemovalOpen(false); setConfirmation(''); setMode('dashboard')
+    setNewProject(false); setAllProjectsOpen(false); setNewProjectError('')
     void fetchSummary().then(data => {
       if (!mounted) return
       setSummary(data)
@@ -119,6 +134,26 @@ export function WorkspaceOverview({ profile, workspaceId, onProfileRefresh, onOp
     } catch (cause) {
       setRemovalError(cause instanceof Error ? cause.message : 'No se pudo eliminar el Workspace.')
     } finally { setRemoving(false) }
+  }
+
+  async function createProject(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    if (!summary || !summary.can_manage || creatingProject || !projectName.trim()) return
+    setCreatingProject(true); setNewProjectError('')
+    try {
+      const created = await api<{ id: number }>('/projects', {
+        method: 'POST',
+        body: JSON.stringify({
+          workspace_id: summary.id,
+          name: projectName.trim(), description: projectDescription.trim() || null,
+        }),
+      })
+      await onCreatedProject(created.id)
+      setNewProject(false)
+      setProjectName(''); setProjectDescription('')
+    } catch (cause) {
+      setNewProjectError(cause instanceof Error ? cause.message : 'No se pudo crear el proyecto.')
+    } finally { setCreatingProject(false) }
   }
 
   if (!summary) return <section className="workspace-overview workspace-overview-page">
@@ -187,6 +222,7 @@ export function WorkspaceOverview({ profile, workspaceId, onProfileRefresh, onOp
     {notice && <p className="workspace-overview-notice" role="status">{notice}</p>}
 
     {mode === 'dashboard' ? <div className="wd-dashboard">
+      <div className="wd-top">
       <div className="wd-metrics">
         {metrics.map(metric => <div key={metric.key} className={`wd-metric wd-${metric.color}`}>
           <div className="wd-metric-icon" aria-hidden="true">
@@ -203,18 +239,81 @@ export function WorkspaceOverview({ profile, workspaceId, onProfileRefresh, onOp
           {metric.key === 'tasks' && <div className="wd-mini-progress"><span style={{width: progress(dashboard.cards.completed,dashboard.cards.total)+'%'}}/></div>}
         </div>)}
       </div>
+      {summary.can_view_personnel && <section className="wd-panel wd-members-top">
+        <header className="wd-panel-head">
+          <h2>Miembros del Workspace</h2>
+          <button type="button" onClick={() => onOpenSection('members')}>Ver todos →</button>
+        </header>
+        <div className="wd-avatar-viewport">
+          <button type="button" className="wd-avatar-group"
+            onClick={() => onOpenSection('members')} aria-label="Ver miembros">
+            {dashboard.members.slice(0, 5).map(member =>
+              <Avatar key={member.id} id={member.id} name={member.name} src={member.avatar_url} size={38}/>)}
+            {(summary.stats.members ?? 0) > Math.min(5, dashboard.members.length) &&
+              <span className="wd-extra">+{(summary.stats.members ?? 0) - Math.min(5, dashboard.members.length)}</span>}
+          </button>
+        </div>
+        <div className="wd-rail-list">
+          {dashboard.departments.length ? dashboard.departments.slice(0, 3).map((dept, i) =>
+            <button type="button" key={dept.id} onClick={() => onOpenSection('departments')}>
+              <span className={`wd-dot wd-dot-${i % 5}`}/><span>{dept.name}</span>
+              <small>{dept.members} miembros</small>
+            </button>) : <p className="wd-empty">Sin departamentos.</p>}
+        </div>
+        {summary.can_manage && <button type="button" className="wd-panel-add" onClick={onInviteMembers}>
+          <NavIcon><path d="M12 5v14M5 12h14"/></NavIcon> Invitar miembros
+        </button>}
+      </section>}
+      </div>
       <div className="wd-layout">
         <div className="wd-primary">
           <section className="wd-panel">
-            <header className="wd-panel-head"><h2>Proyectos recientes</h2><span>{summary.stats.projects} en total</span></header>
+            <header className="wd-panel-head"><h2>Proyectos recientes</h2>
+              <div className="wd-project-actions">
+                <button type="button" className="wd-project-all"
+                  onClick={() => setAllProjectsOpen(true)}>Ver todos →</button>
+                {summary.can_manage && <button type="button" className="wd-new-project"
+                  onClick={() => { setNewProjectError(''); setProjectName(''); setProjectDescription(''); setNewProject(true) }}>
+                  <NavIcon><path d="M12 5v14M5 12h14"/></NavIcon> Nuevo proyecto
+                </button>}
+              </div>
+            </header>
             <div className="wd-projects">
               {dashboard.projects.length ? dashboard.projects.slice(0,4).map((project,i) =>
                 <button key={project.id} type="button" className="wd-project" onClick={() => onOpenProject(project.id)}>
-                  <span className={`wd-project-logo wd-project-logo-${i%4}`}><NavIcon><rect x="5" y="4" width="14" height="16" rx="2"/><path d="M9 8h6m-6 4h6m-6 4h4"/></NavIcon></span>
-                  <strong title={project.name}>{project.name}</strong>
-                  <small>{project.total} tareas</small>
-                  <span className="wd-project-status">{project.total ? progress(project.completed,project.total)===100 ? 'Completado' : 'En progreso' : 'Sin tareas'}</span>
-                  <span className="wd-project-progress"><b>{progress(project.completed,project.total)}%</b><span><i style={{width:progress(project.completed,project.total)+'%'}}/></span></span>
+                  <span className="wd-project-intro">
+                    <span className={`wd-project-logo wd-project-logo-${i%4}`}>
+                      <NavIcon><rect x="5" y="4" width="14" height="16" rx="2"/><path d="M9 8h6m-6 4h6m-6 4h4"/></NavIcon>
+                    </span>
+                    <span className="wd-project-heading">
+                      <strong title={project.name}>{project.name}</strong>
+                      <small title={project.description ?? undefined}>
+                        {project.description || 'Sin descripción general'}
+                      </small>
+                    </span>
+                  </span>
+                  <span className="wd-project-progress" aria-label={`Progreso: ${progress(project.completed,project.total)}%`}>
+                    <b>{progress(project.completed,project.total)}%</b>
+                    <span><i style={{width:progress(project.completed,project.total)+'%'}}/></span>
+                  </span>
+                  <span className="wd-project-footer">
+                    <span className="wd-project-task-count">
+                      <NavIcon><rect x="4" y="6" width="16" height="14" rx="2"/><path d="M4 10h16"/></NavIcon>
+                      {project.total} tareas
+                    </span>
+                    <span className="wd-project-avatars" title={`${project.member_count} miembros`}>
+                      {project.members.map(member =>
+                        <Avatar key={member.id} id={member.id} name={member.name} src={member.avatar_url} size={24}/>)}
+                      {project.member_count > project.members.length &&
+                        <span className="wd-project-more">+{project.member_count - project.members.length}</span>}
+                      {project.member_count === 0 && <small>Sin miembros</small>}
+                    </span>
+                    <span className="wd-project-deadline"
+                      title="Fecha máxima entre los vencimientos de las tareas del proyecto">
+                      <NavIcon><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M7 3v4m10-4v4M3 10h18"/></NavIcon>
+                      {formatDue(project.latest_due_date)}
+                    </span>
+                  </span>
                 </button>
               ) : <p className="wd-empty">Todavía no hay proyectos en este Workspace.</p>}
             </div>
@@ -241,7 +340,7 @@ export function WorkspaceOverview({ profile, workspaceId, onProfileRefresh, onOp
                 {dashboard.activity.length ? dashboard.activity.map(item =>
                   <button type="button" className="wd-activity" key={item.id}
                     onClick={() => cardAction({id:item.card_id,board_id:item.board_id,project_id:item.project_id})}>
-                    <Avatar name={item.user_name} src={item.avatar_url} size={32}/>
+                    <Avatar id={item.user_id ?? 'sistema'} name={item.user_name} src={item.avatar_url} size={32}/>
                     <span><strong>{item.user_name}</strong> {ACTIVITY[item.type] ?? 'intervino en'} una tarea
                       <small>{item.card_title} · {item.project_name}</small></span>
                     <time>{formatRelative(item.created_at)}</time>
@@ -272,21 +371,6 @@ export function WorkspaceOverview({ profile, workspaceId, onProfileRefresh, onOp
           </div>}
         </div>
         {summary.can_view_personnel && <aside className="wd-rail">
-          <section className="wd-panel">
-            <header className="wd-panel-head"><h2>Miembros del Workspace</h2>
-              <button type="button" onClick={() => onOpenSection('members')}>Ver todos →</button></header>
-            <button type="button" className="wd-avatar-group" onClick={() => onOpenSection('members')} aria-label="Ver miembros">
-              {dashboard.members.map(member => <Avatar key={member.id} id={member.id} name={member.name} src={member.avatar_url} size={38}/>)}
-              {(summary.stats.members ?? 0) > dashboard.members.length && <span className="wd-extra">+{(summary.stats.members ?? 0)-dashboard.members.length}</span>}
-            </button>
-            <div className="wd-rail-list">
-              {dashboard.departments.length ? dashboard.departments.map((dept,i) =>
-                <button type="button" key={dept.id} onClick={() => onOpenSection('departments')}>
-                  <span className={`wd-dot wd-dot-${i%5}`}/><span>{dept.name}</span>
-                  <small>{dept.members} miembros</small>
-                </button>) : <p className="wd-empty">Sin departamentos.</p>}
-            </div>
-          </section>
           {summary.show_clients && <section className="wd-panel">
             <header className="wd-panel-head"><h2>Clientes</h2><button type="button" onClick={() => onOpenSection('clients')}>Ver todos →</button></header>
             <div className="wd-client-list">
@@ -297,6 +381,9 @@ export function WorkspaceOverview({ profile, workspaceId, onProfileRefresh, onOp
                   <small>{client.projects} proyectos</small>
                 </button>) : <p className="wd-empty">No hay empresas cliente registradas.</p>}
             </div>
+            {summary.can_view_personnel && <button type="button" className="wd-panel-add" onClick={onCreateClient}>
+              <NavIcon><path d="M12 5v14M5 12h14"/></NavIcon> Añadir cliente
+            </button>}
           </section>}
           <section className="wd-panel">
             <header className="wd-panel-head"><h2>Anuncios del Workspace</h2></header>
@@ -399,6 +486,70 @@ export function WorkspaceOverview({ profile, workspaceId, onProfileRefresh, onOp
     </>}
 
     </>}
+    {allProjectsOpen && createPortal(
+      <div className="wd-modal-back" onMouseDown={event => {
+        if (event.target === event.currentTarget) setAllProjectsOpen(false)
+      }}>
+        <div className="wd-modal" role="dialog" aria-modal="true" aria-labelledby="wd-project-list-title">
+          <div className="wd-modal-head">
+            <h2 id="wd-project-list-title">Proyectos del Workspace</h2>
+            <button type="button" aria-label="Cerrar listado" onClick={() => setAllProjectsOpen(false)}>×</button>
+          </div>
+          <div className="wd-project-list">
+            {profile.projects.filter(project => project.workspace_id === summary.id).length > 0
+              ? profile.projects.filter(project => project.workspace_id === summary.id).map(project =>
+                <button key={project.id} type="button" onClick={() => {
+                  setAllProjectsOpen(false); onOpenProject(project.id)
+                }}>
+                  <NavIcon><rect x="4" y="5" width="16" height="15" rx="2"/>
+                    <path d="M7 9h10m-10 4h10"/></NavIcon>
+                  <span>{project.name}</span><span aria-hidden="true">→</span>
+                </button>)
+              : <p className="wd-empty">No tienes proyectos disponibles en este Workspace.</p>}
+          </div>
+          <div className="wd-modal-footer">
+            <button type="button" className="ghost" onClick={() => setAllProjectsOpen(false)}>Cerrar</button>
+          </div>
+        </div>
+      </div>,
+      document.body,
+    )}
+    {newProject && createPortal(
+      <div className="wd-modal-back" onMouseDown={event => {
+        if (event.target === event.currentTarget && !creatingProject) setNewProject(false)
+      }}>
+        <div className="wd-modal" role="dialog" aria-modal="true" aria-labelledby="wd-new-project-title">
+          <form onSubmit={event => void createProject(event)}>
+            <header className="wd-modal-head">
+              <h2 id="wd-new-project-title">Nuevo proyecto</h2>
+              <button type="button" disabled={creatingProject} onClick={() => setNewProject(false)}
+                aria-label="Cerrar">×</button>
+            </header>
+            <div className="wd-modal-fields">
+              <label>Nombre del proyecto
+                <input autoFocus required maxLength={120} value={projectName}
+                  disabled={creatingProject} placeholder="Nombre del proyecto"
+                  onChange={event => setProjectName(event.target.value)}/>
+              </label>
+              <label>Descripción general (opcional)
+                <textarea maxLength={2000} rows={4} value={projectDescription}
+                  disabled={creatingProject} placeholder="Objetivo y alcance del proyecto…"
+                  onChange={event => setProjectDescription(event.target.value)}/>
+              </label>
+              {newProjectError && <p role="alert" className="workspace-overview-alert">{newProjectError}</p>}
+            </div>
+            <footer className="wd-modal-footer">
+              <button type="button" className="ghost" disabled={creatingProject}
+                onClick={() => setNewProject(false)}>Cancelar</button>
+              <button type="submit" className="primary" disabled={creatingProject || !projectName.trim()}>
+                {creatingProject ? 'Creando…' : 'Crear proyecto'}
+              </button>
+            </footer>
+          </form>
+        </div>
+      </div>,
+      document.body,
+    )}
     {removalOpen && <DeleteWorkspaceModal workspace={currentWorkspace}
       confirmation={confirmation} onChange={setConfirmation}
       busy={removing} error={removalError}

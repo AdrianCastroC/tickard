@@ -142,16 +142,41 @@ class WorkspacesController extends Controller
         $counts = $cards()->select('projects.id as project_id')
             ->selectRaw('COUNT(*) as total')
             ->selectRaw("COALESCE(SUM(CASE WHEN columns.workflow_state = 'done' THEN 1 ELSE 0 END), 0) as completed")
+            ->selectRaw('MAX(cards.due_date) as latest_due_date')
             ->groupBy('projects.id')->get()->keyBy('project_id');
+
+        // A short roster is sufficient for dashboard cards; don't expose
+        // assignees to client accounts when the project disables that field.
+        $roster = DB::table('project_members')
+            ->join('projects', 'projects.id', '=', 'project_members.project_id')
+            ->join('users', 'users.id', '=', 'project_members.user_id')
+            ->where('projects.workspace_id', $workspace->id)
+            ->whereIn('projects.id', $projectIds)
+            ->where(function ($query) use ($isClient) {
+                if ($isClient) {
+                    $query->where('projects.show_assignee', true);
+                }
+            })
+            ->orderBy('users.name')->orderBy('users.id')
+            ->get(['project_members.project_id', 'users.id', 'users.name', 'users.avatar_path'])
+            ->groupBy('project_id');
 
         $recentProjects = (clone $projectsQuery)
             ->orderByDesc('projects.updated_at')->orderByDesc('projects.id')
-            ->limit(6)->get(['projects.id', 'projects.name', 'projects.updated_at'])
+            ->limit(6)->get(['projects.id', 'projects.name', 'projects.description', 'projects.updated_at'])
             ->map(fn ($project) => [
                 'id' => $project->id,
                 'name' => $project->name,
+                'description' => $project->description,
                 'total' => (int) ($counts->get($project->id)?->total ?? 0),
                 'completed' => (int) ($counts->get($project->id)?->completed ?? 0),
+                'latest_due_date' => $counts->get($project->id)?->latest_due_date,
+                'member_count' => $roster->get($project->id)?->count() ?? 0,
+                'members' => ($roster->get($project->id) ?? collect())->take(3)
+                    ->map(fn ($member) => [
+                        'id' => $member->id, 'name' => $member->name,
+                        'avatar_url' => $member->avatar_path ? '/storage/'.$member->avatar_path : null,
+                    ])->values(),
             ])->values();
 
         $tasks = $cards()
@@ -186,7 +211,7 @@ class WorkspacesController extends Controller
             ->select('activities.id', 'activities.type', 'activities.meta', 'activities.created_at',
                 'cards.id as card_id', 'cards.title as card_title',
                 'boards.id as board_id', 'projects.id as project_id', 'projects.name as project_name',
-                'users.name as user_name', 'users.avatar_path')
+                'users.id as user_id', 'users.name as user_name', 'users.avatar_path')
             ->orderByDesc('activities.id')->limit(40)->get()
             ->filter(function ($event) {
                 if ($event->type !== 'commented') return true;
@@ -198,6 +223,7 @@ class WorkspacesController extends Controller
                 'board_id' => $event->board_id, 'project_id' => $event->project_id,
                 'project_name' => $event->project_name,
                 'user_name' => $event->user_name ?? 'Sistema',
+                'user_id' => $event->user_id,
                 'avatar_url' => $event->avatar_path ? '/storage/'.$event->avatar_path : null,
                 'created_at' => $event->created_at,
             ])->values();

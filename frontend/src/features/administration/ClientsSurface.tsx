@@ -62,7 +62,9 @@ function LineIcon({name}:{name:'folder'|'list'|'grid'|'search'|'users'|'building
     strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{paths[name]}</svg>
 }
 
-export function ClientsSurface({workspaceId}:{workspaceId:number|null}) {
+export function ClientsSurface({workspaceId,openCreate=false,onQuickActionConsumed}:{
+  workspaceId:number|null;openCreate?:boolean;onQuickActionConsumed?:()=>void
+}) {
   const [data,setData]=useState<Data|null>(null)
   const [loading,setLoading]=useState(true)
   const [loadError,setLoadError]=useState('')
@@ -164,6 +166,12 @@ export function ClientsSurface({workspaceId}:{workspaceId:number|null}) {
   }
   const selected=data?.clients.find(c=>c.id===selectedId)??null
   const canManage=data?.can_manage===true
+  useEffect(()=>{
+    if(openCreate&&canManage){
+      beginCreate()
+      onQuickActionConsumed?.()
+    }
+  },[openCreate,canManage,onQuickActionConsumed])
   const allChecked=visible.length>0&&visible.every(c=>selectedRows.includes(c.id))
   const tabs:{id:Tab;label:string}[]=[
     {id:'summary',label:'Resumen'},{id:'members',label:'Miembros'},

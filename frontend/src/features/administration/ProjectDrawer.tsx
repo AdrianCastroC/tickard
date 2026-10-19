@@ -6,6 +6,7 @@ type VisibilityKey = 'description' | 'assignee' | 'due_date' | 'priority' | 'lab
 type ProjectSettingsPayload = {
   id: number
   name: string
+  description: string | null
   client_company_id: number | null
   client_access_enabled: boolean
   workspace_clients_enabled: boolean
@@ -29,6 +30,7 @@ export function ProjectSettings({ project, onRefresh, onDelete }: {
 }) {
   const [settings, setSettings] = useState<ProjectSettingsPayload | null>(null)
   const [draftName, setDraftName] = useState(project.name)
+  const [draftDescription, setDraftDescription] = useState('')
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -51,6 +53,7 @@ export function ProjectSettings({ project, onRefresh, onDelete }: {
         if (active) {
           setSettings(result)
           setDraftName(result.name)
+          setDraftDescription(result.description ?? '')
         }
       })
       .catch(cause => {
@@ -75,6 +78,7 @@ export function ProjectSettings({ project, onRefresh, onDelete }: {
       const fresh = await fetchSettings()
       setSettings(fresh)
       setDraftName(fresh.name)
+      setDraftDescription(fresh.description ?? '')
       // Keep the project header, sidebar, selected company and other tabs up to date.
       await onRefresh()
       setNotice(message)
@@ -139,6 +143,19 @@ export function ProjectSettings({ project, onRefresh, onDelete }: {
               {busy ? 'Guardando…' : 'Guardar nombre'}
             </button>
           </div>
+        </form>
+        <form className="project-settings-name-form" onSubmit={event => {
+          event.preventDefault()
+          if (draftDescription.trim() !== (settings.description ?? '')) {
+            void save({description: draftDescription.trim() || null}, 'Descripción general actualizada.')
+          }
+        }}>
+          <label className="project-settings-field" htmlFor="settings-project-description">Descripción general</label>
+          <textarea id="settings-project-description" maxLength={2000} rows={3}
+            placeholder="Describe el objetivo del proyecto…"
+            disabled={busy} value={draftDescription} onChange={event => setDraftDescription(event.target.value)}/>
+          <button type="submit" className="primary"
+            disabled={busy || draftDescription.trim() === (settings.description ?? '')}>Guardar descripción</button>
         </form>
         <p className="project-settings-hint">Los miembros y sus permisos se administran desde la pestaña Personal del proyecto.</p>
       </section>

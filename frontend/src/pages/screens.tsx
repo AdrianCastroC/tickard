@@ -40,6 +40,8 @@ function WorkspaceContent({ workspace, profile, sidebar, query, appContext, onAp
   const [ganttFocus, setGanttFocus] = useState<GanttCardFocus | null>(null)
   const [myTasksMode, setMyTasksMode] = useState<'all' | 'overdue'>('all')
   const [myTasksKey, setMyTasksKey] = useState(0)
+  const [workspaceQuickAction, setWorkspaceQuickAction] = useState<'invite-members' | 'new-client' | null>(null)
+  function clearQuickAction() { setWorkspaceQuickAction(null) }
   function showMyTasks(mode: 'all' | 'overdue' = 'all') {
     setMyTasksMode(mode)
     setMyTasksKey(key => key + 1)
@@ -109,16 +111,18 @@ function WorkspaceContent({ workspace, profile, sidebar, query, appContext, onAp
   useEffect(() => { const select = (event: Event) => { const id = (event as CustomEvent<number>).detail; onAppContext('workspace'); tabs.selectContext(id) }; window.addEventListener('tickard:select-board', select); return () => window.removeEventListener('tickard:select-board', select) }, [tabs, onAppContext])
   const projectName = activeProject?.name; const boardName = typeof context === 'number' ? activeProject?.boards.find((item) => item.id === context)?.name : undefined; const currentBreadcrumb = appContext !== 'workspace' ? [appContext === 'home' ? 'Inicio' : appContext === 'inbox' ? 'Bandeja de entrada' : appContext === 'members' ? 'Miembros' : appContext === 'departments' ? 'Departamentos' : appContext === 'teams' ? 'Equipos' : appContext === 'clients' ? 'Clientes' : 'Mis tareas'] : [profile.workspaces.find((item) => item.id === workspace.activeWorkspaceId)?.name ?? 'Workspace', ...(projectName ? ['Proyectos', projectName] : []), ...(boardName ? [boardName] : [])]; useEffect(() => { onBreadcrumb(currentBreadcrumb) }, [currentBreadcrumb.join('|')])
   return <div className="body"><Sidebar mini={sidebar.mini}><nav className="global-nav"><div className="global-nav-row"><button className={`nav-item sub${appContext === 'home' ? ' on' : ''}`} type="button" title={sidebar.mini ? 'Desplegar menú' : 'Inicio'} aria-label={sidebar.mini ? 'Desplegar menú' : 'Inicio'} onClick={() => sidebar.mini ? sidebar.toggle() : onAppContext('home')}><NavIcon><path d="m3 11 9-8 9 8" /><path d="M5 10v10h14V10" /></NavIcon><span className="side-label-text">Inicio</span></button>{!sidebar.mini && (<button className="sidebar-toggle" type="button" title="Plegar menú" aria-label="Plegar menú" onClick={sidebar.toggle}><NavIcon><rect width="18" height="18" x="3" y="3" rx="2" /><path d="M9 3v18" /><path d="m16 15-3-3 3-3" /></NavIcon></button>)}</div><button className={`nav-item sub${appContext === 'inbox' ? ' on' : ''}`} type="button" onClick={() => onAppContext('inbox')}><NavIcon><rect width="18" height="14" x="3" y="5" rx="2" /><path d="m3 7 9 6 9-6" /></NavIcon><span className="side-label-text">Bandeja de entrada</span></button><button className={`nav-item sub${appContext === 'my-tasks' ? ' on' : ''}`} type="button" onClick={() => showMyTasks('all')}><NavIcon><path d="m5 12 4 4L19 6" /><rect width="18" height="18" x="3" y="3" rx="2" /></NavIcon><span className="side-label-text">Mis tareas</span></button></nav><WorkspaceSelector profile={profile} activeWorkspaceId={workspace.activeWorkspaceId} mini={sidebar.mini} activeContext={!activeProject && appContext === 'workspace'} onOpenOverview={showWorkspace} onWorkspaceChange={async (id) => { onAppContext('workspace'); tabs.showWorkspace(); await workspace.changeWorkspace(id) }} onProfileRefresh={workspace.refreshProfile} /><nav className="nav">{(profile.user.is_admin || profile.workspaces.some(item => item.id === workspace.activeWorkspaceId && (item.role === 'owner' || item.role === 'admin'))) && <PersonalSection active={appContext === 'members' || appContext === 'departments' || appContext === 'teams' || appContext === 'clients' ? appContext : null}
-            onOpen={section => { board.setSelected(null); onAppContext(section) }}
+            onOpen={section => { clearQuickAction(); board.setSelected(null); onAppContext(section) }}
             showClients={profile.workspaces.find(item => item.id === workspace.activeWorkspaceId)?.show_clients ?? false} />}<ProjectsSection profile={profile} workspaceId={workspace.activeWorkspaceId} mini={sidebar.mini} onOpenProject={openProject} onProjectsChanged={workspace.refreshProfile} /></nav><AccountFooter profile={profile} mini={sidebar.mini} /></Sidebar><MainContent tabs={tabs.tabs} activeProjectId={tabs.activeProjectId} onSelectTab={selectProject} onCloseTab={(id) => tabs.close(id)} showProjectTabs={appContext === 'workspace' && activeProject !== undefined && activeProject !== null} contextBar={activeProject && appContext === 'workspace' && typeof context === 'number' && <ProjectContextBar project={activeProject} context={context} canManage={canManage} projectView={projectView} onProjectView={setProjectView} onContext={tabs.selectContext} onRefresh={workspace.refreshProfile} />}>{appContext === 'home' && <GlobalHome profile={profile} onShowTasks={showMyTasks} onShowInbox={() => onAppContext('inbox')} onOpenTask={openMyTask} onOpenMeeting={openMyMeeting} onOpenProject={openHomeProject} />}{appContext === 'inbox' && <InboxSurface onAccepted={async (workspaceId) => {
       if (workspaceId === workspace.activeWorkspaceId) await workspace.refreshProfile()
       else await workspace.changeWorkspace(workspaceId)
     }} onOpenCard={openMyTask} onUnreadChanged={async () => { await workspace.refreshProfile() }} />}{appContext === 'my-tasks' && <MyTasksSurface key={myTasksKey} initialState={myTasksMode} onOpenTask={openMyTask} onOpenMeeting={openMyMeeting} />}{appContext === 'members' && <MembersSurface key={workspace.activeWorkspaceId ?? 0}
   workspaceId={workspace.activeWorkspaceId}
-  workspaceName={profile.workspaces.find(item => item.id === workspace.activeWorkspaceId)?.name ?? 'Workspace'}/>}{appContext === 'departments' && <DepartmentsSurface key={workspace.activeWorkspaceId ?? 0} workspaceId={workspace.activeWorkspaceId} />}
+  workspaceName={profile.workspaces.find(item => item.id === workspace.activeWorkspaceId)?.name ?? 'Workspace'}
+  openInvitations={workspaceQuickAction === 'invite-members'} onQuickActionConsumed={clearQuickAction}/>}{appContext === 'departments' && <DepartmentsSurface key={workspace.activeWorkspaceId ?? 0} workspaceId={workspace.activeWorkspaceId} />}
 {appContext === 'teams' && <TeamsSurface key={workspace.activeWorkspaceId ?? 0} workspaceId={workspace.activeWorkspaceId} />}
-{appContext === 'clients' && profile.workspaces.some(item => item.id === workspace.activeWorkspaceId && item.show_clients) && <ClientsSurface key={workspace.activeWorkspaceId ?? 0} workspaceId={workspace.activeWorkspaceId} />}{appContext === 'workspace' && !activeProject && <WorkspaceOverview profile={profile} workspaceId={workspace.activeWorkspaceId} onProfileRefresh={workspace.refreshProfile}
-  onOpenSection={section => { board.setSelected(null); onAppContext(section) }}
+{appContext === 'clients' && profile.workspaces.some(item => item.id === workspace.activeWorkspaceId && item.show_clients) && <ClientsSurface key={workspace.activeWorkspaceId ?? 0} workspaceId={workspace.activeWorkspaceId}
+  openCreate={workspaceQuickAction === 'new-client'} onQuickActionConsumed={clearQuickAction} />}{appContext === 'workspace' && !activeProject && <WorkspaceOverview profile={profile} workspaceId={workspace.activeWorkspaceId} onProfileRefresh={workspace.refreshProfile}
+  onOpenSection={section => { clearQuickAction(); board.setSelected(null); onAppContext(section) }}
   onOpenProject={projectId => {
     const target = profile.projects.find(project => project.id === projectId)
     if (target) { openProject(target); setProjectView('overview') }
@@ -129,6 +133,15 @@ function WorkspaceContent({ workspace, profile, sidebar, query, appContext, onAp
     }
   }}
   onOpenTasks={() => showMyTasks('all')}
+  onCreatedProject={async projectId => {
+    const updated = await workspace.refreshProfile()
+    const target = updated.projects.find(project => project.id === projectId)
+    if (!target) throw new Error('No se pudo abrir el proyecto recién creado.')
+    openProject(target)
+    setProjectView('overview')
+  }}
+  onInviteMembers={() => { setWorkspaceQuickAction('invite-members'); board.setSelected(null); onAppContext('members') }}
+  onCreateClient={() => { setWorkspaceQuickAction('new-client'); board.setSelected(null); onAppContext('clients') }}
   onDeleted={async deletedId => {
     const next = profile.workspaces.find(item => item.id !== deletedId)
     if (next) {

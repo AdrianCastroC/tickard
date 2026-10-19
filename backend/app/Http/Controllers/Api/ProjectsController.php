@@ -26,11 +26,10 @@ class ProjectsController extends ApiController
 {
     public function storeProject(Request $request)
     {
-        abort_unless($request->user()->is_admin, 403);
-
         $data = $request->validate([
             'workspace_id' => ['required', 'integer'],
             'name' => ['required', 'string', 'max:120'],
+            'description' => ['nullable', 'string', 'max:2000'],
             'client_name' => ['nullable', 'string', 'max:120'],
             'client_company_id' => ['nullable', 'integer'],
             'client_access_enabled' => ['sometimes', 'boolean'],
@@ -40,6 +39,9 @@ class ProjectsController extends ApiController
             ->whereHas('members', fn ($query) => $query->where('users.id', $request->user()->id)
             )
             ->firstOrFail();
+
+        abort_unless($request->user()->is_admin
+            || (int) $workspace->owner_id === (int) $request->user()->id, 403);
 
         $project = DB::transaction(function () use ($data, $workspace) {
             $client = null;
@@ -59,6 +61,7 @@ class ProjectsController extends ApiController
             $project = Project::create([
                 'workspace_id' => $workspace->id,
                 'name' => $data['name'],
+                'description' => trim($data['description'] ?? '') ?: null,
                 'client_company_id' => $client?->id,
                 'client_access_enabled' => (bool) ($data['client_access_enabled'] ?? false) && $client !== null,
             ]);
@@ -164,6 +167,7 @@ class ProjectsController extends ApiController
         return response()->json([
             'id' => $project->id,
             'name' => $project->name,
+            'description' => $project->description,
             'client_company_id' => $project->client_company_id,
             'client_access_enabled' => (bool) $project->client_access_enabled,
             'workspace_clients_enabled' => (bool) $workspace->show_clients,
@@ -190,6 +194,7 @@ class ProjectsController extends ApiController
 
         $data = $request->validate([
             'name' => ['sometimes', 'required', 'string', 'max:120'],
+            'description' => ['sometimes', 'nullable', 'string', 'max:2000'],
             'show_description' => ['sometimes', 'boolean'],
             'show_assignee' => ['sometimes', 'boolean'],
             'show_due_date' => ['sometimes', 'boolean'],
@@ -200,6 +205,9 @@ class ProjectsController extends ApiController
             'client_access_enabled' => ['sometimes', 'boolean'],
         ]);
 
+        if (array_key_exists('description', $data)) {
+            $data['description'] = trim($data['description'] ?? '') ?: null;
+        }
         if (array_key_exists('name', $data)) {
             $data['name'] = trim($data['name']);
             abort_if($data['name'] === '', 422, 'El nombre del proyecto no puede estar vacío.');
