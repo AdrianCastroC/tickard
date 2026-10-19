@@ -39,6 +39,11 @@ class WorkspaceCustomRolesTest extends TestCase
             'permissions' => ['project.view', 'cards.edit'],
         ])->assertCreated()->assertJsonPath('name', 'Coordinador');
         $this->getJson($url)->assertOk()->assertJsonCount(1, 'roles');
+        $id = WorkspaceCustomRole::where('name', 'Coordinador')->value('id');
+        $this->patchJson($url.'/'.$id, [
+            'name' => 'Coordinador actualizado',
+            'permissions' => ['project.view', 'cards.comment'],
+        ])->assertOk()->assertJsonPath('name', 'Coordinador actualizado');
     }
 
     public function test_custom_role_is_workspace_scoped_and_cannot_gain_foreign_permissions(): void
@@ -70,8 +75,9 @@ class WorkspaceCustomRolesTest extends TestCase
             'workspace_id' => $workspace->id, 'scope' => 'project',
             'name' => 'Editor limitado', 'permissions' => ['project.view', 'cards.comment'],
         ]);
-        ProjectMember::create(['project_id' => $project->id, 'user_id' => $member->id,
-            'role' => 'lector', 'custom_role_id' => $role->id]);
+        $this->actingAs($owner)->postJson("/api/projects/{$project->id}/personnel/members", [
+            'user_id' => $member->id, 'role' => 'lector', 'custom_role_id' => $role->id,
+        ])->assertCreated()->assertJsonPath('custom_role_id', $role->id);
         $this->assertTrue(ProjectAccess::canView($member, $project));
         $this->assertTrue(ProjectAccess::canComment($member, $project));
         $this->assertFalse(ProjectAccess::canEditCards($member, $project));
