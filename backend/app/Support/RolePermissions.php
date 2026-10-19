@@ -5,7 +5,7 @@ namespace App\Support;
 final class RolePermissions
 {
     public const PROJECT = [
-        'project.view', 'project.manage', 'project.members',
+        'project.view', 'project.manage', 'project.delete', 'project.members',
         'boards.manage', 'cards.edit', 'cards.comment', 'files.upload',
     ];
     public const WORKSPACE = [
