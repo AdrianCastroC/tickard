@@ -167,6 +167,7 @@ class ProjectsController extends ApiController
         return response()->json([
             'id' => $project->id,
             'name' => $project->name,
+            'image_url' => $project->image_path ? '/storage/'.$project->image_path : null,
             'description' => $project->description,
             'client_company_id' => $project->client_company_id,
             'client_access_enabled' => (bool) $project->client_access_enabled,
