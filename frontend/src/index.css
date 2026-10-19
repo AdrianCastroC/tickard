@@ -4384,3 +4384,12 @@ h1, h2, h3, p { margin: 0; }
 .new-project-settings-form > .wd-modal-footer {flex:0 0 auto;border-top:1px solid var(--line);}
 .new-project-settings-form .project-settings-field > input,
 .new-project-settings-form .project-settings-field > textarea {box-sizing:border-box;width:100%;min-width:0;}
+
+/* Project calendar uses the same fixed shell as project overview. */
+.frame:has(.project-calendar-viewport) {height:100dvh;min-height:0;}
+.main:has(.project-calendar-viewport),
+.workspace.project-layout:has(> .project-calendar-viewport) {min-height:0;overflow:hidden;}
+.workspace.project-layout:has(> .project-calendar-viewport) > .project-hero,
+.workspace.project-layout:has(> .project-calendar-viewport) > .project-surface-nav {flex:0 0 auto;}
+.project-calendar-viewport {flex:1 1 auto;min-height:0;overflow:hidden;}
+.project-calendar-viewport > * {min-height:0;flex:1 1 auto;}

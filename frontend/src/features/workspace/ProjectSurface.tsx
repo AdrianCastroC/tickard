@@ -187,7 +187,7 @@ function Timeline({ boards, anchor, onOpenGantt, onBoardSelect }: {
       })}
       {!ordered.length && <p className={styles.timelineEmpty}>Este proyecto todavía no tiene tableros.</p>}
     </div>
-    <div className={styles.timelineFoot}>Vista resumida por tableros · <button type="button" onClick={onOpenGantt}>Consultar tareas y dependencias en el Gantt</button></div>
+    <div className={styles.timelineFoot}><button type="button" onClick={onOpenGantt}>Consultar tareas y dependencias en el Gantt</button></div>
   </section>
 }
 function LoadingPreview() {

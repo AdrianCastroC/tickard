@@ -70,7 +70,7 @@ export function ProjectLayout({
       <ProjectHeader project={project} settingsActive={settingsOpen}
         onSettings={() => setSettingsOpen(true)}/>
       <ProjectNavigation value={projectView} onChange={changeView}/>
-      <div className={`project-view${projectView === 'boards' ? ' project-view-boards' : projectView === 'overview' ? ' project-view-overview' : ''}`}>{projectContent}</div>
+      <div className={`project-view${projectView === 'boards' ? ' project-view-boards' : projectView === 'overview' ? ' project-view-overview' : projectView === 'calendar' ? ' project-calendar-viewport' : ''}`}>{projectContent}</div>
     </>}
     {boardContent}
     {settingsOpen && canManage && createPortal(
