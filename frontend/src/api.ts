@@ -210,7 +210,7 @@ export type Project = {
 export function canProject(project: { role: Role; permissions?: string[] }, permission: string): boolean {
   if (project.permissions) return project.permissions.includes(permission)
   if (permission === 'project.view' || permission === 'cards.comment') return true
-  if (permission === 'project.manage' || permission === 'project.members' || permission === 'boards.manage')
+  if (permission === 'project.manage' || permission === 'project.delete' || permission === 'project.members' || permission === 'boards.manage')
     return project.role === 'responsable'
   if (permission === 'cards.edit' || permission === 'files.upload')
     return project.role === 'responsable' || project.role === 'editor'
