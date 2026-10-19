@@ -97,8 +97,9 @@ function Metric({ icon, tone, count, label, detail }: {
   </div>
 }
 
-export function MembersSurface({ workspaceId, workspaceName }: {
+export function MembersSurface({ workspaceId, workspaceName, openInvitations = false, onQuickActionConsumed }: {
   workspaceId: number | null; workspaceName: string
+  openInvitations?: boolean; onQuickActionConsumed?: () => void
 }) {
   const [data, setData] = useState<MemberData | null>(null)
   const [loading, setLoading] = useState(true)
@@ -146,6 +147,13 @@ export function MembersSurface({ workspaceId, workspaceName }: {
       .finally(() => { if (alive) setLoading(false) })
     return () => { alive = false }
   }, [workspaceId])
+
+  useEffect(() => {
+    if (openInvitations && data?.can_manage_roles) {
+      setPanel('invitations')
+      onQuickActionConsumed?.()
+    }
+  }, [openInvitations, data?.can_manage_roles, onQuickActionConsumed])
 
   const selected = data?.members.find(member => member.id === selectedId) ?? null
   useEffect(() => {
