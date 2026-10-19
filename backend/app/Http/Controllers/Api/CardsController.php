@@ -333,6 +333,9 @@ class CardsController extends ApiController
         if (array_intersect(['start_date', 'due_date', 'started_at', 'completed_at'], array_keys($data))) {
             abort_unless(ProjectAccess::canChangeDates($request->user(), $project), 403);
         }
+        if (array_key_exists('is_milestone', $data) && (bool) $data['is_milestone'] !== (bool) $card->is_milestone) {
+            abort_unless(ProjectAccess::canChangeState($request->user(), $project), 403);
+        }
         $isMilestone = (bool) ($data['is_milestone'] ?? $card->is_milestone);
         $becomingMilestone = $isMilestone && ! $card->is_milestone;
         $progressColumn = null;
