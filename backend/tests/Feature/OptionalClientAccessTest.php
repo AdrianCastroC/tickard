@@ -153,4 +153,65 @@ class OptionalClientAccessTest extends TestCase
         $this->patchJson('/api/me', ['professional_phone' => 'invalid'])
             ->assertUnprocessable()->assertJsonValidationErrors('professional_phone');
     }
+    public function test_project_settings_permissions_visibility_and_rename_without_a_board(): void
+    {
+        extract($this->fixture());
+        $project = Project::create(['workspace_id' => $workspace->id, 'name' => 'Sin tablero']);
+        $editor = User::factory()->create(['is_admin' => false]);
+        $workspace->memberships()->create(['user_id' => $editor->id, 'role' => 'member']);
+        ProjectMember::create(['project_id' => $project->id, 'user_id' => $editor->id, 'role' => 'editor']);
+
+        $url = '/api/projects/'.$project->id.'/settings';
+        $this->actingAs($editor)->getJson($url)->assertForbidden();
+        $this->patchJson('/api/projects/'.$project->id, ['name' => 'Intrusión'])->assertForbidden();
+
+        $this->actingAs($owner)->getJson($url)->assertOk()
+            ->assertJsonPath('name', 'Sin tablero')
+            ->assertJsonPath('workspace_clients_enabled', true)
+            ->assertJsonPath('visibility.description', true)
+            ->assertJsonPath('visibility.assignee', false)
+            ->assertJsonCount(1, 'clients')
+            ->assertJsonPath('clients.0.id', $company->id);
+
+        $this->patchJson('/api/projects/'.$project->id, [
+            'name' => '  Nuevo proyecto  ', 'show_description' => false, 'show_priority' => true,
+        ])->assertOk()->assertJsonPath('name', 'Nuevo proyecto');
+        $this->getJson($url)->assertOk()
+            ->assertJsonPath('name', 'Nuevo proyecto')
+            ->assertJsonPath('visibility.description', false)
+            ->assertJsonPath('visibility.priority', true);
+    }
+
+    public function test_project_settings_validate_name_and_never_show_other_workspace_clients(): void
+    {
+        extract($this->fixture());
+        $project = Project::create(['workspace_id' => $workspace->id, 'name' => 'Original']);
+        $url = '/api/projects/'.$project->id;
+
+        $this->actingAs($owner)->patchJson($url, ['name' => '  '])->assertUnprocessable();
+        $this->patchJson($url, ['name' => str_repeat('A', 121)])
+            ->assertUnprocessable()->assertJsonValidationErrors('name');
+        $this->patchJson($url, ['name' => null])
+            ->assertUnprocessable()->assertJsonValidationErrors('name');
+
+        $otherOwner = User::factory()->create(['is_admin' => false]);
+        $otherWorkspace = Workspace::createInitialFor($otherOwner);
+        $otherClient = ClientCompany::create([
+            'workspace_id' => $otherWorkspace->id, 'name' => 'Otro cliente',
+        ]);
+        $this->patchJson($url, [
+            'client_company_id' => $otherClient->id, 'client_access_enabled' => true,
+        ])->assertUnprocessable();
+
+        $this->getJson($url.'/settings')->assertOk()->assertJsonCount(1, 'clients')
+            ->assertJsonMissing(['name' => 'Otro cliente']);
+        $this->assertDatabaseHas('projects', [
+            'id' => $project->id, 'name' => 'Original', 'client_company_id' => null,
+        ]);
+
+        $workspace->update(['show_clients' => false]);
+        $this->getJson($url.'/settings')->assertOk()
+            ->assertJsonPath('workspace_clients_enabled', false)->assertJsonCount(0, 'clients');
+    }
+
 }
