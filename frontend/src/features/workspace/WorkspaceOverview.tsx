@@ -31,6 +31,9 @@ type WorkspaceSummary = {
   id: number
   name: string
   image_url: string | null
+  description: string | null
+  website_url: string | null
+  contact_email: string | null
   role: WorkspaceRef['role']
   plan: WorkspaceRef['plan']
   can_manage: boolean
@@ -72,6 +75,9 @@ export function WorkspaceOverview({ profile, workspaceId, onProfileRefresh, onOp
   const [saving, setSaving] = useState(false)
   const [imageBusy, setImageBusy] = useState(false)
   const [draftName, setDraftName] = useState('')
+  const [draftDescription, setDraftDescription] = useState('')
+  const [draftWebsite, setDraftWebsite] = useState('')
+  const [draftEmail, setDraftEmail] = useState('')
   const [removalOpen, setRemovalOpen] = useState(false)
   const [confirmation, setConfirmation] = useState('')
   const [removing, setRemoving] = useState(false)
@@ -99,6 +105,9 @@ export function WorkspaceOverview({ profile, workspaceId, onProfileRefresh, onOp
       if (!mounted) return
       setSummary(data)
       setDraftName(data.name)
+      setDraftDescription(data.description ?? '')
+      setDraftWebsite(data.website_url ?? '')
+      setDraftEmail(data.contact_email ?? '')
     }).catch(cause => {
       if (mounted) setError(cause instanceof Error ? cause.message : 'No se pudo cargar el Workspace.')
     }).finally(() => { if (mounted) setLoading(false) })
@@ -114,6 +123,9 @@ export function WorkspaceOverview({ profile, workspaceId, onProfileRefresh, onOp
       saved = true
       const refreshed = await fetchSummary()
       setSummary(refreshed); setDraftName(refreshed.name)
+      setDraftDescription(refreshed.description ?? '')
+      setDraftWebsite(refreshed.website_url ?? '')
+      setDraftEmail(refreshed.contact_email ?? '')
       await onProfileRefresh()
       setNotice(success)
     } catch (cause) {
@@ -167,8 +179,9 @@ export function WorkspaceOverview({ profile, workspaceId, onProfileRefresh, onOp
     event.preventDefault()
     if (!summary) return
     const name = draftName.trim()
-    if (!name || name === summary.name) return
-    await save({ name }, '/workspaces/' + summary.id, 'Nombre del Workspace actualizado.')
+    if (!name) return
+    await save({ name, description: draftDescription.trim(), website_url: draftWebsite.trim(), contact_email: draftEmail.trim() },
+      '/workspaces/' + summary.id, 'Información del Workspace actualizada.')
   }
 
   async function deleteWorkspace() {
@@ -482,9 +495,15 @@ export function WorkspaceOverview({ profile, workspaceId, onProfileRefresh, onOp
               required maxLength={100} disabled={saving}
               onChange={event => setDraftName(event.target.value)}/>
             <button type="submit" className="primary"
-              disabled={saving || !draftName.trim() || draftName.trim() === summary.name}>
-              {saving ? 'Guardando…' : 'Guardar nombre'}
+              disabled={saving || !draftName.trim()}>
+              {saving ? 'Guardando…' : 'Guardar cambios'}
             </button>
+          </div>
+          <label htmlFor="workspace-settings-description">Descripción</label>
+          <textarea id="workspace-settings-description" rows={3} maxLength={500} value={draftDescription} disabled={saving} onChange={event=>setDraftDescription(event.target.value)} placeholder="Describe brevemente tu organización"/>
+          <div className="workspace-settings-contact-fields">
+            <label>Sitio web<input type="url" placeholder="https://empresa.com" maxLength={255} value={draftWebsite} disabled={saving} onChange={event=>setDraftWebsite(event.target.value)}/></label>
+            <label>Email de contacto<input type="email" placeholder="contacto@empresa.com" maxLength={255} value={draftEmail} disabled={saving} onChange={event=>setDraftEmail(event.target.value)}/></label>
           </div>
         </form>
       </section>
