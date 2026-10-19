@@ -118,5 +118,15 @@ function WorkspaceContent({ workspace, profile, sidebar, query, appContext, onAp
   workspaceName={profile.workspaces.find(item => item.id === workspace.activeWorkspaceId)?.name ?? 'Workspace'}/>}{appContext === 'departments' && <DepartmentsSurface key={workspace.activeWorkspaceId ?? 0} workspaceId={workspace.activeWorkspaceId} />}
 {appContext === 'teams' && <TeamsSurface key={workspace.activeWorkspaceId ?? 0} workspaceId={workspace.activeWorkspaceId} />}
 {appContext === 'clients' && profile.workspaces.some(item => item.id === workspace.activeWorkspaceId && item.show_clients) && <ClientsSurface key={workspace.activeWorkspaceId ?? 0} workspaceId={workspace.activeWorkspaceId} />}{appContext === 'workspace' && !activeProject && <WorkspaceOverview profile={profile} workspaceId={workspace.activeWorkspaceId} onProfileRefresh={workspace.refreshProfile}
-  onOpenMembers={() => { board.setSelected(null); onAppContext('members') }}/>}{appContext === 'workspace' && activeProject && <ProjectSurface project={activeProject} board={board.board} projectView={projectView} onProjectViewChange={setProjectView} onRefresh={workspace.refreshProfile} onDeleted={removeProject} context={context} boardState={board} filters={filters} profile={profile} query={query} onBoardDeleted={removeBoard} onNavigateExternalCard={openRelatedGanttCard} ganttFocus={ganttFocus} onContextChange={tabs.selectContext} />}</MainContent></div>
+  onOpenSection={section => { board.setSelected(null); onAppContext(section) }}
+  onDeleted={async deletedId => {
+    const next = profile.workspaces.find(item => item.id !== deletedId)
+    if (next) {
+      board.setSelected(null)
+      tabs.showWorkspace()
+      await workspace.changeWorkspace(next.id)
+    } else {
+      await workspace.refreshProfile()
+    }
+  }}/>}{appContext === 'workspace' && activeProject && <ProjectSurface project={activeProject} board={board.board} projectView={projectView} onProjectViewChange={setProjectView} onRefresh={workspace.refreshProfile} onDeleted={removeProject} context={context} boardState={board} filters={filters} profile={profile} query={query} onBoardDeleted={removeBoard} onNavigateExternalCard={openRelatedGanttCard} ganttFocus={ganttFocus} onContextChange={tabs.selectContext} />}</MainContent></div>
 }
