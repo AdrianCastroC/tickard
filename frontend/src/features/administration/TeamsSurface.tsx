@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type
 import { createPortal } from 'react-dom'
 import { api } from '../../api'
 import { Avatar, formatDateLong } from '../../shared/ui'
-import { EditIcon, FilterFunnelIcon, FloppyIcon, PlusIcon, TrashIcon } from '../../shared/icons'
+import { EditIcon, FilterFunnelIcon, FloppyIcon, PlusIcon, SortIcon, TrashIcon } from '../../shared/icons'
 import styles from './DepartmentsDashboard.module.css'
 import { AdministrationLoading } from './AdministrationLoading'
 import { EntityAppearanceEditor, EntityVisual } from './EntityAppearanceEditor'
@@ -20,7 +20,8 @@ type Team = {
 }
 type Data = { can_manage: boolean; teams: Team[]; people: Person[]; departments: Linked[]; projects: Linked[] }
 type Tab = 'summary' | 'members' | 'projects'
-type Sort = 'name' | 'members' | 'projects' | 'recent'
+type Sort = 'name' | 'department' | 'members' | 'projects' | 'status' | 'recent'
+type SortDirection = 'asc' | 'desc'
 type Mark = IconName | 'folder' | 'search' | 'grid' | 'list'
 const icons: IconName[] = ['users', 'code', 'layers', 'palette', 'megaphone', 'settings', 'chart', 'box']
 const iconNames: Record<IconName, string> = {
@@ -82,6 +83,7 @@ export function TeamsSurface({ workspaceId }: { workspaceId: number | null }) {
   const [statusFilter, setStatusFilter] = useState('all')
   const [departmentFilter, setDepartmentFilter] = useState('all')
   const [sort, setSort] = useState<Sort>('name')
+  const [sortDirection, setSortDirection] = useState<SortDirection>('asc')
   const [filtersOpen, setFiltersOpen] = useState(false)
   const filterContainerRef = useRef<HTMLDivElement>(null)
   const [layout, setLayout] = useState<'list' | 'grid'>('list')
@@ -134,12 +136,27 @@ export function TeamsSurface({ workspaceId }: { workspaceId: number | null }) {
       && (!query || team.name.toLocaleLowerCase('es').includes(query)
         || team.description?.toLocaleLowerCase('es').includes(query)
         || team.members.some(person => person.name.toLocaleLowerCase('es').includes(query))))
-    return rows.sort((a, b) =>
-      sort === 'members' ? b.members.length - a.members.length || collator.compare(a.name, b.name) :
-      sort === 'projects' ? b.projects_count - a.projects_count || collator.compare(a.name, b.name) :
-      sort === 'recent' ? (b.created_at ?? '').localeCompare(a.created_at ?? '') :
-      collator.compare(a.name, b.name))
-  }, [data, search, statusFilter, departmentFilter, sort])
+    const value = (team: Team): string | number => {
+      switch (sort) {
+        case 'department': return team.departments.map(dept => dept.name).sort(collator.compare).join(', ')
+        case 'members': return team.members.length
+        case 'projects': return team.projects_count
+        case 'status': return team.status === 'active' ? 'Activo' : 'Inactivo'
+        case 'recent': return team.created_at ?? ''
+        default: return team.name
+      }
+    }
+    return rows.sort((a, b) => {
+      const left = value(a), right = value(b)
+      // Missing departments and dates stay at the end in either direction.
+      if (left === '' && right !== '') return 1
+      if (right === '' && left !== '') return -1
+      const result = typeof left === 'number' && typeof right === 'number'
+        ? left - right : collator.compare(String(left), String(right))
+      return (sortDirection === 'asc' ? result : -result)
+        || collator.compare(a.name, b.name) || a.id - b.id
+    })
+  }, [data, search, statusFilter, departmentFilter, sort, sortDirection])
   const stats = useMemo(() => {
     const all = data?.teams ?? []
     return {
@@ -150,7 +167,21 @@ export function TeamsSurface({ workspaceId }: { workspaceId: number | null }) {
     }
   }, [data])
   const activeFilterCount = Number(statusFilter !== 'all') +
-    Number(departmentFilter !== 'all') + Number(sort !== 'name')
+    Number(departmentFilter !== 'all') + Number(sort !== 'name' || sortDirection !== 'asc')
+  function changeSort(key: Sort) {
+    if (sort === key) setSortDirection(direction => direction === 'asc' ? 'desc' : 'asc')
+    else { setSort(key); setSortDirection('asc') }
+  }
+  function sortHeading(key: Sort, label: string) {
+    const active = sort === key
+    const next = active && sortDirection === 'asc' ? 'descendente' : 'ascendente'
+    return <th key={key} aria-sort={active ? (sortDirection === 'asc' ? 'ascending' : 'descending') : 'none'}>
+      <button type="button" className={teamCss.sortButton} onClick={() => changeSort(key)}
+        title={`Ordenar ${label} de forma ${next}`} aria-label={`Ordenar ${label} de forma ${next}`}>
+        {label}<SortIcon direction={active ? sortDirection : null} className={teamCss.sortIcon}/>
+      </button>
+    </th>
+  }
   useEffect(() => {
     if (!filtersOpen) return
     const outside = (event: PointerEvent) => {
@@ -311,7 +342,7 @@ export function TeamsSurface({ workspaceId }: { workspaceId: number | null }) {
                 className={styles.filterPopover}>
                 <div className={styles.filterPopoverHeader}><strong>Filtros</strong>
                   {activeFilterCount > 0 && <button type="button" onClick={() => {
-                    setStatusFilter('all'); setDepartmentFilter('all'); setSort('name')
+                    setStatusFilter('all'); setDepartmentFilter('all'); setSort('name'); setSortDirection('asc')
                   }}>Limpiar</button>}
                 </div>
                 <label>Departamento
@@ -327,9 +358,13 @@ export function TeamsSurface({ workspaceId }: { workspaceId: number | null }) {
                   </select>
                 </label>
                 <label>Ordenar por
-                  <select value={sort} onChange={event => setSort(event.target.value as Sort)}>
-                    <option value="name">Nombre</option><option value="members">Más miembros</option>
-                    <option value="projects">Más proyectos</option><option value="recent">Más recientes</option>
+                  <select value={sort} onChange={event => {
+                    const key = event.target.value as Sort
+                    setSort(key); setSortDirection(['members', 'projects', 'recent'].includes(key) ? 'desc' : 'asc')
+                  }}>
+                    <option value="name">Nombre</option><option value="department">Departamento</option>
+                    <option value="members">Más miembros</option><option value="projects">Más proyectos</option>
+                    <option value="status">Estado</option><option value="recent">Más recientes</option>
                   </select>
                 </label>
               </div>}
@@ -356,8 +391,9 @@ export function TeamsSurface({ workspaceId }: { workspaceId: number | null }) {
               <thead><tr>
                 <th className={teamCss.checkboxCol}><input type="checkbox" aria-label="Seleccionar todos los equipos visibles"
                   checked={selectedAll} onChange={event => toggleVisible(event.target.checked)}/></th>
-                <th>Nombre</th><th>Departamento</th><th>Miembros</th><th>Proyectos</th>
-                <th>Estado</th>
+                {sortHeading('name', 'Nombre')}{sortHeading('department', 'Departamento')}
+                {sortHeading('members', 'Miembros')}{sortHeading('projects', 'Proyectos')}
+                {sortHeading('status', 'Estado')}
               </tr></thead>
               <tbody>{visible.map((team, i) => <tr key={team.id} data-selected={selectedId === team.id && editor !== 'create'}>
                 <td><input type="checkbox" aria-label={'Seleccionar ' + team.name} checked={selectedRows.includes(team.id)}
