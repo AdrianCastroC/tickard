@@ -355,6 +355,8 @@ export function CardDrawer({ card, mode, board, currentUser, canEdit, canMove, c
                               module={module}
                               editing={editingContent}
                               canEdit={canEdit}
+                              canAssign={canAssign}
+                              canDates={canDates}
                               members={team}
                               dragProps={dragProps}
                               onChange={onChange}
