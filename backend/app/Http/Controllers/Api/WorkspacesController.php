@@ -164,10 +164,11 @@ class WorkspacesController extends Controller
 
         $recentProjects = (clone $projectsQuery)
             ->orderByDesc('projects.updated_at')->orderByDesc('projects.id')
-            ->limit(6)->get(['projects.id', 'projects.name', 'projects.description', 'projects.updated_at'])
+            ->limit(6)->get(['projects.id', 'projects.name', 'projects.description', 'projects.image_path', 'projects.updated_at'])
             ->map(fn ($project) => [
                 'id' => $project->id,
                 'name' => $project->name,
+                'image_url' => $project->image_path ? '/storage/'.$project->image_path : null,
                 'description' => $project->description,
                 'total' => (int) ($counts->get($project->id)?->total ?? 0),
                 'completed' => (int) ($counts->get($project->id)?->completed ?? 0),

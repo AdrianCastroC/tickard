@@ -269,6 +269,7 @@ La demo usa el Workspace **Altaris** (antes Tickard Demo) y los clientes **Aster
 - `docs/Altaris_logo.png`
 - `docs/AsterLabs_logo.png`
 - `docs/NorteDigital_logo.png`
+- `docs/Nebula_logo.png` — logo del proyecto Nébula Mobile
 
 `DatabaseSeeder` ejecuta `DemoBrandAssetsSeeder` al final: copia los archivos al disco público de Laravel y asigna `image_path` al Workspace y a los dos clientes, sin crear identidades duplicadas. En instalaciones con la demo ya poblada, no hace falta reiniciar la base de datos. Tras actualizar el repositorio:
 
@@ -279,7 +280,7 @@ php artisan storage:link
 php artisan db:seed --class=DemoBrandAssetsSeeder
 ```
 
-El paso `storage:link` solo es necesario si no existe ya el enlace a `public/storage`. La seeder de branding es **repetible**, reutiliza el Workspace de Ana y actualiza las imágenes de los clientes existentes. No relanza Nébula Mobile ni modifica tareas, comentarios o proyectos. El frontend toma las imágenes de `/storage/...` en el selector del Workspace, la cabecera de Altaris y los paneles de clientes.
+El paso `storage:link` solo es necesario si no existe ya el enlace a `public/storage`. La seeder de branding es **repetible**, reutiliza el Workspace de Ana y actualiza las imágenes de los clientes existentes, así como el logo de **Nébula Mobile**, sin recrear el proyecto. El proyecto dispone de `projects.image_path` y el logo se refleja en la barra lateral, el dashboard del Workspace y la cabecera del proyecto. No relanza Nébula Mobile ni modifica tareas, comentarios o proyectos. El frontend toma las imágenes de `/storage/...` en el selector del Workspace, la cabecera de Altaris y los paneles de clientes.
 
 ---
 

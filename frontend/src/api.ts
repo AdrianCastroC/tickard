@@ -197,6 +197,7 @@ export type Project = {
   id: number
   workspace_id: number
   name: string
+  image_url?: string | null
   client_name: string | null
   client_company_id: number | null
   client_access_enabled: boolean

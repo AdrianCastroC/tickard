@@ -8,7 +8,7 @@ import { DeleteWorkspaceModal } from '../sidebar/WorkspaceSelector/DeleteWorkspa
 
 type Section = 'members' | 'departments' | 'teams' | 'clients'
 type DashboardProject = {
-  id: number; name: string; description: string | null; total: number; completed: number
+  id: number; name: string; image_url: string | null; description: string | null; total: number; completed: number
   latest_due_date: string | null; member_count: number
   members: { id: number; name: string; avatar_url: string | null }[]
 }
@@ -271,7 +271,9 @@ export function WorkspaceOverview({ profile, workspaceId, onProfileRefresh, onOp
                 <button key={project.id} type="button" className="wd-project" onClick={() => onOpenProject(project.id)}>
                   <span className="wd-project-intro">
                     <span className={`wd-project-logo wd-project-logo-${i%4}`}>
-                      <NavIcon><rect x="5" y="4" width="14" height="16" rx="2"/><path d="M9 8h6m-6 4h6m-6 4h4"/></NavIcon>
+                      {project.image_url
+                        ? <img src={project.image_url} alt="" className="wd-project-image"/>
+                        : <NavIcon><rect x="5" y="4" width="14" height="16" rx="2"/><path d="M9 8h6m-6 4h6m-6 4h4"/></NavIcon>}
                     </span>
                     <span className="wd-project-heading">
                       <strong title={project.name}>{project.name}</strong>

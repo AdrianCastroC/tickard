@@ -128,6 +128,9 @@ class NebulaMobileDemoSeeder extends Seeder
                 'show_comments' => true,
             ]);
 
+            // The project can also be created with this seeder alone.
+            app(DemoBrandAssetsSeeder::class)->applyNebulaLogo($project);
+
             $this->prepareProjectMembers($project);
             $this->prepareLabels($project);
 
