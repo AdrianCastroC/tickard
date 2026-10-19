@@ -284,6 +284,18 @@ El paso `storage:link` solo es necesario si no existe ya el enlace a `public/sto
 
 ---
 
+### Resumen del tablero
+
+La pestaña **Resumen** de cada tablero presenta únicamente datos reales del tablero seleccionado, sin mezclar las Cards de otros tableros del proyecto. El backend sirve un endpoint resumido `GET /api/boards/{board}/dashboard` sin hidratar los módulos completos de las tarjetas.
+
+- Seis indicadores: total de tareas activas, por hacer, en progreso, en revisión, completadas y vencidas.
+- Progreso por tareas completadas, distribución por los cinco estados reales (incluido Backlog), prioridades y fechas de planificación.
+- Contadores de tareas sin fecha, con fecha y bloqueadas por una dependencia pendiente.
+- Tareas con plazo e hitos, actividad reciente, miembros con asignaciones, etiquetas más usadas y adjuntos recientes.
+- Los listados de Cards y archivos abren la Card original; los accesos Tablero/Gantt cambian la vista actual.
+- Las cuentas cliente no reciben tareas internas, sus actividades ni sus adjuntos; los comentarios internos se omiten y los agregados de dependencias privadas no se publican.
+- Las filas quedan acotadas al alto disponible del contenido del tablero y se adaptan a la pantalla mediante scroll interno.
+
 ### Vista general del Workspace
 
 El dashboard principal sigue la referencia de Tickard Demo: identidad y métricas en cabecera; proyectos recientes, tareas pendientes, actividad, equipos y departamentos en el área central; miembros, clientes y anuncios en el panel derecho. Cada bloque consume datos reales del backend y respeta el Workspace activo.
