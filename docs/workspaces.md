@@ -271,6 +271,12 @@ La tarjeta **Miembros del Workspace** se alinea con las métricas y limita sus a
 
 Las actividades muestran la misma foto de cuenta que en el resto de Tickard. Si un usuario no ha subido ninguna, se emplea el mismo identificador estable de usuario para el avatar de reserva, evitando fotos distintas según la vista.
 
+**Distribución de altura acotada:** las métricas quedan inmediatamente encima de «Proyectos recientes», en el área central. La columna derecha de Miembros, Clientes y Anuncios ocupa toda la altura restante del dashboard. La página respeta la altura del viewport: el contenido central se desplaza dentro de su región y los listados largos del lateral tienen su propio scroll. En pantallas pequeñas, las secciones se apilan sin crear scroll general.
+
+**Breadcrumb navegable:** los niveles anteriores de la ruta permiten regresar a Inicio, la vista del Workspace y el resumen del proyecto; «Proyectos» abre el listado de proyectos del Workspace.
+
+**Gantt de tableros pequeños:** la adaptación del rango temporal a la geometría de dependencias queda desactivada en tableros sin dependencias y pasa a ser monotónica cuando sí las hay, evitando oscilaciones de tamaño. Si el componente de Gantt falla, aparece un panel de recuperación en lugar de desmontar el resto de la aplicación.
+
 El botón **Configuración** abre los ajustes existentes del propietario (nombre, cumpleaños, Clientes y eliminación). Así los formularios no ocupan espacio en la vista principal. **Anuncios del Workspace** presenta un estado vacío porque aún no existe un modelo de anuncios; no se simulan publicaciones. Se conserva el loading y el scroll interno.
 
 
