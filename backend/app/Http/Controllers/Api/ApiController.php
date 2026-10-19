@@ -12,6 +12,8 @@ use App\Models\Team;
 use App\Models\User;
 use App\Support\Notifier;
 use App\Support\ProjectAccess;
+use App\Support\RolePermissions;
+use App\Support\WorkspaceClientAccess;
 use App\Models\Workspace;
 
 class ApiController extends Controller
@@ -95,15 +97,28 @@ protected function internalIds(array $ids): array
             ->count();
 
         $workspaceList = $workspaces
-            ->map(fn (Workspace $workspace) => [
+            ->map(function (Workspace $workspace) use ($user) {
+                $membership = $workspace->memberships()->where('user_id', $user->id)->first();
+                $isClient = WorkspaceClientAccess::isClient($user, $workspace);
+                $custom = $membership?->customRole;
+                $permissions = $isClient ? [] : ((int) $workspace->owner_id === (int) $user->id
+                    ? RolePermissions::WORKSPACE
+                    : ($custom && $custom->scope === 'workspace' && (int) $custom->workspace_id === (int) $workspace->id
+                        ? $custom->permissions
+                        : ($membership?->role === 'admin'
+                            ? array_values(array_diff(RolePermissions::WORKSPACE, ['workspace.manage']))
+                            : ['workspace.view'])));
+                return [
                 'id' => $workspace->id,
                 'name' => $workspace->name,
                 'image_url' => $workspace->image_path ? '/storage/'.$workspace->image_path : null,
                 'role' => $workspace->pivot->role,
+                'permissions' => $permissions,
                 'plan' => $workspace->effectivePlan(),
                 'show_birthdays' => (bool) $workspace->show_birthdays,
                 'show_clients' => (bool) $workspace->show_clients,
-            ])
+            ];
+            })
             ->values();
 
         return [
