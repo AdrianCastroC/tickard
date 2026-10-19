@@ -16,6 +16,7 @@ use App\Models\Workspace;
 use App\Support\CardPresenter;
 use App\Support\ProjectAccess;
 use App\Support\ProjectFileStorage;
+use App\Support\WorkspacePersonnelGuard;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
@@ -49,8 +50,7 @@ class ProjectsController extends ApiController
             )
             ->firstOrFail();
 
-        abort_unless($request->user()->is_admin
-            || (int) $workspace->owner_id === (int) $request->user()->id, 403);
+        abort_unless(WorkspacePersonnelGuard::canManage($request, $workspace, 'workspace.projects'), 403);
 
         $imagePath = null;
         try {
