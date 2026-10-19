@@ -28,8 +28,10 @@ class WorkspacePersonnelGuard
         $membership = $workspace->memberships()->where('user_id', $user->id)->first();
         if (! $membership && ! $user->is_admin) return false;
         if (WorkspaceClientAccess::isClient($user, $workspace)) return false;
-        if ((int) $workspace->owner_id === (int) $user->id
-            || (bool) $user->is_admin || in_array($membership?->role, ['owner', 'admin'], true)) return true;
+        if ((int) $workspace->owner_id === (int) $user->id || (bool) $user->is_admin) return true;
+        if ($membership?->role === 'admin' && $membership->custom_role_id === null) {
+            return BuiltinRolePermissions::has($workspace, 'admin', $permission);
+        }
         $custom = $membership?->customRole;
         return $custom !== null && in_array($custom->scope, ['workspace', 'both'], true)
             && (int) $custom->workspace_id === (int) $workspace->id
@@ -42,6 +44,9 @@ class WorkspacePersonnelGuard
         if (WorkspaceClientAccess::isClient($user, $workspace)) return false;
         if ((int) $workspace->owner_id === (int) $user->id) return true;
         $membership = $workspace->memberships()->where('user_id', $user->id)->first();
+        if ($membership?->role === 'admin' && $membership->custom_role_id === null) {
+            return BuiltinRolePermissions::has($workspace, 'admin', 'workspace.manage');
+        }
         $custom = $membership?->customRole;
         return $custom !== null && in_array($custom->scope, ['workspace', 'both'], true)
             && (int) $custom->workspace_id === (int) $workspace->id
