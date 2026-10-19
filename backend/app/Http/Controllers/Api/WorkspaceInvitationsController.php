@@ -162,7 +162,7 @@ class WorkspaceInvitationsController extends ApiController
         $customRole = null;
         if (! empty($data['custom_role_id'])) {
             $customRole = WorkspaceCustomRole::where('workspace_id', $workspace->id)
-                ->where('scope', $project ? 'project' : 'workspace')
+                ->whereIn('scope', [$project ? 'project' : 'workspace', 'both'])
                 ->findOrFail($data['custom_role_id']);
             abort_if($project && $role !== 'lector', 422,
                 'Un rol personalizado no puede heredar privilegios del rol base.');
@@ -290,7 +290,7 @@ class WorkspaceInvitationsController extends ApiController
                 $customRole = $invitation->customRole;
                 if ($invitation->custom_role_id !== null) {
                     abort_unless($customRole && (int) $customRole->workspace_id === (int) $workspace->id
-                        && $customRole->scope === ($invitation->project_id ? 'project' : 'workspace'), 409,
+                        && in_array($customRole->scope, [$invitation->project_id ? 'project' : 'workspace', 'both'], true), 409,
                         'El rol de esta invitación ya no es válido. Solicita una nueva invitación.');
                 }
                 $hasWorkspace = $workspace->memberships()->where('user_id', $request->user()->id)->exists();
