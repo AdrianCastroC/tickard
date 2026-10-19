@@ -538,7 +538,7 @@ export function MembersSurface({ workspaceId, workspaceName }: {
                   <dt>Incorporación</dt><dd>{selected.joined_at ? formatDateLong(selected.joined_at) : 'Sin fecha'}</dd>
                 </dl>
               </section>
-              {canRemoveMember && <section className={styles.removeSection}>
+              {selected && canRemoveMember && <section className={styles.removeSection}>
                 <strong>Dar de baja del Workspace</strong>
                 <p>Retira sus accesos y asignaciones sin eliminar su cuenta ni el historial de trabajo.</p>
                 <button type="button" className={styles.removeAction} onClick={() => openRemoveMember(selected)}>
