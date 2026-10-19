@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Models\Workspace;
 use App\Models\WorkspaceCustomRole;
 use App\Support\RolePermissions;
+use App\Support\WorkspaceClientAccess;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
@@ -12,6 +13,7 @@ class WorkspaceRolesController extends ApiController
 {
     private function workspace(Request $request, Workspace $workspace, bool $write = false): Workspace
     {
+        abort_if(WorkspaceClientAccess::isClient($request->user(), $workspace), 403);
         abort_unless($request->user()->is_admin
             || $workspace->memberships()->where('user_id', $request->user()->id)->exists(), 403);
         if ($write) {
