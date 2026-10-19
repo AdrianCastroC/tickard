@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
 import type { BoardPayload, Profile, Project } from '../../api'
 import { api } from '../../api'
 import { ProjectSettings } from '../administration'
@@ -33,6 +34,8 @@ export function ProjectLayout({
   onBoardSelect = (id) => window.dispatchEvent(new CustomEvent('tickard:select-board', { detail: id })),
 }: Props) {
   const [deleting, setDeleting] = useState(false)
+  const [settingsOpen, setSettingsOpen] = useState(false)
+  useEffect(() => { setSettingsOpen(false) }, [project.id])
   const canManage = project.role === 'responsable'
   async function deleteProject(name: string) {
     await api(`/projects/${project.id}`, { method: 'DELETE', body: JSON.stringify({ confirmation_name: name }) })
@@ -40,7 +43,7 @@ export function ProjectLayout({
     onDeleted(project.id, next.projects)
   }
   function changeView(next: ProjectView) {
-    onProjectViewChange(next)
+    onProjectViewChange(next === 'settings' ? 'overview' : next)
     onContextChange?.('project')
   }
 
@@ -54,11 +57,7 @@ export function ProjectLayout({
     {projectView === 'calendar' && profile && <ProjectCalendar key={project.id} project={project} profile={profile}/>}
     {projectView === 'files' && profile && <ProjectFiles key={project.id} project={project} profile={profile}/>}
     {projectView === 'team' && profile && <ProjectPersonnel key={project.id} project={project} profile={profile}/>}
-    {projectView === 'settings' && canManage && <ProjectSettings key={project.id}
-      project={project} onRefresh={onRefresh} onDelete={() => setDeleting(true)}/>}
-    {projectView === 'settings' && !canManage && <section className="project-panel">
-      <h2>Configuración del proyecto</h2><p className="muted">No tienes permisos para administrar este proyecto.</p>
-    </section>}
+
   </>
   const boardContent = context !== 'project' && boardState && filters && profile && query !== undefined
     ? <BoardSurface state={boardState} filters={filters} activeBoardId={context} project={project}
@@ -68,12 +67,29 @@ export function ProjectLayout({
 
   return <div className="workspace project-layout">
     {context === 'project' && <>
-      <ProjectHeader project={project} settingsActive={projectView === 'settings'}
-        onSettings={() => changeView(projectView === 'settings' ? 'overview' : 'settings')}/>
+      <ProjectHeader project={project} settingsActive={settingsOpen}
+        onSettings={() => setSettingsOpen(true)}/>
       <ProjectNavigation value={projectView} onChange={changeView}/>
-      <div className={`project-view${projectView === 'boards' ? ' project-view-boards' : projectView === 'overview' ? ' project-view-overview' : projectView === 'settings' ? ' project-view-settings' : ''}`}>{projectContent}</div>
+      <div className={`project-view${projectView === 'boards' ? ' project-view-boards' : projectView === 'overview' ? ' project-view-overview' : ''}`}>{projectContent}</div>
     </>}
     {boardContent}
+    {settingsOpen && canManage && createPortal(
+      <div className="wd-modal-back" onMouseDown={event => {
+        if (event.target === event.currentTarget) setSettingsOpen(false)
+      }}>
+        <div className="wd-modal project-settings-modal" role="dialog" aria-modal="true" aria-labelledby="project-settings-modal-title">
+          <header className="wd-modal-head">
+            <h2 id="project-settings-modal-title">Configuración del proyecto</h2>
+            <button type="button" aria-label="Cerrar configuración" onClick={() => setSettingsOpen(false)}>×</button>
+          </header>
+          <div className="project-settings-modal-body">
+            <ProjectSettings key={project.id} project={project} onRefresh={onRefresh}
+              onDelete={() => { setSettingsOpen(false); setDeleting(true) }}/>
+          </div>
+        </div>
+      </div>,
+      document.body,
+    )}
     {deleting && <DeleteProjectModal project={project} onClose={() => setDeleting(false)} onConfirm={deleteProject}/>}
   </div>
 }

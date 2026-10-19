@@ -4366,3 +4366,14 @@ h1, h2, h3, p { margin: 0; }
 .workspace-settings-modal .workspace-overview-toggles .workspace-birthday-toggle {padding:9px 11px;}
 .workspace-settings-modal .workspace-overview-rename {max-width:none;}
 @media (max-width:480px) {.workspace-settings-modal .workspace-overview-rename > div {flex-wrap:wrap;}.workspace-settings-modal .workspace-overview-rename .primary {width:100%;}}
+
+/* Project configuration opens as a viewport-contained modal, like Workspace settings. */
+.project-settings-modal {width:min(720px,calc(100vw - 32px));max-height:calc(100dvh - 32px);display:flex;flex-direction:column;min-height:0;}
+.project-settings-modal > .wd-modal-head {flex:0 0 auto;}
+.project-settings-modal-body {min-height:0;overflow-y:auto;overscroll-behavior:contain;padding:14px;}
+.project-settings-modal .project-settings-view {overflow:visible;padding:0;gap:10px;}
+.project-settings-modal .project-settings-grid {grid-template-columns:minmax(0,1fr);gap:10px;}
+.project-settings-modal .project-settings-section {padding:13px;gap:11px;}
+.project-settings-modal .project-settings-section-title p,.project-settings-modal .project-settings-hint {font-size:10px;}
+.project-settings-modal .project-settings-visibility {gap:7px;}
+.project-settings-button .account-ico {width:19px;height:19px;}
