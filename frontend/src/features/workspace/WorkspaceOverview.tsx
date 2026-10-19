@@ -247,7 +247,7 @@ export function WorkspaceOverview({ profile, workspaceId, onProfileRefresh, onOp
         <p>Gestiona tus proyectos, tareas y equipos desde un solo lugar.</p>
       </div>
       {summary.can_manage && <button type="button" className="wd-settings-btn"
-        onClick={() => setSettingsTab('general'); setSettingsOpen(true)} aria-label="Configuración del Workspace" title="Configuración del Workspace">
+        onClick={() => { setSettingsTab('general'); setSettingsOpen(true) }} aria-label="Configuración del Workspace" title="Configuración del Workspace">
         <SettingsIcon/>
         Configuración
       </button>}
