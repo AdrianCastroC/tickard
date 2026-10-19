@@ -24,7 +24,7 @@ type Assignment = {
   updated_at: string | null
 }
 type Member = {
-  id: number; name: string; email: string | null; avatar_url: string | null; role: Role; custom_role_id: number | null; is_workspace_owner: boolean; job_title: string | null
+  id: number; name: string; email: string | null; avatar_url: string | null; role: Role; custom_role_id: number | null; custom_role_name: string | null; is_workspace_owner: boolean; job_title: string | null
   teams: Group[]; departments: Group[]; stats: Stats; column_counts: Record<number, number>; tasks: Assignment[]
 }
 type PersonnelColumn = {
@@ -296,7 +296,7 @@ export function ProjectPersonnel({ project, profile }: { project: Project; profi
       switch (sort.key) {
         case 'name': return member.name
         case 'job': return member.job_title ?? ''
-        case 'role': return member.is_workspace_owner ? 'Owner' : roleName(member.role)
+        case 'role': return member.is_workspace_owner ? 'Owner' : member.custom_role_name || roleName(member.role)
         case 'department': return initials(member.departments)
         case 'team': return initials(member.teams)
         case 'tasks': return member.stats.total
@@ -433,7 +433,7 @@ export function ProjectPersonnel({ project, profile }: { project: Project; profi
                   <span><strong>{person.name}{person.id === profile.user.id ? ' (Tú)' : ''}</strong></span>
                 </button></td>
                 <td className={styles.jobCell} title={person.job_title ?? 'Sin cargo asignado'}>{person.job_title || 'Sin especificar'}</td>
-                <td><span className={`${styles.roleTag} ${person.role === 'responsable' ? styles.responsible : ''}`}>{person.is_workspace_owner ? 'Owner' : roleName(person.role)}</span></td>
+                <td><span className={`${styles.roleTag} ${person.role === 'responsable' ? styles.responsible : ''}`}>{person.is_workspace_owner ? 'Owner' : person.custom_role_name || roleName(person.role)}</span></td>
                 <td title={initials(person.departments)}>{initials(person.departments)}</td>
                 <td title={initials(person.teams)}>{initials(person.teams)}</td>
                 <td><div className={styles.assignedBar}><StatusBar member={person} groups={columnGroups} compact /><small>{person.stats.total} tareas</small></div></td>
@@ -473,7 +473,7 @@ export function ProjectPersonnel({ project, profile }: { project: Project; profi
       {selected && <aside className={styles.details}>
         <div className={styles.personHeading}>
           <Avatar id={selected.id} name={selected.name} src={selected.avatar_url} size={52}/>
-          <div><strong>{selected.name}</strong><span className={styles.roleTag}>{selected.is_workspace_owner ? 'Propietario del Workspace' : roleName(selected.role)}</span></div>
+          <div><strong>{selected.name}</strong><span className={styles.roleTag}>{selected.is_workspace_owner ? 'Propietario del Workspace' : selected.custom_role_name || roleName(selected.role)}</span></div>
           <button type="button" aria-label="Cerrar detalle" className={styles.closeDetail} onClick={() => setSelectedId(null)}><MiniIcon name="close" /></button>
         </div>
         <div className={styles.detailTabs}>
@@ -651,7 +651,7 @@ function ManagementModal({ project, data, onClose, onChanged }: { project: Proje
             <option value="">Seleccionar persona…</option>{available.map((person) => <option key={person.id} value={person.id}>{person.name}</option>)}
           </select></label>
         <label>Rol <select value={memberRole} onChange={(event) => setMemberRole(event.target.value)}>
-          {MANAGE_ROLES.map((item) => <option key={item.key} value={item.key}>{item.name}</option>)}
+          {options.map(item => <option key={item.value} value={item.value}>{item.label}</option>)}
         </select></label>
         <button type="button" className={styles.modalPrimary} disabled={!userId || busy} onClick={() => void addPerson()}>Añadir miembro</button>
         <strong className={styles.modalSectionTitle}>Miembros actuales</strong>
