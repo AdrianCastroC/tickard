@@ -261,6 +261,21 @@ No es necesaria ninguna migración: se reutilizan los campos actuales de `projec
 
 ---
 
+### Vista general del Workspace
+
+Al pulsar el nombre del Workspace en el menú lateral se abre su **vista general**. Incluye métricas calculadas en el backend exclusivamente para el Workspace activo: proyectos, miembros, equipos, departamentos y empresas cliente cuando está habilitado el módulo Clientes.
+
+- Owner y administradores: pueden consultar las métricas de organización y acceder desde la vista a las secciones de Personal.
+- Miembros sin privilegios de administración: ven únicamente los proyectos a los que están asignados, sin el directorio ni recuentos internos.
+- Cuentas cliente: ven únicamente el número de proyectos externos realmente accesibles; no reciben recuentos de personal, equipos, departamentos o clientes.
+- Propietario: puede además cambiar el nombre, controlar los cumpleaños de calendario, habilitar/deshabilitar el módulo Clientes y eliminar el Workspace mediante confirmación de su nombre, excepto si es su único Workspace propio.
+
+La interfaz tiene loading compartido con Gantt, mensajes de error y confirmación y scroll dentro de la sección sin desplazar la navegación global.
+
+`GET /api/workspaces/{workspace}/overview` exige pertenencia al Workspace; filtra cifras y opciones según el rol. El renombrado utiliza el endpoint `PATCH /api/workspaces/{workspace}` ya existente, recortando espacios y rechazando nombres vacíos. Los controles de cumpleaños y clientes reutilizan sus rutas de configuración; la eliminación reutiliza `DELETE /api/workspaces/{workspace}`. No requiere migraciones.
+
+---
+
 ## 10. Workspace activo
 
 Aunque una cuenta pueda pertenecer a múltiples Workspaces, el usuario trabaja dentro de un contexto de Workspace determinado.
