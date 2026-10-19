@@ -8,6 +8,7 @@ use App\Models\ProjectMember;
 use App\Models\User;
 use App\Models\Workspace;
 use App\Models\WorkspaceInvitation;
+use App\Models\WorkspaceCustomRole;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Artisan;
 use Tests\TestCase;
@@ -234,6 +235,63 @@ class WorkspaceInvitationsTest extends TestCase
         $this->assertDatabaseHas('workspace_invitations', [
             'workspace_id' => $workspace->id, 'recipient_user_id' => $recipient->id,
         ]);
+    }
+
+    public function test_custom_project_role_is_applied_when_invitation_is_accepted(): void
+    {
+        [$owner, $workspace, $project] = $this->fixture();
+        $recipient = User::factory()->create();
+        $custom = WorkspaceCustomRole::create([
+            'workspace_id' => $workspace->id, 'scope' => 'project',
+            'name' => 'Coordinación', 'permissions' => ['project.view', 'cards.comment'],
+        ]);
+        $sent = $this->actingAs($owner)->postJson("/api/projects/{$project->id}/invitations", [
+            'recipients' => [$recipient->publicHandle()], 'role' => 'lector', 'custom_role_id' => $custom->id,
+        ])->assertCreated()->assertJsonPath('created.0.custom_role_name', 'Coordinación');
+        $this->actingAs($recipient)->postJson("/api/my/invitations/{$sent->json('created.0.id')}/respond", [
+            'action' => 'accept',
+        ])->assertOk();
+        $this->assertDatabaseHas('project_members', [
+            'project_id' => $project->id, 'user_id' => $recipient->id,
+            'role' => 'lector', 'custom_role_id' => $custom->id,
+        ]);
+    }
+
+    public function test_custom_workspace_role_is_applied_and_cross_workspace_roles_are_rejected(): void
+    {
+        [$owner, $workspace] = $this->fixture();
+        $recipient = User::factory()->create();
+        $custom = WorkspaceCustomRole::create([
+            'workspace_id' => $workspace->id, 'scope' => 'workspace',
+            'name' => 'Colaborador', 'permissions' => ['workspace.view'],
+        ]);
+        $sent = $this->actingAs($owner)->postJson("/api/workspaces/{$workspace->id}/invitations", [
+            'recipients' => [$recipient->publicHandle()], 'custom_role_id' => $custom->id,
+        ])->assertCreated();
+        $this->actingAs($recipient)->postJson("/api/my/invitations/{$sent->json('created.0.id')}/respond", [
+            'action' => 'accept',
+        ])->assertOk();
+        $this->assertDatabaseHas('workspace_members', [
+            'workspace_id' => $workspace->id, 'user_id' => $recipient->id,
+            'role' => 'member', 'custom_role_id' => $custom->id,
+        ]);
+        [$otherOwner, $otherWorkspace, $otherProject] = $this->fixture();
+        $this->actingAs($otherOwner)->postJson("/api/projects/{$otherProject->id}/invitations", [
+            'recipients' => [$recipient->publicHandle()], 'role' => 'lector', 'custom_role_id' => $custom->id,
+        ])->assertNotFound();
+    }
+
+    public function test_custom_project_role_cannot_inherit_responsable_permissions(): void
+    {
+        [$owner, $workspace, $project] = $this->fixture();
+        $custom = WorkspaceCustomRole::create([
+            'workspace_id' => $workspace->id, 'scope' => 'project',
+            'name' => 'Lector especial', 'permissions' => ['project.view'],
+        ]);
+        $this->actingAs($owner)->postJson("/api/projects/{$project->id}/invitations", [
+            'recipients' => [User::factory()->create()->publicHandle()],
+            'role' => 'responsable', 'custom_role_id' => $custom->id,
+        ])->assertUnprocessable();
     }
 
 }
