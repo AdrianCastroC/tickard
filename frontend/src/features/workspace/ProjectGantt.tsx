@@ -54,6 +54,8 @@ export function ProjectGantt({ project, profile, onNavigateExternalCard }: Props
   const [refreshKey, setRefreshKey] = useState(0)
   const [mountedKey, setMountedKey] = useState<string | null>(null)
   const [readyKey, setReadyKey] = useState<string | null>(null)
+  const [renderAttempt, setRenderAttempt] = useState(0)
+  const [preparationStalled, setPreparationStalled] = useState(false)
   const ganttViewportRef = useRef<HTMLDivElement>(null)
   const load = useCallback(async (signal?: AbortSignal, fresh = false) => {
     // Keep the existing server permission checks for every board.
@@ -90,7 +92,7 @@ export function ProjectGantt({ project, profile, onNavigateExternalCard }: Props
   const boards = snapshot?.projectId === project.id && snapshot.boardIds === boardIds
     ? snapshot.boards : null
   const columns = useMemo(() => boards?.flatMap((board) => board.columns) ?? [], [boards])
-  const renderKey = boards ? `${project.id}:${boardIds}` : null
+  const renderKey = boards ? `${project.id}:${boardIds}:${renderAttempt}` : null
   // The data-fetching render must have a chance to paint the skeleton
   // before a potentially expensive multi-year grid mounts.
   useEffect(() => {
@@ -107,6 +109,13 @@ export function ProjectGantt({ project, profile, onNavigateExternalCard }: Props
   }, [renderKey])
   const chartMounted = renderKey !== null && mountedKey === renderKey
   const chartReady = renderKey !== null && readyKey === renderKey
+  // A permanently unmeasurable grid must never strand a user behind a
+  // spinner. Offer a render-only retry without refetching all boards.
+  useEffect(() => {
+    if (!chartMounted || chartReady) return
+    const timer = window.setTimeout(() => setPreparationStalled(true), 15_000)
+    return () => window.clearTimeout(timer)
+  }, [chartMounted, chartReady, renderKey])
   // Only a selected Card needs full comments, activities, modules and
   // checklists. Do not preload them across every board in the project.
   useEffect(() => {
@@ -183,7 +192,7 @@ export function ProjectGantt({ project, profile, onNavigateExternalCard }: Props
       aria-busy={!chartReady} aria-label="Área desplazable del Gantt del proyecto">
       {chartMounted && <div className={`project-gantt-render${chartReady ? '' : ' project-gantt-render-pending'}`}
         aria-hidden={!chartReady}>
-        <GanttView key={`project-${project.id}`}
+        <GanttView key={`project-${project.id}-${renderAttempt}`}
           board={boards[0]} cards={columns} projectBoards={boards}
           canEdit={false}
           onOpen={(card) => {
@@ -197,6 +206,13 @@ export function ProjectGantt({ project, profile, onNavigateExternalCard }: Props
       </div>}
       {!chartReady && <div className="project-gantt-preparation">
         <ProjectGanttSkeleton measuring />
+        {preparationStalled && <div className="project-gantt-preparation-retry" role="status">
+          <p>El calendario está tardando más de lo esperado en prepararse.</p>
+          <button type="button" className="ghost" onClick={() => {
+            setPreparationStalled(false)
+            setRenderAttempt(value => value + 1)
+          }}>Reintentar preparación</button>
+        </div>}
       </div>}
     </div>
     {selected && (detailLoading || detailError) && createPortal(
