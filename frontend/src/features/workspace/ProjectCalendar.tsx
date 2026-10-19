@@ -1,7 +1,7 @@
 import { cachedProjectRequest, invalidateProjectRequestCache } from '../../shared/projectRequestCache'
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { createPortal } from 'react-dom'
-import { api, ApiError, type BacklogResolution, type BoardPayload, type CalendarEvent, type Card, type Profile, type Project, type WorkflowState } from '../../api'
+import { api, canProject, ApiError, type BacklogResolution, type BoardPayload, type CalendarEvent, type Card, type Profile, type Project, type WorkflowState } from '../../api'
 import { BacklogResolutionModal } from '../board/BacklogResolutionModal'
 import { CardDrawer } from '../cards/CardDetail'
 import { Avatar } from '../../shared/ui'
@@ -371,6 +371,7 @@ export function ProjectCalendar({ project, profile }: { project: Project; profil
     return () => { alive = false; controller.abort() }
   }, [project.id, project.role, calendarFirst, calendarLast, eventReload])
 
+  const canEditEvents = canProject(project, 'cards.edit')
   const canViewAllTasks = profile.user.is_admin || project.role === 'responsable'
   const allCards = useMemo(() => cardsFromBoards(boards ?? [], today), [boards, today])
   const assigneeOptions = useMemo(() => {
@@ -537,7 +538,7 @@ export function ProjectCalendar({ project, profile }: { project: Project; profil
           <button type="button" className={mode === 'month' ? styles.active : undefined} aria-pressed={mode === 'month'} onClick={() => setMode('month')}>Mes</button>
           <button type="button" className={mode === 'agenda' ? styles.active : undefined} aria-pressed={mode === 'agenda'} onClick={() => setMode('agenda')}>Agenda</button>
         </div>
-        {(project.role === 'responsable' || project.role === 'editor') && <button className="primary" type="button" onClick={() => setEventModal('new')}>+ Nuevo evento</button>}
+        {canEditEvents && <button className="primary" type="button" onClick={() => setEventModal('new')}>+ Nuevo evento</button>}
       </div>
     </div>
 
@@ -657,7 +658,7 @@ export function ProjectCalendar({ project, profile }: { project: Project; profil
     )}
     {eventModal && createPortal(<CalendarEventModal key={eventModal === 'new' ? 'new' : eventModal.id}
       projectId={project.id} event={eventModal === 'new' ? null : eventModal} initialDay={selectedDay ?? today}
-      canEdit={project.role === 'responsable' || project.role === 'editor'}
+      canEdit={canEditEvents}
       onClose={() => setEventModal(null)}
       onSaved={() => { setEventModal(null); setEventReload((n) => n + 1) }} />, document.body)}
     {selected && (detailLoading || detailError || (detailBoard && !cardData)) && createPortal(
