@@ -367,6 +367,8 @@ class WorkspaceMembersTest extends TestCase
         ]);
         $this->assertDatabaseHas('cards', ['id' => $card->id, 'title' => 'Trabajo compartido']);
         $this->assertDatabaseHas('cards', ['id' => $onlyMine->id]);
+        $this->assertDatabaseHas('boards', ['id' => $board->id, 'revision' => 1]);
+        $this->assertDatabaseHas('boards', ['id' => $otherBoard->id, 'revision' => 0]);
         $this->assertDatabaseHas('card_checklist_items', ['id' => $checklist->id]);
         $this->assertDatabaseHas('comments', [
             'card_id' => $card->id, 'user_id' => $member->id, 'body' => 'Comentario histórico',
