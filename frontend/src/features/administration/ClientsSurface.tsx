@@ -483,16 +483,16 @@ export function ClientsSurface({workspaceId}:{workspaceId:number|null}) {
               <small className={styles.hint}>Solo usuarios activos y con correo verificado asociados a este cliente.</small>
             </label>}
             <p className={styles.hint}>Las personas se vinculan a esta empresa mediante sus cuentas de Tickard. No se crea una agenda independiente.</p>
+            {editor==='edit'&&selected&&<div className={styles.editDangerZone}>
+              <strong>Eliminar cliente</strong>
+              <p>Solo se puede eliminar una empresa sin usuarios ni proyectos vinculados.</p>
+              <button type="button" className={styles.dangerLink}
+                disabled={busy||imageBusy||selected.projects_count>0||selected.people_count>0}
+                onClick={()=>setConfirmDeleteIds([selected.id])}><TrashIcon/> Eliminar cliente</button>
+              {(selected.projects_count>0||selected.people_count>0)&&<small className={styles.hint}>
+                Desvincula primero los proyectos y usuarios de esta empresa.</small>}
+            </div>}
           </div>
-          {editor==='edit'&&selected&&<div className={styles.editDangerZone}>
-            <strong>Eliminar cliente</strong>
-            <p>Solo se puede eliminar una empresa sin usuarios ni proyectos vinculados.</p>
-            <button type="button" className={styles.dangerLink}
-              disabled={busy||imageBusy||selected.projects_count>0||selected.people_count>0}
-              onClick={()=>setConfirmDeleteIds([selected.id])}><TrashIcon/> Eliminar cliente</button>
-            {(selected.projects_count>0||selected.people_count>0)&&<small className={styles.hint}>
-              Desvincula primero los proyectos y usuarios de esta empresa.</small>}
-          </div>}
           {error&&<p className={styles.formError} role="alert">{error}</p>}
           <footer className={styles.formActions}>
             <button type="button" className={styles.subtle} disabled={busy} onClick={()=>setEditor(null)}>Cancelar</button>
