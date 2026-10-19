@@ -149,6 +149,16 @@ class WorkspaceMembersController extends ApiController
             $teamIds = DB::table('teams')->select('id')
                 ->where('workspace_id', $workspace->id);
 
+            // Remember affected boards before detaching assignments: their
+            // revision must advance so Kanban/Gantt caches refresh correctly.
+            $affectedBoardIds = DB::table('card_user as link')
+                ->join('cards', 'cards.id', '=', 'link.card_id')
+                ->join('boards', 'boards.id', '=', 'cards.board_id')
+                ->join('projects', 'projects.id', '=', 'boards.project_id')
+                ->where('projects.workspace_id', $workspace->id)
+                ->where('link.user_id', $user->id)
+                ->distinct()->pluck('boards.id')->all();
+
             // Unassign Tasks and checklist items, including completed Cards,
             // without removing Cards or their historical activity and comments.
             DB::table('card_user')->where('user_id', $user->id)
@@ -167,6 +177,10 @@ class WorkspaceMembersController extends ApiController
                         ->join('projects', 'projects.id', '=', 'boards.project_id')
                         ->where('projects.workspace_id', $workspace->id);
                 })->delete();
+
+            if ($affectedBoardIds) {
+                DB::table('boards')->whereIn('id', $affectedBoardIds)->increment('revision');
+            }
 
             DB::table('project_members')->where('user_id', $user->id)
                 ->whereIn('project_id', $projectIds)->delete();
