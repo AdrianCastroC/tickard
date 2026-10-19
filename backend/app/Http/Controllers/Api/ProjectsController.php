@@ -155,6 +155,32 @@ class ProjectsController extends ApiController
         return response()->noContent();
     }
 
+    public function projectSettings(Request $request, Project $project)
+    {
+        abort_unless(ProjectAccess::canManage($request->user(), $project), 403);
+
+        $workspace = $project->workspace;
+
+        return response()->json([
+            'id' => $project->id,
+            'name' => $project->name,
+            'client_company_id' => $project->client_company_id,
+            'client_access_enabled' => (bool) $project->client_access_enabled,
+            'workspace_clients_enabled' => (bool) $workspace->show_clients,
+            'clients' => $workspace->show_clients
+                ? $workspace->clientCompanies()->orderBy('name')->get(['id', 'name'])
+                : [],
+            'visibility' => [
+                'description' => (bool) $project->show_description,
+                'assignee' => (bool) $project->show_assignee,
+                'due_date' => (bool) $project->show_due_date,
+                'priority' => (bool) $project->show_priority,
+                'labels' => (bool) $project->show_labels,
+                'comments' => (bool) $project->show_comments,
+            ],
+        ]);
+    }
+
     public function updateProject(Request $request, Project $project)
     {
         abort_unless(
@@ -163,6 +189,7 @@ class ProjectsController extends ApiController
         );
 
         $data = $request->validate([
+            'name' => ['sometimes', 'required', 'string', 'max:120'],
             'show_description' => ['sometimes', 'boolean'],
             'show_assignee' => ['sometimes', 'boolean'],
             'show_due_date' => ['sometimes', 'boolean'],
@@ -172,6 +199,11 @@ class ProjectsController extends ApiController
             'client_company_id' => ['sometimes', 'nullable', 'integer'],
             'client_access_enabled' => ['sometimes', 'boolean'],
         ]);
+
+        if (array_key_exists('name', $data)) {
+            $data['name'] = trim($data['name']);
+            abort_if($data['name'] === '', 422, 'El nombre del proyecto no puede estar vacío.');
+        }
 
         if (array_key_exists('client_company_id', $data) || array_key_exists('client_access_enabled', $data)) {
             $workspace = $project->workspace;

@@ -3605,13 +3605,72 @@ h1, h2, h3, p { margin: 0; }
 /* Project settings are a full-page section reached through the header gear. */
 .project-settings-button svg { display:block; width:17px; height:17px; fill:currentColor; stroke:none; }
 .project-settings-button.on { color:var(--accent); border-color:var(--accent); background:color-mix(in srgb,var(--accent) 10%,var(--surface)); }
-.project-settings-view { display:flex; flex-direction:column; align-items:flex-start; gap:16px; }
-.project-settings-view h2 { margin:0; }
-.project-settings-inline { width:100%; }
-.project-settings-body { display:flex; flex-direction:column; gap:15px; width:min(720px,100%); }
-.project-settings-body h2 { font-size:15px; margin:4px 0 2px; }
-.project-settings-body .row { padding:8px 12px; border:1px solid var(--line); border-radius:8px; background:var(--canvas); cursor:pointer; }
-.project-settings-body .notes li { font-size:12px; }
+/* Project settings are scoped to the project rather than an active board. */
+.frame:has(.project-view-settings) {height:100dvh;min-height:0;}
+.main:has(.project-view-settings),
+.workspace.project-layout:has(> .project-view-settings) {min-height:0;overflow:hidden;}
+.workspace.project-layout:has(> .project-view-settings) > .project-hero,
+.workspace.project-layout:has(> .project-view-settings) > .project-surface-nav {flex:0 0 auto;}
+.project-view-settings {flex:1 1 auto;min-height:0;overflow:hidden;}
+.project-settings-view {display:flex;flex-direction:column;flex:1 1 auto;gap:17px;
+  min-width:0;min-height:0;overflow-y:auto;overscroll-behavior:contain;
+  scrollbar-width:none;padding:6px 20px 22px;}
+.project-settings-view::-webkit-scrollbar {display:none;}
+.project-settings-heading {display:flex;flex-direction:column;gap:6px;}
+.project-settings-heading h2 {margin:0;font-size:20px;font-weight:760;color:var(--ink);}
+.project-settings-heading p {margin:0;font-size:12px;line-height:1.55;color:var(--muted);}
+.project-settings-grid {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;align-items:stretch;}
+.project-settings-section {display:flex;flex-direction:column;gap:17px;min-width:0;
+  padding:19px;background:var(--surface);border:1px solid var(--line);border-radius:11px;}
+.project-settings-section-title {display:flex;flex-direction:column;gap:6px;}
+.project-settings-section-title h3 {margin:0;font-size:14px;font-weight:740;color:var(--ink);}
+.project-settings-section-title p {margin:0;font-size:11px;line-height:1.55;color:var(--muted);}
+.project-settings-wide {grid-column:1 / -1;}
+.project-settings-name-form {display:flex;flex-direction:column;gap:8px;}
+.project-settings-field {display:flex;flex-direction:column;gap:8px;font-size:11px;font-weight:680;color:var(--ink);}
+.project-settings-name-row {display:flex;align-items:center;gap:10px;min-width:0;}
+.project-settings-name-row input,.project-settings-field select {box-sizing:border-box;
+  min-width:0;min-height:38px;padding:7px 11px;border-radius:8px;border:1px solid var(--line);
+  color:var(--ink);background:var(--canvas);font:inherit;font-size:12px;}
+.project-settings-name-row input {flex:1 1 auto;}
+.project-settings-name-row button {flex:0 0 auto;min-height:38px;}
+.project-settings-field select {max-width:100%;width:100%;}
+.project-settings-name-row input:focus-visible,.project-settings-field select:focus-visible {
+  outline:2px solid var(--accent);outline-offset:1px;}
+.project-settings-section .primary {min-height:38px;font-size:11px;}
+.project-settings-toggle {display:flex;align-items:center;justify-content:space-between;gap:13px;
+  min-width:0;padding:12px;border:1px solid var(--line);border-radius:9px;background:var(--canvas);cursor:pointer;}
+.project-settings-toggle span {display:flex;flex-direction:column;gap:5px;min-width:0;flex:1;}
+.project-settings-toggle strong {font-size:11px;font-weight:700;color:var(--ink);}
+.project-settings-toggle small {font-size:10px;line-height:1.5;color:var(--muted);}
+.project-settings-toggle input {width:17px;height:17px;flex:0 0 17px;accent-color:var(--accent);cursor:pointer;}
+.project-settings-toggle:has(input:disabled) {opacity:.65;cursor:default;}
+.project-settings-toggle input:disabled {cursor:default;}
+.project-settings-visibility {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;}
+.project-settings-hint {margin:0;font-size:11px;line-height:1.55;color:var(--muted);}
+.project-settings-danger {border-color:color-mix(in srgb,#b64a4a 45%,var(--line));}
+.project-settings-danger .danger {align-self:flex-start;font-size:11px;}
+.project-settings-alert,.project-settings-notice {margin:0;padding:10px 12px;
+  border:1px solid var(--line);border-radius:8px;background:var(--surface);font-size:12px;}
+.project-settings-alert {color:#b64a4a;border-color:#b64a4a;}
+.project-settings-notice {color:var(--accent);}
+.project-settings-load-error {display:flex;flex-direction:column;align-items:flex-start;
+  gap:12px;padding:20px;border:1px solid var(--line);border-radius:10px;background:var(--surface);}
+.project-settings-load-error p {margin:0;font-size:12px;color:var(--muted);}
+.project-settings-loading-skeleton {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:14px;width:100%;height:100%;min-height:380px;}
+.project-settings-loading-skeleton > div {min-height:180px;border-radius:11px;background:var(--surface);
+  border:1px solid var(--line);}
+@media(max-width:800px) {
+  .project-settings-grid {grid-template-columns:minmax(0,1fr);}
+  .project-settings-wide {grid-column:1;}
+  .project-settings-view {padding:6px 12px 18px;}
+}
+@media(max-width:540px) {
+  .project-settings-section {padding:14px;}
+  .project-settings-name-row {flex-direction:column;align-items:stretch;}
+  .project-settings-visibility {grid-template-columns:minmax(0,1fr);}
+}
 
 /* Workspace invitation management: constrain the shell to the viewport.
    The members grid owns vertical scrolling rather than the whole page. */
