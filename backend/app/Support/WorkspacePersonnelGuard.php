@@ -43,7 +43,7 @@ class WorkspacePersonnelGuard
         if ((int) $workspace->owner_id === (int) $user->id) return true;
         $membership = $workspace->memberships()->where('user_id', $user->id)->first();
         $custom = $membership?->customRole;
-        return $custom !== null && $custom->scope === 'workspace'
+        return $custom !== null && in_array($custom->scope, ['workspace', 'both'], true)
             && (int) $custom->workspace_id === (int) $workspace->id
             && in_array('workspace.manage', $custom->permissions ?? [], true);
     }
