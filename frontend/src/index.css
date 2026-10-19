@@ -2935,7 +2935,7 @@ h1, h2, h3, p { margin: 0; }
   min-height:36px;padding:9px 12px;border:1px solid var(--line);border-radius:8px;background:var(--surface);
   color:var(--ink);font:inherit;font-size:11px;font-weight:650;cursor:pointer;}
 .wd-settings-btn:hover {border-color:var(--accent);color:var(--accent);}
-.wd-settings-btn .nav-icon {width:17px;height:17px;flex:0 0 17px;}
+.wd-settings-btn .nav-icon, .wd-settings-btn .account-ico {width:17px;height:17px;flex:0 0 17px;}
 .wd-dashboard {display:flex;flex-direction:column;gap:13px;min-width:0;}
 .wd-metrics {display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;}
 .wd-metric {position:relative;display:flex;align-items:flex-start;gap:11px;min-height:92px;
@@ -3058,7 +3058,7 @@ h1, h2, h3, p { margin: 0; }
   .wd-heading h1 {font-size:19px;}
   .wd-heading p {display:none;}
   .wd-settings-btn {padding:8px;font-size:0;gap:0;}
-  .wd-settings-btn .nav-icon {width:19px;height:19px;}
+  .wd-settings-btn .nav-icon, .wd-settings-btn .account-ico {width:19px;height:19px;}
   .wd-metrics {grid-template-columns:repeat(2,minmax(0,1fr));}
   .wd-projects {grid-template-columns:repeat(2,minmax(0,1fr));}
   .wd-pair,.wd-rail {display:flex;flex-direction:column;}
