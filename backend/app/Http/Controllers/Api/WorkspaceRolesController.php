@@ -105,7 +105,19 @@ class WorkspaceRolesController extends ApiController
                 ];
             })->values(),
             'roles' => WorkspaceCustomRole::where('workspace_id', $workspace->id)
-                ->orderBy('scope')->orderBy('name')->get(),
+                ->orderBy('scope')->orderBy('name')->get()->map(function ($role) use ($workspace) {
+                    $workspaceMembers = \App\Models\WorkspaceMember::with('user:id,name')
+                        ->where('workspace_id', $workspace->id)->where('custom_role_id', $role->id)->get();
+                    $projectMembers = \App\Models\ProjectMember::with('user:id,name')
+                        ->whereHas('project', fn ($query) => $query->where('workspace_id', $workspace->id))
+                        ->where('custom_role_id', $role->id)->get();
+                    $people = $workspaceMembers->concat($projectMembers)
+                        ->filter(fn ($membership) => $membership->user !== null)->unique('user_id');
+                    return [...$role->toArray(), 'member_count' => $people->count(),
+                        'members' => $people->map(fn ($membership) => [
+                            'id' => $membership->user_id, 'name' => $membership->user->name,
+                        ])->values()->all()];
+                }),
         ]);
     }
 
