@@ -381,7 +381,7 @@ export function WorkspaceOverview({ profile, workspaceId, onProfileRefresh, onOp
                   <small>{client.projects} proyectos</small>
                 </button>) : <p className="wd-empty">No hay empresas cliente registradas.</p>}
             </div>
-            {summary.can_manage && <button type="button" className="wd-panel-add" onClick={onCreateClient}>
+            {summary.can_view_personnel && <button type="button" className="wd-panel-add" onClick={onCreateClient}>
               <NavIcon><path d="M12 5v14M5 12h14"/></NavIcon> Añadir cliente
             </button>}
           </section>}
