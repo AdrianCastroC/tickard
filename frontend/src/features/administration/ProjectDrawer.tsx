@@ -283,7 +283,7 @@ export function ProjectSettings({ project, onRefresh, onDelete }: {
         <p className="project-settings-hint">Estos ajustes no conceden acceso por sí mismos ni afectan a la información interna del equipo.</p>
       </section>
 
-      <section className="project-settings-section project-settings-wide project-settings-danger" aria-labelledby="project-settings-danger">
+      {canProject(project, 'project.delete') && <section className="project-settings-section project-settings-wide project-settings-danger" aria-labelledby="project-settings-danger">
         <div className="project-settings-section-title">
           <h3 id="project-settings-danger">Zona de peligro</h3>
           <p>La eliminación borra el proyecto y sus tableros, Cards y archivos asociados. Esta acción requiere confirmar el nombre del proyecto.</p>
