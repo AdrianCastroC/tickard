@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { api, type Project } from '../../api'
+import { api, canProject, type Project } from '../../api'
 import { ProjectCubeIcon } from '../../shared/icons'
 import { ProjectContentLoading } from '../workspace/ProjectContentLoading'
 
@@ -289,7 +289,7 @@ export function ProjectSettings({ project, onRefresh, onDelete }: {
           <p>La eliminación borra el proyecto y sus tableros, Cards y archivos asociados. Esta acción requiere confirmar el nombre del proyecto.</p>
         </div>
         <button type="button" className="danger" disabled={busy} onClick={onDelete}>Eliminar proyecto</button>
-      </section>
+      </section>}
     </div>
   </section>
 }
