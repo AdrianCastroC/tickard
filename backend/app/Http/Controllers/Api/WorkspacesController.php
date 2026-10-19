@@ -88,6 +88,9 @@ class WorkspacesController extends Controller
         return response()->json([
             'id' => $workspace->id,
             'name' => $workspace->name,
+            'description' => $workspace->description,
+            'website_url' => $workspace->website_url,
+            'contact_email' => $workspace->contact_email,
             'image_url' => $workspace->image_path ? '/storage/'.$workspace->image_path : null,
             'role' => $membership->role,
             'plan' => $workspace->effectivePlan(),
@@ -298,6 +301,9 @@ class WorkspacesController extends Controller
 
         $data = $request->validate([
             'name' => ['required', 'string', 'max:100'],
+            'description' => ['sometimes', 'nullable', 'string', 'max:500'],
+            'website_url' => ['sometimes', 'nullable', 'url:http,https', 'max:255'],
+            'contact_email' => ['sometimes', 'nullable', 'email', 'max:255'],
         ]);
 
         $name = trim($data['name']);
@@ -305,12 +311,13 @@ class WorkspacesController extends Controller
 
         $workspace->update([
             'name' => $name,
+            ...collect($data)->only(['description', 'website_url', 'contact_email'])->all(),
         ]);
 
         return response()->json([
             'id' => $workspace->id,
             'name' => $workspace->name,
-            'role' => 'owner',
+            'role' => $workspace->memberships()->where('user_id', $user->id)->value('role'),
             'plan' => $workspace->effectivePlan(),
         ]);
     }
