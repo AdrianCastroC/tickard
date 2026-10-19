@@ -69,8 +69,6 @@ class ProjectsController extends ApiController
                 abort(422, 'Activa el módulo Clientes antes de asociar una empresa.');
             }
 
-            abort_if(! empty($data['client_access_enabled']) && $client === null, 422,
-                'Selecciona una empresa cliente antes de permitir el acceso externo.');
             $project = Project::create([
                 'workspace_id' => $workspace->id,
                 'name' => $data['name'],
