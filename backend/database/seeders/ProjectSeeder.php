@@ -18,7 +18,7 @@ class ProjectSeeder extends Seeder
         $luis = User::where('email', 'luis@gestor.test')->firstOrFail();
         $marta = User::where('email', 'marta@gestor.test')->firstOrFail();
         $elena = User::where('email', 'elena@gestor.test')->firstOrFail();
-        $workspace = $ana->workspaces()->where('name', 'Tickard Demo')->firstOrFail();
+        $workspace = $ana->workspaces()->where('name', 'Altaris')->firstOrFail();
         $client = ClientCompany::create(['workspace_id' => $workspace->id, 'name' => 'Norte Digital']);
         $elena->update(['client_company_id' => $client->id]);
         $project = Project::create(['workspace_id' => $workspace->id, 'name' => 'Portal de clientes', 'client_company_id' => $client->id]);
