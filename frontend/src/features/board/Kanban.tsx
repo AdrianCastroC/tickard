@@ -85,6 +85,7 @@ export function Kanban(props: {
   board: BoardPayload
   canEdit: boolean
   canCreate: boolean
+  canMove: boolean
   canManage: boolean
   query: string
   assignee: string
@@ -224,7 +225,7 @@ export function Kanban(props: {
       return
     }
 
-    if (!props.canEdit) return
+    if (!props.canMove) return
     const draggingCard = allCards.find((card) => card.id === Number(draggedId))
     if (!draggingCard) return
     const cardId = draggingCard.id
@@ -282,6 +283,7 @@ export function Kanban(props: {
                   column={column}
                   categories={categories}
                   canEdit={props.canEdit}
+                  canMove={props.canMove}
                   canCreate={props.canCreate}
                   canManage={props.canManage}
                   pinned
@@ -303,6 +305,7 @@ export function Kanban(props: {
                 column={column}
                 categories={categories}
                 canEdit={props.canEdit}
+                canMove={props.canMove}
                 canCreate={props.canCreate}
                 canManage={props.canManage}
                 pinned={false}
@@ -371,11 +374,12 @@ export function NewColumnTemplate({ boardId, onCreated }: { boardId: number; onC
   )
 }
 
-export function ColumnView({ column, categories, canEdit, canCreate, canManage, pinned, onTogglePinned, onOpen, onEdit, onAdd, onRefresh, onManageCategories, dropCategoryKey }: {
+export function ColumnView({ column, categories, canEdit, canCreate, canMove, canManage, pinned, onTogglePinned, onOpen, onEdit, onAdd, onRefresh, onManageCategories, dropCategoryKey }: {
   column: BoardPayload['columns'][number]
   categories: BoardCategory[]
   canEdit: boolean
   canCreate: boolean
+  canMove: boolean
   canManage: boolean
   pinned: boolean
   onTogglePinned: () => void
@@ -474,7 +478,7 @@ export function ColumnView({ column, categories, canEdit, canCreate, canManage, 
       <SortableCard
         key={card.id}
         card={card}
-        disabled={!canEdit}
+        disabled={!canMove}
         canEdit={canEdit}
         onOpen={() => onOpen(card)}
         onEdit={() => onEdit(card)}
@@ -675,7 +679,7 @@ export function ColumnView({ column, categories, canEdit, canCreate, canManage, 
             })}
             {!canCreate && column.cards.length === 0 && <p className="muted">Sin tarjetas</p>}
           </div>
-          {canEdit && (
+          {canCreate && (
             <div className="column-footer">
               <button className="add-card" type="button" onClick={onAdd}><PlusIcon /> Añadir tarea</button>
             </div>
