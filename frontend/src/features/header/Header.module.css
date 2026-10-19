@@ -8,7 +8,7 @@
 .headerBody { flex: 1; min-width: 0; display: flex; align-items: stretch; }
 .breadcrumb { flex: 1 1 auto; min-width: 0; display: flex; align-items: center; gap: 8px; padding: 0 20px; color: var(--muted); font-size: 14px; font-weight: 500; border-bottom: 1px solid var(--line); overflow: hidden; white-space: nowrap; }
 .breadcrumb span { overflow: hidden; text-overflow: ellipsis; }
-.breadcrumb span:last-child { color: var(--ink); font-weight: 650; }
+.breadcrumb > span:last-child { color: var(--ink); font-weight: 650; }
 .breadcrumb b { color: var(--muted); margin-right: 8px; }
 .topAction { border: 0; background: transparent; color: var(--muted); font-size: 18px; cursor: pointer; padding: 8px; }
 .topAction :global(.account-ico) { width: 20px; height: 20px; }
