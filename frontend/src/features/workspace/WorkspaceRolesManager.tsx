@@ -10,6 +10,7 @@ const LABELS: Record<string, string> = {
   'workspace.clients': 'Gestionar clientes', 'workspace.teams': 'Gestionar equipos',
   'workspace.departments': 'Gestionar departamentos',
   'project.view': 'Ver proyecto', 'project.manage': 'Configurar proyecto',
+  'project.delete': 'Eliminar proyecto',
   'project.members': 'Gestionar personal', 'boards.manage': 'Gestionar tableros',
   'cards.edit': 'Crear y editar Cards', 'cards.comment': 'Comentar Cards',
   'files.upload': 'Subir archivos',
