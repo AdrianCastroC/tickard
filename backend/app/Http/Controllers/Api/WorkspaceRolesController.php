@@ -50,6 +50,11 @@ class WorkspaceRolesController extends ApiController
         abort_if(! in_array($scope === 'project' ? 'project.view' : 'workspace.view', $data['permissions'], true),
             422, 'El rol debe permitir acceder al ámbito al que pertenece.');
         $name = trim($data['name']);
+        $reserved = $scope === 'project'
+            ? ['responsable', 'editor', 'lector', 'cliente', 'owner']
+            : ['owner', 'propietario', 'administrador', 'admin', 'miembro', 'member', 'cliente', 'client'];
+        abort_if(in_array(mb_strtolower($name), $reserved, true), 422,
+            'El nombre está reservado para un rol del sistema.');
         $duplicate = WorkspaceCustomRole::where('workspace_id', $workspace->id)
             ->where('scope', $scope)->where('name', $name);
         if ($role) $duplicate->whereKeyNot($role->id);
