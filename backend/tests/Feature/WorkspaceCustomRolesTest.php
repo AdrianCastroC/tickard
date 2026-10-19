@@ -127,4 +127,54 @@ class WorkspaceCustomRolesTest extends TestCase
         ])->assertUnprocessable();
     }
 
+    public function test_dual_scope_workspace_configuration_requires_explicit_permission(): void
+    {
+        [$owner, $workspace] = $this->setupWorkspace();
+        $member = User::factory()->create(['is_admin' => false]);
+        $role = WorkspaceCustomRole::create([
+            'workspace_id' => $workspace->id, 'scope' => 'both', 'name' => 'Gestor mixto',
+            'permissions' => ['workspace.view', 'project.view', 'workspace.manage'],
+            'enabled' => true,
+        ]);
+        $workspace->memberships()->create([
+            'user_id' => $member->id, 'role' => 'member', 'custom_role_id' => $role->id,
+        ]);
+        $this->actingAs($member)->patchJson("/api/workspaces/{$workspace->id}", [
+            'name' => 'Nombre permitido',
+        ])->assertOk();
+        $role->update(['permissions' => ['workspace.view', 'project.view']]);
+        $this->patchJson("/api/workspaces/{$workspace->id}", [
+            'name' => 'Nombre bloqueado',
+        ])->assertForbidden();
+        $this->assertSame('Nombre permitido', $workspace->fresh()->name);
+    }
+
+    public function test_project_member_manager_can_invite_without_project_configuration_permission(): void
+    {
+        [$owner, $workspace] = $this->setupWorkspace();
+        $manager = User::factory()->create(['is_admin' => false]);
+        $recipient = User::factory()->create(['is_admin' => false]);
+        $workspace->memberships()->create(['user_id' => $manager->id, 'role' => 'member']);
+        $workspace->memberships()->create(['user_id' => $recipient->id, 'role' => 'member']);
+        $project = Project::create(['workspace_id' => $workspace->id, 'name' => 'Proyecto']);
+        $role = WorkspaceCustomRole::create([
+            'workspace_id' => $workspace->id, 'scope' => 'project',
+            'name' => 'Gestor de personal', 'permissions' => ['project.view', 'project.members'],
+            'enabled' => true,
+        ]);
+        ProjectMember::create([
+            'project_id' => $project->id, 'user_id' => $manager->id,
+            'role' => 'lector', 'custom_role_id' => $role->id,
+        ]);
+        $this->assertFalse(ProjectAccess::canManage($manager, $project));
+        $this->assertTrue(ProjectAccess::canManageMembers($manager, $project));
+        $this->actingAs($manager)->postJson("/api/projects/{$project->id}/invitations", [
+            'recipients' => [$recipient->publicHandle()], 'role' => 'lector',
+        ])->assertCreated();
+        $role->update(['permissions' => ['project.view']]);
+        $this->postJson("/api/projects/{$project->id}/invitations", [
+            'recipients' => [$recipient->publicHandle()], 'role' => 'lector',
+        ])->assertForbidden();
+    }
+
 }
