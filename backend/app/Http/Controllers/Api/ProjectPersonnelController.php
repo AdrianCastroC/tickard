@@ -24,7 +24,7 @@ class ProjectPersonnelController extends ApiController
         $role = ProjectAccess::role($request->user(), $project);
         abort_unless($role !== null, 403);
         $client = $role === 'cliente';
-        $canManage = ProjectAccess::canManage($request->user(), $project);
+        $canManage = ProjectAccess::canManageMembers($request->user(), $project);
 
         $memberships = $project->members()->with('user')->get()
             ->filter(fn (ProjectMember $member) => $member->user !== null)
@@ -333,7 +333,7 @@ class ProjectPersonnelController extends ApiController
 
     private function authorizeManage(Request $request, Project $project): void
     {
-        abort_unless(ProjectAccess::canManage($request->user(), $project), 403);
+        abort_unless(ProjectAccess::canManageMembers($request->user(), $project), 403);
     }
 
     private function ensureOtherResponsible(Project $project, int $exceptMemberId): void
