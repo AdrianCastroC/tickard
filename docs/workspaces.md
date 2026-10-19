@@ -288,6 +288,19 @@ El paso `storage:link` solo es necesario si no existe ya el enlace a `public/sto
 
 En **Proyecto → Configuración → Datos generales**, el responsable puede subir, sustituir o quitar el logo del proyecto (JPG, PNG o WebP hasta 2 MB). La aplicación conserva las proporciones y lo actualiza en la cabecera del proyecto, el menú lateral y las tarjetas del Workspace. El backend valida el tipo de archivo y los permisos con `POST /api/projects/{project}/image` y `DELETE /api/projects/{project}/image`; `projects.image_path` ya está creado desde la migración de logos anterior.
 
+### Carga del Gantt del proyecto
+
+El Gantt global conserva el skeleton de calendario, cabeceras y filas durante **dos etapas**:
+primero mientras llegan los datos compactos de los tableros y después mientras React
+construye el calendario, mide la geometría y traza las dependencias.
+
+El componente `GanttView` comunica la preparación mediante un callback opcional
+`onReady`, exclusivo de la vista global. La señal se emite después de que el rango
+visible y la geometría medida coincidan y el navegador haya tenido oportunidad de
+pintar dos fotogramas. La vista de un tablero normal mantiene su flujo sin esperas
+adicionales. Si la preparación no termina, aparece una acción para volver a
+intentarlo **sin descargar otra vez todos los tableros**.
+
 ### Resumen del tablero
 
 La pestaña **Resumen** de cada tablero aprovecha la cabecera y el selector de vistas que ya ofrece el tablero; no crea otro encabezado ni muestra filtros que no se aplican a sus métricas. Su contenido se distribuye en filas dentro del alto disponible y sus paneles desplazan internamente las listas largas. Las vistas Tabla permiten ordenar las siete columnas mediante el mismo `SortIcon` de Personal, alternando ascendente y descendente. La pestaña **Resumen** de cada tablero presenta únicamente datos reales del tablero seleccionado, sin mezclar las Cards de otros tableros del proyecto. El backend sirve un endpoint resumido `GET /api/boards/{board}/dashboard` sin hidratar los módulos completos de las tarjetas.
