@@ -17,6 +17,8 @@ class DatabaseSeeder extends Seeder
 
             // Proyecto completo para pruebas de Nébula Mobile, Gantt y KPIs.
             NebulaMobileDemoSeeder::class,
+            // Identity assets from docs/: safe to reapply without recreating projects.
+            DemoBrandAssetsSeeder::class,
         ]);
     }
 }
