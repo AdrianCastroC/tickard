@@ -68,7 +68,7 @@ type Props = {
 export function WorkspaceOverview({ profile, workspaceId, onProfileRefresh, onOpenSection, openProjectList = false, onProjectListOpened, onOpenProject, onOpenTask, onOpenTasks, onCreatedProject, onInviteMembers, onCreateClient, onDeleted }: Props) {
   const [summary, setSummary] = useState<WorkspaceSummary | null>(null)
   const [settingsOpen, setSettingsOpen] = useState(false)
-  const [settingsTab, setSettingsTab] = useState<'general' | 'roles'>('general')
+  const [settingsTab, setSettingsTab] = useState<'general' | 'roles' | 'danger'>('general')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
@@ -447,7 +447,7 @@ export function WorkspaceOverview({ profile, workspaceId, onProfileRefresh, onOp
       <div className="wd-modal-back" onMouseDown={event => {
         if (event.target === event.currentTarget && !saving && !imageBusy) setSettingsOpen(false)
       }}>
-        <div className={`wd-modal workspace-settings-modal workspace-settings-wide${settingsTab === 'roles' ? ' workspace-settings-roles-mode' : ''}`} role="dialog" aria-modal="true" aria-labelledby="workspace-settings-title">
+        <div className="wd-modal workspace-settings-modal workspace-settings-wide" role="dialog" aria-modal="true" aria-labelledby="workspace-settings-title">
           <header className="wd-modal-head">
             <h2 id="workspace-settings-title">Configuración del Workspace</h2>
             <button type="button" aria-label="Cerrar configuración" disabled={saving || imageBusy}
@@ -457,6 +457,8 @@ export function WorkspaceOverview({ profile, workspaceId, onProfileRefresh, onOp
             <nav className="workspace-settings-side" aria-label="Secciones de configuración">
               <button type="button" className={settingsTab === 'general' ? 'on' : ''} onClick={() => setSettingsTab('general')}>General</button>
               <button type="button" className={settingsTab === 'roles' ? 'on' : ''} onClick={() => setSettingsTab('roles')}>Roles y permisos</button>
+              <div className="workspace-settings-side-spacer"/>
+              <button type="button" className={settingsTab === 'danger' ? 'on workspace-settings-danger-tab' : 'workspace-settings-danger-tab'} onClick={() => setSettingsTab('danger')}>Zona de peligro</button>
             </nav>
           <div className="workspace-settings-modal-body">
             {settingsTab === 'general' && <>
@@ -538,6 +540,11 @@ export function WorkspaceOverview({ profile, workspaceId, onProfileRefresh, onOp
         </div>
       </section>
 
+
+            </>}
+            {settingsTab === 'roles' && <WorkspaceRolesManager workspaceId={summary.id}/>}
+            {settingsTab === 'danger' && <>
+              <div className="workspace-settings-section-heading"><h3>Zona de peligro</h3><p>Acciones irreversibles sobre este Workspace.</p></div>
       <section className="workspace-overview-section workspace-overview-danger">
         <div className="workspace-overview-section-title">
           <h2>Zona de peligro</h2>
@@ -551,7 +558,6 @@ export function WorkspaceOverview({ profile, workspaceId, onProfileRefresh, onOp
         </p>}
       </section>
             </>}
-            {settingsTab === 'roles' && <WorkspaceRolesManager workspaceId={summary.id}/>}
           </div>
           </div>
         </div>
