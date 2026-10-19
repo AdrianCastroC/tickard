@@ -227,7 +227,7 @@ public function destroyChecklistItem(Request $request, CardChecklistItem $item, 
 public function storeAttachment(Request $request, Card $card)
     {
         $project = $card->board->project;
-        abort_unless(ProjectAccess::canEditCards($request->user(), $project), 403);
+        abort_unless(ProjectAccess::canUpload($request->user(), $project), 403);
         $data = $request->validate([
             'file' => ['required', 'file', 'max:'.ProjectFileStorage::MAX_FILE_KB],
         ]);
@@ -264,7 +264,7 @@ public function storeAttachment(Request $request, Card $card)
 public function destroyAttachment(Request $request, CardAttachment $attachment)
     {
         $project = $attachment->card->board->project;
-        abort_unless(ProjectAccess::canEditCards($request->user(), $project), 403);
+        abort_unless(ProjectAccess::canUpload($request->user(), $project), 403);
         abort_unless(
             ProjectAccess::canManage($request->user(), $project) || $attachment->user_id === $request->user()->id,
             403
@@ -365,7 +365,7 @@ public function updateCommentVisibility(Request $request, Comment $comment)
 
         $project = $comment->card->board->project;
         $role = ProjectAccess::role($request->user(), $project);
-        abort_unless($role && $role !== 'cliente', 403);
+        abort_unless($role && $role !== 'cliente' && ProjectAccess::canComment($request->user(), $project), 403);
 
         $data = $request->validate([
             'is_internal' => ['required', 'boolean'],
