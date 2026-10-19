@@ -338,7 +338,7 @@ export function ProjectPersonnel({ project, profile }: { project: Project; profi
 
   if (inviteOpen && data.can_manage) return <section className="project-panel project-invitations-view">
     <button className="ghost" type="button" onClick={() => setInviteOpen(false)}>← Volver a Personal</button>
-    <WorkspaceInvitations projectId={project.id} />
+    <WorkspaceInvitations projectId={project.id} workspaceId={project.workspace_id} />
   </section>
 
   return <section ref={viewportRef} className={styles.root} aria-label="Personal del proyecto">

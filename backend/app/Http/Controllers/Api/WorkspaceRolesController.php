@@ -86,6 +86,9 @@ class WorkspaceRolesController extends ApiController
             'Reasigna antes a los miembros que utilizan este rol.');
         abort_if($role->scope === 'workspace' && \App\Models\WorkspaceMember::where('custom_role_id', $role->id)->exists(), 422,
             'Reasigna antes a los miembros que utilizan este rol.');
+        abort_if(\App\Models\WorkspaceInvitation::where('custom_role_id', $role->id)
+            ->where('status', 'pending')->whereNull('revoked_at')->exists(), 422,
+            'Cancela antes las invitaciones pendientes que utilizan este rol.');
         $role->delete();
         return response()->noContent();
     }

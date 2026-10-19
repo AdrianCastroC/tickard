@@ -8,6 +8,7 @@ use App\Models\ProjectMember;
 use App\Models\User;
 use App\Models\Workspace;
 use App\Models\WorkspaceInvitation;
+use App\Models\WorkspaceCustomRole;
 use App\Support\ProjectAccess;
 use App\Support\WorkspaceLimits;
 use App\Support\WorkspaceClientAccess;
@@ -39,6 +40,8 @@ class WorkspaceInvitationsController extends ApiController
             'project_id' => $invitation->project_id,
             'project_name' => $invitation->project?->name,
             'project_role' => $invitation->project_role,
+            'custom_role_id' => $invitation->custom_role_id,
+            'custom_role_name' => $invitation->customRole?->name,
             'kind' => $invitation->client_company_name ? 'client_company' : 'workspace',
             'client_company_name' => $invitation->client_company_name,
             'status' => $invitation->status,
@@ -52,7 +55,7 @@ class WorkspaceInvitationsController extends ApiController
 
     private function invitations(Workspace $workspace, ?Project $project = null)
     {
-        return WorkspaceInvitation::visible()->with(['workspace', 'project', 'recipient', 'inviter'])
+        return WorkspaceInvitation::visible()->with(['workspace', 'project', 'recipient', 'inviter', 'customRole'])
             ->where('workspace_id', $workspace->id)
             ->where('project_id', $project?->id)->whereNull('client_company_name')
             ->orderByDesc('id')->get()->map(fn ($item) => $this->present($item))->values();
@@ -128,7 +131,7 @@ class WorkspaceInvitationsController extends ApiController
     public function received(Request $request)
     {
         return WorkspaceInvitation::visible()->where('recipient_user_id', $request->user()->id)
-            ->with(['workspace', 'project', 'recipient', 'inviter'])->orderByDesc('id')->get()
+            ->with(['workspace', 'project', 'recipient', 'inviter', 'customRole'])->orderByDesc('id')->get()
             ->map(fn ($item) => $this->present($item))->values();
     }
 
@@ -153,8 +156,17 @@ class WorkspaceInvitationsController extends ApiController
             'recipients' => ['required', 'array', 'min:1', 'max:50'],
             'recipients.*' => ['required', 'string', 'max:255'],
             'role' => [$project ? 'required' : 'nullable', 'in:responsable,editor,lector'],
+            'custom_role_id' => ['nullable', 'integer'],
         ]);
         $role = $project ? $data['role'] : null;
+        $customRole = null;
+        if (! empty($data['custom_role_id'])) {
+            $customRole = WorkspaceCustomRole::where('workspace_id', $workspace->id)
+                ->where('scope', $project ? 'project' : 'workspace')
+                ->findOrFail($data['custom_role_id']);
+            abort_if($project && $role !== 'lector', 422,
+                'Un rol personalizado no puede heredar privilegios del rol base.');
+        }
         $created = [];
         $errors = [];
         $seen = [];
@@ -173,7 +185,7 @@ class WorkspaceInvitationsController extends ApiController
                 $errors[] = ['value' => $value, 'reason' => 'Solo el propietario puede incorporar usuarios nuevos al Workspace'];
                 continue;
             }
-            $result = DB::transaction(function () use ($workspace, $project, $role, $user, $request) {
+            $result = DB::transaction(function () use ($workspace, $project, $role, $customRole, $user, $request) {
                 Workspace::whereKey($workspace->id)->lockForUpdate()->firstOrFail();
                 $inWorkspace = $workspace->memberships()->where('user_id', $user->id)->exists();
                 if ($project) {
@@ -200,6 +212,7 @@ class WorkspaceInvitationsController extends ApiController
                     'expires_at' => now()->addYears(50),
                     'status' => 'pending',
                     'project_role' => $role,
+                    'custom_role_id' => $customRole?->id,
                 ]);
                 if ($user->notify_in_app) {
                     AppNotification::create([
@@ -208,7 +221,7 @@ class WorkspaceInvitationsController extends ApiController
                         'kind' => 'invitation',
                     ]);
                 }
-                return $this->present($invitation->load(['workspace', 'project', 'recipient', 'inviter']));
+                return $this->present($invitation->load(['workspace', 'project', 'recipient', 'inviter', 'customRole']));
             });
             if (is_string($result)) $errors[] = ['value' => $value, 'reason' => $result];
             else $created[] = $result;
@@ -274,17 +287,25 @@ class WorkspaceInvitationsController extends ApiController
                 ]);
             }
             if ($action === 'accept') {
+                $customRole = $invitation->customRole;
+                if ($invitation->custom_role_id !== null) {
+                    abort_unless($customRole && (int) $customRole->workspace_id === (int) $workspace->id
+                        && $customRole->scope === ($invitation->project_id ? 'project' : 'workspace'), 409,
+                        'El rol de esta invitación ya no es válido. Solicita una nueva invitación.');
+                }
                 $hasWorkspace = $workspace->memberships()->where('user_id', $request->user()->id)->exists();
                 if (! $hasWorkspace) {
                     abort_unless(WorkspaceLimits::canAddMember($workspace), 422,
                         'El Workspace ha alcanzado el límite de miembros.');
-                    $workspace->memberships()->create(['user_id' => $request->user()->id, 'role' => 'member']);
+                    $workspace->memberships()->create(['user_id' => $request->user()->id, 'role' => 'member',
+                        'custom_role_id' => $invitation->project_id ? null : $customRole?->id]);
                 }
                 if ($invitation->project_id) {
                     $project = $workspace->projects()->findOrFail($invitation->project_id);
                     ProjectMember::firstOrCreate(
                         ['project_id' => $project->id, 'user_id' => $request->user()->id],
-                        ['role' => $invitation->project_role]
+                        ['role' => $invitation->project_role,
+                            'custom_role_id' => $customRole?->id]
                     );
                 }
             }
