@@ -183,6 +183,15 @@ class WorkspaceMembersController extends ApiController
             DB::table('team_user')->where('user_id', $user->id)
                 ->whereIn('team_id', $teamIds)->delete();
 
+            // Pending workspace and project invitations must not let a
+            // removed member silently rejoin after access has been revoked.
+            DB::table('workspace_invitations')
+                ->where('workspace_id', $workspace->id)
+                ->where('recipient_user_id', $user->id)
+                ->where('status', 'pending')
+                ->whereNull('revoked_at')
+                ->update(['revoked_at' => now(), 'updated_at' => now()]);
+
             // Remove Workspace membership last so no partial access remains.
             $membership->delete();
         });
