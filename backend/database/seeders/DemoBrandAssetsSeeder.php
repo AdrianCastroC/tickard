@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 use App\Models\ClientCompany;
+use App\Models\Project;
 use App\Models\User;
 use App\Models\Workspace;
 use Illuminate\Database\Seeder;
@@ -51,6 +52,24 @@ class DemoBrandAssetsSeeder extends Seeder
                 ]);
             }
         }
+
+        // Re-running this seeder updates an existing Nébula Mobile without
+        // recreating its boards, tasks, members or dependencies.
+        $project = Project::query()
+            ->where('workspace_id', $workspace->id)
+            ->where('name', 'Nébula Mobile')
+            ->first();
+        if ($project !== null) {
+            $this->applyNebulaLogo($project);
+        }
+    }
+
+    public function applyNebulaLogo(Project $project): void
+    {
+        $project->update([
+            'image_path' => $this->copyImage('Nebula_logo.png',
+                "workspace-entities/{$project->workspace_id}/projects/nebula-mobile.png"),
+        ]);
     }
 
     private function copyImage(string $file, string $destination): string
