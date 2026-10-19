@@ -4132,3 +4132,13 @@ h1, h2, h3, p { margin: 0; }
 .project-client-settings .field { display:flex; flex-direction:column; gap:7px; font-size:11px; font-weight:650; }
 .project-client-settings .field select { max-width:390px; height:36px; padding:7px 10px; border:1px solid var(--line);
   border-radius:8px; color:var(--ink); background:var(--canvas); }
+
+/* A failed Gantt stays inside the board instead of breaking the whole SPA. */
+.gantt-failure {display:flex;flex-direction:column;align-items:flex-start;gap:12px;
+  min-width:0;min-height:220px;margin:12px;padding:22px;
+  border:1px solid var(--line);border-radius:11px;background:var(--surface);color:var(--ink);}
+.gantt-failure h2 {margin:0;font-size:16px;}
+.gantt-failure p {max-width:560px;margin:0;font-size:12px;line-height:1.6;color:var(--muted);}
+.gantt-failure details {max-width:100%;font-size:11px;color:var(--muted);}
+.gantt-failure code {display:block;max-width:100%;margin-top:9px;overflow-wrap:anywhere;}
+.gantt-failure > div {display:flex;flex-wrap:wrap;gap:10px;}
