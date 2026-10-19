@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom'
 import { api, type Profile, type WorkspaceRef } from '../../api'
 import { ProjectContentLoading } from './ProjectContentLoading'
 import { Avatar, formatRelative } from '../../shared/ui'
-import { NavIcon } from '../../shared/icons'
+import { NavIcon, SettingsIcon } from '../../shared/icons'
 import { DeleteWorkspaceModal } from '../sidebar/WorkspaceSelector/DeleteWorkspaceModal'
 
 type Section = 'members' | 'departments' | 'teams' | 'clients'
@@ -62,7 +62,7 @@ type Props = {
 
 export function WorkspaceOverview({ profile, workspaceId, onProfileRefresh, onOpenSection, openProjectList = false, onProjectListOpened, onOpenProject, onOpenTask, onOpenTasks, onCreatedProject, onInviteMembers, onCreateClient, onDeleted }: Props) {
   const [summary, setSummary] = useState<WorkspaceSummary | null>(null)
-  const [mode, setMode] = useState<'dashboard' | 'settings'>('dashboard')
+  const [settingsOpen, setSettingsOpen] = useState(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
@@ -94,7 +94,7 @@ export function WorkspaceOverview({ profile, workspaceId, onProfileRefresh, onOp
   useEffect(() => {
     let mounted = true
     setLoading(true); setError(''); setNotice(''); setSummary(null)
-    setRemovalOpen(false); setConfirmation(''); setMode('dashboard')
+    setRemovalOpen(false); setConfirmation(''); setSettingsOpen(false)
     setNewProject(false); setAllProjectsOpen(false); setNewProjectError('')
     void fetchSummary().then(data => {
       if (!mounted) return
@@ -268,16 +268,16 @@ export function WorkspaceOverview({ profile, workspaceId, onProfileRefresh, onOp
         <p>Gestiona tus proyectos, tareas y equipos desde un solo lugar.</p>
       </div>
       {summary.can_manage && <button type="button" className="wd-settings-btn"
-        onClick={() => setMode(current => current === 'dashboard' ? 'settings' : 'dashboard')}>
-        <NavIcon><path d="M4 7h16M4 17h16M8 4v6M16 14v6"/></NavIcon>
-        {mode === 'dashboard' ? 'Configuración' : 'Volver al resumen'}
+        onClick={() => setSettingsOpen(true)} aria-label="Configuración del Workspace" title="Configuración del Workspace">
+        <SettingsIcon/>
+        Configuración
       </button>}
     </header>
 
     {error && <p className="workspace-overview-alert" role="alert">{error}</p>}
     {notice && <p className="workspace-overview-notice" role="status">{notice}</p>}
 
-    {mode === 'dashboard' ? <div className="wd-dashboard">
+    <div className="wd-dashboard">
       <div className="wd-content">
       <div className="wd-metrics">
         {metrics.map(metric => <div key={metric.key} className={`wd-metric wd-${metric.color}`}>
@@ -451,45 +451,23 @@ export function WorkspaceOverview({ profile, workspaceId, onProfileRefresh, onOp
             <p className="wd-empty">Todavía no hay anuncios publicados. Esta funcionalidad estará disponible próximamente.</p>
           </section>
       </aside>}
-    </div> : <>
-    <div className="wd-settings-heading"><h2>Configuración del Workspace</h2></div>
-    <div className="workspace-overview-metrics">
-      {metrics.map(metric => <article key={metric.key} className="workspace-overview-metric">
-        <span>{metric.label}</span>
-        <strong>{metric.count ?? '—'}</strong>
-      </article>)}
-    </div>
+    </div>    {settingsOpen && summary.can_manage && createPortal(
+      <div className="wd-modal-back" onMouseDown={event => {
+        if (event.target === event.currentTarget && !saving && !imageBusy) setSettingsOpen(false)
+      }}>
+        <div className="wd-modal workspace-settings-modal" role="dialog" aria-modal="true" aria-labelledby="workspace-settings-title">
+          <header className="wd-modal-head">
+            <h2 id="workspace-settings-title">Configuración del Workspace</h2>
+            <button type="button" aria-label="Cerrar configuración" disabled={saving || imageBusy}
+              onClick={() => setSettingsOpen(false)}>×</button>
+          </header>
+          <div className="workspace-settings-modal-body">
+            {error && <p className="workspace-overview-alert" role="alert">{error}</p>}
+            {notice && <p className="workspace-overview-notice" role="status">{notice}</p>}
 
-    {summary.can_view_personnel && <section className="workspace-overview-section">
-      <div className="workspace-overview-section-title">
-        <h2>Organización del personal</h2>
-        <p>Accede a las áreas de gestión de este Workspace.</p>
-      </div>
-      <div className="workspace-overview-shortcuts">
-        {(['members', 'departments', 'teams', ...(summary.show_clients ? ['clients'] : [])] as Section[]).map(key => {
-          const labels: Record<Section, string> = {
-            members: 'Miembros', departments: 'Departamentos', teams: 'Equipos', clients: 'Clientes',
-          }
-          return <button key={key} type="button" onClick={() => onOpenSection(key)}>
-            <span>{labels[key]}</span><span aria-hidden="true">→</span>
-          </button>
-        })}
-      </div>
-    </section>}
-
-    {!summary.can_manage && <section className="workspace-overview-section">
-      <div className="workspace-overview-section-title">
-        <h2>Información del Workspace</h2>
-        <p>Los ajustes de administración solo están disponibles para el propietario.</p>
-      </div>
-      <p className="workspace-overview-hint">Los proyectos a los que tienes acceso aparecen en el menú lateral.</p>
-    </section>}
-
-    {summary.can_manage && <>
       <section className="workspace-overview-section">
         <div className="workspace-overview-section-title">
-          <h2>Datos generales</h2>
-          <p>Identificación del Workspace y nombre que se muestra a sus integrantes.</p>
+          <h2>General</h2>
         </div>
         <div className="project-settings-logo-editor">
           <div className="project-settings-logo-preview" aria-label={summary.image_url ? 'Logo actual del Workspace' : 'Sin logo personalizado'}>
@@ -529,8 +507,7 @@ export function WorkspaceOverview({ profile, workspaceId, onProfileRefresh, onOp
 
       <section className="workspace-overview-section">
         <div className="workspace-overview-section-title">
-          <h2>Configuración del Workspace</h2>
-          <p>Estas preferencias se aplican únicamente a este Workspace.</p>
+          <h2>Preferencias</h2>
         </div>
         <div className="workspace-overview-toggles">
           <label className="workspace-birthday-toggle">
@@ -553,7 +530,6 @@ export function WorkspaceOverview({ profile, workspaceId, onProfileRefresh, onOp
       <section className="workspace-overview-section workspace-overview-danger">
         <div className="workspace-overview-section-title">
           <h2>Zona de peligro</h2>
-          <p>Eliminar un Workspace borra sus proyectos, tableros, tareas y datos asociados. Requiere escribir su nombre para confirmar.</p>
         </div>
         <button type="button" className="danger" disabled={!summary.can_delete || saving}
           onClick={() => { setRemovalError(''); setConfirmation(''); setRemovalOpen(true) }}>
@@ -563,9 +539,12 @@ export function WorkspaceOverview({ profile, workspaceId, onProfileRefresh, onOp
           No puedes eliminar tu único Workspace propio. Crea otro antes de eliminar este.
         </p>}
       </section>
-    </>}
 
-    </>}
+          </div>
+        </div>
+      </div>,
+      document.body,
+    )}
     {allProjectsOpen && createPortal(
       <div className="wd-modal-back" onMouseDown={event => {
         if (event.target === event.currentTarget) setAllProjectsOpen(false)
