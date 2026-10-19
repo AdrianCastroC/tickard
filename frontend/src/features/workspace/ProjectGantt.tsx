@@ -195,9 +195,6 @@ export function ProjectGantt({ project, profile, onNavigateExternalCard }: Props
         <GanttView key={`project-${project.id}-${renderAttempt}`}
           board={boards[0]} cards={columns} projectBoards={boards}
           canEdit={false}
-        canMove={false} canDates={false} canAssign={false} canDelete={false}
-        canUpload={canProject(cardData.board, 'files.upload')}
-        canComment={canProject(cardData.board, 'cards.comment')}
           onOpen={(card) => {
             const source = boards.find((payload) => payload.columns.some((column) =>
               column.cards.some((item) => item.id === card.id)))
@@ -231,6 +228,9 @@ export function ProjectGantt({ project, profile, onNavigateExternalCard }: Props
       <CardDrawer key={cardData.card.id} card={cardData.card} mode="view"
         board={cardData.board} currentUser={profile.user}
         canEdit={false}
+        canMove={false} canDates={false} canAssign={false} canDelete={false}
+        canUpload={canProject(cardData.board, 'files.upload')}
+        canComment={canProject(cardData.board, 'cards.comment')}
         onClose={() => setSelected(null)}
         onEdit={() => {}}
         onView={() => {}}
