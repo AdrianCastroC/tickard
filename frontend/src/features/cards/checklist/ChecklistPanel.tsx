@@ -251,6 +251,8 @@ export function ChecklistPanel({ card, module, editing, canEdit, canAssign, canD
   module: CardModule
   editing: boolean
   canEdit: boolean
+  canAssign: boolean
+  canDates: boolean
   members: Person[]
   dragProps?: Record<string, unknown>
   onChange: () => Promise<void>
