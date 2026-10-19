@@ -21,11 +21,11 @@ class WorkspaceSeeder extends Seeder
         Workspace::createInitialFor($elena);
 
         $anaWorkspace->update([
-            'name' => 'Tickard Demo',
+            'name' => 'Altaris',
         ]);
 
         foreach ([$luis, $marta, $elena] as $member) {
-            $anaWorkspace->memberships()->create([
+            $anaWorkspace->memberships()->firstOrCreate([
                 'user_id' => $member->id,
                 'role' => 'member',
             ]);
