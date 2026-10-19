@@ -273,4 +273,40 @@ class WorkspaceCustomRolesTest extends TestCase
         ])->assertForbidden();
     }
 
+    public function test_card_attachment_removal_requires_uploader_or_project_management(): void
+    {
+        [$owner, $workspace] = $this->setupWorkspace();
+        $uploader = User::factory()->create(['is_admin' => false]);
+        $colleague = User::factory()->create(['is_admin' => false]);
+        foreach ([$uploader, $colleague] as $person) {
+            $workspace->memberships()->create(['user_id' => $person->id, 'role' => 'member']);
+        }
+        $project = Project::create(['workspace_id' => $workspace->id, 'name' => 'Proyecto']);
+        $board = Board::create(['project_id' => $project->id, 'name' => 'Tablero']);
+        $board->createDefaultColumns();
+        $column = $board->columns()->firstOrFail();
+        $card = Card::create(['board_id' => $board->id, 'column_id' => $column->id, 'title' => 'Prueba']);
+        $role = WorkspaceCustomRole::create([
+            'workspace_id' => $workspace->id, 'scope' => 'project',
+            'name' => 'Subidor', 'permissions' => ['project.view', 'files.upload'], 'enabled' => true,
+        ]);
+        foreach ([$uploader, $colleague] as $person) {
+            ProjectMember::create(['project_id' => $project->id, 'user_id' => $person->id,
+                'role' => 'lector', 'custom_role_id' => $role->id]);
+        }
+        $attachment = $card->attachments()->create([
+            'user_id' => $uploader->id, 'original_name' => 'prueba.txt',
+            'disk_path' => 'card-attachments/prueba.txt', 'mime_type' => 'text/plain', 'size' => 12,
+        ]);
+        $this->actingAs($colleague)->deleteJson("/api/attachments/{$attachment->id}")->assertForbidden();
+        $this->actingAs($uploader)->deleteJson("/api/attachments/{$attachment->id}")->assertNoContent();
+
+        $attachment = $card->attachments()->create([
+            'user_id' => $uploader->id, 'original_name' => 'otro.txt',
+            'disk_path' => 'card-attachments/otro.txt', 'mime_type' => 'text/plain', 'size' => 6,
+        ]);
+        $role->update(['permissions' => ['project.view', 'files.upload', 'project.manage']]);
+        $this->actingAs($colleague)->deleteJson("/api/attachments/{$attachment->id}")->assertNoContent();
+    }
+
 }
