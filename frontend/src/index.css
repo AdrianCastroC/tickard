@@ -4413,3 +4413,10 @@ h1, h2, h3, p { margin: 0; }
 .tickard-role-form > label input {width:100%;box-sizing:border-box;}
 .tickard-role-permissions {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;}
 @media(max-width:600px){.tickard-role-permissions{grid-template-columns:1fr;}}
+
+/* Two settings tabs share a single modal. Only its content scrolls. */
+.workspace-settings-tabs {display:flex;gap:4px;flex:0 0 auto;padding:8px 16px 0;border-bottom:1px solid var(--line);}
+.workspace-settings-tabs button {appearance:none;border:0;border-bottom:2px solid transparent;border-radius:0;background:transparent;color:var(--muted);padding:10px 14px;font:inherit;font-size:12px;font-weight:600;cursor:pointer;}
+.workspace-settings-tabs button.on {color:var(--accent);border-bottom-color:var(--accent);}
+.workspace-settings-tabs button:focus-visible {outline:2px solid var(--accent);outline-offset:-2px;}
+@media(max-width:480px){.workspace-settings-tabs {padding:6px 10px 0;}.workspace-settings-tabs button {padding:9px 10px;}}

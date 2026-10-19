@@ -65,6 +65,7 @@ type Props = {
 export function WorkspaceOverview({ profile, workspaceId, onProfileRefresh, onOpenSection, openProjectList = false, onProjectListOpened, onOpenProject, onOpenTask, onOpenTasks, onCreatedProject, onInviteMembers, onCreateClient, onDeleted }: Props) {
   const [summary, setSummary] = useState<WorkspaceSummary | null>(null)
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const [settingsTab, setSettingsTab] = useState<'general' | 'roles'>('general')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
@@ -246,7 +247,7 @@ export function WorkspaceOverview({ profile, workspaceId, onProfileRefresh, onOp
         <p>Gestiona tus proyectos, tareas y equipos desde un solo lugar.</p>
       </div>
       {summary.can_manage && <button type="button" className="wd-settings-btn"
-        onClick={() => setSettingsOpen(true)} aria-label="Configuración del Workspace" title="Configuración del Workspace">
+        onClick={() => { setSettingsTab('general'); setSettingsOpen(true) }} aria-label="Configuración del Workspace" title="Configuración del Workspace">
         <SettingsIcon/>
         Configuración
       </button>}
@@ -439,7 +440,12 @@ export function WorkspaceOverview({ profile, workspaceId, onProfileRefresh, onOp
             <button type="button" aria-label="Cerrar configuración" disabled={saving || imageBusy}
               onClick={() => setSettingsOpen(false)}>×</button>
           </header>
+          <nav className="workspace-settings-tabs" aria-label="Secciones de configuración">
+            <button type="button" className={settingsTab === 'general' ? 'on' : ''} onClick={() => setSettingsTab('general')}>General</button>
+            <button type="button" className={settingsTab === 'roles' ? 'on' : ''} onClick={() => setSettingsTab('roles')}>Roles y permisos</button>
+          </nav>
           <div className="workspace-settings-modal-body">
+            {settingsTab === 'general' && <>
             {error && <p className="workspace-overview-alert" role="alert">{error}</p>}
             {notice && <p className="workspace-overview-notice" role="status">{notice}</p>}
 
@@ -505,11 +511,6 @@ export function WorkspaceOverview({ profile, workspaceId, onProfileRefresh, onOp
         </div>
       </section>
 
-      <section className="workspace-overview-section">
-        <div className="workspace-overview-section-title"><h2>Roles y permisos</h2></div>
-        <WorkspaceRolesManager workspaceId={summary.id}/>
-      </section>
-
       <section className="workspace-overview-section workspace-overview-danger">
         <div className="workspace-overview-section-title">
           <h2>Zona de peligro</h2>
@@ -522,7 +523,8 @@ export function WorkspaceOverview({ profile, workspaceId, onProfileRefresh, onOp
           No puedes eliminar tu único Workspace propio. Crea otro antes de eliminar este.
         </p>}
       </section>
-
+            </>}
+            {settingsTab === 'roles' && <WorkspaceRolesManager workspaceId={summary.id}/>}
           </div>
         </div>
       </div>,
