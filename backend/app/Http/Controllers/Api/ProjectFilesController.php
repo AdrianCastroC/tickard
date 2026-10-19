@@ -49,7 +49,7 @@ class ProjectFilesController extends ApiController
                     ? ProjectFileStorage::usedBytesForOwner((int) $workspace->owner_id) : null,
                 'account_limit_bytes' => $accountLimit,
             ],
-            'can_upload' => ProjectAccess::canEditCards($request->user(), $project),
+            'can_upload' => ProjectAccess::canUpload($request->user(), $project),
             'can_manage' => ProjectAccess::canManage($request->user(), $project),
         ]);
     }
@@ -170,7 +170,7 @@ class ProjectFilesController extends ApiController
 
     public function store(Request $request, Project $project)
     {
-        abort_unless(ProjectAccess::canEditCards($request->user(), $project), 403);
+        abort_unless(ProjectAccess::canUpload($request->user(), $project), 403);
         $data = $request->validate([
             'file' => ['required', 'file', 'max:'.ProjectFileStorage::MAX_FILE_KB],
         ]);
@@ -206,7 +206,7 @@ class ProjectFilesController extends ApiController
     public function destroy(Request $request, ProjectFile $projectFile)
     {
         $project = $projectFile->project;
-        abort_unless(ProjectAccess::canEditCards($request->user(), $project), 403);
+        abort_unless(ProjectAccess::canUpload($request->user(), $project), 403);
         abort_unless(
             ProjectAccess::canManage($request->user(), $project) || $projectFile->user_id === $request->user()->id,
             403
