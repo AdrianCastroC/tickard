@@ -177,7 +177,7 @@ export function WorkspaceRolesManager({ workspaceId }: { workspaceId: number }) 
           </div>
           {canEditBuiltin && <div className="tickard-role-actions"><button type="button" className="primary" disabled={busy || JSON.stringify([...builtin.permissions].sort())===JSON.stringify([...granted].sort())} onClick={()=>void saveBuiltin(builtin.key)}>{busy?'Guardando…':'Guardar permisos'}</button></div>}
           {builtin.locked && <p className="workspace-overview-hint">Rol protegido: sus permisos no se pueden modificar.</p>}
-          </>
+          </>}
         </section>
       })()}
       {selected === null && !selectedBuiltin && <p className="workspace-overview-hint">Selecciona un rol para ver sus permisos o crea uno nuevo.</p>}
