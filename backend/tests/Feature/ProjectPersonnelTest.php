@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Board;
 use App\Models\Card;
+use App\Models\CardChecklistItem;
 use App\Models\ClientCompany;
 use App\Models\Project;
 use App\Models\ProjectMember;
@@ -11,6 +12,7 @@ use App\Models\Team;
 use App\Models\User;
 use App\Models\Workspace;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 class ProjectPersonnelTest extends TestCase
@@ -247,4 +249,124 @@ class ProjectPersonnelTest extends TestCase
             ->assertJsonPath('members.0.job_title', null)
             ->assertJsonMissing(['title' => 'Interna']);
     }
+
+    public function test_linked_team_newcomers_are_added_only_after_explicit_confirmation(): void
+    {
+        extract($this->fixture());
+        $url = "/api/projects/{$project->id}/personnel/teams";
+        $first = ['team_id' => $team->id, 'role' => 'lector',
+            'confirmed_member_ids' => [$editor->id, $newcomer->id]];
+
+        $this->actingAs($manager)->postJson($url, $first)
+            ->assertCreated()->assertJsonPath('added', 1);
+
+        $newHire = User::factory()->create(['is_admin' => false]);
+        $workspace->memberships()->create(['user_id' => $newHire->id, 'role' => 'member']);
+        $team->members()->attach($newHire->id);
+
+        // Changing the Workspace team never grants project access silently.
+        $this->assertDatabaseMissing('project_members', [
+            'project_id' => $project->id, 'user_id' => $newHire->id,
+        ]);
+        $this->actingAs($manager)->postJson($url, $first)
+            ->assertUnprocessable()->assertJsonValidationErrors('team_id');
+        $this->assertDatabaseMissing('project_members', [
+            'project_id' => $project->id, 'user_id' => $newHire->id,
+        ]);
+
+        $updated = ['team_id' => $team->id, 'role' => 'responsable',
+            'confirmed_member_ids' => [$editor->id, $newcomer->id, $newHire->id]];
+        $this->postJson($url, $updated)->assertCreated()->assertJsonPath('added', 1);
+        $this->assertDatabaseHas('project_members', [
+            'project_id' => $project->id, 'user_id' => $newHire->id, 'role' => 'responsable',
+        ]);
+        $this->assertDatabaseHas('project_members', [
+            'project_id' => $project->id, 'user_id' => $editor->id, 'role' => 'editor',
+        ]);
+        $this->assertDatabaseHas('project_members', [
+            'project_id' => $project->id, 'user_id' => $newcomer->id, 'role' => 'lector',
+        ]);
+        $this->assertSame(1, DB::table('project_team')
+            ->where('project_id', $project->id)->where('team_id', $team->id)->count());
+
+        // Leaving the Workspace team never silently removes individual project access.
+        $team->members()->detach($editor->id);
+        $this->postJson($url, [
+            'team_id' => $team->id, 'role' => 'lector',
+            'confirmed_member_ids' => [$newcomer->id, $newHire->id],
+        ])->assertCreated()->assertJsonPath('added', 0);
+        $this->assertDatabaseHas('project_members', [
+            'project_id' => $project->id, 'user_id' => $editor->id, 'role' => 'editor',
+        ]);
+    }
+
+    public function test_removing_project_member_clears_checklist_assignments_only_in_that_project(): void
+    {
+        extract($this->fixture());
+        $board = Board::create(['project_id' => $project->id, 'name' => 'Sprint']);
+        $board->createDefaultColumns();
+        $column = $board->columns()->where('workflow_state', 'pending')->firstOrFail();
+        $card = Card::create([
+            'board_id' => $board->id, 'column_id' => $column->id, 'title' => 'Conservar tarea',
+        ]);
+        $card->assignees()->attach([$editor->id, $manager->id]);
+        $item = CardChecklistItem::create(['card_id' => $card->id, 'body' => 'Tarea compartida']);
+        $item->assignees()->attach([$editor->id, $manager->id]);
+
+        $otherProject = Project::create([
+            'workspace_id' => $workspace->id,
+            'client_company_id' => $project->client_company_id,
+            'name' => 'Otro proyecto',
+        ]);
+        ProjectMember::create(['project_id' => $otherProject->id,
+            'user_id' => $editor->id, 'role' => 'editor']);
+        $otherBoard = Board::create(['project_id' => $otherProject->id, 'name' => 'Otro tablero']);
+        $otherBoard->createDefaultColumns();
+        $otherColumn = $otherBoard->columns()->where('workflow_state', 'pending')->firstOrFail();
+        $otherCard = Card::create([
+            'board_id' => $otherBoard->id, 'column_id' => $otherColumn->id,
+            'title' => 'Otra tarea',
+        ]);
+        $otherCard->assignees()->attach($editor->id);
+        $otherItem = CardChecklistItem::create([
+            'card_id' => $otherCard->id, 'body' => 'Checklist de otro proyecto',
+        ]);
+        $otherItem->assignees()->attach($editor->id);
+
+        $this->actingAs($manager)
+            ->deleteJson("/api/projects/{$project->id}/personnel/members/{$editor->id}")
+            ->assertNoContent();
+        $this->assertDatabaseMissing('project_members', [
+            'project_id' => $project->id, 'user_id' => $editor->id,
+        ]);
+        $this->assertDatabaseMissing('card_user', [
+            'card_id' => $card->id, 'user_id' => $editor->id,
+        ]);
+        $this->assertDatabaseMissing('card_checklist_item_user', [
+            'card_checklist_item_id' => $item->id, 'user_id' => $editor->id,
+        ]);
+        $this->assertDatabaseHas('card_user', [
+            'card_id' => $card->id, 'user_id' => $manager->id,
+        ]);
+        $this->assertDatabaseHas('card_checklist_item_user', [
+            'card_checklist_item_id' => $item->id, 'user_id' => $manager->id,
+        ]);
+        $this->assertDatabaseHas('cards', ['id' => $card->id]);
+        $this->assertDatabaseHas('card_checklist_items', ['id' => $item->id]);
+        $this->assertDatabaseHas('boards', ['id' => $board->id, 'revision' => 1]);
+        $this->assertDatabaseHas('boards', ['id' => $otherBoard->id, 'revision' => 0]);
+        $this->assertDatabaseHas('project_members', [
+            'project_id' => $otherProject->id, 'user_id' => $editor->id,
+        ]);
+        $this->assertDatabaseHas('card_user', [
+            'card_id' => $otherCard->id, 'user_id' => $editor->id,
+        ]);
+        $this->assertDatabaseHas('card_checklist_item_user', [
+            'card_checklist_item_id' => $otherItem->id, 'user_id' => $editor->id,
+        ]);
+        $this->assertDatabaseHas('workspace_members', [
+            'workspace_id' => $workspace->id, 'user_id' => $editor->id,
+        ]);
+    }
+
 }
