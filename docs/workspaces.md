@@ -245,6 +245,22 @@ Estos límites se documentan en `docs/plans.md`.
 
 ---
 
+### Configuración de los proyectos
+
+La configuración se abre desde el icono de engranaje en el encabezado de un proyecto y está disponible para sus responsables autorizados, incluido el propietario del Workspace.
+
+La vista unificada contiene **Datos generales** (nombre), **Acceso de clientes** (empresa asociada y habilitación de acceso externo), **Visibilidad para clientes** (descripción, asignación, fecha límite, prioridad, etiquetas y comentarios) y **Zona de peligro** (eliminar proyecto mediante la confirmación existente).
+
+Los ajustes son propios del proyecto, no dependen de cuál sea su tablero activo y pueden modificarse incluso antes de crear el primer tablero. Los cambios se validan en Laravel. La selección de empresa solo muestra clientes del mismo Workspace y el acceso externo requiere que el módulo Clientes esté habilitado, una empresa asociada y permisos de usuario adecuados.
+
+- `GET /api/projects/{project}/settings`: lee configuración y empresas disponibles, restringido a responsables autorizados.
+- `PATCH /api/projects/{project}`: modifica el nombre validado (1–120 caracteres tras recorte), la asociación y el acceso de clientes, o los campos de visibilidad existentes.
+- `DELETE /api/projects/{project}`: conserva la confirmación explícita del nombre antes de eliminarlo.
+
+No es necesaria ninguna migración: se reutilizan los campos actuales de `projects`.
+
+---
+
 ## 10. Workspace activo
 
 Aunque una cuenta pueda pertenecer a múltiples Workspaces, el usuario trabaja dentro de un contexto de Workspace determinado.
