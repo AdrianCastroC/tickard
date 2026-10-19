@@ -85,11 +85,24 @@ class WorkspaceDepartmentsController extends ApiController
             ->reject(fn ($user) => WorkspaceClientAccess::isClient($user, $workspace))->values();
         $teams = $workspace->teams()->withCount('members')->orderBy('name')->get(['id', 'name', 'workspace_id']);
         $projects = $workspace->projects()->orderBy('name')->get(['id', 'name', 'workspace_id']);
-        $present = fn (User $user) => [
-            'id' => $user->id, 'name' => $user->name, 'avatar_url' => $user->avatarUrl(),
-        ];
+        $memberships = $workspace->memberships()->get()->keyBy('user_id');
+        $customRoles = \App\Models\WorkspaceCustomRole::query()
+            ->where('workspace_id', $workspace->id)
+            ->whereIn('scope', ['workspace', 'both'])
+            ->where('enabled', true)
+            ->orderBy('name')->get(['id', 'name']);
+        $present = function (User $user) use ($memberships) {
+            $membership = $memberships->get($user->id);
+            return [
+                'id' => $user->id, 'name' => $user->name, 'avatar_url' => $user->avatarUrl(),
+                'role' => $membership?->role ?? 'member',
+                'custom_role_id' => $membership?->custom_role_id,
+            ];
+        };
 
         return response()->json([
+            'can_manage_roles' => (int) $workspace->owner_id === (int) $request->user()->id,
+            'role_options' => $customRoles->map(fn ($role) => ['value' => 'custom:'.$role->id, 'label' => $role->name])->values(),
             'can_manage' => Guard::canManage($request, $workspace, 'workspace.departments'),
             'departments' => $departments->map(fn (Department $department) => [
                 'id' => $department->id,

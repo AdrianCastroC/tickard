@@ -10,7 +10,7 @@ import { MemberRoster } from './MemberRoster'
 import { AssociationRoster } from './AssociationRoster'
 import teamCss from './TeamsDashboard.module.css'
 
-type Person = { id: number; name: string; avatar_url: string | null }
+type Person = { id: number; name: string; avatar_url: string | null; role?: string; custom_role_id?: number | null }
 type Linked = { id: number; name: string }
 type IconName = 'users' | 'code' | 'layers' | 'palette' | 'megaphone' | 'settings' | 'chart' | 'box'
 type Team = {
@@ -18,7 +18,7 @@ type Team = {
   created_at: string | null; updated_at: string | null; members: Person[]
   departments: Linked[]; projects: Linked[]; projects_count: number; cards_count: number
 }
-type Data = { can_manage: boolean; teams: Team[]; people: Person[]; departments: Linked[]; projects: Linked[] }
+type Data = { can_manage: boolean; can_manage_roles: boolean; role_options: {value:string;label:string}[]; teams: Team[]; people: Person[]; departments: Linked[]; projects: Linked[] }
 type Tab = 'summary' | 'members' | 'projects'
 type Sort = 'name' | 'department' | 'members' | 'projects' | 'status' | 'recent'
 type SortDirection = 'asc' | 'desc'
@@ -224,6 +224,16 @@ export function TeamsSurface({ workspaceId }: { workspaceId: number | null }) {
   function toggleVisible(checked: boolean) {
     const ids = new Set(visible.map(item => item.id))
     setSelectedRows(current => checked ? [...new Set([...current, ...ids])] : current.filter(id => !ids.has(id)))
+  }
+  async function updateMemberRole(userId: number, roleValue: string) {
+    if (!workspaceId || !data?.can_manage_roles) return
+    const customId = roleValue.startsWith('custom:') ? Number(roleValue.slice(7)) : null
+    const role = customId ? 'member' : roleValue.slice(8)
+    await api(`/workspaces/${workspaceId}/members/${userId}/role`, {
+      method:'PATCH', body:JSON.stringify({role,custom_role_id:customId}),
+    })
+    await load()
+    setNotice('Rol del Workspace actualizado.')
   }
   async function updateLinks(values: { member_ids?: number[]; lead_user_id?: number; project_ids?: number[] }) {
     if (!workspaceId || !selected || !canManage || busy) return
@@ -523,6 +533,7 @@ export function TeamsSurface({ workspaceId }: { workspaceId: number | null }) {
 
                 <MemberRoster entityId={selected.id} current={selected.members} available={data.people}
                   leadId={selected.lead_user_id} canManage={canManage} busy={busy}
+                  canManageRoles={data.can_manage_roles} roleOptions={data.role_options} onSaveRole={updateMemberRole}
                   onSave={(members, lead) => updateLinks({member_ids:members,lead_user_id:lead})}/>
               </div>}
               {activeTab === 'projects' && <div className={styles.detailGroup}>

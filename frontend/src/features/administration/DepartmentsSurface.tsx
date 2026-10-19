@@ -9,7 +9,7 @@ import { EntityAppearanceEditor, EntityVisual } from './EntityAppearanceEditor'
 import { MemberRoster } from './MemberRoster'
 import { AssociationRoster } from './AssociationRoster'
 
-type Person = { id: number; name: string; avatar_url: string | null }
+type Person = { id: number; name: string; avatar_url: string | null; role?: string; custom_role_id?: number | null }
 type Linked = { id: number; name: string }
 type TeamOption = Linked & { members_count: number }
 type IconName = 'layers' | 'code' | 'palette' | 'megaphone' | 'settings' | 'chart' | 'users' | 'box'
@@ -19,7 +19,7 @@ type Department = {
   created_at: string | null; updated_at: string | null
   members: Person[]; teams: Linked[]; projects: Linked[]
 }
-type Data = { can_manage: boolean; departments: Department[]; people: Person[]; teams: TeamOption[]; projects: Linked[] }
+type Data = { can_manage: boolean; can_manage_roles: boolean; role_options: {value:string;label:string}[]; departments: Department[]; people: Person[]; teams: TeamOption[]; projects: Linked[] }
 type PanelTab = 'summary' | 'members' | 'teams' | 'projects'
 type Sort = 'name' | 'members' | 'recent'
 type Editor = 'create' | 'edit' | null
@@ -194,6 +194,16 @@ export function DepartmentsSurface({ workspaceId }: { workspaceId: number | null
     if (!checked && ids === memberIds && leadId === id) setLeadId(null)
   }
 
+  async function updateMemberRole(userId: number, roleValue: string) {
+    if (!workspaceId || !data?.can_manage_roles) return
+    const customId = roleValue.startsWith('custom:') ? Number(roleValue.slice(7)) : null
+    const role = customId ? 'member' : roleValue.slice(8)
+    await api(`/workspaces/${workspaceId}/members/${userId}/role`, {
+      method:'PATCH', body:JSON.stringify({role,custom_role_id:customId}),
+    })
+    await load()
+    setNotice('Rol del Workspace actualizado.')
+  }
   async function updateLinks(values: { member_ids?: number[]; lead_user_id?: number; team_ids?: number[]; project_ids?: number[] }) {
     if (!workspaceId || !selected || !canManage || busy) return
     setBusy(true); setError('')
@@ -460,6 +470,7 @@ export function DepartmentsSurface({ workspaceId }: { workspaceId: number | null
 
                 <MemberRoster entityId={selected.id} current={selected.members} available={data.people}
                   leadId={selected.lead_user_id} busy={busy} canManage={canManage}
+                  canManageRoles={data.can_manage_roles} roleOptions={data.role_options} onSaveRole={updateMemberRole}
                   onSave={(members, lead) => updateLinks({member_ids:members,lead_user_id:lead})}/>
               </div>}
               {activeTab === 'teams' && <div className={styles.detailGroup}>
