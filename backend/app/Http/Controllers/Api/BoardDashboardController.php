@@ -62,7 +62,7 @@ class BoardDashboardController extends ApiController
         $deadlines = $cards()
             ->whereNotIn('columns.workflow_state', ['done', 'backlog'])
             ->whereNotNull('cards.due_date')
-            ->select('cards.id', 'cards.title', 'cards.due_date', 'columns.workflow_state')
+            ->select('cards.id', 'cards.title', 'cards.due_date', 'cards.priority', 'columns.workflow_state')
             ->orderBy('cards.due_date')->orderBy('cards.id')->limit(7)->get()
             ->map(fn ($card) => [
                 'id' => $card->id,
@@ -75,7 +75,7 @@ class BoardDashboardController extends ApiController
         $milestones = $cards()
             ->where('cards.is_milestone', true)
             ->whereNotNull('cards.due_date')
-            ->select('cards.id', 'cards.title', 'cards.due_date', 'columns.workflow_state')
+            ->select('cards.id', 'cards.title', 'cards.due_date', 'cards.priority', 'columns.workflow_state')
             ->orderByRaw("CASE WHEN columns.workflow_state = 'done' THEN 1 ELSE 0 END")
             ->orderBy('cards.due_date')->orderBy('cards.id')->limit(5)->get()
             ->map(fn ($card) => [
