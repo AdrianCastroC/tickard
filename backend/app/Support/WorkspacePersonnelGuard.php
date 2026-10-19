@@ -9,7 +9,7 @@ use Illuminate\Validation\ValidationException;
 
 class WorkspacePersonnelGuard
 {
-    public static function resolve(Request $request, int $workspaceId, bool $write = false): Workspace
+    public static function resolve(Request $request, int $workspaceId, bool $write = false, string $permission = 'workspace.manage'): Workspace
     {
         $workspace = Workspace::findOrFail($workspaceId);
         $user = $request->user();
@@ -17,17 +17,23 @@ class WorkspacePersonnelGuard
 
         abort_unless($membership && ! WorkspaceClientAccess::isClient($user, $workspace), 403);
         if ($write) {
-            abort_unless(self::canManage($request, $workspace), 403);
+            abort_unless(self::canManage($request, $workspace, $permission), 403);
         }
         return $workspace;
     }
 
-    public static function canManage(Request $request, Workspace $workspace): bool
+    public static function canManage(Request $request, Workspace $workspace, string $permission = 'workspace.manage'): bool
     {
-        $membership = $workspace->memberships()->where('user_id', $request->user()->id)->first();
-        return (int) $workspace->owner_id === (int) $request->user()->id
-            || in_array($membership?->role, ['owner', 'admin'], true)
-            || (bool) $request->user()->is_admin;
+        $user = $request->user();
+        $membership = $workspace->memberships()->where('user_id', $user->id)->first();
+        if (! $membership && ! $user->is_admin) return false;
+        if (WorkspaceClientAccess::isClient($user, $workspace)) return false;
+        if ((int) $workspace->owner_id === (int) $user->id
+            || (bool) $user->is_admin || in_array($membership?->role, ['owner', 'admin'], true)) return true;
+        $custom = $membership?->customRole;
+        return $custom !== null && $custom->scope === 'workspace'
+            && (int) $custom->workspace_id === (int) $workspace->id
+            && in_array($permission, $custom->permissions ?? [], true);
     }
 
     public static function validPeople(Workspace $workspace, array $ids): array
