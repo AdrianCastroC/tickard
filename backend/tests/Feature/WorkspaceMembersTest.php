@@ -313,6 +313,20 @@ class WorkspaceMembersTest extends TestCase
             'card_id' => $otherCard->id, 'body' => 'Checklist externa',
         ]);
         $otherChecklist->assignees()->attach($member->id);
+        DB::table('workspace_invitations')->insert([
+            [
+                'workspace_id' => $workspace->id, 'project_id' => $project->id,
+                'recipient_user_id' => $member->id, 'invited_by' => $owner->id,
+                'token_hash' => str_repeat('a', 64), 'expires_at' => now()->addWeek(),
+                'status' => 'pending',
+            ],
+            [
+                'workspace_id' => $otherWorkspace->id, 'project_id' => $otherProject->id,
+                'recipient_user_id' => $member->id, 'invited_by' => $otherOwner->id,
+                'token_hash' => str_repeat('b', 64), 'expires_at' => now()->addWeek(),
+                'status' => 'pending',
+            ],
+        ]);
 
         $this->actingAs($owner)
             ->deleteJson("/api/workspaces/{$workspace->id}/members/{$member->id}")
@@ -361,6 +375,14 @@ class WorkspaceMembersTest extends TestCase
             'card_id' => $card->id, 'user_id' => $member->id,
         ]);
         $this->assertDatabaseHas('users', ['id' => $member->id]);
+        $this->assertTrue(DB::table('workspace_invitations')
+            ->where('workspace_id', $workspace->id)
+            ->where('recipient_user_id', $member->id)
+            ->whereNotNull('revoked_at')->exists());
+        $this->assertTrue(DB::table('workspace_invitations')
+            ->where('workspace_id', $otherWorkspace->id)
+            ->where('recipient_user_id', $member->id)
+            ->whereNull('revoked_at')->exists());
         $this->assertDatabaseHas('workspace_members', [
             'workspace_id' => $otherWorkspace->id, 'user_id' => $member->id,
         ]);
