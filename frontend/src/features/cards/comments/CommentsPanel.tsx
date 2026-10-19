@@ -5,7 +5,7 @@ import { CommentsIcon, CommentTrashIcon, EncantadoIcon, EyeIcon, EyeSlashIcon, K
 import { SectionToggle } from '../cardSectionUi'
 
 const MAX_COMMENT_NESTING = 5
-type Props = { card: Card; board: BoardPayload; currentUser: { id: number; name: string; avatar_url?: string | null }; editing: boolean; comments: Comment[]; onCommentsChange: Dispatch<SetStateAction<Comment[]>>; onChange: () => Promise<void>; dragProps?: Record<string, unknown>; onRemove: () => Promise<void> }
+type Props = { card: Card; board: BoardPayload; currentUser: { id: number; name: string; avatar_url?: string | null }; editing: boolean; canComment: boolean; comments: Comment[]; onCommentsChange: Dispatch<SetStateAction<Comment[]>>; onChange: () => Promise<void>; dragProps?: Record<string, unknown>; onRemove: () => Promise<void> }
 
 type CommentNode = {
   comment: Comment
@@ -166,7 +166,7 @@ function CommentEmojiButton({ onPick }: { onPick: (emoji: string) => void }) {
   )
 }
 
-export function CommentsPanel({ card, board, currentUser, editing, comments, onCommentsChange, onChange, dragProps, onRemove }: Props) {
+export function CommentsPanel({ card, board, currentUser, editing, canComment, comments, onCommentsChange, onChange, dragProps, onRemove }: Props) {
   const [body, setBody] = useState('')
   const [replyTo, setReplyTo] = useState<number | null>(null)
   const [replyBody, setReplyBody] = useState('')
@@ -214,7 +214,7 @@ export function CommentsPanel({ card, board, currentUser, editing, comments, onC
 
               {!commentsCollapsed && (
                 <>
-              {!editing && (
+              {!editing && canComment && (
                 <div className="comment-compose">
                   <Avatar id={currentUser.id} name={currentUser.name} size={40} className="face" src={currentUser.avatar_url} />
                   <form
@@ -259,7 +259,7 @@ export function CommentsPanel({ card, board, currentUser, editing, comments, onC
               <div className="comment-thread">
                 {buildCommentForest(comments).map((rootNode) => {
                   const root = rootNode.comment
-                  const canToggle = !editing
+                  const canToggle = canComment && !editing
                     && board.role !== 'cliente'
                     && root.author_id === currentUser.id
                   async function toggleVisibility() {
@@ -290,7 +290,7 @@ export function CommentsPanel({ card, board, currentUser, editing, comments, onC
                     await onChange()
                   }
                   function replyComposer(parentId: number, authorName: string) {
-                    if (editing || replyTo !== parentId) return null
+                    if (editing || !canComment || replyTo !== parentId) return null
                     return (
                       <div className="comment-compose reply">
                         <Avatar id={currentUser.id} name={currentUser.name} size={32} className="face" src={currentUser.avatar_url} />
@@ -324,8 +324,8 @@ export function CommentsPanel({ card, board, currentUser, editing, comments, onC
                     const item = node.comment
                     const author = board.members.find((member) => member.id === item.author_id)
                       ?? board.members.find((member) => member.name === item.author)
-                    const canReply = !editing && node.depth < MAX_COMMENT_NESTING
-                    const canDelete = !editing
+                    const canReply = canComment && !editing && node.depth < MAX_COMMENT_NESTING
+                    const canDelete = canComment && !editing
                       && item.author_id === currentUser.id
                       && node.children.length === 0
                     const isRoot = node.depth === 0
@@ -377,7 +377,7 @@ export function CommentsPanel({ card, board, currentUser, editing, comments, onC
                             </header>
                             <p>{item.body}</p>
                             <div className="comment-actions">
-                              {!editing && (
+                              {!editing && canComment && (
                                 <CommentReactionButton
                                   comment={item}
                                   onReacted={(next) => {
