@@ -21,6 +21,7 @@ import { WorkspaceSelector } from '../features/sidebar/WorkspaceSelector/Workspa
 import { PersonalSection } from '../features/sidebar/PersonalSection/PersonalSection'
 import { ProjectsSection } from '../features/sidebar/ProjectsSection/ProjectsSection'
 import { MainContent } from '../features/workspace/MainContent'
+import { ProjectContentLoading } from '../features/workspace/ProjectContentLoading'
 import { ProjectContextBar } from '../features/workspace/ProjectContextBar'
 import { WorkspaceOverview } from '../features/workspace/WorkspaceOverview'
 import { ProjectLayout as ProjectSurface } from '../features/workspace/ProjectLayout'
@@ -32,7 +33,11 @@ type AppContext = 'home' | 'inbox' | 'my-tasks' | 'workspace' | 'members' | 'dep
 
 export function Workspace() {
   const workspace = useWorkspace(); const sidebar = useSidebarState(); const [query, setQuery] = useState(''); const [appContext, setAppContext] = useState<AppContext>('home'); const [breadcrumb, setBreadcrumb] = useState<BreadcrumbItem[]>([{label:'Inicio'}])
-  if (!workspace.profile) return <main className="login"><p>Cargando…</p></main>
+  if (!workspace.profile) return <main className="tickard-startup-loading">
+    <ProjectContentLoading title="Cargando Tickard" description="Preparando tu espacio de trabajo…">
+      <></>
+    </ProjectContentLoading>
+  </main>
   return <div className={`frame${sidebar.mini ? ' is-side-mini' : ''}`}><AccountHeader profile={workspace.profile} workspaceId={workspace.activeWorkspaceId} onProfile={workspace.updateProfile} query={query} onQueryChange={setQuery} breadcrumb={breadcrumb} mini={sidebar.mini} /><WorkspaceContent workspace={workspace} profile={workspace.profile} sidebar={sidebar} query={query} appContext={appContext} onAppContext={setAppContext} onBreadcrumb={setBreadcrumb} /></div>
 }
 
