@@ -79,6 +79,7 @@ class WorkspaceMembersController extends ApiController
             'member_limit' => WorkspaceLimits::maxMembers($workspace),
             'pending_invitations' => $pending,
             'can_manage_roles' => $isOwner,
+            'can_remove_members' => $isOwner,
             'can_manage_jobs' => $isOwner || $workspace->memberships()->where('user_id', $request->user()->id)->where('role', 'admin')->exists(),
         ]);
     }
@@ -119,4 +120,106 @@ class WorkspaceMembersController extends ApiController
 
         return response()->json(['user_id' => $user->id, 'role' => $data['role']]);
     }
+    /**
+     * Revoke access to this Workspace without deleting the global user or
+     * historical Card content, comments, activities and checklists.
+     *
+     * All revocations are scoped through entities owned by this Workspace,
+     * so memberships and assignments in other Workspaces remain untouched.
+     */
+    public function destroy(Request $request, Workspace $workspace, User $user)
+    {
+        abort_unless((int) $workspace->owner_id === (int) $request->user()->id, 403);
+        abort_if((int) $user->id === (int) $workspace->owner_id, 422,
+            'No puedes dar de baja al propietario del Workspace.');
+
+        DB::transaction(function () use ($workspace, $user) {
+            $membership = $workspace->memberships()
+                ->where('user_id', $user->id)->lockForUpdate()->firstOrFail();
+
+            abort_if($membership->role === 'owner', 422,
+                'El propietario del Workspace no puede darse de baja.');
+            abort_if(WorkspaceClientAccess::isClient($user, $workspace) || $membership->role === 'client', 422,
+                'Los usuarios de empresas cliente se gestionan desde Clientes.');
+
+            $projectIds = DB::table('projects')->select('id')
+                ->where('workspace_id', $workspace->id);
+            $departmentIds = DB::table('departments')->select('id')
+                ->where('workspace_id', $workspace->id);
+            $teamIds = DB::table('teams')->select('id')
+                ->where('workspace_id', $workspace->id);
+
+            // Remember affected boards before detaching assignments: their
+            // revision must advance so Kanban/Gantt caches refresh correctly.
+            $affectedBoardIds = DB::table('card_user as link')
+                ->join('cards', 'cards.id', '=', 'link.card_id')
+                ->join('boards', 'boards.id', '=', 'cards.board_id')
+                ->join('projects', 'projects.id', '=', 'boards.project_id')
+                ->where('projects.workspace_id', $workspace->id)
+                ->where('link.user_id', $user->id)
+                ->distinct()->pluck('boards.id')->all();
+            $checklistBoardIds = DB::table('card_checklist_item_user as link')
+                ->join('card_checklist_items as item', 'item.id', '=', 'link.card_checklist_item_id')
+                ->join('cards', 'cards.id', '=', 'item.card_id')
+                ->join('boards', 'boards.id', '=', 'cards.board_id')
+                ->join('projects', 'projects.id', '=', 'boards.project_id')
+                ->where('projects.workspace_id', $workspace->id)
+                ->where('link.user_id', $user->id)
+                ->distinct()->pluck('boards.id')->all();
+            $affectedBoardIds = array_values(array_unique(array_merge($affectedBoardIds, $checklistBoardIds)));
+
+            // Unassign Tasks and checklist items, including completed Cards,
+            // without removing Cards or their historical activity and comments.
+            DB::table('card_user')->where('user_id', $user->id)
+                ->whereIn('card_id', function ($query) use ($workspace) {
+                    $query->select('cards.id')->from('cards')
+                        ->join('boards', 'boards.id', '=', 'cards.board_id')
+                        ->join('projects', 'projects.id', '=', 'boards.project_id')
+                        ->where('projects.workspace_id', $workspace->id);
+                })->delete();
+
+            DB::table('card_checklist_item_user')->where('user_id', $user->id)
+                ->whereIn('card_checklist_item_id', function ($query) use ($workspace) {
+                    $query->select('card_checklist_items.id')->from('card_checklist_items')
+                        ->join('cards', 'cards.id', '=', 'card_checklist_items.card_id')
+                        ->join('boards', 'boards.id', '=', 'cards.board_id')
+                        ->join('projects', 'projects.id', '=', 'boards.project_id')
+                        ->where('projects.workspace_id', $workspace->id);
+                })->delete();
+
+            if ($affectedBoardIds) {
+                DB::table('boards')->whereIn('id', $affectedBoardIds)->increment('revision');
+            }
+
+            DB::table('project_members')->where('user_id', $user->id)
+                ->whereIn('project_id', $projectIds)->delete();
+
+            // A removed member cannot remain responsible for a group.
+            // Null is allowed by the schema; the Owner may choose a new lead.
+            DB::table('departments')->where('workspace_id', $workspace->id)
+                ->where('lead_user_id', $user->id)->update(['lead_user_id' => null]);
+            DB::table('teams')->where('workspace_id', $workspace->id)
+                ->where('lead_user_id', $user->id)->update(['lead_user_id' => null]);
+
+            DB::table('department_user')->where('user_id', $user->id)
+                ->whereIn('department_id', $departmentIds)->delete();
+            DB::table('team_user')->where('user_id', $user->id)
+                ->whereIn('team_id', $teamIds)->delete();
+
+            // Pending workspace and project invitations must not let a
+            // removed member silently rejoin after access has been revoked.
+            DB::table('workspace_invitations')
+                ->where('workspace_id', $workspace->id)
+                ->where('recipient_user_id', $user->id)
+                ->where('status', 'pending')
+                ->whereNull('revoked_at')
+                ->update(['revoked_at' => now(), 'updated_at' => now()]);
+
+            // Remove Workspace membership last so no partial access remains.
+            $membership->delete();
+        });
+
+        return response()->noContent();
+    }
+
 }

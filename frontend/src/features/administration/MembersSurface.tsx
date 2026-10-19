@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type
 import { createPortal } from 'react-dom'
 import { api } from '../../api'
 import { Avatar, formatDateLong } from '../../shared/ui'
-import { EditIcon, FilterFunnelIcon, SortIcon } from '../../shared/icons'
+import { EditIcon, FilterFunnelIcon, SortIcon, TrashIcon } from '../../shared/icons'
 import { ProjectContentLoading } from '../workspace/ProjectContentLoading'
 import { WorkspaceInvitations } from '../workspace/WorkspaceInvitations'
 import styles from './MembersSurface.module.css'
@@ -17,6 +17,7 @@ type Member = {
 type MemberData = {
   members: Member[]; member_count: number; member_limit: number | null
   pending_invitations: number; can_manage_roles: boolean; can_manage_jobs: boolean
+  can_remove_members: boolean
 }
 type Filter = 'all' | 'owner' | 'admin' | 'member' | 'client'
 type Panel = 'members' | 'invitations'
@@ -122,6 +123,9 @@ export function MembersSurface({ workspaceId, workspaceName }: {
   const [draftRole, setDraftRole] = useState<'admin' | 'member'>('member')
   const [saving, setSaving] = useState(false)
   const [savingJob, setSavingJob] = useState(false)
+  const [removingMember, setRemovingMember] = useState<Member | null>(null)
+  const [removalBusy, setRemovalBusy] = useState(false)
+  const [removalError, setRemovalError] = useState('')
 
   const load = useCallback(async () => {
     if (workspaceId === null) return
@@ -134,7 +138,7 @@ export function MembersSurface({ workspaceId, workspaceName }: {
   useEffect(() => {
     let alive = true
     setLoading(true); setData(null); setSelectedId(null); setSelectedIds([]); setPanel('members')
-    setError(''); setNotice(''); setSearch(''); setRoleFilter('all'); setDepartmentFilter('all'); setTeamFilter('all'); setFiltersOpen(false); setSortKey('name'); setSortDirection('asc')
+    setError(''); setNotice(''); setRemovingMember(null); setRemovalError(''); setSearch(''); setRoleFilter('all'); setDepartmentFilter('all'); setTeamFilter('all'); setFiltersOpen(false); setSortKey('name'); setSortDirection('asc')
     if (workspaceId === null) { setLoading(false); return }
     void api<MemberData>('/workspaces/' + workspaceId + '/members')
       .then(result => { if (alive) { setData(result); setSelectedId(result.members[0]?.id ?? null) } })
@@ -151,6 +155,7 @@ export function MembersSurface({ workspaceId, workspaceName }: {
   useEffect(() => { setDraftJob(selected?.job_title ?? ''); setEditingMember(false); setEditError('') }, [selected?.id, selected?.job_title])
   const canEditJob = !!(selected && data?.can_manage_jobs && !selected.is_client)
   const canEditRole = !!(selected && data?.can_manage_roles && selected.role !== 'owner' && selected.role !== 'client')
+  const canRemoveMember = !!(selected && data?.can_remove_members && selected.role !== 'owner' && !selected.is_client && selected.role !== 'client')
   function beginEditMember() {
     if (!selected || (!canEditJob && !canEditRole)) return
     setDraftJob(selected.job_title ?? '')
@@ -269,6 +274,45 @@ export function MembersSurface({ workspaceId, workspaceName }: {
       setEditError(cause instanceof Error ? cause.message : 'No se pudo actualizar el miembro.')
     } finally { setSavingJob(false) }
   }
+
+  function openRemoveMember(member: Member) {
+    if (!data?.can_remove_members || member.role === 'owner' || member.role === 'client' || member.is_client) return
+    setRemovalError('')
+    setRemovingMember(member)
+  }
+
+  async function confirmRemoveMember() {
+    if (!removingMember || workspaceId === null || !data?.can_remove_members || removalBusy) return
+    setRemovalBusy(true); setRemovalError(''); setNotice(''); setError('')
+    try {
+      await api('/workspaces/' + workspaceId + '/members/' + removingMember.id, { method: 'DELETE' })
+      const removedId = removingMember.id
+      setSelectedIds(previous => previous.filter(id => id !== removedId))
+      setSelectedId(previous => previous === removedId ? null : previous)
+      setRemovingMember(null)
+      setTab('summary')
+      setNotice('Miembro retirado del Workspace. Se han revocado sus accesos y asignaciones; se conserva el historial.')
+      try {
+        await load()
+      } catch {
+        setError('La baja se ha completado, pero no se pudo actualizar el listado. Recarga la vista para verlo.')
+      }
+    } catch (cause) {
+      setRemovalError(cause instanceof Error ? cause.message : 'No se pudo dar de baja al miembro.')
+    } finally { setRemovalBusy(false) }
+  }
+
+  useEffect(() => {
+    if (!removingMember) return
+    const escape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && !removalBusy) {
+        setRemovingMember(null)
+        setRemovalError('')
+      }
+    }
+    document.addEventListener('keydown', escape)
+    return () => document.removeEventListener('keydown', escape)
+  }, [removingMember, removalBusy])
 
   async function updateRoles(ids: number[], role: 'admin' | 'member') {
     if (!data?.can_manage_roles || workspaceId === null || saving || !ids.length) return
@@ -494,6 +538,13 @@ export function MembersSurface({ workspaceId, workspaceName }: {
                   <dt>Incorporación</dt><dd>{selected.joined_at ? formatDateLong(selected.joined_at) : 'Sin fecha'}</dd>
                 </dl>
               </section>
+              {selected && canRemoveMember && <section className={styles.removeSection}>
+                <strong>Dar de baja del Workspace</strong>
+                <p>Retira sus accesos y asignaciones sin eliminar su cuenta ni el historial de trabajo.</p>
+                <button type="button" className={styles.removeAction} onClick={() => openRemoveMember(selected)}>
+                  <TrashIcon/> Quitar del Workspace
+                </button>
+              </section>}
               <section className={styles.detailGroup}>
                 <div className={styles.sectionHeading}><strong>Roles y permisos</strong>
                   <button type="button" onClick={() => setTab('permissions')}>Ver permisos</button></div>
@@ -574,6 +625,48 @@ export function MembersSurface({ workspaceId, workspaceName }: {
                 )}>{savingJob ? 'Guardando…' : 'Guardar cambios'}</button>
             </footer>
           </form>
+        </div>
+      </div>,
+      document.body,
+    )}
+    {removingMember && createPortal(
+      <div className={styles.editorBackdrop} onMouseDown={event => {
+        if (event.target === event.currentTarget && !removalBusy) {
+          setRemovingMember(null); setRemovalError('')
+        }
+      }}>
+        <div className={styles.removeDialog} role="alertdialog" aria-modal="true"
+          aria-labelledby="remove-workspace-member-title" aria-describedby="remove-workspace-member-description">
+          <div className={styles.removeDialogHeader}>
+            <h2 id="remove-workspace-member-title">Quitar miembro del Workspace</h2>
+            <button type="button" className={styles.close} aria-label="Cerrar confirmación"
+              disabled={removalBusy} onClick={() => setRemovingMember(null)}>
+              <Glyph name="close" size={19}/>
+            </button>
+          </div>
+          <div className={styles.removeDialogBody} id="remove-workspace-member-description">
+            <p>¿Quieres retirar a <strong>{removingMember.name}</strong> de <strong>{workspaceName}</strong>?</p>
+            <ul>
+              <li>Perderá su acceso a este Workspace y sus proyectos.</li>
+              <li>Dejará de pertenecer a sus equipos y departamentos.</li>
+              <li>Sus tareas y elementos de checklist quedarán sin su asignación, conservando a los demás responsables.</li>
+              <li>Su cuenta de Tickard, comentarios e historial seguirán existiendo.</li>
+              <li>También se cancelarán las invitaciones pendientes a este Workspace.</li>
+            </ul>
+            {(removingMember.departments.some(item => item.is_lead)
+              || removingMember.teams.some(item => item.is_lead)) && <p className={styles.removeLeadWarning}>
+              Es responsable de equipos o departamentos. Quedarán sin responsable hasta que asignes otro desde su ficha.
+            </p>}
+            {removalError && <p className={styles.removeError} role="alert">{removalError}</p>}
+          </div>
+          <footer className={styles.editorFooter}>
+            <button type="button" className={styles.editorCancel} disabled={removalBusy}
+              onClick={() => { setRemovingMember(null); setRemovalError('') }}>Cancelar</button>
+            <button type="button" className={styles.removeConfirm} disabled={removalBusy}
+              onClick={() => void confirmRemoveMember()}>
+              <TrashIcon/>{removalBusy ? 'Retirando…' : 'Quitar miembro'}
+            </button>
+          </footer>
         </div>
       </div>,
       document.body,

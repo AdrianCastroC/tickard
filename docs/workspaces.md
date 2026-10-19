@@ -137,6 +137,20 @@ Por ejemplo, Luis podría tener acceso a:
 
 La pertenencia a un Workspace no implica ser propietario del mismo.
 
+### Baja de miembros internos
+
+Solo el propietario puede dar de baja a un miembro interno desde **Personal → Miembros → Información → Quitar del Workspace**.
+
+La operación utiliza `DELETE /api/workspaces/{workspace}/members/{user}` y se ejecuta en una transacción:
+
+- revoca su membresía del Workspace, las pertenencias a proyectos, departamentos y equipos;
+- elimina sus asignaciones directas a Cards y elementos de checklist de ese Workspace (si hay otras personas asignadas, sus asignaciones se mantienen);
+- invalida la revisión de los tableros afectados y revoca invitaciones pendientes a ese Workspace;
+- deja sin responsable los equipos o departamentos que dirigía, para que el propietario asigne uno nuevo;
+- conserva Cards, checklists, comentarios, actividad histórica y la cuenta global de Tickard, además de todas sus relaciones con otros Workspaces.
+
+La baja del `owner` está prohibida. Los accesos de empresas cliente se administran desde **Clientes**, no desde esta operación. La confirmación de baja explica las consecuencias antes de ejecutarse.
+
 Los roles y permisos adicionales dentro del Workspace se definirán posteriormente.
 
 ---
