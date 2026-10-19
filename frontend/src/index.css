@@ -4355,3 +4355,14 @@ h1, h2, h3, p { margin: 0; }
 }
 .project-gantt-preparation-retry p {margin:0;font-size:11px;color:var(--muted);}
 .project-gantt-preparation-retry button {flex:0 0 auto;font-size:11px;}
+
+/* Workspace settings are a compact, internally scrolling modal, never a page. */
+.workspace-settings-modal {width:min(560px,calc(100vw - 32px));max-height:min(760px,calc(100dvh - 32px));display:flex;flex-direction:column;min-height:0;overflow:hidden;}
+.workspace-settings-modal .wd-modal-head {flex:0 0 auto;}
+.workspace-settings-modal-body {display:flex;flex-direction:column;gap:12px;min-height:0;overflow-y:auto;overscroll-behavior:contain;padding:16px;}
+.workspace-settings-modal .workspace-overview-section {padding:13px;gap:12px;}
+.workspace-settings-modal .project-settings-logo-editor {gap:12px;}
+.workspace-settings-modal .workspace-overview-toggles {grid-template-columns:1fr;gap:7px;}
+.workspace-settings-modal .workspace-overview-toggles .workspace-birthday-toggle {padding:9px 11px;}
+.workspace-settings-modal .workspace-overview-rename {max-width:none;}
+@media (max-width:480px) {.workspace-settings-modal .workspace-overview-rename > div {flex-wrap:wrap;}.workspace-settings-modal .workspace-overview-rename .primary {width:100%;}}
