@@ -84,7 +84,7 @@ export function ProjectLayout({
           </header>
           <div className="project-settings-modal-body">
             <ProjectSettings key={project.id} project={project} onRefresh={onRefresh}
-              onDelete={() => { setSettingsOpen(false); setDeleting(true) }}/>
+              onDelete={() => { if (canProject(project, 'project.delete')) { setSettingsOpen(false); setDeleting(true) } }}/>
           </div>
         </div>
       </div>,
