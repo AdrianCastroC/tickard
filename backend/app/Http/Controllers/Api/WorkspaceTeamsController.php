@@ -87,7 +87,7 @@ class WorkspaceTeamsController extends ApiController
         ];
 
         return response()->json([
-            'can_manage' => Guard::canManage($request, $workspace),
+            'can_manage' => Guard::canManage($request, $workspace, 'workspace.teams'),
             'teams' => $teams->map(fn (Team $team) => [
                 'id' => $team->id, 'name' => $team->name,
                 'description' => $team->description,
@@ -119,7 +119,7 @@ class WorkspaceTeamsController extends ApiController
     public function store(Request $request)
     {
         $data = $request->validate(['workspace_id' => ['required', 'integer']]);
-        $workspace = Guard::resolve($request, (int) $data['workspace_id'], true);
+        $workspace = Guard::resolve($request, (int) $data['workspace_id'], true, 'workspace.teams');
         $values = $this->payload($request, $workspace);
         $team = DB::transaction(function () use ($workspace, $values) {
             $team = Team::create([
@@ -139,7 +139,7 @@ class WorkspaceTeamsController extends ApiController
     public function update(Request $request, Team $team)
     {
         $data = $request->validate(['workspace_id' => ['required', 'integer']]);
-        $workspace = Guard::resolve($request, (int) $data['workspace_id'], true);
+        $workspace = Guard::resolve($request, (int) $data['workspace_id'], true, 'workspace.teams');
         abort_unless((int) $team->workspace_id === (int) $workspace->id, 404);
         $values = $this->payload($request, $workspace, $team);
 
@@ -171,7 +171,7 @@ class WorkspaceTeamsController extends ApiController
     public function destroy(Request $request, Team $team)
     {
         $data = $request->validate(['workspace_id' => ['required', 'integer']]);
-        $workspace = Guard::resolve($request, (int) $data['workspace_id'], true);
+        $workspace = Guard::resolve($request, (int) $data['workspace_id'], true, 'workspace.teams');
         abort_unless((int) $team->workspace_id === (int) $workspace->id, 404);
         DB::transaction(function () use ($team, $workspace) {
             $team->departments()->detach();
