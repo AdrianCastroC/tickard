@@ -84,6 +84,21 @@ class ProjectAccess
         return self::has($user, $project, 'cards.comment');
     }
 
+    public static function canManageBoards(User $user, Project $project): bool
+    {
+        return self::has($user, $project, 'boards.manage');
+    }
+
+    public static function canManageMembers(User $user, Project $project): bool
+    {
+        return self::has($user, $project, 'project.members');
+    }
+
+    public static function canUpload(User $user, Project $project): bool
+    {
+        return self::has($user, $project, 'files.upload');
+    }
+
     public static function canManage(User $user, Project $project): bool
     {
         return self::has($user, $project, 'project.manage');
