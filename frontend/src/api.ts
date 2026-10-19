@@ -162,6 +162,7 @@ export type Column = { id: number; name: string; color?: string | null; position
 export type BoardPayload = {
   revision: number
   role: Role
+  permissions?: string[]
   board: {
     id: number
     name: string
@@ -202,7 +203,18 @@ export type Project = {
   client_company_id: number | null
   client_access_enabled: boolean
   role: Role
+  permissions?: string[]
   boards: { id: number; name: string }[]
+}
+
+export function canProject(project: { role: Role; permissions?: string[] }, permission: string): boolean {
+  if (project.permissions) return project.permissions.includes(permission)
+  if (permission === 'project.view' || permission === 'cards.comment') return true
+  if (permission === 'project.manage' || permission === 'project.members' || permission === 'boards.manage')
+    return project.role === 'responsable'
+  if (permission === 'cards.edit' || permission === 'files.upload')
+    return project.role === 'responsable' || project.role === 'editor'
+  return false
 }
 
 export type WorkspaceRef = {
