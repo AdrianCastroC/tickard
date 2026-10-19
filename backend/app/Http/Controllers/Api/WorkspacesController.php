@@ -48,7 +48,7 @@ class WorkspacesController extends Controller
         return response()->json([
             'id' => $workspace->id,
             'name' => $workspace->name,
-            'role' => 'owner',
+            'role' => $workspace->memberships()->where('user_id', $user->id)->value('role'),
             'plan' => $workspace->effectivePlan(),
         ], 201);
     }
