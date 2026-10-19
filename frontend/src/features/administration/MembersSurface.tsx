@@ -286,11 +286,17 @@ export function MembersSurface({ workspaceId, workspaceName }: {
     setRemovalBusy(true); setRemovalError(''); setNotice(''); setError('')
     try {
       await api('/workspaces/' + workspaceId + '/members/' + removingMember.id, { method: 'DELETE' })
-      await load()
-      setSelectedIds(previous => previous.filter(id => id !== removingMember.id))
+      const removedId = removingMember.id
+      setSelectedIds(previous => previous.filter(id => id !== removedId))
+      setSelectedId(previous => previous === removedId ? null : previous)
       setRemovingMember(null)
       setTab('summary')
-      setNotice('Miembro retirado del Workspace. Sus tareas han quedado sin asignar y se conserva su historial.')
+      setNotice('Miembro retirado del Workspace. Se han revocado sus accesos y asignaciones; se conserva el historial.')
+      try {
+        await load()
+      } catch {
+        setError('La baja se ha completado, pero no se pudo actualizar el listado. Recarga la vista para verlo.')
+      }
     } catch (cause) {
       setRemovalError(cause instanceof Error ? cause.message : 'No se pudo dar de baja al miembro.')
     } finally { setRemovalBusy(false) }
@@ -645,7 +651,12 @@ export function MembersSurface({ workspaceId, workspaceName }: {
               <li>Dejará de pertenecer a sus equipos y departamentos.</li>
               <li>Sus tareas y elementos de checklist quedarán sin su asignación, conservando a los demás responsables.</li>
               <li>Su cuenta de Tickard, comentarios e historial seguirán existiendo.</li>
+              <li>También se cancelarán las invitaciones pendientes a este Workspace.</li>
             </ul>
+            {(removingMember.departments.some(item => item.is_lead)
+              || removingMember.teams.some(item => item.is_lead)) && <p className={styles.removeLeadWarning}>
+              Es responsable de equipos o departamentos. Quedarán sin responsable hasta que asignes otro desde su ficha.
+            </p>}
             {removalError && <p className={styles.removeError} role="alert">{removalError}</p>}
           </div>
           <footer className={styles.editorFooter}>
