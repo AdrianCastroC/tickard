@@ -8,6 +8,8 @@ use App\Support\WorkspaceClientAccess;
 use App\Support\WorkspaceLimits;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rules\File;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
 
 class WorkspacesController extends Controller
@@ -309,6 +311,35 @@ class WorkspacesController extends Controller
             'role' => 'owner',
             'plan' => $workspace->effectivePlan(),
         ]);
+    }
+
+    public function uploadImage(Request $request, Workspace $workspace): JsonResponse
+    {
+        abort_unless((int) $workspace->owner_id === (int) $request->user()->id, 403);
+        $request->validate([
+            'image' => ['required', File::types(['jpg', 'jpeg', 'png', 'webp'])->max(2048)],
+        ]);
+
+        $old = $workspace->image_path;
+        $path = $request->file('image')->store("workspace-entities/{$workspace->id}/workspace", 'public');
+        try {
+            $workspace->update(['image_path' => $path]);
+        } catch (\Throwable $e) {
+            Storage::disk('public')->delete($path);
+            throw $e;
+        }
+        if ($old) Storage::disk('public')->delete($old);
+
+        return response()->json(['image_url' => '/storage/'.$path]);
+    }
+
+    public function deleteImage(Request $request, Workspace $workspace): JsonResponse
+    {
+        abort_unless((int) $workspace->owner_id === (int) $request->user()->id, 403);
+        $old = $workspace->image_path;
+        $workspace->update(['image_path' => null]);
+        if ($old) Storage::disk('public')->delete($old);
+        return response()->json(['image_url' => null]);
     }
 
     public function updateBirthdaySettings(Request $request, Workspace $workspace): JsonResponse

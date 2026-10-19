@@ -62,6 +62,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/workspaces', [WorkspacesController::class, 'store']);
     Route::get('/workspaces/{workspace}/overview', [WorkspacesController::class, 'overview']);
     Route::patch('/workspaces/{workspace}', [WorkspacesController::class, 'update']);
+    Route::post('/workspaces/{workspace}/image', [WorkspacesController::class, 'uploadImage']);
+    Route::delete('/workspaces/{workspace}/image', [WorkspacesController::class, 'deleteImage']);
     Route::patch('/workspaces/{workspace}/birthday-settings', [WorkspacesController::class, 'updateBirthdaySettings']);
     Route::patch('/workspaces/{workspace}/client-settings', [WorkspacesController::class, 'updateClientSettings']);
     Route::delete('/workspaces/{workspace}', [WorkspacesController::class, 'destroy']);
