@@ -541,7 +541,9 @@ function ManagementModal({ project, data, onClose, onChanged }: { project: Proje
     finally { setBusy(false) }
   }
   async function assignTeam() {
-    if (!targetTeam || !window.confirm(`Vincular "${targetTeam.name}" a ${project.name} e incorporar ${additions.length} persona(s) nuevas con rol ${roleName(addRole)}?\n\nNuevas: ${additions.map((person) => person.name).join(', ') || 'ninguna'}\n\nLos roles de miembros existentes no cambiarán.`)) return
+    if (!targetTeam || (targetTeam.linked && !additions.length)) return
+    const verb = targetTeam.linked ? 'Incorporar nuevos miembros del equipo' : 'Vincular el equipo'
+    if (!window.confirm(`${verb} "${targetTeam.name}" en ${project.name}?\n\nNuevas incorporaciones (${additions.length}) con rol ${roleName(addRole)}: ${additions.map((person) => person.name).join(', ') || 'ninguna'}\n\nLos roles de los miembros existentes permanecerán intactos. Nadie perderá su acceso.`)) return
     await action(async () => {
       await api(`/projects/${project.id}/personnel/teams`, {
         method: 'POST', body: JSON.stringify({
@@ -567,7 +569,7 @@ function ManagementModal({ project, data, onClose, onChanged }: { project: Proje
     }))
   }
   async function removeMember(member: Member) {
-    if (!window.confirm(`¿Retirar a ${member.name} de ${project.name}? Perderá el acceso al proyecto y sus asignaciones a Cards.`)) return
+    if (!window.confirm(`¿Retirar a ${member.name} de ${project.name}? Perderá el acceso al proyecto y sus asignaciones a Cards y elementos de checklist. Sus comentarios e historial permanecerán.`)) return
     await action(() => api(`/projects/${project.id}/personnel/members/${member.id}`, { method: 'DELETE' }))
   }
   async function invite() {
@@ -590,7 +592,7 @@ function ManagementModal({ project, data, onClose, onChanged }: { project: Proje
       </div>
       {error && <p className={styles.formError} role="alert">{error}</p>}
       {tab === 'teams' && <div className={styles.modalContent}>
-        <p>Vincula un equipo del Workspace. Sus integrantes que todavía no pertenezcan al proyecto recibirán el rol seleccionado.</p>
+        <p>Vincula un equipo del Workspace o incorpora los nuevos integrantes de uno ya vinculado. El acceso se concede únicamente al confirmar y no altera los roles existentes.</p>
         <label>Equipo
           <select value={teamId} onChange={(event) => setTeamId(event.target.value ? Number(event.target.value) : '')}>
             <option value="">Seleccionar equipo…</option>
@@ -599,20 +601,34 @@ function ManagementModal({ project, data, onClose, onChanged }: { project: Proje
         </label>
         {targetTeam && <div className={styles.teamPreview}><strong>Miembros del equipo ({targetTeam.members.length})</strong>
           <p>{targetTeam.members.map((person) => person.name).join(', ') || 'Este equipo no tiene integrantes.'}</p>
-          <small>{additions.length} se incorporarán · {targetTeam.members.length - additions.length} ya tienen acceso</small>
+          <small>{additions.length} se incorporarán · {targetTeam.members.length - additions.length} ya tienen acceso
+            {targetTeam.linked && additions.length === 0 ? ' · Equipo al día' : ''}
+          </small>
         </div>}
         <label>Rol para los nuevos integrantes
           <select value={addRole} onChange={(event) => setAddRole(event.target.value as Role)}>
             {MANAGE_ROLES.map((item) => <option key={item.key} value={item.key}>{item.name}</option>)}
           </select>
         </label>
-        <button type="button" className={styles.modalPrimary} disabled={!teamId || busy} onClick={() => void assignTeam()}>Vincular equipo y conceder acceso</button>
+        <button type="button" className={styles.modalPrimary}
+          disabled={!targetTeam || busy || (targetTeam.linked && additions.length === 0)}
+          onClick={() => void assignTeam()}>
+          {targetTeam?.linked
+            ? (additions.length ? `Incorporar ${additions.length} nuevos integrantes` : 'Equipo al día')
+            : 'Vincular equipo y conceder acceso'}
+        </button>
         {data.teams.some((team) => team.linked) && <div className={styles.linkedTeams}><strong>Equipos vinculados</strong>
-          {data.teams.filter((team) => team.linked).map((team) => <div key={team.id}><span>{team.name}</span>
-            <button type="button" disabled={busy} onClick={() => {
-              if (!window.confirm(`¿Desvincular ${team.name}? Los miembros conservarán sus permisos individuales.`)) return
-              void action(() => api(`/projects/${project.id}/personnel/teams/${team.id}`, {method:'DELETE'}))
-            }}>Desvincular</button></div>)}
+          {data.teams.filter((team) => team.linked).map((team) => {
+            const pending = team.members.filter((person) => !currentIds.has(person.id)).length
+            return <div key={team.id}><span>{team.name}{pending > 0 ? ` · ${pending} por incorporar` : ' · Al día'}</span>
+              {pending > 0 && <button type="button" disabled={busy} onClick={() => setTeamId(team.id)}>
+                Revisar integrantes
+              </button>}
+              <button type="button" disabled={busy} onClick={() => {
+                if (!window.confirm(`¿Desvincular ${team.name}? Los miembros conservarán sus permisos individuales.`)) return
+                void action(() => api(`/projects/${project.id}/personnel/teams/${team.id}`, {method:'DELETE'}))
+              }}>Desvincular</button></div>
+          })}
         </div>}
       </div>}
       {tab === 'people' && <div className={styles.modalContent}>

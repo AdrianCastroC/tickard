@@ -248,6 +248,16 @@ class ProjectPersonnelController extends ApiController
                 Card::query()->whereHas('board', fn ($query) =>
                     $query->where('project_id', $project->id))->select('cards.id')
             )->delete();
+            // An individual may also be assigned to checklist items on Cards
+            // belonging to this project. Do not leave those stale assignments
+            // after project access has been revoked.
+            DB::table('card_checklist_item_user')->where('user_id', $user->id)
+                ->whereIn('card_checklist_item_id', function ($query) use ($project) {
+                    $query->select('card_checklist_items.id')->from('card_checklist_items')
+                        ->join('cards', 'cards.id', '=', 'card_checklist_items.card_id')
+                        ->join('boards', 'boards.id', '=', 'cards.board_id')
+                        ->where('boards.project_id', $project->id);
+                })->delete();
             $project->boards()->increment('revision');
         });
 
@@ -262,7 +272,7 @@ class ProjectPersonnelController extends ApiController
                 ->where('workspace_id', $project->workspace_id)],
             'role' => ['required', Rule::in(['responsable', 'editor', 'lector'])],
             'confirmed_member_ids' => ['required', 'array'],
-            'confirmed_member_ids.*' => ['integer'],
+            'confirmed_member_ids.*' => ['integer', 'distinct'],
         ]);
 
         $team = Team::where('workspace_id', $project->workspace_id)->findOrFail($data['team_id']);
