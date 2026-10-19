@@ -227,7 +227,7 @@ class CardsController extends ApiController
             'label_ids.*' => ['integer'],
         ]);
 
-        if (array_key_exists('assignee_ids', $data) || array_key_exists('team_ids', $data)) {
+        if (! empty($data['assignee_ids']) || ! empty($data['team_ids'])) {
             abort_unless(ProjectAccess::canAssignCards($request->user(), $project), 403);
         }
         if (! empty($data['start_date']) || ! empty($data['due_date'])) {
