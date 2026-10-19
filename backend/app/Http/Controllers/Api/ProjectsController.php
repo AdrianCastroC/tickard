@@ -35,6 +35,13 @@ class ProjectsController extends ApiController
             'client_name' => ['nullable', 'string', 'max:120'],
             'client_company_id' => ['nullable', 'integer'],
             'client_access_enabled' => ['sometimes', 'boolean'],
+            'image' => ['nullable', File::types(['jpg', 'jpeg', 'png', 'webp'])->max(2048)],
+            'show_description' => ['sometimes', 'boolean'],
+            'show_assignee' => ['sometimes', 'boolean'],
+            'show_due_date' => ['sometimes', 'boolean'],
+            'show_priority' => ['sometimes', 'boolean'],
+            'show_labels' => ['sometimes', 'boolean'],
+            'show_comments' => ['sometimes', 'boolean'],
         ]);
 
         $workspace = Workspace::whereKey($data['workspace_id'])
@@ -45,7 +52,9 @@ class ProjectsController extends ApiController
         abort_unless($request->user()->is_admin
             || (int) $workspace->owner_id === (int) $request->user()->id, 403);
 
-        $project = DB::transaction(function () use ($data, $workspace) {
+        $imagePath = null;
+        try {
+        $project = DB::transaction(function () use ($data, $workspace, $request, &$imagePath) {
             $client = null;
             if ($workspace->show_clients) {
                 if (! empty($data['client_company_id'])) {
@@ -66,7 +75,20 @@ class ProjectsController extends ApiController
                 'description' => trim($data['description'] ?? '') ?: null,
                 'client_company_id' => $client?->id,
                 'client_access_enabled' => (bool) ($data['client_access_enabled'] ?? false) && $client !== null,
+                'show_description' => $data['show_description'] ?? true,
+                'show_assignee' => $data['show_assignee'] ?? true,
+                'show_due_date' => $data['show_due_date'] ?? true,
+                'show_priority' => $data['show_priority'] ?? true,
+                'show_labels' => $data['show_labels'] ?? true,
+                'show_comments' => $data['show_comments'] ?? true,
             ]);
+
+            if ($request->hasFile('image')) {
+                $imagePath = $request->file('image')->store(
+                    "workspace-entities/{$workspace->id}/projects/{$project->id}", 'public'
+                );
+                $project->update(['image_path' => $imagePath]);
+            }
 
             $board = $project->boards()->create([
                 'name' => 'General',
@@ -77,6 +99,11 @@ class ProjectsController extends ApiController
 
             return $project->load('clientCompany', 'boards');
         });
+
+        } catch (\Throwable $e) {
+            if ($imagePath) Storage::disk('public')->delete($imagePath);
+            throw $e;
+        }
 
         return response()->json(
             $this->projectSummary($project, 'responsable'),
