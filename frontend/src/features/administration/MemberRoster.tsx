@@ -2,14 +2,16 @@ import { useEffect, useState } from 'react'
 import { Avatar } from '../../shared/ui'
 import styles from './DepartmentsDashboard.module.css'
 
-type Person = { id: number; name: string; avatar_url: string | null }
+type Person = { id: number; name: string; avatar_url: string | null; role?: string; custom_role_id?: number | null }
+type RoleOption = { value: string; label: string }
 
 export function MemberRoster({
-  entityId, current, available, leadId, canManage, busy, onSave,
+  entityId, current, available, leadId, canManage, canManageRoles = false, roleOptions = [], busy, onSave, onSaveRole,
 }: {
   entityId: number
   current: Person[]; available: Person[]
-  leadId: number | null; canManage: boolean; busy: boolean
+  leadId: number | null; canManage: boolean; canManageRoles?: boolean; roleOptions?: RoleOption[]; busy: boolean
+  onSaveRole?: (userId: number, roleValue: string) => Promise<void>
   onSave: (memberIds: number[], responsibleId: number) => Promise<void>
 }) {
   const [open, setOpen] = useState(false)
@@ -17,6 +19,7 @@ export function MemberRoster({
   const [toRemove, setToRemove] = useState<number[]>([])
   const [nextLead, setNextLead] = useState<number | null>(leadId)
   const [error, setError] = useState('')
+  const [savingRoleId, setSavingRoleId] = useState<number | null>(null)
   const ids = current.map(person => person.id)
   const candidates = available.filter(person => !ids.includes(person.id))
   const removable = current.filter(person => person.id !== nextLead).map(person => person.id)
@@ -39,6 +42,16 @@ export function MemberRoster({
     } catch (cause) { setError(cause instanceof Error ? cause.message : 'No se pudieron modificar los miembros.') }
   }
 
+  async function changeRole(id: number, value: string) {
+    if (!canManageRoles || !onSaveRole) return
+    setSavingRoleId(id); setError('')
+    try { await onSaveRole(id, value) }
+    catch(cause) { setError(cause instanceof Error ? cause.message : 'No se pudo cambiar el rol.') }
+    finally { setSavingRoleId(null) }
+  }
+  const builtinOptions: RoleOption[] = [
+    {value:'builtin:member',label:'Miembro'}, {value:'builtin:admin',label:'Administrador'},
+  ]
   return <div className={styles.roster}>
     {canManage && <div className={styles.rosterLead}>
       <label className={styles.field}>Responsable
@@ -76,6 +89,19 @@ export function MemberRoster({
       <Avatar id={person.id} name={person.name} src={person.avatar_url} size={29}/>
       <span>{person.name}</span>
       {person.id === leadId && <small>Responsable</small>}
+      <label className={styles.field} style={{marginLeft:'auto',maxWidth:178,minWidth:132}}>
+        <span style={{fontSize:10}}>Rol en Workspace</span>
+        <select aria-label={'Rol en Workspace de '+person.name}
+          value={person.custom_role_id ? 'custom:'+person.custom_role_id : 'builtin:'+(person.role ?? 'member')}
+          disabled={!canManageRoles || busy || savingRoleId !== null || person.role === 'owner'}
+          onChange={event=>void changeRole(person.id,event.target.value)}>
+          {person.role === 'owner' && <option value="builtin:owner">Owner</option>}
+          {builtinOptions.map(option=><option key={option.value} value={option.value}>{option.label}</option>)}
+          {roleOptions.map(option=><option key={option.value} value={option.value}>{option.label}</option>)}
+          {person.custom_role_id && !roleOptions.some(option=>option.value==='custom:'+person.custom_role_id) &&
+            <option value={'custom:'+person.custom_role_id}>Rol no disponible</option>}
+        </select>
+      </label>
       {canManage && <button type="button" className={styles.rosterRemove}
         aria-label={'Quitar '+person.name}
         title={person.id === nextLead ? 'Cambia antes el responsable' : 'Quitar del grupo'}
