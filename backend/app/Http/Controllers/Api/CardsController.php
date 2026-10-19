@@ -302,8 +302,6 @@ class CardsController extends ApiController
     public function updateCard(Request $request, Card $card, CardDependencyService $dependencies, MilestoneCompletionService $milestones)
     {
         $project = $card->board->project;
-        abort_unless(ProjectAccess::canEditCards($request->user(), $project), 403);
-
         $data = $request->validate([
             'title' => ['sometimes', 'string', 'max:180'],
             'description' => ['nullable', 'string'],
@@ -325,6 +323,10 @@ class CardsController extends ApiController
             'label_ids.*' => ['integer'],
         ]);
 
+        $independentFields = ['assignee_ids', 'team_ids', 'start_date', 'due_date', 'started_at', 'completed_at'];
+        if (array_diff(array_keys($data), $independentFields)) {
+            abort_unless(ProjectAccess::canEditCards($request->user(), $project), 403);
+        }
         if (array_key_exists('assignee_ids', $data) || array_key_exists('team_ids', $data)) {
             abort_unless(ProjectAccess::canAssignCards($request->user(), $project), 403);
         }
