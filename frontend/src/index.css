@@ -4459,3 +4459,26 @@ h1, h2, h3, p { margin: 0; }
 .workspace-settings-contact-fields label{display:flex;flex-direction:column;gap:6px;font-size:12px;font-weight:600}
 .workspace-settings-contact-fields input{box-sizing:border-box;width:100%;min-width:0}
 @media(max-width:520px){.workspace-settings-contact-fields{grid-template-columns:1fr}}
+
+/* Category navigation and permission matrix for workspace role details. */
+.workspace-settings-roles-mode{width:min(1240px,calc(100vw - 32px))!important}
+.tickard-roles-intro h3{font-size:15px;margin:0 0 4px}
+.tickard-roles-intro p{color:var(--muted);font-size:12px;margin:0}
+.tickard-roles-detail-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding-bottom:12px;border-bottom:1px solid var(--line)}
+.tickard-roles-detail-head h3{font-size:17px;margin:0 0 5px}
+.tickard-roles-detail-head p{font-size:11px;color:var(--muted);margin:0}
+.tickard-roles-system-label{background:color-mix(in srgb,#dfa64e 18%,var(--surface));color:#8c641d;border-radius:20px;padding:6px 9px;white-space:nowrap;font-size:11px}
+.tickard-roles-detail-tabs{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:12px;padding:12px 0}
+.tickard-roles-detail-tabs strong{color:var(--accent)}
+.tickard-roles-detail-tabs span{color:var(--muted)}
+.tickard-roles-permissions-layout{display:grid;grid-template-columns:130px minmax(0,1fr);gap:12px;min-width:0}
+.tickard-roles-categories{display:flex;flex-direction:column;gap:5px}
+.tickard-roles-categories button{border:0;border-radius:8px;background:transparent;padding:10px;text-align:left;color:var(--ink);font-size:12px;cursor:pointer}
+.tickard-roles-categories button.on{color:var(--accent);background:color-mix(in srgb,var(--accent) 12%,var(--surface));font-weight:700}
+.tickard-roles-permissions-panel{border:1px solid var(--line);border-radius:9px;padding:14px;min-width:0}
+.tickard-roles-permissions-panel h4{margin:0;font-size:14px}
+.tickard-roles-permissions-panel > p{font-size:11px;color:var(--muted);margin:7px 0 14px}
+.tickard-roles-permission-row{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:10px 2px;border-bottom:1px solid var(--line);font-size:12px}
+.tickard-roles-permission-row:last-child{border-bottom:0}
+.tickard-roles-permission-row input{accent-color:var(--accent)}
+@media(max-width:800px){.tickard-roles-permissions-layout{grid-template-columns:1fr}.tickard-roles-categories{flex-direction:row;flex-wrap:wrap}}
