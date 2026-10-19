@@ -252,7 +252,7 @@ class WorkspaceTest extends TestCase
             ->assertJsonPath('dashboard.projects.0.member_count', 1)
             ->assertJsonPath('dashboard.projects.0.members.0.id', $owner->id)
             ->assertJsonPath('dashboard.projects.0.members.0.avatar_url', '/storage/avatars/ana-demo.jpg')
-            ->assertJsonPath('dashboard.projects.0.latest_due_date', $task->due_date)
+            ->assertJsonPath('dashboard.projects.0.latest_due_date', $task->due_date->format('Y-m-d H:i:s'))
             ->assertJsonPath('dashboard.projects.0.total', 2)
             ->assertJsonPath('dashboard.projects.0.completed', 1)
             ->assertJsonCount(1, 'dashboard.tasks')
