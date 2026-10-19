@@ -137,7 +137,6 @@ public function storeChecklistItem(Request $request, Card $card)
 public function updateChecklistItem(Request $request, CardChecklistItem $item, MilestoneCompletionService $milestones)
     {
         $project = $item->card->board->project;
-        abort_unless(ProjectAccess::canEditCards($request->user(), $project), 403);
         $data = $request->validate([
             'body' => ['sometimes', 'string', 'max:240'],
             'is_done' => ['sometimes', 'boolean'],
@@ -145,6 +144,16 @@ public function updateChecklistItem(Request $request, CardChecklistItem $item, M
             'assignee_ids' => ['sometimes', 'array'],
             'assignee_ids.*' => ['integer'],
         ]);
+
+        if (array_intersect(['body', 'is_done'], array_keys($data))) {
+            abort_unless(ProjectAccess::canEditCards($request->user(), $project), 403);
+        }
+        if (array_key_exists('assignee_ids', $data)) {
+            abort_unless(ProjectAccess::canAssignCards($request->user(), $project), 403);
+        }
+        if (array_key_exists('due_date', $data)) {
+            abort_unless(ProjectAccess::canChangeDates($request->user(), $project), 403);
+        }
 
         if (array_key_exists('due_date', $data) && $data['due_date'] !== null) {
             $cardDue = $item->card->due_date?->toDateString();
