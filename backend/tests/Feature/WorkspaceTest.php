@@ -208,7 +208,13 @@ class WorkspaceTest extends TestCase
         $owner = User::factory()->create(['is_admin' => false]);
         $workspace = Workspace::createInitialFor($owner);
         $workspace->update(['show_clients' => true]);
-        $project = $workspace->projects()->create(['name' => 'Proyecto A']);
+        $project = $workspace->projects()->create([
+            'name' => 'Proyecto A', 'description' => 'Diseño y desarrollo de una plataforma',
+        ]);
+        \App\Models\ProjectMember::create([
+            'project_id' => $project->id, 'user_id' => $owner->id, 'role' => 'responsable',
+        ]);
+        $owner->update(['avatar_path' => 'avatars/ana-demo.jpg']);
         $board = Board::create(['project_id' => $project->id, 'name' => 'Tablero A']);
         $board->createDefaultColumns();
         $pending = $board->columns()->where('workflow_state', 'pending')->firstOrFail();
@@ -242,6 +248,11 @@ class WorkspaceTest extends TestCase
             ->assertJsonPath('dashboard.cards.completed', 1)
             ->assertJsonCount(1, 'dashboard.projects')
             ->assertJsonPath('dashboard.projects.0.name', 'Proyecto A')
+            ->assertJsonPath('dashboard.projects.0.description', 'Diseño y desarrollo de una plataforma')
+            ->assertJsonPath('dashboard.projects.0.member_count', 1)
+            ->assertJsonPath('dashboard.projects.0.members.0.id', $owner->id)
+            ->assertJsonPath('dashboard.projects.0.members.0.avatar_url', '/storage/avatars/ana-demo.jpg')
+            ->assertJsonPath('dashboard.projects.0.latest_due_date', $task->due_date)
             ->assertJsonPath('dashboard.projects.0.total', 2)
             ->assertJsonPath('dashboard.projects.0.completed', 1)
             ->assertJsonCount(1, 'dashboard.tasks')
@@ -249,6 +260,8 @@ class WorkspaceTest extends TestCase
             ->assertJsonPath('dashboard.tasks.0.project_id', $project->id)
             ->assertJsonCount(1, 'dashboard.activity')
             ->assertJsonPath('dashboard.activity.0.card_title', 'Validar pagos')
+            ->assertJsonPath('dashboard.activity.0.user_id', $owner->id)
+            ->assertJsonPath('dashboard.activity.0.avatar_url', '/storage/avatars/ana-demo.jpg')
             ->assertJsonPath('dashboard.teams.0.name', 'Frontend')
             ->assertJsonPath('dashboard.departments.0.name', 'Desarrollo')
             ->assertJsonPath('dashboard.clients.0.name', 'Nébula Mobile')
@@ -305,6 +318,40 @@ class WorkspaceTest extends TestCase
             ->assertJsonCount(0, 'dashboard.members')
             ->assertJsonCount(0, 'dashboard.clients')
             ->assertJsonMissing(['card_title' => 'Interna']);
+    }
+
+    public function test_owner_can_create_and_edit_project_description_but_regular_member_cannot(): void
+    {
+        $owner = User::factory()->create(['is_admin' => false]);
+        $workspace = Workspace::createInitialFor($owner);
+        $member = User::factory()->create(['is_admin' => false]);
+        $workspace->memberships()->create(['user_id' => $member->id, 'role' => 'member']);
+
+        $this->actingAs($member)->postJson('/api/projects', [
+            'workspace_id' => $workspace->id, 'name' => 'No autorizado',
+        ])->assertForbidden();
+
+        $response = $this->actingAs($owner)->postJson('/api/projects', [
+            'workspace_id' => $workspace->id,
+            'name' => 'Proyecto con descripción',
+            'description' => 'Objetivo general de la aplicación',
+        ])->assertCreated();
+        $id = $response->json('id');
+        $this->assertDatabaseHas('projects', [
+            'id' => $id, 'description' => 'Objetivo general de la aplicación',
+        ]);
+
+        $this->patchJson('/api/projects/'.$id, [
+            'description' => '  Nueva descripción general  ',
+        ])->assertOk();
+        $this->assertDatabaseHas('projects', [
+            'id' => $id, 'description' => 'Nueva descripción general',
+        ]);
+        $this->getJson('/api/projects/'.$id.'/settings')
+            ->assertOk()->assertJsonPath('description', 'Nueva descripción general');
+        $this->patchJson('/api/projects/'.$id, [
+            'description' => str_repeat('X', 2001),
+        ])->assertUnprocessable()->assertJsonValidationErrors('description');
     }
 
 }
