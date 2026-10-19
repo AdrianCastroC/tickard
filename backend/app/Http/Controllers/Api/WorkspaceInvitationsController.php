@@ -10,6 +10,7 @@ use App\Models\Workspace;
 use App\Models\WorkspaceInvitation;
 use App\Models\WorkspaceCustomRole;
 use App\Support\ProjectAccess;
+use App\Support\RoleAvailability;
 use App\Support\WorkspaceLimits;
 use App\Support\WorkspaceClientAccess;
 use App\Models\ClientCompany;
@@ -164,9 +165,12 @@ class WorkspaceInvitationsController extends ApiController
             $customRole = WorkspaceCustomRole::where('workspace_id', $workspace->id)
                 ->whereIn('scope', [$project ? 'project' : 'workspace', 'both'])
                 ->findOrFail($data['custom_role_id']);
+            abort_unless(RoleAvailability::custom($customRole, $workspace, $project ? 'project' : 'workspace'), 422, 'El rol está desactivado.');
             abort_if($project && $role !== 'lector', 422,
                 'Un rol personalizado no puede heredar privilegios del rol base.');
         }
+        if ($project && ! $customRole) abort_unless(RoleAvailability::builtin($workspace, $role), 422, 'El rol está desactivado.');
+        if (! $project && ! $customRole) abort_unless(RoleAvailability::builtin($workspace, 'member'), 422, 'El rol Miembro está desactivado.');
         $created = [];
         $errors = [];
         $seen = [];
@@ -293,6 +297,9 @@ class WorkspaceInvitationsController extends ApiController
                         && in_array($customRole->scope, [$invitation->project_id ? 'project' : 'workspace', 'both'], true), 409,
                         'El rol de esta invitación ya no es válido. Solicita una nueva invitación.');
                 }
+                if ($customRole) abort_unless(RoleAvailability::custom($customRole, $workspace,
+                    $invitation->project_id ? 'project' : 'workspace'), 409, 'El rol está desactivado.');
+                elseif ($invitation->project_id) abort_unless(RoleAvailability::builtin($workspace, $invitation->project_role), 409, 'El rol está desactivado.');
                 $hasWorkspace = $workspace->memberships()->where('user_id', $request->user()->id)->exists();
                 if (! $hasWorkspace) {
                     abort_unless(WorkspaceLimits::canAddMember($workspace), 422,
