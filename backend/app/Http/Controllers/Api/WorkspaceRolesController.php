@@ -6,6 +6,7 @@ use App\Models\Workspace;
 use App\Models\WorkspaceCustomRole;
 use Illuminate\Support\Facades\DB;
 use App\Support\RolePermissions;
+use App\Support\BuiltinRolePermissions;
 use App\Support\WorkspaceClientAccess;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -27,13 +28,42 @@ class WorkspaceRolesController extends ApiController
         $this->workspace($request, $workspace, true);
         abort_unless(isset(self::BUILTIN[$key]), 404);
         abort_if(self::BUILTIN[$key]['locked'], 422,
-            'Este rol está protegido y no puede desactivarse.');
-        $enabled = $request->validate(['enabled' => ['required', 'boolean']])['enabled'];
-        DB::table('workspace_role_settings')->updateOrInsert(
-            ['workspace_id' => $workspace->id, 'role_key' => $key],
-            ['enabled' => $enabled, 'created_at' => now(), 'updated_at' => now()]
-        );
-        return response()->json(['key' => $key, 'enabled' => (bool) $enabled]);
+            'Este rol está protegido y sus permisos no pueden modificarse.');
+
+        $data = $request->validate([
+            'enabled' => ['sometimes', 'required', 'boolean'],
+            'permissions' => ['sometimes', 'required', 'array'],
+            'permissions.*' => ['required', 'string', 'distinct'],
+        ]);
+        abort_if($data === [], 422, 'Debes indicar qué quieres modificar.');
+        if (array_key_exists('permissions', $data)) {
+            $allowed = RolePermissions::allowed(self::BUILTIN[$key]['scope']);
+            abort_if(array_diff($data['permissions'], $allowed), 422, 'Permisos no admitidos para este rol.');
+            $required = self::BUILTIN[$key]['scope'] === 'project' ? 'project.view' : 'workspace.view';
+            abort_unless(in_array($required, $data['permissions'], true), 422,
+                'No se puede retirar el permiso básico de acceso al rol.');
+        }
+
+        $existing = DB::table('workspace_role_settings')
+            ->where('workspace_id', $workspace->id)->where('role_key', $key)->first();
+        $values = ['updated_at' => now()];
+        if (array_key_exists('enabled', $data)) $values['enabled'] = $data['enabled'];
+        if (array_key_exists('permissions', $data)) $values['permissions'] = json_encode(array_values($data['permissions']));
+        if ($existing) {
+            DB::table('workspace_role_settings')->where('id', $existing->id)->update($values);
+        } else {
+            DB::table('workspace_role_settings')->insert([
+                'workspace_id' => $workspace->id, 'role_key' => $key,
+                'enabled' => $data['enabled'] ?? true,
+                'permissions' => $values['permissions'] ?? null,
+                'created_at' => now(), 'updated_at' => now(),
+            ]);
+        }
+        return response()->json([
+            'key' => $key,
+            'enabled' => (bool) ($data['enabled'] ?? $existing?->enabled ?? true),
+            'permissions' => BuiltinRolePermissions::get($workspace, $key),
+        ]);
     }
 
     private function workspace(Request $request, Workspace $workspace, bool $write = false): Workspace
@@ -56,9 +86,23 @@ class WorkspaceRolesController extends ApiController
                 'workspace' => RolePermissions::WORKSPACE,
             ],
             'builtin_roles' => collect(self::BUILTIN)->map(function ($entry, $key) use ($workspace) {
-                return ['key' => $key, ...$entry, 'enabled' => $key === 'owner' ? true :
-                    (bool) (DB::table('workspace_role_settings')->where('workspace_id', $workspace->id)
-                        ->where('role_key', $key)->value('enabled') ?? true)];
+                $members = $entry['scope'] === 'workspace'
+                    ? $workspace->memberships()->where('role', $key)->with('user:id,name')->get()
+                    : \App\Models\ProjectMember::with('user:id,name')
+                        ->whereHas('project', fn ($query) => $query->where('workspace_id', $workspace->id))
+                        ->where('role', $key)->get();
+                return [
+                    'key' => $key, ...$entry,
+                    'enabled' => $key === 'owner' ? true :
+                        (bool) (DB::table('workspace_role_settings')->where('workspace_id', $workspace->id)
+                            ->where('role_key', $key)->value('enabled') ?? true),
+                    'permissions' => BuiltinRolePermissions::get($workspace, $key),
+                    'member_count' => $members->pluck('user_id')->unique()->count(),
+                    'members' => $members->filter(fn ($member) => $member->user !== null)
+                        ->unique('user_id')->map(fn ($member) => [
+                            'id' => $member->user_id, 'name' => $member->user->name,
+                        ])->values()->all(),
+                ];
             })->values(),
             'roles' => WorkspaceCustomRole::where('workspace_id', $workspace->id)
                 ->orderBy('scope')->orderBy('name')->get(),
