@@ -12,6 +12,9 @@ class Workspace extends Model
 {
     protected $fillable = [
         'name',
+        'description',
+        'website_url',
+        'contact_email',
         'image_path',
         'owner_id',
         'extra_seats',
