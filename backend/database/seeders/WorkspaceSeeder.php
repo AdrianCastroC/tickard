@@ -25,10 +25,10 @@ class WorkspaceSeeder extends Seeder
         ]);
 
         foreach ([$luis, $marta, $elena] as $member) {
-            $anaWorkspace->memberships()->firstOrCreate([
-                'user_id' => $member->id,
-                'role' => 'member',
-            ]);
+            $anaWorkspace->memberships()->firstOrCreate(
+                ['user_id' => $member->id],
+                ['role' => 'member']
+            );
         }
     }
 }
