@@ -434,7 +434,7 @@ export function WorkspaceOverview({ profile, workspaceId, onProfileRefresh, onOp
       <div className="wd-modal-back" onMouseDown={event => {
         if (event.target === event.currentTarget && !saving && !imageBusy) setSettingsOpen(false)
       }}>
-        <div className="wd-modal workspace-settings-modal" role="dialog" aria-modal="true" aria-labelledby="workspace-settings-title">
+        <div className={`wd-modal workspace-settings-modal${settingsTab === 'roles' ? ' workspace-settings-roles-mode' : ''}`} role="dialog" aria-modal="true" aria-labelledby="workspace-settings-title">
           <header className="wd-modal-head">
             <h2 id="workspace-settings-title">Configuración del Workspace</h2>
             <button type="button" aria-label="Cerrar configuración" disabled={saving || imageBusy}
