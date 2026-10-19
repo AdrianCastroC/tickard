@@ -367,6 +367,11 @@ class WorkspaceTest extends TestCase
         $aster = ClientCompany::create(['workspace_id' => $workspace->id, 'name' => 'Aster Labs']);
         $norte = ClientCompany::create(['workspace_id' => $workspace->id, 'name' => 'Norte Digital']);
         $nebula = Project::create(['workspace_id' => $workspace->id, 'name' => 'Nébula Mobile']);
+        ProjectMember::create([
+            'project_id' => $nebula->id,
+            'user_id' => $owner->id,
+            'role' => 'responsable',
+        ]);
 
         $otherOwner = User::factory()->create(['is_admin' => false]);
         $otherWorkspace = Workspace::createInitialFor($otherOwner);
