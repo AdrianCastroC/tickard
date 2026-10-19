@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import type { BoardPayload, Profile, Project } from '../../api'
-import { api } from '../../api'
+import { api, canProject } from '../../api'
 import { ProjectSettings } from '../administration'
 import { DeleteProjectModal } from '../sidebar/ProjectsSection/DeleteProjectModal'
 import { BoardSurface } from '../board/BoardSurface'
@@ -36,7 +36,7 @@ export function ProjectLayout({
   const [deleting, setDeleting] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
   useEffect(() => { setSettingsOpen(false) }, [project.id])
-  const canManage = project.role === 'responsable'
+  const canManage = canProject(project, 'project.manage')
   async function deleteProject(name: string) {
     await api(`/projects/${project.id}`, { method: 'DELETE', body: JSON.stringify({ confirmation_name: name }) })
     const next = await onRefresh() as { projects: Project[] }
