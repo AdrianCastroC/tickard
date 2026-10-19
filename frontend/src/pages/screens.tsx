@@ -34,7 +34,7 @@ type AppContext = 'home' | 'inbox' | 'my-tasks' | 'workspace' | 'members' | 'dep
 export function Workspace() {
   const workspace = useWorkspace(); const sidebar = useSidebarState(); const [query, setQuery] = useState(''); const [appContext, setAppContext] = useState<AppContext>('home'); const [breadcrumb, setBreadcrumb] = useState<BreadcrumbItem[]>([{label:'Inicio'}])
   if (!workspace.profile) return <main className="tickard-startup-loading">
-    <ProjectContentLoading title="Cargando Tickard" description="Preparando tu espacio de trabajo…">
+    <ProjectContentLoading title="Cargando tickard" description="Preparando tu espacio de trabajo…">
       <></>
     </ProjectContentLoading>
   </main>
