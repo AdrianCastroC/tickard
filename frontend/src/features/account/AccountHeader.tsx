@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { uploadFile, type Profile } from '../../api'
-import { Header } from '../header/Header'
+import { Header, type BreadcrumbItem } from '../header/Header'
 import { AccountModal, type AccountSection } from './AccountModal'
 
 type Props = {
@@ -11,7 +11,7 @@ type Props = {
   onProfile: (profile: Profile) => void
 }
 
-export function AccountHeader({ profile, workspaceId, query, onQueryChange, onProfile, breadcrumb, mini = false }: Props & { breadcrumb: string[]; mini?: boolean }) {
+export function AccountHeader({ profile, workspaceId, query, onQueryChange, onProfile, breadcrumb, mini = false }: Props & { breadcrumb: BreadcrumbItem[]; mini?: boolean }) {
   const [section, setSection] = useState<AccountSection | null>(null)
   const [notes, setNotes] = useState<{ id: number; body: string }[]>([])
   useEffect(() => {
