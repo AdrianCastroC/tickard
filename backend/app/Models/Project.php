@@ -13,6 +13,7 @@ class Project extends Model
         'client_company_id',
         'client_access_enabled',
         'name',
+        'image_path',
         'description',
         'show_description',
         'show_assignee',
