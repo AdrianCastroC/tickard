@@ -6,7 +6,8 @@ final class RolePermissions
 {
     public const PROJECT = [
         'project.view', 'project.manage', 'project.delete', 'project.members',
-        'boards.manage', 'cards.edit', 'cards.comment', 'files.upload',
+        'boards.manage', 'cards.edit', 'cards.create', 'cards.delete', 'cards.assign',
+        'cards.dates', 'cards.state', 'cards.comment', 'files.upload',
     ];
     public const WORKSPACE = [
         'workspace.view', 'workspace.manage', 'workspace.members',

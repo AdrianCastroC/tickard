@@ -12,7 +12,10 @@ const LABELS: Record<string, string> = {
   'project.view': 'Ver proyecto', 'project.manage': 'Configurar proyecto',
   'project.delete': 'Eliminar proyecto',
   'project.members': 'Gestionar personal', 'boards.manage': 'Gestionar tableros',
-  'cards.edit': 'Crear y editar Cards', 'cards.comment': 'Comentar Cards',
+  'cards.edit': 'Editar contenido de Cards', 'cards.create': 'Crear Cards',
+  'cards.delete': 'Eliminar y archivar Cards', 'cards.assign': 'Asignar personas y equipos',
+  'cards.dates': 'Modificar fechas', 'cards.state': 'Cambiar estado y mover Cards',
+  'cards.comment': 'Comentar Cards',
   'files.upload': 'Subir archivos',
 }
 

@@ -212,7 +212,7 @@ export function canProject(project: { role: Role; permissions?: string[] }, perm
   if (permission === 'project.view' || permission === 'cards.comment') return true
   if (permission === 'project.manage' || permission === 'project.delete' || permission === 'project.members' || permission === 'boards.manage')
     return project.role === 'responsable'
-  if (permission === 'cards.edit' || permission === 'files.upload')
+  if (['cards.edit', 'cards.create', 'cards.delete', 'cards.assign', 'cards.dates', 'cards.state', 'files.upload'].includes(permission))
     return project.role === 'responsable' || project.role === 'editor'
   return false
 }

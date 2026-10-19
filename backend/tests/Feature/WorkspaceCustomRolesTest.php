@@ -3,6 +3,8 @@
 namespace Tests\Feature;
 
 use App\Models\Project;
+use App\Models\Board;
+use App\Models\Card;
 use App\Models\ProjectMember;
 use App\Models\User;
 use App\Models\Workspace;
@@ -175,6 +177,51 @@ class WorkspaceCustomRolesTest extends TestCase
         $this->postJson("/api/projects/{$project->id}/invitations", [
             'recipients' => [$recipient->publicHandle()], 'role' => 'lector',
         ])->assertForbidden();
+    }
+
+    public function test_granular_card_permissions_prevent_unapproved_actions(): void
+    {
+        [$owner, $workspace] = $this->setupWorkspace();
+        $member = User::factory()->create(['is_admin' => false]);
+        $workspace->memberships()->create(['user_id' => $member->id, 'role' => 'member']);
+        $project = Project::create(['workspace_id' => $workspace->id, 'name' => 'Proyecto']);
+        $board = Board::create(['project_id' => $project->id, 'name' => 'Tablero']);
+        $board->createDefaultColumns();
+        $pending = $board->columns()->where('workflow_state', 'pending')->firstOrFail();
+        $done = $board->columns()->where('workflow_state', 'done')->firstOrFail();
+        $role = WorkspaceCustomRole::create([
+            'workspace_id' => $workspace->id, 'scope' => 'project', 'name' => 'Creador limitado',
+            'permissions' => ['project.view', 'cards.create'], 'enabled' => true,
+        ]);
+        ProjectMember::create([
+            'project_id' => $project->id, 'user_id' => $member->id,
+            'role' => 'lector', 'custom_role_id' => $role->id,
+        ]);
+
+        $this->actingAs($member)->postJson("/api/boards/{$board->id}/cards", [
+            'column_id' => $pending->id, 'title' => 'Card creada',
+        ])->assertCreated();
+        $card = Card::where('title', 'Card creada')->firstOrFail();
+        $this->patchJson("/api/cards/{$card->id}", ['title' => 'No permitido'])->assertForbidden();
+        $this->patchJson("/api/cards/{$card->id}", ['assignee_ids' => [$member->id]])->assertForbidden();
+        $this->patchJson("/api/cards/{$card->id}", ['due_date' => '2026-11-01'])->assertForbidden();
+        $this->postJson("/api/cards/{$card->id}/move", [
+            'column_id' => $done->id, 'position' => 0,
+        ])->assertForbidden();
+        $this->deleteJson("/api/cards/{$card->id}")->assertForbidden();
+
+        $role->update(['permissions' => ['project.view', 'cards.assign', 'cards.dates', 'cards.state']]);
+        $this->patchJson("/api/cards/{$card->id}", ['assignee_ids' => [$member->id]])->assertNoContent();
+        $this->patchJson("/api/cards/{$card->id}", ['start_date' => '2026-10-20', 'due_date' => '2026-11-01'])->assertNoContent();
+        $this->postJson("/api/cards/{$card->id}/move", [
+            'column_id' => $done->id, 'position' => 0,
+        ])->assertNoContent();
+        $this->postJson("/api/boards/{$board->id}/cards", [
+            'column_id' => $pending->id, 'title' => 'No crear',
+        ])->assertForbidden();
+
+        $role->update(['permissions' => ['project.view', 'cards.delete']]);
+        $this->deleteJson("/api/cards/{$card->id}")->assertNoContent();
     }
 
 }

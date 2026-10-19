@@ -43,6 +43,7 @@ export function BoardSurface({ state, filters, activeBoardId, project, profile, 
   const handledGanttFocus = useRef<number | null>(null)
   const filterButtonRef = useRef<HTMLButtonElement>(null)
   const canEdit = Boolean(view && canProject(view, 'cards.edit'))
+  const canCreate = Boolean(view && canProject(view, 'cards.create'))
   const canManage = Boolean(view && canProject(view, 'boards.manage'))
   const clientView = view?.role === 'cliente'
   const backlog = view?.columns.find((column) => column.workflow_state === 'backlog') ?? view?.columns[0]
@@ -85,7 +86,7 @@ export function BoardSurface({ state, filters, activeBoardId, project, profile, 
     <BoardHeader show={Boolean(view || activeBoardId)}
       title={view?.board.name || project?.boards.find((item) => item.id === activeBoardId)?.name}
       subtitle={view?.board.project_name || project?.name}
-      canEdit={canEdit} backlog={backlog} filtersActive={filters.active} filtersOpen={Boolean(view && filters.open)}
+      canEdit={canCreate} backlog={backlog} filtersActive={filters.active} filtersOpen={Boolean(view && filters.open)}
       filterButtonRef={filterButtonRef} viewMode={viewMode} onViewModeChange={changeViewMode}
       onToggleFilters={() => filters.setOpen((current) => !current)} onAdd={setCreateColumn} />
     <FiltersBar open={Boolean(view && filters.open && viewMode !== 'summary')} active={filters.active}
@@ -125,7 +126,7 @@ export function BoardSurface({ state, filters, activeBoardId, project, profile, 
             focus={ganttFocus?.boardId === view.board.id ? ganttFocus : null}
             onChange={refresh} />
         </GanttErrorBoundary>}
-      {viewMode === 'board' && <Kanban board={view} canEdit={canEdit} canManage={canManage} query={query}
+      {viewMode === 'board' && <Kanban board={view} canEdit={canEdit} canCreate={canCreate} canManage={canManage} query={query}
         assignee={filters.assignee} teamId={filters.teamId} label={filters.label} priority={filters.priority}
         onOpen={(card) => setSelected({ card, mode: 'view' })}
         onEdit={(card) => setSelected({ card, mode: 'edit' })}

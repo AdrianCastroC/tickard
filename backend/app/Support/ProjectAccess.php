@@ -51,6 +51,9 @@ class ProjectAccess
         if ($member?->custom_role_id !== null) {
             return in_array($permission, $member->customRole?->permissions ?? [], true);
         }
+        if (in_array($permission, ['cards.create', 'cards.delete', 'cards.assign', 'cards.dates', 'cards.state'], true)) {
+            return in_array($role, ['responsable', 'editor'], true);
+        }
         return match ($permission) {
             'project.view' => true,
             'project.manage', 'project.delete', 'project.members', 'boards.manage' => $role === 'responsable',
@@ -83,6 +86,31 @@ class ProjectAccess
     public static function canEditCards(User $user, Project $project): bool
     {
         return self::has($user, $project, 'cards.edit');
+    }
+
+    public static function canCreateCards(User $user, Project $project): bool
+    {
+        return self::has($user, $project, 'cards.create');
+    }
+
+    public static function canDeleteCards(User $user, Project $project): bool
+    {
+        return self::has($user, $project, 'cards.delete');
+    }
+
+    public static function canAssignCards(User $user, Project $project): bool
+    {
+        return self::has($user, $project, 'cards.assign');
+    }
+
+    public static function canChangeDates(User $user, Project $project): bool
+    {
+        return self::has($user, $project, 'cards.dates');
+    }
+
+    public static function canChangeState(User $user, Project $project): bool
+    {
+        return self::has($user, $project, 'cards.state');
     }
 
     public static function canComment(User $user, Project $project): bool

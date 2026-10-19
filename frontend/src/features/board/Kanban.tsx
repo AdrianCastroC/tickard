@@ -84,6 +84,7 @@ function insertIndexForCard(
 export function Kanban(props: {
   board: BoardPayload
   canEdit: boolean
+  canCreate: boolean
   canManage: boolean
   query: string
   assignee: string
@@ -281,6 +282,7 @@ export function Kanban(props: {
                   column={column}
                   categories={categories}
                   canEdit={props.canEdit}
+                  canCreate={props.canCreate}
                   canManage={props.canManage}
                   pinned
                   onTogglePinned={() => togglePinned(column.id)}
@@ -301,6 +303,7 @@ export function Kanban(props: {
                 column={column}
                 categories={categories}
                 canEdit={props.canEdit}
+                canCreate={props.canCreate}
                 canManage={props.canManage}
                 pinned={false}
                 onTogglePinned={() => togglePinned(column.id)}
@@ -368,10 +371,11 @@ export function NewColumnTemplate({ boardId, onCreated }: { boardId: number; onC
   )
 }
 
-export function ColumnView({ column, categories, canEdit, canManage, pinned, onTogglePinned, onOpen, onEdit, onAdd, onRefresh, onManageCategories, dropCategoryKey }: {
+export function ColumnView({ column, categories, canEdit, canCreate, canManage, pinned, onTogglePinned, onOpen, onEdit, onAdd, onRefresh, onManageCategories, dropCategoryKey }: {
   column: BoardPayload['columns'][number]
   categories: BoardCategory[]
   canEdit: boolean
+  canCreate: boolean
   canManage: boolean
   pinned: boolean
   onTogglePinned: () => void
@@ -604,7 +608,7 @@ export function ColumnView({ column, categories, canEdit, canManage, pinned, onT
                         {pinned ? <UnpinIcon /> : <PinIcon />}
                         {pinned ? 'Desfijar columna' : 'Fijar columna'}
                       </button>
-                      {canEdit && (
+                      {canCreate && (
                         <button type="button" onClick={() => { setMenuOpen(false); onAdd() }}>
                           <PlusIcon className="menu-icon" /> Añadir tarea
                         </button>
@@ -669,7 +673,7 @@ export function ColumnView({ column, categories, canEdit, canManage, pinned, onT
                 />
               )
             })}
-            {!canEdit && column.cards.length === 0 && <p className="muted">Sin tarjetas</p>}
+            {!canCreate && column.cards.length === 0 && <p className="muted">Sin tarjetas</p>}
           </div>
           {canEdit && (
             <div className="column-footer">
