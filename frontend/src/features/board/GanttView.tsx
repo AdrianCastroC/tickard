@@ -1379,6 +1379,7 @@ type GanttProps = {
   board: BoardPayload
   cards: BoardPayload['columns']
   canEdit: boolean
+  canManageDependencies?: boolean
   onOpen: (card: Card) => void
   onNavigateExternalCard: (target: GanttDependencyNavigation) => void
   focus?: GanttCardFocus | null
@@ -1389,7 +1390,7 @@ type GanttProps = {
   onReady?: () => void
 }
 
-export function GanttView({ board, cards, canEdit, onOpen, onNavigateExternalCard, focus, projectBoards, onChange, onReady }: GanttProps) {
+export function GanttView({ board, cards, canEdit, canManageDependencies = canEdit, onOpen, onNavigateExternalCard, focus, projectBoards, onChange, onReady }: GanttProps) {
   const onReadyRef = useRef(onReady)
   onReadyRef.current = onReady
   const allCards = useMemo(() => cards.flatMap((column) =>
@@ -2070,7 +2071,7 @@ export function GanttView({ board, cards, canEdit, onOpen, onNavigateExternalCar
   }
 
   function beginDependencyCreation(event: ReactPointerEvent, cardId: number, endpoint: 'start' | 'finish') {
-    if (!canEdit) return
+    if (!canManageDependencies) return
     event.preventDefault()
     event.stopPropagation()
     setHoveredCard(null)
@@ -2363,7 +2364,7 @@ export function GanttView({ board, cards, canEdit, onOpen, onNavigateExternalCar
                 title={cardLabel}
                 aria-label={cardLabel}
               >
-                <span ref={(element) => { if (element) dependencyAnchorRefs.current.set(`${item.card.id}:start`, element); else dependencyAnchorRefs.current.delete(`${item.card.id}:start`) }} className={`${styles.dependencyConnector} ${styles.dependencyConnectorStart}`} data-dependency-connector="true" data-card-id={item.card.id} data-endpoint="start" data-readonly={!canEdit ? 'true' : undefined} data-target={dependencyCreation?.targetId === item.card.id && dependencyCreation.targetEndpoint === 'start' ? 'true' : undefined} onPointerDown={canEdit ? (event) => beginDependencyCreation(event, item.card.id, 'start') : undefined} role={canEdit ? 'button' : undefined} aria-hidden={!canEdit} aria-label={canEdit ? `Crear dependencia desde inicio de ${item.card.title}` : undefined} tabIndex={canEdit ? 0 : -1}><DependencyConnectorIcon /></span>
+                <span ref={(element) => { if (element) dependencyAnchorRefs.current.set(`${item.card.id}:start`, element); else dependencyAnchorRefs.current.delete(`${item.card.id}:start`) }} className={`${styles.dependencyConnector} ${styles.dependencyConnectorStart}`} data-dependency-connector="true" data-card-id={item.card.id} data-endpoint="start" data-readonly={!canManageDependencies ? 'true' : undefined} data-target={dependencyCreation?.targetId === item.card.id && dependencyCreation.targetEndpoint === 'start' ? 'true' : undefined} onPointerDown={canManageDependencies ? (event) => beginDependencyCreation(event, item.card.id, 'start') : undefined} role={canManageDependencies ? 'button' : undefined} aria-hidden={!canManageDependencies} aria-label={canManageDependencies ? `Crear dependencia desde inicio de ${item.card.title}` : undefined} tabIndex={canManageDependencies ? 0 : -1}><DependencyConnectorIcon /></span>
                 {canEdit && !isMilestone && <span className={`${styles.resizeHandle} ${styles.resizeHandleStart}`} onPointerDown={(event) => beginDrag(event, item, 'resize-start')} aria-hidden="true" />}
                 {preview && <span className={styles.dragDates} aria-hidden="true">{dateLabel}</span>}
                 {inReview && <EyeIcon />}
@@ -2445,7 +2446,7 @@ export function GanttView({ board, cards, canEdit, onOpen, onNavigateExternalCar
                 : undefined
               return (
                 <g key={dependency.id} className={`${styles.dependencyLineGroup} ${dependencyPopover?.dependency.id === dependency.id || focus?.dependencyId === dependency.id ? styles.dependencySelected : ''}`}>
-                  {canEdit && <path className={styles.dependencyHitArea} d={path} onClick={(event) => setDependencyPopover({ dependency, x: event.clientX, y: event.clientY })} aria-label={`Dependencia ${dependency.type.toUpperCase()}: ${predecessor.item.card.title} → ${successor.item.card.title}`} />}
+                  {canManageDependencies && <path className={styles.dependencyHitArea} d={path} onClick={(event) => setDependencyPopover({ dependency, x: event.clientX, y: event.clientY })} aria-label={`Dependencia ${dependency.type.toUpperCase()}: ${predecessor.item.card.title} → ${successor.item.card.title}`} />}
                   <path className={styles.dependencyLine} d={path} aria-hidden="true" />
                   {(dependency.type === 'ff' || dependency.type === 'sf') && targetBar && arrow && <path
                     d={`M ${targetBar.right + FF_FINISH_MARKER_OFFSET_PX} ${targetBar.top} V ${arrow.point.y + 5}`}
@@ -2518,11 +2519,11 @@ export function GanttView({ board, cards, canEdit, onOpen, onNavigateExternalCar
           </small>}
           {(['fs', 'ss', 'ff', 'sf'] as const).map((type) => (
             <label key={type}>
-              <input type="radio" checked={dependencyPopover.dependency.type === type} disabled={!canEdit} onChange={() => void changeDependency(dependencyPopover.dependency, type)} />
+              <input type="radio" checked={dependencyPopover.dependency.type === type} disabled={!canManageDependencies} onChange={() => void changeDependency(dependencyPopover.dependency, type)} />
               {type === 'fs' ? 'Fin → Inicio (FS)' : type === 'ss' ? 'Inicio → Inicio (SS)' : type === 'ff' ? 'Fin → Fin (FF)' : 'Inicio → Fin (SF)'}
             </label>
           ))}
-          {canEdit && <button type="button" className="ghost" onClick={() => void deleteDependency(dependencyPopover.dependency)}>Eliminar dependencia</button>}
+          {canManageDependencies && <button type="button" className="ghost" onClick={() => void deleteDependency(dependencyPopover.dependency)}>Eliminar dependencia</button>}
         </div>
       )}
       {hoveredCard && !dragState && !dragPreview && !dependencyCreation
