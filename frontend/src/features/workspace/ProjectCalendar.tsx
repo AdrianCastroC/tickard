@@ -668,7 +668,13 @@ export function ProjectCalendar({ project, profile }: { project: Project; profil
         <button className="ghost" type="button" onClick={() => setSelected(null)}>Cerrar</button>
       </div></div>, document.body)}
     {cardData && createPortal(<CardDrawer key={cardData.card.id} card={cardData.card} mode={editMode}
-      board={cardData.board} currentUser={profile.user} canEdit={cardData.board.role === 'responsable' || cardData.board.role === 'editor'}
+      board={cardData.board} currentUser={profile.user} canEdit={canProject(cardData.board, 'cards.edit')}
+      canMove={canProject(cardData.board, 'cards.state')}
+      canDates={canProject(cardData.board, 'cards.dates')}
+      canAssign={canProject(cardData.board, 'cards.assign')}
+      canDelete={canProject(cardData.board, 'cards.delete')}
+      canUpload={canProject(cardData.board, 'files.upload')}
+      canComment={canProject(cardData.board, 'cards.comment')}
       onClose={() => setSelected(null)} onEdit={() => setEditMode('edit')} onView={() => setEditMode('view')}
       onChange={refresh} onMove={moveCard}
       onOpenRelatedCard={(cardId, boardId) => {
