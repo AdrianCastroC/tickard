@@ -114,7 +114,7 @@ class WorkspaceMembersController extends ApiController
         $data = $request->validate([
             'role' => ['required', Rule::in(['member', 'admin'])],
             'custom_role_id' => ['nullable', 'integer', Rule::exists('workspace_custom_roles', 'id')
-                ->where('workspace_id', $workspace->id)->where('scope', 'workspace')],
+                ->where('workspace_id', $workspace->id)->whereIn('scope', ['workspace', 'both'])],
         ]);
         abort_if(! empty($data['custom_role_id']) && $data['role'] !== 'member', 422,
             'Los roles personalizados no pueden heredar permisos de administrador.');
