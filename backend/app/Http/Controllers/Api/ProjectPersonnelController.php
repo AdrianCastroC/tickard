@@ -120,6 +120,7 @@ class ProjectPersonnelController extends ApiController
                 'email' => $client ? null : $user->email,
                 'job_title' => $client ? null : $jobTitles->get($user->id),
                 'avatar_url' => $user->avatarUrl(),
+                'custom_role_id' => $membership->custom_role_id,
                 'role' => (int) $project->workspace->owner_id === (int) $user->id ? 'responsable' : $membership->role,
                 'is_workspace_owner' => (int) $project->workspace->owner_id === (int) $user->id,
                 'teams' => $client ? [] : $teams->filter(fn ($team) =>
@@ -193,6 +194,7 @@ class ProjectPersonnelController extends ApiController
             'user_id' => ['required', 'integer', Rule::exists('workspace_members', 'user_id')
                 ->where('workspace_id', $project->workspace_id)],
             'role' => ['required', Rule::in(['responsable', 'editor', 'lector'])],
+            'custom_role_id' => ['nullable', 'integer', Rule::exists('workspace_custom_roles', 'id')->where('workspace_id', $project->workspace_id)->where('scope', 'project')],
         ]);
         $candidate = User::findOrFail($data['user_id']);
         abort_if(WorkspaceClientAccess::isClient($candidate, $project->workspace), 422,
@@ -200,18 +202,23 @@ class ProjectPersonnelController extends ApiController
         $member = ProjectMember::firstOrCreate([
             'project_id' => $project->id,
             'user_id' => $data['user_id'],
-        ], ['role' => $data['role']]);
+        ], ['role' => $data['role'], 'custom_role_id' => $data['custom_role_id'] ?? null]);
 
         return response()->json([
             'added' => $member->wasRecentlyCreated,
             'role' => $member->role,
+            'custom_role_id' => $member->custom_role_id,
         ], $member->wasRecentlyCreated ? 201 : 200);
     }
 
     public function updateMember(Request $request, Project $project, User $user)
     {
         $this->authorizeManage($request, $project);
-        $data = $request->validate(['role' => ['required', Rule::in(self::ROLES)]]);
+        $data = $request->validate([
+            'role' => ['required', Rule::in(self::ROLES)],
+            'custom_role_id' => ['nullable', 'integer', Rule::exists('workspace_custom_roles', 'id')->where('workspace_id', $project->workspace_id)->where('scope', 'project')],
+        ]);
+        abort_if($data['role'] === 'cliente' && ! empty($data['custom_role_id']), 422, 'El rol Cliente tiene protección especial.');
         abort_if(ProjectAccess::isWorkspaceOwner($user, $project), 403,
             'El propietario del Workspace no puede perder su rol desde un proyecto.');
         $member = $project->members()->where('user_id', $user->id)->firstOrFail();
@@ -227,9 +234,9 @@ class ProjectPersonnelController extends ApiController
         if ($member->role === 'responsable' && $data['role'] !== 'responsable') {
             $this->ensureOtherResponsible($project, $member->id);
         }
-        $member->update(['role' => $data['role']]);
+        $member->update(['role' => $data['role'], 'custom_role_id' => $data['custom_role_id'] ?? null]);
 
-        return response()->json(['role' => $member->role]);
+        return response()->json(['role' => $member->role, 'custom_role_id' => $member->custom_role_id]);
     }
 
     public function removeMember(Request $request, Project $project, User $user)
@@ -296,7 +303,7 @@ class ProjectPersonnelController extends ApiController
             foreach ($userIds as $id) {
                 $member = ProjectMember::firstOrCreate(
                     ['project_id' => $project->id, 'user_id' => $id],
-                    ['role' => $data['role']]
+                    ['role' => $data['role'], 'custom_role_id' => $data['custom_role_id'] ?? null]
                 );
                 if ($member->wasRecentlyCreated) $added++;
             }
