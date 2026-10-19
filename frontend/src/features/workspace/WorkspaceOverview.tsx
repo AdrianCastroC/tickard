@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { createPortal } from 'react-dom'
 import { api, type Profile, type WorkspaceRef } from '../../api'
 import { ProjectContentLoading } from './ProjectContentLoading'
+import { CreateProjectModal } from './CreateProjectModal'
 import { Avatar, formatRelative } from '../../shared/ui'
 import { NavIcon, SettingsIcon } from '../../shared/icons'
 import { DeleteWorkspaceModal } from '../sidebar/WorkspaceSelector/DeleteWorkspaceModal'
@@ -81,10 +82,6 @@ export function WorkspaceOverview({ profile, workspaceId, onProfileRefresh, onOp
       onProjectListOpened?.()
     }
   }, [openProjectList, onProjectListOpened])
-  const [projectName, setProjectName] = useState('')
-  const [projectDescription, setProjectDescription] = useState('')
-  const [creatingProject, setCreatingProject] = useState(false)
-  const [newProjectError, setNewProjectError] = useState('')
 
   const fetchSummary = useCallback(async () => {
     if (workspaceId === null) throw new Error('No hay un Workspace seleccionado.')
@@ -95,7 +92,7 @@ export function WorkspaceOverview({ profile, workspaceId, onProfileRefresh, onOp
     let mounted = true
     setLoading(true); setError(''); setNotice(''); setSummary(null)
     setRemovalOpen(false); setConfirmation(''); setSettingsOpen(false)
-    setNewProject(false); setAllProjectsOpen(false); setNewProjectError('')
+    setNewProject(false); setAllProjectsOpen(false)
     void fetchSummary().then(data => {
       if (!mounted) return
       setSummary(data)
@@ -184,26 +181,6 @@ export function WorkspaceOverview({ profile, workspaceId, onProfileRefresh, onOp
     } catch (cause) {
       setRemovalError(cause instanceof Error ? cause.message : 'No se pudo eliminar el Workspace.')
     } finally { setRemoving(false) }
-  }
-
-  async function createProject(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-    if (!summary || !summary.can_manage || creatingProject || !projectName.trim()) return
-    setCreatingProject(true); setNewProjectError('')
-    try {
-      const created = await api<{ id: number }>('/projects', {
-        method: 'POST',
-        body: JSON.stringify({
-          workspace_id: summary.id,
-          name: projectName.trim(), description: projectDescription.trim() || null,
-        }),
-      })
-      await onCreatedProject(created.id)
-      setNewProject(false)
-      setProjectName(''); setProjectDescription('')
-    } catch (cause) {
-      setNewProjectError(cause instanceof Error ? cause.message : 'No se pudo crear el proyecto.')
-    } finally { setCreatingProject(false) }
   }
 
   if (!summary) return <section className="workspace-overview workspace-overview-page">
@@ -302,7 +279,7 @@ export function WorkspaceOverview({ profile, workspaceId, onProfileRefresh, onOp
                 <button type="button" className="wd-project-all"
                   onClick={() => setAllProjectsOpen(true)}>Ver todos →</button>
                 {summary.can_manage && <button type="button" className="wd-new-project"
-                  onClick={() => { setNewProjectError(''); setProjectName(''); setProjectDescription(''); setNewProject(true) }}>
+                  onClick={() => setNewProject(true)}>
                   <NavIcon><path d="M12 5v14M5 12h14"/></NavIcon> Nuevo proyecto
                 </button>}
               </div>
@@ -573,42 +550,9 @@ export function WorkspaceOverview({ profile, workspaceId, onProfileRefresh, onOp
       </div>,
       document.body,
     )}
-    {newProject && createPortal(
-      <div className="wd-modal-back" onMouseDown={event => {
-        if (event.target === event.currentTarget && !creatingProject) setNewProject(false)
-      }}>
-        <div className="wd-modal" role="dialog" aria-modal="true" aria-labelledby="wd-new-project-title">
-          <form onSubmit={event => void createProject(event)}>
-            <header className="wd-modal-head">
-              <h2 id="wd-new-project-title">Nuevo proyecto</h2>
-              <button type="button" disabled={creatingProject} onClick={() => setNewProject(false)}
-                aria-label="Cerrar">×</button>
-            </header>
-            <div className="wd-modal-fields">
-              <label>Nombre del proyecto
-                <input autoFocus required maxLength={120} value={projectName}
-                  disabled={creatingProject} placeholder="Nombre del proyecto"
-                  onChange={event => setProjectName(event.target.value)}/>
-              </label>
-              <label>Descripción general (opcional)
-                <textarea maxLength={2000} rows={4} value={projectDescription}
-                  disabled={creatingProject} placeholder="Objetivo y alcance del proyecto…"
-                  onChange={event => setProjectDescription(event.target.value)}/>
-              </label>
-              {newProjectError && <p role="alert" className="workspace-overview-alert">{newProjectError}</p>}
-            </div>
-            <footer className="wd-modal-footer">
-              <button type="button" className="ghost" disabled={creatingProject}
-                onClick={() => setNewProject(false)}>Cancelar</button>
-              <button type="submit" className="primary" disabled={creatingProject || !projectName.trim()}>
-                {creatingProject ? 'Creando…' : 'Crear proyecto'}
-              </button>
-            </footer>
-          </form>
-        </div>
-      </div>,
-      document.body,
-    )}
+    {newProject && <CreateProjectModal key={summary.id} workspaceId={summary.id}
+      clientsEnabled={summary.show_clients} onClose={() => setNewProject(false)}
+      onCreated={async id => { await onCreatedProject(id); setNewProject(false) }}/>}
     {removalOpen && <DeleteWorkspaceModal workspace={currentWorkspace}
       confirmation={confirmation} onChange={setConfirmation}
       busy={removing} error={removalError}
