@@ -34,9 +34,9 @@ Los permisos se validan en el backend con `ProjectAccess`, no solo ocultando con
 4. Incorporar solo a los que faltan, con el rol elegido. Los roles de miembros existentes **no se modifican**.
 5. Desvincular el equipo solo quita la asociación; **no revoca** acceso a personas, porque pueden tener asignaciones o pertenecer individualmente al proyecto.
 
-Las altas o bajas posteriores de una persona en la composición de un equipo del Workspace **no sincronizan silenciosamente** sus permisos de acceso a proyectos. La futura sincronización automática requeriría una política explícita de altas/bajas y permisos.
+**Incorporación posterior a equipos ya vinculados:** cuando cambia la composición del equipo en el Workspace, sus integrantes nuevos **no reciben acceso silenciosamente** al proyecto. En **Gestionar miembros → Equipos**, los equipos vinculados indican cuántos integrantes faltan por incorporar y permiten **Revisar integrantes**. Un responsable selecciona el rol para las altas, confirma la composición actual y autoriza la incorporación. El backend vuelve a verificar que la lista no haya cambiado, no crea duplicados y mantiene los roles de miembros ya existentes. Si alguien sale del equipo, su acceso individual al proyecto permanece hasta que se retire expresamente en **Personas**.
 
-También se pueden añadir directamente usuarios internos que ya sean miembros del Workspace, cambiar roles, retirar usuarios (se limpian sus asignaciones a Cards del proyecto), e invitar mediante el mecanismo de invitaciones existente.
+También se pueden añadir directamente usuarios internos que ya sean miembros del Workspace, cambiar roles, retirar usuarios (se limpian sus asignaciones a Cards **y a elementos de checklist** de ese proyecto, conservando los contenidos y demás participantes) e invitar mediante el mecanismo de invitaciones existente.
 
 No se puede quitar ni degradar al último responsable registrado en el proyecto. Si el owner del Workspace figura entre los miembros del proyecto, se identifica como **Propietario del Workspace** y no puede cambiarse su rol ni retirarlo desde esa vista. El owner no se cuenta como trabajador ni se le atribuyen Cards automáticamente por ser propietario.
 
