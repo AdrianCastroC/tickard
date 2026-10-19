@@ -19,6 +19,8 @@ use App\Support\ProjectFileStorage;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rules\File;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
@@ -155,6 +157,38 @@ class ProjectsController extends ApiController
         $board->delete();
         ProjectFileStorage::purgePaths($paths);
 
+        return response()->noContent();
+    }
+
+    public function uploadProjectImage(Request $request, Project $project)
+    {
+        abort_unless(ProjectAccess::canManage($request->user(), $project), 403);
+        $request->validate([
+            'image' => ['required', File::types(['jpg', 'jpeg', 'png', 'webp'])->max(2048)],
+        ]);
+
+        $old = $project->image_path;
+        $path = $request->file('image')->store(
+            "workspace-entities/{$project->workspace_id}/projects/{$project->id}",
+            'public'
+        );
+        try {
+            $project->update(['image_path' => $path]);
+        } catch (\Throwable $e) {
+            Storage::disk('public')->delete($path);
+            throw $e;
+        }
+        if ($old) Storage::disk('public')->delete($old);
+
+        return response()->json(['image_url' => '/storage/'.$path]);
+    }
+
+    public function deleteProjectImage(Request $request, Project $project)
+    {
+        abort_unless(ProjectAccess::canManage($request->user(), $project), 403);
+        $old = $project->image_path;
+        $project->update(['image_path' => null]);
+        if ($old) Storage::disk('public')->delete($old);
         return response()->noContent();
     }
 
