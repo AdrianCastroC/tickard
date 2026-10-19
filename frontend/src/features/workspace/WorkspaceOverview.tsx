@@ -70,6 +70,7 @@ export function WorkspaceOverview({ profile, workspaceId, onProfileRefresh, onOp
   const [removing, setRemoving] = useState(false)
   const [removalError, setRemovalError] = useState('')
   const [newProject, setNewProject] = useState(false)
+  const [allProjectsOpen, setAllProjectsOpen] = useState(false)
   const [projectName, setProjectName] = useState('')
   const [projectDescription, setProjectDescription] = useState('')
   const [creatingProject, setCreatingProject] = useState(false)
@@ -84,7 +85,7 @@ export function WorkspaceOverview({ profile, workspaceId, onProfileRefresh, onOp
     let mounted = true
     setLoading(true); setError(''); setNotice(''); setSummary(null)
     setRemovalOpen(false); setConfirmation(''); setMode('dashboard')
-    setNewProject(false); setNewProjectError('')
+    setNewProject(false); setAllProjectsOpen(false); setNewProjectError('')
     void fetchSummary().then(data => {
       if (!mounted) return
       setSummary(data)
@@ -269,7 +270,8 @@ export function WorkspaceOverview({ profile, workspaceId, onProfileRefresh, onOp
           <section className="wd-panel">
             <header className="wd-panel-head"><h2>Proyectos recientes</h2>
               <div className="wd-project-actions">
-                <span>{summary.stats.projects} en total</span>
+                <button type="button" className="wd-project-all"
+                  onClick={() => setAllProjectsOpen(true)}>Ver todos →</button>
                 {summary.can_manage && <button type="button" className="wd-new-project"
                   onClick={() => { setNewProjectError(''); setProjectName(''); setProjectDescription(''); setNewProject(true) }}>
                   <NavIcon><path d="M12 5v14M5 12h14"/></NavIcon> Nuevo proyecto
@@ -484,6 +486,34 @@ export function WorkspaceOverview({ profile, workspaceId, onProfileRefresh, onOp
     </>}
 
     </>}
+    {allProjectsOpen && createPortal(
+      <div className="wd-modal-back" onMouseDown={event => {
+        if (event.target === event.currentTarget) setAllProjectsOpen(false)
+      }}>
+        <div className="wd-modal" role="dialog" aria-modal="true" aria-labelledby="wd-project-list-title">
+          <div className="wd-modal-head">
+            <h2 id="wd-project-list-title">Proyectos del Workspace</h2>
+            <button type="button" aria-label="Cerrar listado" onClick={() => setAllProjectsOpen(false)}>×</button>
+          </div>
+          <div className="wd-project-list">
+            {profile.projects.filter(project => project.workspace_id === summary.id).length > 0
+              ? profile.projects.filter(project => project.workspace_id === summary.id).map(project =>
+                <button key={project.id} type="button" onClick={() => {
+                  setAllProjectsOpen(false); onOpenProject(project.id)
+                }}>
+                  <NavIcon><rect x="4" y="5" width="16" height="15" rx="2"/>
+                    <path d="M7 9h10m-10 4h10"/></NavIcon>
+                  <span>{project.name}</span><span aria-hidden="true">→</span>
+                </button>)
+              : <p className="wd-empty">No tienes proyectos disponibles en este Workspace.</p>}
+          </div>
+          <div className="wd-modal-footer">
+            <button type="button" className="ghost" onClick={() => setAllProjectsOpen(false)}>Cerrar</button>
+          </div>
+        </div>
+      </div>,
+      document.body,
+    )}
     {newProject && createPortal(
       <div className="wd-modal-back" onMouseDown={event => {
         if (event.target === event.currentTarget && !creatingProject) setNewProject(false)
