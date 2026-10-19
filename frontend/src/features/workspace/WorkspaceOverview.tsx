@@ -48,6 +48,8 @@ type Props = {
   workspaceId: number | null
   onProfileRefresh: () => Promise<unknown>
   onOpenSection: (section: Section) => void
+  openProjectList?: boolean
+  onProjectListOpened?: () => void
   onOpenProject: (id: number) => void
   onOpenTask: (task: Pick<DashboardTask, 'id' | 'board_id' | 'project_id'>) => void
   onOpenTasks: () => void
@@ -57,7 +59,7 @@ type Props = {
   onDeleted: (workspaceId: number) => Promise<void>
 }
 
-export function WorkspaceOverview({ profile, workspaceId, onProfileRefresh, onOpenSection, onOpenProject, onOpenTask, onOpenTasks, onCreatedProject, onInviteMembers, onCreateClient, onDeleted }: Props) {
+export function WorkspaceOverview({ profile, workspaceId, onProfileRefresh, onOpenSection, openProjectList = false, onProjectListOpened, onOpenProject, onOpenTask, onOpenTasks, onCreatedProject, onInviteMembers, onCreateClient, onDeleted }: Props) {
   const [summary, setSummary] = useState<WorkspaceSummary | null>(null)
   const [mode, setMode] = useState<'dashboard' | 'settings'>('dashboard')
   const [loading, setLoading] = useState(true)
@@ -71,6 +73,12 @@ export function WorkspaceOverview({ profile, workspaceId, onProfileRefresh, onOp
   const [removalError, setRemovalError] = useState('')
   const [newProject, setNewProject] = useState(false)
   const [allProjectsOpen, setAllProjectsOpen] = useState(false)
+  useEffect(() => {
+    if (openProjectList) {
+      setAllProjectsOpen(true)
+      onProjectListOpened?.()
+    }
+  }, [openProjectList, onProjectListOpened])
   const [projectName, setProjectName] = useState('')
   const [projectDescription, setProjectDescription] = useState('')
   const [creatingProject, setCreatingProject] = useState(false)
@@ -222,7 +230,7 @@ export function WorkspaceOverview({ profile, workspaceId, onProfileRefresh, onOp
     {notice && <p className="workspace-overview-notice" role="status">{notice}</p>}
 
     {mode === 'dashboard' ? <div className="wd-dashboard">
-      <div className="wd-top">
+      <div className="wd-content">
       <div className="wd-metrics">
         {metrics.map(metric => <div key={metric.key} className={`wd-metric wd-${metric.color}`}>
           <div className="wd-metric-icon" aria-hidden="true">
@@ -239,34 +247,7 @@ export function WorkspaceOverview({ profile, workspaceId, onProfileRefresh, onOp
           {metric.key === 'tasks' && <div className="wd-mini-progress"><span style={{width: progress(dashboard.cards.completed,dashboard.cards.total)+'%'}}/></div>}
         </div>)}
       </div>
-      {summary.can_view_personnel && <section className="wd-panel wd-members-top">
-        <header className="wd-panel-head">
-          <h2>Miembros del Workspace</h2>
-          <button type="button" onClick={() => onOpenSection('members')}>Ver todos →</button>
-        </header>
-        <div className="wd-avatar-viewport">
-          <button type="button" className="wd-avatar-group"
-            onClick={() => onOpenSection('members')} aria-label="Ver miembros">
-            {dashboard.members.slice(0, 5).map(member =>
-              <Avatar key={member.id} id={member.id} name={member.name} src={member.avatar_url} size={38}/>)}
-            {(summary.stats.members ?? 0) > Math.min(5, dashboard.members.length) &&
-              <span className="wd-extra">+{(summary.stats.members ?? 0) - Math.min(5, dashboard.members.length)}</span>}
-          </button>
-        </div>
-        <div className="wd-rail-list">
-          {dashboard.departments.length ? dashboard.departments.slice(0, 3).map((dept, i) =>
-            <button type="button" key={dept.id} onClick={() => onOpenSection('departments')}>
-              <span className={`wd-dot wd-dot-${i % 5}`}/><span>{dept.name}</span>
-              <small>{dept.members} miembros</small>
-            </button>) : <p className="wd-empty">Sin departamentos.</p>}
-        </div>
-        {summary.can_manage && <button type="button" className="wd-panel-add" onClick={onInviteMembers}>
-          <NavIcon><path d="M12 5v14M5 12h14"/></NavIcon> Invitar miembros
-        </button>}
-      </section>}
-      </div>
-      <div className="wd-layout">
-        <div className="wd-primary">
+      <div className="wd-primary">
           <section className="wd-panel">
             <header className="wd-panel-head"><h2>Proyectos recientes</h2>
               <div className="wd-project-actions">
@@ -370,7 +351,33 @@ export function WorkspaceOverview({ profile, workspaceId, onProfileRefresh, onOp
             </section>
           </div>}
         </div>
-        {summary.can_view_personnel && <aside className="wd-rail">
+      </div>
+      {summary.can_view_personnel && <aside className="wd-rail">
+      {summary.can_view_personnel && <section className="wd-panel wd-members-top">
+        <header className="wd-panel-head">
+          <h2>Miembros del Workspace</h2>
+          <button type="button" onClick={() => onOpenSection('members')}>Ver todos →</button>
+        </header>
+        <div className="wd-avatar-viewport">
+          <button type="button" className="wd-avatar-group"
+            onClick={() => onOpenSection('members')} aria-label="Ver miembros">
+            {dashboard.members.slice(0, 5).map(member =>
+              <Avatar key={member.id} id={member.id} name={member.name} src={member.avatar_url} size={38}/>)}
+            {(summary.stats.members ?? 0) > Math.min(5, dashboard.members.length) &&
+              <span className="wd-extra">+{(summary.stats.members ?? 0) - Math.min(5, dashboard.members.length)}</span>}
+          </button>
+        </div>
+        <div className="wd-rail-list">
+          {dashboard.departments.length ? dashboard.departments.slice(0, 3).map((dept, i) =>
+            <button type="button" key={dept.id} onClick={() => onOpenSection('departments')}>
+              <span className={`wd-dot wd-dot-${i % 5}`}/><span>{dept.name}</span>
+              <small>{dept.members} miembros</small>
+            </button>) : <p className="wd-empty">Sin departamentos.</p>}
+        </div>
+        {summary.can_manage && <button type="button" className="wd-panel-add" onClick={onInviteMembers}>
+          <NavIcon><path d="M12 5v14M5 12h14"/></NavIcon> Invitar miembros
+        </button>}
+      </section>}
           {summary.show_clients && <section className="wd-panel">
             <header className="wd-panel-head"><h2>Clientes</h2><button type="button" onClick={() => onOpenSection('clients')}>Ver todos →</button></header>
             <div className="wd-client-list">
@@ -389,8 +396,7 @@ export function WorkspaceOverview({ profile, workspaceId, onProfileRefresh, onOp
             <header className="wd-panel-head"><h2>Anuncios del Workspace</h2></header>
             <p className="wd-empty">Todavía no hay anuncios publicados. Esta funcionalidad estará disponible próximamente.</p>
           </section>
-        </aside>}
-      </div>
+      </aside>}
     </div> : <>
     <div className="wd-settings-heading"><h2>Configuración del Workspace</h2>
       <button className="ghost" type="button" onClick={() => setMode('dashboard')}>Volver al resumen</button>

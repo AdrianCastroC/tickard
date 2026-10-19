@@ -3178,6 +3178,51 @@ h1, h2, h3, p { margin: 0; }
   .wd-project {min-height:150px;}
 }
 
+/* Dashboard viewport: independent central and right columns. */
+.workspace-overview-page:has(> .wd-dashboard) {overflow:hidden;}
+.workspace-overview-page > .wd-dashboard {
+  display:grid;grid-template-columns:minmax(0,1fr) minmax(245px,285px);
+  grid-template-rows:minmax(0,1fr);align-items:stretch;flex:1 1 auto;
+  gap:13px;min-width:0;min-height:0;width:100%;overflow:hidden;
+}
+.workspace-overview-page > .wd-dashboard:has(> .wd-content:only-child) {grid-template-columns:minmax(0,1fr);}
+.wd-content {display:flex;flex-direction:column;flex:1 1 auto;gap:13px;
+  min-height:0;min-width:0;overflow-x:hidden;overflow-y:auto;
+  overscroll-behavior:contain;scrollbar-width:none;}
+.wd-content::-webkit-scrollbar,.wd-dashboard::-webkit-scrollbar,
+.wd-rail .wd-rail-list::-webkit-scrollbar,.wd-rail .wd-client-list::-webkit-scrollbar {display:none;}
+.wd-content > .wd-metrics {flex:0 0 auto;min-width:0;grid-template-columns:repeat(auto-fit,minmax(155px,1fr));}
+.wd-content > .wd-primary {display:flex;flex-direction:column;flex:0 0 auto;gap:13px;min-width:0;}
+.wd-dashboard > .wd-rail {display:flex;flex-direction:column;gap:13px;
+  min-width:0;min-height:0;height:100%;overflow:hidden;}
+.wd-dashboard > .wd-rail > .wd-panel {display:flex;flex-direction:column;
+  flex:1 1 0;gap:10px;min-height:0;overflow:hidden;box-sizing:border-box;}
+.wd-dashboard > .wd-rail > .wd-panel > .wd-panel-head {margin-bottom:0;flex:0 0 auto;}
+.wd-dashboard > .wd-rail .wd-rail-list,
+.wd-dashboard > .wd-rail .wd-client-list {flex:1 1 auto;min-height:0;
+  overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;scrollbar-width:none;}
+.wd-dashboard > .wd-rail .wd-rail-list button,
+.wd-dashboard > .wd-rail .wd-client-list button {flex:0 0 auto;}
+.wd-dashboard > .wd-rail .wd-avatar-viewport,
+.wd-dashboard > .wd-rail .wd-panel-add {flex:0 0 auto;}
+.wd-dashboard > .wd-rail > .wd-panel > .wd-empty {min-height:0;overflow-y:auto;overscroll-behavior:contain;}
+@media(max-width:1370px) {
+  .workspace-overview-page > .wd-dashboard {grid-template-columns:minmax(0,1fr) minmax(210px,255px);}
+}
+@media(max-width:970px) {
+  .workspace-overview-page > .wd-dashboard {display:flex;flex-direction:column;
+    overflow-x:hidden;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:none;}
+  .wd-dashboard > .wd-content {flex:0 0 auto;overflow:visible;}
+  .wd-dashboard > .wd-rail {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));
+    height:auto;flex:0 0 auto;overflow:visible;align-items:stretch;}
+  .wd-dashboard > .wd-rail > .wd-panel {flex:initial;min-height:170px;overflow:hidden;}
+  .wd-dashboard > .wd-rail > .wd-panel:last-child:nth-child(odd) {grid-column:1/-1;}
+}
+@media(max-width:650px) {
+  .wd-dashboard > .wd-rail {display:flex;flex-direction:column;}
+  .wd-dashboard > .wd-rail > .wd-panel {min-height:160px;}
+}
+
 /* Workspace overview: organization metrics and scoped owner configuration. */
 .frame:has(.workspace-overview-page) {height:100dvh;min-height:0;}
 .main:has(.workspace-overview-page) {min-height:0;overflow:hidden;}
@@ -4087,3 +4132,13 @@ h1, h2, h3, p { margin: 0; }
 .project-client-settings .field { display:flex; flex-direction:column; gap:7px; font-size:11px; font-weight:650; }
 .project-client-settings .field select { max-width:390px; height:36px; padding:7px 10px; border:1px solid var(--line);
   border-radius:8px; color:var(--ink); background:var(--canvas); }
+
+/* A failed Gantt stays inside the board instead of breaking the whole SPA. */
+.gantt-failure {display:flex;flex-direction:column;align-items:flex-start;gap:12px;
+  min-width:0;min-height:220px;margin:12px;padding:22px;
+  border:1px solid var(--line);border-radius:11px;background:var(--surface);color:var(--ink);}
+.gantt-failure h2 {margin:0;font-size:16px;}
+.gantt-failure p {max-width:560px;margin:0;font-size:12px;line-height:1.6;color:var(--muted);}
+.gantt-failure details {max-width:100%;font-size:11px;color:var(--muted);}
+.gantt-failure code {display:block;max-width:100%;margin-top:9px;overflow-wrap:anywhere;}
+.gantt-failure > div {display:flex;flex-wrap:wrap;gap:10px;}

@@ -15,6 +15,7 @@ import type { useBoardFilters } from './useBoardFilters'
 import { ListView } from './ListView'
 import { TableView } from './TableView'
 import { GanttView, type GanttCardFocus, type GanttDependencyNavigation } from './GanttView'
+import { GanttErrorBoundary } from './GanttErrorBoundary'
 import { BoardSummary } from './BoardSummary'
 import { BoardConfigPanel } from './BoardConfigPanel'
 import { BacklogResolutionModal } from './BacklogResolutionModal'
@@ -38,6 +39,7 @@ export function BoardSurface({ state, filters, activeBoardId, project, profile, 
   const [showCategories, setShowCategories] = useState(false)
   const [showConfig, setShowConfig] = useState(false)
   const [viewModes, setViewModes] = useState<Record<number, BoardViewMode>>({})
+  const [ganttRetry, setGanttRetry] = useState(0)
   const handledGanttFocus = useRef<number | null>(null)
   const filterButtonRef = useRef<HTMLButtonElement>(null)
   const canEdit = view?.role === 'responsable' || view?.role === 'editor'
@@ -107,12 +109,17 @@ export function BoardSurface({ state, filters, activeBoardId, project, profile, 
         <ListView board={view} cards={filteredColumns} onOpen={(card) => setSelected({ card, mode: 'view' })} />
       </div>}
       {viewMode === 'table' && <TableView board={view} cards={filteredColumns} onOpen={(card) => setSelected({ card, mode: 'view' })} />}
-      {viewMode === 'gantt' && <GanttView key={view.board.id} board={view}
-        cards={ganttFocus?.boardId === view.board.id ? view.columns : filteredColumns}
-        canEdit={canEdit} onOpen={(card) => setSelected({ card, mode: 'view' })}
-        onNavigateExternalCard={onNavigateExternalCard}
-        focus={ganttFocus?.boardId === view.board.id ? ganttFocus : null}
-        onChange={refresh} />}
+      {viewMode === 'gantt' &&
+        <GanttErrorBoundary key={`${view.board.id}:${ganttRetry}`}
+          onRetry={() => setGanttRetry(current => current + 1)}
+          onClose={() => changeViewMode('board')}>
+          <GanttView board={view}
+            cards={ganttFocus?.boardId === view.board.id ? view.columns : filteredColumns}
+            canEdit={canEdit} onOpen={(card) => setSelected({ card, mode: 'view' })}
+            onNavigateExternalCard={onNavigateExternalCard}
+            focus={ganttFocus?.boardId === view.board.id ? ganttFocus : null}
+            onChange={refresh} />
+        </GanttErrorBoundary>}
       {viewMode === 'board' && <Kanban board={view} canEdit={canEdit} canManage={canManage} query={query}
         assignee={filters.assignee} teamId={filters.teamId} label={filters.label} priority={filters.priority}
         onOpen={(card) => setSelected({ card, mode: 'view' })}

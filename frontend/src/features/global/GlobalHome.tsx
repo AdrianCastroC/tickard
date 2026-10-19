@@ -154,7 +154,7 @@ export function GlobalHome({ profile, onShowTasks, onShowInbox, onOpenTask, onOp
   return <section className={`${styles.root} global-home-view`} aria-label="Inicio global">
     <header className={styles.heading}>
       <div>
-        <h1>{greeting}, {profile.user.first_name || profile.user.name} <span aria-hidden="true">👋</span></h1>
+        <h1>{greeting}, {profile.user.first_name || profile.user.name}</h1>
         <p>Esto es lo importante de tus Workspaces hoy.</p>
       </div>
       <span className={styles.today}><Icon name="calendar"/>{dateLabel}</span>

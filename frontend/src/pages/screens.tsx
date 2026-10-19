@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import type { Profile, Project } from '../api'
 import { NavIcon } from '../shared/icons'
 import { AccountHeader } from '../features/account/AccountHeader'
+import type { BreadcrumbItem } from '../features/header/Header'
 import { AccountFooter } from '../features/account/AccountFooter'
 import { useBoard } from '../features/board/useBoard'
 import type { GanttCardFocus, GanttDependencyNavigation } from '../features/board/GanttView'
@@ -30,14 +31,15 @@ import { useProjectTabs, type ProjectContext } from '../features/workspace/usePr
 type AppContext = 'home' | 'inbox' | 'my-tasks' | 'workspace' | 'members' | 'departments' | 'teams' | 'clients'
 
 export function Workspace() {
-  const workspace = useWorkspace(); const sidebar = useSidebarState(); const [query, setQuery] = useState(''); const [appContext, setAppContext] = useState<AppContext>('home'); const [breadcrumb, setBreadcrumb] = useState(['Inicio'])
+  const workspace = useWorkspace(); const sidebar = useSidebarState(); const [query, setQuery] = useState(''); const [appContext, setAppContext] = useState<AppContext>('home'); const [breadcrumb, setBreadcrumb] = useState<BreadcrumbItem[]>([{label:'Inicio'}])
   if (!workspace.profile) return <main className="login"><p>Cargando…</p></main>
   return <div className={`frame${sidebar.mini ? ' is-side-mini' : ''}`}><AccountHeader profile={workspace.profile} workspaceId={workspace.activeWorkspaceId} onProfile={workspace.updateProfile} query={query} onQueryChange={setQuery} breadcrumb={breadcrumb} mini={sidebar.mini} /><WorkspaceContent workspace={workspace} profile={workspace.profile} sidebar={sidebar} query={query} appContext={appContext} onAppContext={setAppContext} onBreadcrumb={setBreadcrumb} /></div>
 }
 
-function WorkspaceContent({ workspace, profile, sidebar, query, appContext, onAppContext, onBreadcrumb }: { workspace: ReturnType<typeof useWorkspace>; profile: Profile; sidebar: ReturnType<typeof useSidebarState>; query: string; appContext: AppContext; onAppContext: (context: AppContext) => void; onBreadcrumb: (value: string[]) => void }) {
+function WorkspaceContent({ workspace, profile, sidebar, query, appContext, onAppContext, onBreadcrumb }: { workspace: ReturnType<typeof useWorkspace>; profile: Profile; sidebar: ReturnType<typeof useSidebarState>; query: string; appContext: AppContext; onAppContext: (context: AppContext) => void; onBreadcrumb: (value: BreadcrumbItem[]) => void }) {
   const tabs = useProjectTabs(profile.projects); const activeProject = profile.projects.find((project) => project.id === tabs.activeProjectId); const context: ProjectContext = activeProject ? tabs.contexts[activeProject.id] ?? 'project' : 'project'; const [projectView, setProjectView] = useState<ProjectView>('overview'); const activeBoardId = appContext === 'workspace' && typeof context === 'number' ? context : appContext === 'workspace' && context === 'project' && projectView === 'settings' ? activeProject?.boards[0]?.id ?? null : null; const board = useBoard(activeBoardId, tabs.selection); const filters = useBoardFilters(); const canManage = activeProject?.role === 'responsable'
   const [ganttFocus, setGanttFocus] = useState<GanttCardFocus | null>(null)
+  const [openWorkspaceProjectList, setOpenWorkspaceProjectList] = useState(false)
   const [myTasksMode, setMyTasksMode] = useState<'all' | 'overdue'>('all')
   const [myTasksKey, setMyTasksKey] = useState(0)
   const [workspaceQuickAction, setWorkspaceQuickAction] = useState<'invite-members' | 'new-client' | null>(null)
@@ -109,7 +111,37 @@ function WorkspaceContent({ workspace, profile, sidebar, query, appContext, onAp
   function removeProject(id: number, projects: Project[]) { board.setSelected(null); tabs.removeProject(id, projects) }
   async function removeBoard(id: number) { await workspace.refreshProfile(); if (context === id) { board.setSelected(null); tabs.selectContext('project') } }
   useEffect(() => { const select = (event: Event) => { const id = (event as CustomEvent<number>).detail; onAppContext('workspace'); tabs.selectContext(id) }; window.addEventListener('tickard:select-board', select); return () => window.removeEventListener('tickard:select-board', select) }, [tabs, onAppContext])
-  const projectName = activeProject?.name; const boardName = typeof context === 'number' ? activeProject?.boards.find((item) => item.id === context)?.name : undefined; const currentBreadcrumb = appContext !== 'workspace' ? [appContext === 'home' ? 'Inicio' : appContext === 'inbox' ? 'Bandeja de entrada' : appContext === 'members' ? 'Miembros' : appContext === 'departments' ? 'Departamentos' : appContext === 'teams' ? 'Equipos' : appContext === 'clients' ? 'Clientes' : 'Mis tareas'] : [profile.workspaces.find((item) => item.id === workspace.activeWorkspaceId)?.name ?? 'Workspace', ...(projectName ? ['Proyectos', projectName] : []), ...(boardName ? [boardName] : [])]; useEffect(() => { onBreadcrumb(currentBreadcrumb) }, [currentBreadcrumb.join('|')])
+  const projectName = activeProject?.name
+  const boardName = typeof context === 'number' ? activeProject?.boards.find(item => item.id === context)?.name : undefined
+  const workspaceName = profile.workspaces.find(item => item.id === workspace.activeWorkspaceId)?.name ?? 'Workspace'
+  const contextName = appContext === 'home' ? 'Inicio'
+    : appContext === 'inbox' ? 'Bandeja de entrada'
+    : appContext === 'members' ? 'Miembros'
+    : appContext === 'departments' ? 'Departamentos'
+    : appContext === 'teams' ? 'Equipos'
+    : appContext === 'clients' ? 'Clientes' : 'Mis tareas'
+  const currentBreadcrumb: BreadcrumbItem[] = appContext === 'workspace'
+    ? [
+        { label: workspaceName, onClick: activeProject ? showWorkspace : undefined },
+        ...(projectName ? [
+          { label: 'Proyectos', onClick: () => { showWorkspace(); setOpenWorkspaceProjectList(true) } },
+          { label: projectName, onClick: boardName || projectView !== 'overview'
+              ? () => { board.setSelected(null); tabs.selectContext('project'); setProjectView('overview') }
+              : undefined },
+        ] : []),
+        ...(boardName ? [{ label: boardName }] : []),
+      ]
+    : appContext === 'home'
+      ? [{ label: 'Inicio' }]
+      : [
+          { label: 'Inicio', onClick: () => onAppContext('home') },
+          { label: workspaceName, onClick: showWorkspace },
+          { label: contextName },
+        ]
+  useEffect(() => { onBreadcrumb(currentBreadcrumb) }, [
+    currentBreadcrumb.map(item => item.label).join('|'), appContext, projectView, context,
+  ])
+
   return <div className="body"><Sidebar mini={sidebar.mini}><nav className="global-nav"><div className="global-nav-row"><button className={`nav-item sub${appContext === 'home' ? ' on' : ''}`} type="button" title={sidebar.mini ? 'Desplegar menú' : 'Inicio'} aria-label={sidebar.mini ? 'Desplegar menú' : 'Inicio'} onClick={() => sidebar.mini ? sidebar.toggle() : onAppContext('home')}><NavIcon><path d="m3 11 9-8 9 8" /><path d="M5 10v10h14V10" /></NavIcon><span className="side-label-text">Inicio</span></button>{!sidebar.mini && (<button className="sidebar-toggle" type="button" title="Plegar menú" aria-label="Plegar menú" onClick={sidebar.toggle}><NavIcon><rect width="18" height="18" x="3" y="3" rx="2" /><path d="M9 3v18" /><path d="m16 15-3-3 3-3" /></NavIcon></button>)}</div><button className={`nav-item sub${appContext === 'inbox' ? ' on' : ''}`} type="button" onClick={() => onAppContext('inbox')}><NavIcon><rect width="18" height="14" x="3" y="5" rx="2" /><path d="m3 7 9 6 9-6" /></NavIcon><span className="side-label-text">Bandeja de entrada</span></button><button className={`nav-item sub${appContext === 'my-tasks' ? ' on' : ''}`} type="button" onClick={() => showMyTasks('all')}><NavIcon><path d="m5 12 4 4L19 6" /><rect width="18" height="18" x="3" y="3" rx="2" /></NavIcon><span className="side-label-text">Mis tareas</span></button></nav><WorkspaceSelector profile={profile} activeWorkspaceId={workspace.activeWorkspaceId} mini={sidebar.mini} activeContext={!activeProject && appContext === 'workspace'} onOpenOverview={showWorkspace} onWorkspaceChange={async (id) => { onAppContext('workspace'); tabs.showWorkspace(); await workspace.changeWorkspace(id) }} onProfileRefresh={workspace.refreshProfile} /><nav className="nav">{(profile.user.is_admin || profile.workspaces.some(item => item.id === workspace.activeWorkspaceId && (item.role === 'owner' || item.role === 'admin'))) && <PersonalSection active={appContext === 'members' || appContext === 'departments' || appContext === 'teams' || appContext === 'clients' ? appContext : null}
             onOpen={section => { clearQuickAction(); board.setSelected(null); onAppContext(section) }}
             showClients={profile.workspaces.find(item => item.id === workspace.activeWorkspaceId)?.show_clients ?? false} />}<ProjectsSection profile={profile} workspaceId={workspace.activeWorkspaceId} mini={sidebar.mini} onOpenProject={openProject} onProjectsChanged={workspace.refreshProfile} /></nav><AccountFooter profile={profile} mini={sidebar.mini} /></Sidebar><MainContent tabs={tabs.tabs} activeProjectId={tabs.activeProjectId} onSelectTab={selectProject} onCloseTab={(id) => tabs.close(id)} showProjectTabs={appContext === 'workspace' && activeProject !== undefined && activeProject !== null} contextBar={activeProject && appContext === 'workspace' && typeof context === 'number' && <ProjectContextBar project={activeProject} context={context} canManage={canManage} projectView={projectView} onProjectView={setProjectView} onContext={tabs.selectContext} onRefresh={workspace.refreshProfile} />}>{appContext === 'home' && <GlobalHome profile={profile} onShowTasks={showMyTasks} onShowInbox={() => onAppContext('inbox')} onOpenTask={openMyTask} onOpenMeeting={openMyMeeting} onOpenProject={openHomeProject} />}{appContext === 'inbox' && <InboxSurface onAccepted={async (workspaceId) => {
@@ -122,6 +154,7 @@ function WorkspaceContent({ workspace, profile, sidebar, query, appContext, onAp
 {appContext === 'teams' && <TeamsSurface key={workspace.activeWorkspaceId ?? 0} workspaceId={workspace.activeWorkspaceId} />}
 {appContext === 'clients' && profile.workspaces.some(item => item.id === workspace.activeWorkspaceId && item.show_clients) && <ClientsSurface key={workspace.activeWorkspaceId ?? 0} workspaceId={workspace.activeWorkspaceId}
   openCreate={workspaceQuickAction === 'new-client'} onQuickActionConsumed={clearQuickAction} />}{appContext === 'workspace' && !activeProject && <WorkspaceOverview profile={profile} workspaceId={workspace.activeWorkspaceId} onProfileRefresh={workspace.refreshProfile}
+  openProjectList={openWorkspaceProjectList} onProjectListOpened={() => setOpenWorkspaceProjectList(false)}
   onOpenSection={section => { clearQuickAction(); board.setSelected(null); onAppContext(section) }}
   onOpenProject={projectId => {
     const target = profile.projects.find(project => project.id === projectId)

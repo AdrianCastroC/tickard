@@ -1392,7 +1392,10 @@ export function GanttView({ board, cards, canEdit, onOpen, onNavigateExternalCar
   const groups = useMemo(() => projectBoards ? projectCategoryGroups(projectBoards) : categoryGroups(board, cards), [board, cards, projectBoards])
   const visibleBoardIds = useMemo(() => new Set((projectBoards ?? [board]).map((item) => item.board.id)), [board, projectBoards])
   const ganttStorageScope = projectBoards ? `project:${board.board.project_id}` : String(board.board.id)
-  const [zoom, setZoom] = useState<Zoom>(() => (localStorage.getItem(`tickard:gantt-zoom:${ganttStorageScope}`) as Zoom) || 'week')
+  const [zoom, setZoom] = useState<Zoom>(() => {
+    const stored = localStorage.getItem(`tickard:gantt-zoom:${ganttStorageScope}`)
+    return ZOOMS.find(value => value === stored) ?? 'week'
+  })
   const visibilityStorageKey = `tickard:gantt-columns:${ganttStorageScope}`
   const [visibility, setVisibility] = useState<Visibility>(() => readVisibility(visibilityStorageKey))
   const leftCollapsedStorageKey = `tickard:gantt-left-collapsed:${ganttStorageScope}`
@@ -1512,6 +1515,10 @@ export function GanttView({ board, cards, canEdit, onOpen, onNavigateExternalCar
     return result
   }, [externalDependencies])
   const baseRange = useMemo(() => timelineRange(allCards, zoom), [allCards, zoom])
+  // Re-fitting is only needed to make room for routed dependencies and
+  // their cross-board references. Ordinary Card metadata must not drive a
+  // self-reinforcing expansion of the calendar in small dependency-free boards.
+  const needsDependencyFitting = ganttDependencies.length > 0 || externalDependencies.length > 0
   const [fittedRange, setFittedRange] = useState<{ zoom: Zoom; start: string; end: string } | null>(null)
   const activeFittedRange = fittedRange?.zoom === zoom ? fittedRange : null
   const range = {
@@ -1939,6 +1946,13 @@ export function GanttView({ board, cards, canEdit, onOpen, onNavigateExternalCar
   }, [cardRows, dependencyGeometry, externalDependencies, ganttDependencies, plannedDependencyRoutes])
 
   useLayoutEffect(() => {
+    // Portal de clientes and other small boards often have no dependencies.
+    // In that case the base two-unit margins are sufficient; repeatedly
+    // measuring the text badges and expanding the timeline is unnecessary.
+    if (!needsDependencyFitting) {
+      setFittedRange(current => current === null ? current : null)
+      return
+    }
     const geometry = dependencyGeometry
     if (geometry.width <= 0 || geometry.dayWidth <= 0) return
     // On a date-range expansion React renders the new dates before the
@@ -1971,12 +1985,25 @@ export function GanttView({ board, cards, canEdit, onOpen, onNavigateExternalCar
       [...geometry.obstacles, ...Object.values(geometry.externalRefs), ...metadata],
       routes,
     )
-    setFittedRange((current) =>
-      current?.zoom === zoom && current.start === fitted.start && current.end === fitted.end
-        ? current : { ...fitted, zoom })
+    // Fitting must be monotonic for a zoom level. A smaller measured extent
+    // must never shrink the current fitted range, otherwise ResizeObserver
+    // measurements may oscillate between two widths indefinitely.
+    // Limit *extra* margin to two years on either side of the data; genuine
+    // multi-year Cards stay fully visible because baseRange is untouched.
+    const earliest = shift(baseRange.start, -730)
+    const latest = shift(baseRange.end, 730)
+    const requiredStart = fitted.start < earliest ? earliest : fitted.start
+    const requiredEnd = fitted.end > latest ? latest : fitted.end
+    setFittedRange(current => {
+      const sameZoom = current?.zoom === zoom
+      const start = sameZoom && current.start < requiredStart ? current.start : requiredStart
+      const end = sameZoom && current.end > requiredEnd ? current.end : requiredEnd
+      return sameZoom && current.start === start && current.end === end
+        ? current : { start, end, zoom }
+    })
   }, [
     baseRange.start, baseRange.end, range.start, range.end, dependencyGeometry,
-    externalRoutes, plannedDependencyRoutes, leftCollapsed, zoom,
+    externalRoutes, plannedDependencyRoutes, leftCollapsed, zoom, needsDependencyFitting,
   ])
 
   const unroutedDependencies = useMemo(() => {
