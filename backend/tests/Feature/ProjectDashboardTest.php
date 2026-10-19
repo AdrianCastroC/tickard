@@ -12,6 +12,8 @@ use App\Models\Team;
 use App\Models\User;
 use App\Models\Workspace;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
@@ -300,6 +302,56 @@ class ProjectDashboardTest extends TestCase
             ->assertJsonCount(0, 'activity')
             ->assertJsonCount(0, 'members')
             ->assertJsonCount(0, 'priorities');
+    }
+
+    public function test_project_logo_can_be_uploaded_replaced_and_deleted_only_by_responsable(): void
+    {
+        Storage::fake('public');
+        extract($this->fixture());
+        $png = static fn () => UploadedFile::fake()->createWithContent('logo.png', base64_decode(
+            'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO0X19kAAAAASUVORK5CYII='
+        ));
+
+        $this->actingAs($client)->post("/api/projects/{$project->id}/image", [
+            'image' => $png(),
+        ], ['Accept' => 'application/json'])->assertForbidden();
+        $this->actingAs($outsider)->post("/api/projects/{$project->id}/image", [
+            'image' => $png(),
+        ], ['Accept' => 'application/json'])->assertForbidden();
+
+        $this->actingAs($owner)->post("/api/projects/{$project->id}/image", [
+            'image' => $png(),
+        ], ['Accept' => 'application/json'])->assertOk()->assertJsonStructure(['image_url']);
+        $first = $project->fresh()->image_path;
+        $this->assertNotNull($first);
+        Storage::disk('public')->assertExists($first);
+        $this->getJson("/api/projects/{$project->id}/settings")->assertOk()
+            ->assertJsonPath('image_url', '/storage/'.$first);
+
+        $this->post("/api/projects/{$project->id}/image", [
+            'image' => $png(),
+        ], ['Accept' => 'application/json'])->assertOk();
+        $second = $project->fresh()->image_path;
+        $this->assertNotSame($first, $second);
+        Storage::disk('public')->assertMissing($first);
+        Storage::disk('public')->assertExists($second);
+
+        $this->actingAs($client)->deleteJson("/api/projects/{$project->id}/image")
+            ->assertForbidden();
+        $this->actingAs($owner)->deleteJson("/api/projects/{$project->id}/image")
+            ->assertNoContent();
+        $this->assertNull($project->fresh()->image_path);
+        Storage::disk('public')->assertMissing($second);
+    }
+
+    public function test_project_logo_rejects_non_images_and_large_uploads(): void
+    {
+        Storage::fake('public');
+        extract($this->fixture());
+        $this->actingAs($owner)->post("/api/projects/{$project->id}/image", [
+            'image' => UploadedFile::fake()->create('document.pdf', 100, 'application/pdf'),
+        ], ['Accept' => 'application/json'])->assertUnprocessable()->assertJsonValidationErrors('image');
+        $this->assertNull($project->fresh()->image_path);
     }
 
 }
