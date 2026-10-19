@@ -119,6 +119,16 @@ function WorkspaceContent({ workspace, profile, sidebar, query, appContext, onAp
 {appContext === 'teams' && <TeamsSurface key={workspace.activeWorkspaceId ?? 0} workspaceId={workspace.activeWorkspaceId} />}
 {appContext === 'clients' && profile.workspaces.some(item => item.id === workspace.activeWorkspaceId && item.show_clients) && <ClientsSurface key={workspace.activeWorkspaceId ?? 0} workspaceId={workspace.activeWorkspaceId} />}{appContext === 'workspace' && !activeProject && <WorkspaceOverview profile={profile} workspaceId={workspace.activeWorkspaceId} onProfileRefresh={workspace.refreshProfile}
   onOpenSection={section => { board.setSelected(null); onAppContext(section) }}
+  onOpenProject={projectId => {
+    const target = profile.projects.find(project => project.id === projectId)
+    if (target) { openProject(target); setProjectView('overview') }
+  }}
+  onOpenTask={task => {
+    if (workspace.activeWorkspaceId !== null) {
+      void openMyTask({ ...task, workspace_id: workspace.activeWorkspaceId })
+    }
+  }}
+  onOpenTasks={() => showMyTasks('all')}
   onDeleted={async deletedId => {
     const next = profile.workspaces.find(item => item.id !== deletedId)
     if (next) {

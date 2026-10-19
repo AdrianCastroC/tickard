@@ -2,6 +2,8 @@
 
 namespace Tests\Feature;
 
+use App\Models\Board;
+use App\Models\Card;
 use App\Models\ClientCompany;
 use App\Models\Department;
 use App\Models\Project;
@@ -199,6 +201,110 @@ class WorkspaceTest extends TestCase
 
         $this->deleteJson($url, ['confirmation_name' => 'Empresa Nueva'])
             ->assertUnprocessable();
+    }
+
+    public function test_workspace_dashboard_uses_real_card_statistics_and_scoped_lists(): void
+    {
+        $owner = User::factory()->create(['is_admin' => false]);
+        $workspace = Workspace::createInitialFor($owner);
+        $workspace->update(['show_clients' => true]);
+        $project = $workspace->projects()->create(['name' => 'Proyecto A']);
+        $board = Board::create(['project_id' => $project->id, 'name' => 'Tablero A']);
+        $board->createDefaultColumns();
+        $pending = $board->columns()->where('workflow_state', 'pending')->firstOrFail();
+        $done = $board->columns()->where('workflow_state', 'done')->firstOrFail();
+        $task = Card::create([
+            'board_id' => $board->id, 'column_id' => $pending->id,
+            'title' => 'Validar pagos', 'due_date' => now()->addDay()->toDateString(),
+        ]);
+        Card::create([
+            'board_id' => $board->id, 'column_id' => $done->id,
+            'title' => 'Tarea finalizada',
+        ]);
+        $task->activities()->create(['user_id' => $owner->id, 'type' => 'created']);
+        $workspace->teams()->create(['name' => 'Frontend']);
+        $workspace->departments()->create(['name' => 'Desarrollo']);
+        $workspace->clientCompanies()->create(['name' => 'Nébula Mobile']);
+
+        $otherOwner = User::factory()->create(['is_admin' => false]);
+        $other = Workspace::createInitialFor($otherOwner);
+        $otherProject = $other->projects()->create(['name' => 'Proyecto ajeno']);
+        $otherBoard = Board::create(['project_id' => $otherProject->id, 'name' => 'Tablero ajeno']);
+        $otherBoard->createDefaultColumns();
+        Card::create([
+            'board_id' => $otherBoard->id,
+            'column_id' => $otherBoard->columns()->firstOrFail()->id,
+            'title' => 'Tarea ajena',
+        ]);
+
+        $this->actingAs($owner)->getJson("/api/workspaces/{$workspace->id}/overview")
+            ->assertOk()->assertJsonPath('dashboard.cards.total', 2)
+            ->assertJsonPath('dashboard.cards.completed', 1)
+            ->assertJsonCount(1, 'dashboard.projects')
+            ->assertJsonPath('dashboard.projects.0.name', 'Proyecto A')
+            ->assertJsonPath('dashboard.projects.0.total', 2)
+            ->assertJsonPath('dashboard.projects.0.completed', 1)
+            ->assertJsonCount(1, 'dashboard.tasks')
+            ->assertJsonPath('dashboard.tasks.0.title', 'Validar pagos')
+            ->assertJsonPath('dashboard.tasks.0.project_id', $project->id)
+            ->assertJsonCount(1, 'dashboard.activity')
+            ->assertJsonPath('dashboard.activity.0.card_title', 'Validar pagos')
+            ->assertJsonPath('dashboard.teams.0.name', 'Frontend')
+            ->assertJsonPath('dashboard.departments.0.name', 'Desarrollo')
+            ->assertJsonPath('dashboard.clients.0.name', 'Nébula Mobile')
+            ->assertJsonMissing(['title' => 'Tarea ajena']);
+    }
+
+    public function test_workspace_dashboard_does_not_expose_unassigned_cards_or_internal_client_cards(): void
+    {
+        $owner = User::factory()->create(['is_admin' => false]);
+        $workspace = Workspace::createInitialFor($owner);
+        $workspace->update(['show_clients' => true]);
+        $company = $workspace->clientCompanies()->create(['name' => 'Cliente A']);
+        $member = User::factory()->create(['is_admin' => false]);
+        $client = User::factory()->create(['is_admin' => false, 'email_verified_at' => now()]);
+        $workspace->memberships()->create(['user_id' => $member->id, 'role' => 'member']);
+        $workspace->memberships()->create([
+            'user_id' => $client->id, 'role' => 'client', 'client_company_id' => $company->id,
+        ]);
+        $project = $workspace->projects()->create([
+            'name' => 'Portal', 'client_company_id' => $company->id, 'client_access_enabled' => true,
+        ]);
+        \App\Models\ProjectMember::create([
+            'project_id' => $project->id, 'user_id' => $member->id, 'role' => 'editor',
+        ]);
+        \App\Models\ProjectMember::create([
+            'project_id' => $project->id, 'user_id' => $client->id, 'role' => 'cliente',
+        ]);
+        $board = Board::create(['project_id' => $project->id, 'name' => 'General']);
+        $board->createDefaultColumns();
+        $column = $board->columns()->where('workflow_state', 'pending')->firstOrFail();
+        $public = Card::create([
+            'board_id' => $board->id, 'column_id' => $column->id,
+            'title' => 'Pública', 'is_internal' => false,
+        ]);
+        $internal = Card::create([
+            'board_id' => $board->id, 'column_id' => $column->id,
+            'title' => 'Interna', 'is_internal' => true,
+        ]);
+        $public->assignees()->attach([$member->id, $client->id]);
+        $public->activities()->create(['user_id' => $owner->id, 'type' => 'created']);
+        $internal->activities()->create(['user_id' => $owner->id, 'type' => 'created']);
+
+        $this->actingAs($member)->getJson("/api/workspaces/{$workspace->id}/overview")
+            ->assertOk()->assertJsonPath('dashboard.cards.total', 1)
+            ->assertJsonCount(1, 'dashboard.tasks')
+            ->assertJsonCount(1, 'dashboard.activity')
+            ->assertJsonCount(0, 'dashboard.members');
+
+        $this->actingAs($client)->getJson("/api/workspaces/{$workspace->id}/overview")
+            ->assertOk()->assertJsonPath('dashboard.cards.total', 1)
+            ->assertJsonCount(1, 'dashboard.projects')
+            ->assertJsonCount(1, 'dashboard.tasks')
+            ->assertJsonCount(1, 'dashboard.activity')
+            ->assertJsonCount(0, 'dashboard.members')
+            ->assertJsonCount(0, 'dashboard.clients')
+            ->assertJsonMissing(['card_title' => 'Interna']);
     }
 
 }

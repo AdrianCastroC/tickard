@@ -263,6 +263,13 @@ No es necesaria ninguna migración: se reutilizan los campos actuales de `projec
 
 ### Vista general del Workspace
 
+El dashboard principal sigue la referencia de Tickard Demo: identidad y métricas en cabecera; proyectos recientes, tareas pendientes, actividad, equipos y departamentos en el área central; miembros, clientes y anuncios en el panel derecho. Cada bloque consume datos reales del backend y respeta el Workspace activo.
+
+El endpoint existente `GET /api/workspaces/{workspace}/overview` incorpora `dashboard` con cifras de Cards no archivadas y completadas, hasta 6 proyectos recientes, 7 tareas pendientes, 6 eventos recientes, y muestras acotadas de miembros, equipos, departamentos y clientes. Se filtran los proyectos accesibles por el usuario: miembros normales solo ven sus Cards asignadas y clientes solo sus Cards públicas asignadas en proyectos externos habilitados. No se devuelven textos de comentarios ni actividades internas; las cuentas sin permisos administrativos no reciben listados de personal ni empresas.
+
+El botón **Configuración** abre los ajustes existentes del propietario (nombre, cumpleaños, Clientes y eliminación). Así los formularios no ocupan espacio en la vista principal. **Anuncios del Workspace** presenta un estado vacío porque aún no existe un modelo de anuncios; no se simulan publicaciones. Se conserva el loading y el scroll interno.
+
+
 Al pulsar el nombre del Workspace en el menú lateral se abre su **vista general**. Incluye métricas calculadas en el backend exclusivamente para el Workspace activo: proyectos, miembros, equipos, departamentos y empresas cliente cuando está habilitado el módulo Clientes.
 
 - Owner y administradores: pueden consultar las métricas de organización y acceder desde la vista a las secciones de Personal.
