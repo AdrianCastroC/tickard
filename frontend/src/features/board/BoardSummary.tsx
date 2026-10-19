@@ -43,10 +43,8 @@ function dateText(date: string | null) {
   })
 }
 
-export function BoardSummary({ board, onConfigure, onOpenView, onOpenCard }: {
+export function BoardSummary({ board, onOpenCard }: {
   board: BoardPayload
-  onConfigure?: () => void
-  onOpenView: (view: 'board' | 'gantt') => void
   onOpenCard: (id: number) => void
 }) {
   const [data, setData] = useState<Dashboard | null>(null)
@@ -120,28 +118,6 @@ export function BoardSummary({ board, onConfigure, onOpenView, onOpenCard }: {
     priorities.find(priority => priority.key === value)?.label ?? 'Sin prioridad'
 
   return <section className={styles.root} aria-label={`Resumen de ${board.board.name}`}>
-    <div className={styles.heading}>
-      <div>
-        <p className={styles.eyebrow}>TABLERO · {board.board.project_name}</p>
-        <h2>Visión general</h2>
-        <p className={styles.explainer}>Progreso, responsables y próximos pasos de {board.board.name}.</p>
-      </div>
-      <div className={styles.actions}>
-        <button type="button" className={styles.secondaryButton} onClick={() => onOpenView('board')}>
-          <NavIcon><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M10 4v16m5-16v16"/></NavIcon>
-          Abrir tablero
-        </button>
-        <button type="button" className={styles.secondaryButton} onClick={() => onOpenView('gantt')}>
-          <NavIcon><path d="M3 6h10M8 12h13M5 18h11"/></NavIcon>
-          Ver Gantt
-        </button>
-        {onConfigure && <button type="button" className={styles.settingsButton} onClick={onConfigure}>
-          <NavIcon><circle cx="12" cy="12" r="3"/><path d="M12 2v3m0 14v3M4.9 4.9l2.1 2.1m10 10 2.1 2.1M2 12h3m14 0h3M4.9 19.1 7 17m10-10 2.1-2.1"/></NavIcon>
-          Configurar
-        </button>}
-      </div>
-    </div>
-
     <div className={styles.metrics}>
       {metricCards.map(metric => <div key={metric.key} className={styles.metric}>
         <div className={styles.metricTitle}>
@@ -230,9 +206,7 @@ export function BoardSummary({ board, onConfigure, onOpenView, onOpenCard }: {
 
     <div className={styles.middlePanels}>
       <section className={styles.panel}>
-        <div className={styles.panelHeading}><h3>Tareas próximas</h3>
-          <button type="button" onClick={() => onOpenView('board')}>Ver tablero →</button>
-        </div>
+        <div className={styles.panelHeading}><h3>Tareas próximas</h3></div>
         <div className={styles.taskList}>
           {data.deadlines.map(task => <button className={styles.task} key={task.id}
             type="button" onClick={() => onOpenCard(task.id)} title={task.title}>
