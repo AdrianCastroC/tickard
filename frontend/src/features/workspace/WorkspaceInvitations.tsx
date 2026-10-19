@@ -5,7 +5,7 @@ import styles from './WorkspaceInvitations.module.css'
 
 type Invite = {
   id: number; user: string; handle: string; status: 'pending'|'accepted'|'rejected'
-  project_role: 'responsable'|'editor'|'lector'|null
+  project_role: 'responsable'|'editor'|'lector'|null; custom_role_id: number|null; custom_role_name: string|null
   project_name: string|null; created_at: string; responded_at: string|null
 }
 type Member = { id: number; name: string; handle: string; avatar_url: string|null; role: string }
@@ -23,7 +23,16 @@ export function WorkspaceInvitations({ workspaceId, workspaceName, projectId, on
   const [loading,setLoading] = useState(true)
   const [error,setError] = useState('')
   const [input,setInput] = useState('')
-  const [role,setRole] = useState<'responsable'|'editor'|'lector'>('editor')
+  const [role,setRole] = useState('editor')
+  const [customRoles,setCustomRoles] = useState<{id:number;name:string;scope:string}[]>([])
+  useEffect(()=>{
+    if (!workspaceId) { setCustomRoles([]); return }
+    let alive=true
+    void api<{roles:{id:number;name:string;scope:string}[]}>(`/workspaces/${workspaceId}/roles`)
+      .then(result=>{if(alive)setCustomRoles(result.roles.filter(item=>item.scope===(projectId?'project':'workspace')))})
+      .catch(()=>{if(alive)setCustomRoles([])})
+    return ()=>{alive=false}
+  },[workspaceId,projectId])
   const [status,setStatus] = useState<'all'|'pending'|'accepted'|'rejected'>('all')
   const [selected,setSelected] = useState<number[]>([])
   const [busy,setBusy] = useState(false)
@@ -48,7 +57,7 @@ export function WorkspaceInvitations({ workspaceId, workspaceName, projectId, on
     if(!recipients.length)return
     setBusy(true);setError('')
     try {
-      const response=await api<Result>(base,{method:'POST',body:JSON.stringify({recipients,...(projectId?{role}:{})})})
+      const response=await api<Result>(base,{method:'POST',body:JSON.stringify({recipients,...(role.startsWith('custom:') ? {custom_role_id:Number(role.slice(7)), ...(projectId?{role:'lector'}:{})} : projectId ? {role} : {})})})
       await load()
       if(response.created.length) setInput('')
       setError(`${response.created.length} invitación(es) enviada(s).`+
@@ -81,11 +90,14 @@ export function WorkspaceInvitations({ workspaceId, workspaceName, projectId, on
               placeholder={'maria#00003, pedro@empresa.com\nsofia#00017'} disabled={busy}
               style={{width:'100%',resize:'vertical',padding:'10px',borderRadius:8,background:'var(--surface)',color:'var(--ink)',border:'1px solid var(--line)'}}/>
           </label>
-          {projectId&&<label>Rol que tendrán al aceptar
+          <label>Rol que tendrán al aceptar
             <select value={role} onChange={e=>setRole(e.target.value as typeof role)} disabled={busy}>
-              <option value="responsable">Responsable</option><option value="editor">Editor</option><option value="lector">Lector</option>
+              {projectId
+                ? <><option value="responsable">Responsable</option><option value="editor">Editor</option><option value="lector">Lector</option></>
+                : <option value="editor">Miembro</option>}
+              {customRoles.map(item=><option key={item.id} value={`custom:${item.id}`}>{item.name}</option>)
             </select>
-          </label>}
+          </label>
           <button type="submit" className={styles.primary} disabled={busy||!input.trim()}>{busy?'Enviando…':'Enviar invitaciones'}</button>
           <p className={styles.muted}>Solo usuarios registrados. {projectId?'Los externos entrarán también en el Workspace.':'El rol inicial será Miembro; los proyectos se asignan aparte.'}</p>
         </form>
@@ -107,7 +119,7 @@ export function WorkspaceInvitations({ workspaceId, workspaceName, projectId, on
             onChange={e=>setSelected(v=>e.target.checked?[...v,x.id]:v.filter(y=>y!==x.id))}/>}
           <div className={styles.person}>
             <strong>{x.user} · {x.handle}</strong>
-            <small>{x.status==='pending'?'Pendiente':x.status==='accepted'?'Aceptada':'Rechazada'} · {new Date(x.created_at).toLocaleDateString('es-ES')}{x.project_role?' · '+x.project_role:''}</small>
+            <small>{x.status==='pending'?'Pendiente':x.status==='accepted'?'Aceptada':'Rechazada'} · {new Date(x.created_at).toLocaleDateString('es-ES')}{x.custom_role_name?' · '+x.custom_role_name:x.project_role?' · '+x.project_role:''}</small>
           </div>
           {x.status!=='accepted'&&<button className={styles.danger} type="button" disabled={busy}
             onClick={()=>void remove([x.id])}>Eliminar</button>}
