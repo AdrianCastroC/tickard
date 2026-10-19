@@ -59,6 +59,8 @@ class WorkspaceMembersController extends ApiController
                 'job_title' => $membership->job_title,
                 'joined_at' => $membership->created_at?->toDateString(),
                 'role' => (int) $workspace->owner_id === (int) $user->id ? 'owner' : ($isClient ? 'client' : $membership->role),
+                'custom_role_id' => $isClient ? null : $membership->custom_role_id,
+                'custom_role_name' => $isClient ? null : $membership->customRole?->name,
                 'is_client' => $isClient,
                 'departments' => ($departments->get($user->id) ?? collect())->map(fn ($x) => ['id' => $x->id, 'name' => $x->name, 'is_lead' => (int) $x->lead_user_id === (int) $user->id])->values(),
                 'teams' => ($teams->get($user->id) ?? collect())->map(fn ($x) => ['id' => $x->id, 'name' => $x->name, 'is_lead' => (int) $x->lead_user_id === (int) $user->id])->values(),
@@ -107,7 +109,13 @@ class WorkspaceMembersController extends ApiController
     public function updateRole(Request $request, Workspace $workspace, User $user)
     {
         abort_unless((int) $workspace->owner_id === (int) $request->user()->id, 403);
-        $data = $request->validate(['role' => ['required', Rule::in(['member', 'admin'])]]);
+        $data = $request->validate([
+            'role' => ['required', Rule::in(['member', 'admin'])],
+            'custom_role_id' => ['nullable', 'integer', Rule::exists('workspace_custom_roles', 'id')
+                ->where('workspace_id', $workspace->id)->where('scope', 'workspace')],
+        ]);
+        abort_if(! empty($data['custom_role_id']) && $data['role'] !== 'member', 422,
+            'Los roles personalizados no pueden heredar permisos de administrador.');
         abort_if((int) $user->id === (int) $workspace->owner_id, 422,
             'No puedes modificar el rol del propietario del Workspace.');
 
@@ -115,10 +123,10 @@ class WorkspaceMembersController extends ApiController
             $member = $workspace->memberships()->where('user_id', $user->id)->lockForUpdate()->firstOrFail();
             abort_if($member->role === 'owner' || WorkspaceClientAccess::isClient($user, $workspace), 422,
                 'El rol de una cuenta de cliente no puede modificarse desde Personal.');
-            $member->update(['role' => $data['role']]);
+            $member->update(['role' => $data['role'], 'custom_role_id' => $data['custom_role_id'] ?? null]);
         });
 
-        return response()->json(['user_id' => $user->id, 'role' => $data['role']]);
+        return response()->json(['user_id' => $user->id, 'role' => $data['role'], 'custom_role_id' => $data['custom_role_id'] ?? null]);
     }
     /**
      * Revoke access to this Workspace without deleting the global user or
