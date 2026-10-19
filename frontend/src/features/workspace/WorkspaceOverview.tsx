@@ -205,8 +205,10 @@ export function WorkspaceOverview({ profile, workspaceId, onProfileRefresh, onOp
     created: 'creó', commented: 'comentó en', moved: 'movió',
     updated: 'actualizó', assigned: 'asignó', completed: 'completó',
   }
-  const formatDue = (date: string | null) => date
-    ? new Date(date.slice(0, 10) + 'T12:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })
+  const formatDue = (date: string | null, includeYear = false) => date
+    ? new Date(date.slice(0, 10) + 'T12:00:00').toLocaleDateString('es-ES', {
+        day: 'numeric', month: 'short', ...(includeYear ? { year: 'numeric' as const } : {}),
+      })
     : 'Sin fecha'
   const cardAction = (entry: Pick<DashboardTask, 'id' | 'board_id' | 'project_id'>) =>
     onOpenTask(entry)
@@ -248,7 +250,7 @@ export function WorkspaceOverview({ profile, workspaceId, onProfileRefresh, onOp
         </div>)}
       </div>
       <div className="wd-primary">
-          <section className="wd-panel">
+          <section className="wd-panel wd-recent-projects">
             <header className="wd-panel-head"><h2>Proyectos recientes</h2>
               <div className="wd-project-actions">
                 <button type="button" className="wd-project-all"
@@ -292,14 +294,14 @@ export function WorkspaceOverview({ profile, workspaceId, onProfileRefresh, onOp
                     <span className="wd-project-deadline"
                       title="Fecha máxima entre los vencimientos de las tareas del proyecto">
                       <NavIcon><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M7 3v4m10-4v4M3 10h18"/></NavIcon>
-                      {formatDue(project.latest_due_date)}
+                      {formatDue(project.latest_due_date, true)}
                     </span>
                   </span>
                 </button>
               ) : <p className="wd-empty">Todavía no hay proyectos en este Workspace.</p>}
             </div>
           </section>
-          <div className="wd-pair">
+          <div className="wd-pair wd-workstream">
             <section className="wd-panel">
               <header className="wd-panel-head"><h2>Tareas del Workspace</h2>
                 <button type="button" onClick={onOpenTasks}>Ver mis tareas →</button></header>
@@ -330,7 +332,7 @@ export function WorkspaceOverview({ profile, workspaceId, onProfileRefresh, onOp
               </div>
             </section>
           </div>
-          {summary.can_view_personnel && <div className="wd-pair">
+          {summary.can_view_personnel && <div className="wd-pair wd-organization">
             <section className="wd-panel">
               <header className="wd-panel-head"><h2>Equipos</h2><button type="button" onClick={() => onOpenSection('teams')}>Ver todos →</button></header>
               <div className="wd-entity-grid">
