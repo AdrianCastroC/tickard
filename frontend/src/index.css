@@ -4332,3 +4332,15 @@ h1, h2, h3, p { margin: 0; }
   .project-settings-logo-editor {align-items:flex-start;}
   .project-settings-logo-preview {width:60px;height:60px;flex-basis:60px;}
 }
+
+
+/* Project Gantt: its skeleton stays visible while the hidden, measurable chart
+   commits the timeline and dependency SVG. No fake cards or layout shifts. */
+.project-gantt-viewport {position:relative;isolation:isolate;}
+.project-gantt-render {width:100%;height:100%;min-height:0;}
+.project-gantt-render-pending {visibility:hidden;pointer-events:none;}
+.project-gantt-preparation {
+  position:absolute;inset:0;z-index:20;
+  min-width:0;min-height:0;overflow:hidden;background:var(--surface);
+}
+.project-gantt-preparation > section {height:100%;max-height:100%;}
