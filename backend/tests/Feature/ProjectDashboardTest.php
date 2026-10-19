@@ -239,7 +239,7 @@ class ProjectDashboardTest extends TestCase
             ->assertJsonPath('summary.blocked', 0)
             ->assertJsonCount(5, 'columns')
             ->assertJsonPath('deadlines.0.title', 'Entregar diseño')
-            ->assertJsonFragment(['priority' => 'sin_prioridad', 'total' => 1])
+            ->assertJsonFragment(['priority' => 'media', 'total' => 2])
             ->assertJsonFragment(['priority' => 'alta', 'total' => 1])
             ->assertJsonPath('labels.0.name', 'Diseño')
             ->assertJsonPath('labels.0.total', 1)
