@@ -83,7 +83,8 @@ protected function internalIds(array $ids): array
                 ->map(
                     fn (Project $project) => $this->projectSummary(
                         $project,
-                        ProjectAccess::role($user, $project)
+                        ProjectAccess::role($user, $project),
+                        $user
                     )
                 )
                 ->values()
@@ -113,7 +114,7 @@ protected function internalIds(array $ids): array
         ];
     }
 
-    protected function projectSummary(Project $project, ?string $role): array
+    protected function projectSummary(Project $project, ?string $role, ?User $user = null): array
     {
         return [
             'id' => $project->id,
@@ -124,6 +125,7 @@ protected function internalIds(array $ids): array
             'client_access_enabled' => (bool) $project->client_access_enabled,
             'client_name' => $project->clientCompany?->name,
             'role' => $role,
+            'permissions' => $user ? ProjectAccess::permissions($user, $project) : [],
             'boards' => $project->boards->map(fn (Board $board) => [
                 'id' => $board->id,
                 'name' => $board->name,
