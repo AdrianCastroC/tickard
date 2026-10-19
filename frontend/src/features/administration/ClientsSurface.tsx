@@ -228,7 +228,6 @@ export function ClientsSurface({workspaceId}:{workspaceId:number|null}) {
     const ids=new Set(visible.map(c=>c.id))
     setSelectedRows(current=>checked?[...new Set([...current,...ids])]:current.filter(id=>!ids.has(id)))
   }
-  if(!workspaceId)return <section className={styles.root}>Selecciona un Workspace.</section>
   useEffect(() => {
     if (!editor) return
     const onEscape = (event: KeyboardEvent) => {
@@ -240,6 +239,8 @@ export function ClientsSurface({workspaceId}:{workspaceId:number|null}) {
     document.addEventListener('keydown', onEscape)
     return () => document.removeEventListener('keydown', onEscape)
   }, [editor, busy, imageBusy, confirmDeleteIds.length])
+
+  if(!workspaceId)return <section className={styles.root}>Selecciona un Workspace.</section>
 
   return <section className={styles.root+' '+css.clientRoot} aria-label="Gestión de clientes">
     <header className={styles.heading}>
