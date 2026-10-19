@@ -4179,6 +4179,9 @@ h1, h2, h3, p { margin: 0; }
     display:grid;grid-template-rows:auto minmax(0,1fr) 122px;
     gap:9px;min-height:0;min-width:0;overflow:hidden;
   }
+  .wd-dashboard .wd-content > .wd-primary:not(:has(> .wd-organization)) {
+    grid-template-rows:auto minmax(0,1fr);
+  }
   .wd-dashboard .wd-content .wd-recent-projects {min-height:0;overflow:hidden;}
   .wd-dashboard .wd-content .wd-recent-projects .wd-projects {max-height:152px;}
   .wd-dashboard .wd-content > .wd-primary > .wd-pair {
