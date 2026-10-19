@@ -67,6 +67,7 @@ export function WorkspaceOverview({ profile, workspaceId, onProfileRefresh, onOp
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
   const [saving, setSaving] = useState(false)
+  const [imageBusy, setImageBusy] = useState(false)
   const [draftName, setDraftName] = useState('')
   const [removalOpen, setRemovalOpen] = useState(false)
   const [confirmation, setConfirmation] = useState('')
@@ -121,6 +122,46 @@ export function WorkspaceOverview({ profile, workspaceId, onProfileRefresh, onOp
         ? 'Se han guardado los cambios, pero no se pudo actualizar la vista. Vuelve a cargarla.'
         : cause instanceof Error ? cause.message : 'No se pudo guardar la configuración.')
     } finally { setSaving(false) }
+  }
+
+  async function changeWorkspaceImage(file: File | undefined) {
+    if (!summary || !summary.can_manage || imageBusy || !file) return
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type) || file.size > 2 * 1024 * 1024) {
+      setError('Elige una imagen JPG, PNG o WebP de hasta 2 MB.')
+      return
+    }
+    setImageBusy(true); setError(''); setNotice('')
+    let uploaded = false
+    try {
+      const body = new FormData()
+      body.append('image', file)
+      await api('/workspaces/' + summary.id + '/image', { method: 'POST', body })
+      uploaded = true
+      const refreshed = await fetchSummary()
+      setSummary(refreshed)
+      await onProfileRefresh()
+      setNotice('Logo del Workspace actualizado.')
+    } catch (cause) {
+      setError(uploaded ? 'Logo guardado, pero no se pudo actualizar la vista. Recarga la página.'
+        : cause instanceof Error ? cause.message : 'No se pudo subir el logo.')
+    } finally { setImageBusy(false) }
+  }
+
+  async function removeWorkspaceImage() {
+    if (!summary || !summary.can_manage || !summary.image_url || imageBusy) return
+    setImageBusy(true); setError(''); setNotice('')
+    let removed = false
+    try {
+      await api('/workspaces/' + summary.id + '/image', { method: 'DELETE' })
+      removed = true
+      const refreshed = await fetchSummary()
+      setSummary(refreshed)
+      await onProfileRefresh()
+      setNotice('Logo del Workspace eliminado.')
+    } catch (cause) {
+      setError(removed ? 'Logo eliminado, pero no se pudo actualizar la vista. Recarga la página.'
+        : cause instanceof Error ? cause.message : 'No se pudo eliminar el logo.')
+    } finally { setImageBusy(false) }
   }
 
   async function rename(event: FormEvent<HTMLFormElement>) {
@@ -411,9 +452,7 @@ export function WorkspaceOverview({ profile, workspaceId, onProfileRefresh, onOp
           </section>
       </aside>}
     </div> : <>
-    <div className="wd-settings-heading"><h2>Configuración del Workspace</h2>
-      <button className="ghost" type="button" onClick={() => setMode('dashboard')}>Volver al resumen</button>
-    </div>
+    <div className="wd-settings-heading"><h2>Configuración del Workspace</h2></div>
     <div className="workspace-overview-metrics">
       {metrics.map(metric => <article key={metric.key} className="workspace-overview-metric">
         <span>{metric.label}</span>
@@ -451,6 +490,28 @@ export function WorkspaceOverview({ profile, workspaceId, onProfileRefresh, onOp
         <div className="workspace-overview-section-title">
           <h2>Datos generales</h2>
           <p>Identificación del Workspace y nombre que se muestra a sus integrantes.</p>
+        </div>
+        <div className="project-settings-logo-editor">
+          <div className="project-settings-logo-preview" aria-label={summary.image_url ? 'Logo actual del Workspace' : 'Sin logo personalizado'}>
+            {summary.image_url ? <img src={summary.image_url} alt={'Logo de ' + summary.name}/> : summary.name.charAt(0).toUpperCase()}
+          </div>
+          <div className="project-settings-logo-controls">
+            <strong>Logo del Workspace</strong>
+            <small>Se muestra en la cabecera y en el selector de Workspaces.</small>
+            <div className="project-settings-logo-actions">
+              <label className={`project-settings-logo-upload${imageBusy ? ' is-disabled' : ''}`}>
+                {imageBusy ? 'Guardando…' : summary.image_url ? 'Cambiar imagen' : 'Subir imagen'}
+                <input type="file" accept="image/png,image/jpeg,image/webp" disabled={imageBusy}
+                  aria-label="Subir logo del Workspace" onChange={event => {
+                    void changeWorkspaceImage(event.currentTarget.files?.[0])
+                    event.currentTarget.value = ''
+                  }}/>
+              </label>
+              {summary.image_url && <button type="button" className="ghost" disabled={imageBusy}
+                onClick={() => void removeWorkspaceImage()}>Quitar imagen</button>}
+            </div>
+            <small>JPG, PNG o WebP · máximo 2 MB. Imagen completa, sin recortes.</small>
+          </div>
         </div>
         <form className="workspace-overview-rename" onSubmit={event => void rename(event)}>
           <label htmlFor="workspace-overview-name">Nombre del Workspace</label>
