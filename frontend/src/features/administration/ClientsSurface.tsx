@@ -228,7 +228,20 @@ export function ClientsSurface({workspaceId}:{workspaceId:number|null}) {
     const ids=new Set(visible.map(c=>c.id))
     setSelectedRows(current=>checked?[...new Set([...current,...ids])]:current.filter(id=>!ids.has(id)))
   }
+  useEffect(() => {
+    if (!editor) return
+    const onEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && !busy && !imageBusy && !(confirmDeleteIds.length > 0)) {
+        setEditor(null)
+        setError('')
+      }
+    }
+    document.addEventListener('keydown', onEscape)
+    return () => document.removeEventListener('keydown', onEscape)
+  }, [editor, busy, imageBusy, confirmDeleteIds.length])
+
   if(!workspaceId)return <section className={styles.root}>Selecciona un Workspace.</section>
+
   return <section className={styles.root+' '+css.clientRoot} aria-label="Gestión de clientes">
     <header className={styles.heading}>
       <div className={teamStyles.headline}>
@@ -344,60 +357,7 @@ export function ClientsSurface({workspaceId}:{workspaceId:number|null}) {
         </div>
       </div>
       <aside className={`${styles.inspector} ${css.clientInspector}`} aria-label="Ficha del cliente">
-        {editor?<form className={styles.form} onSubmit={save}>
-          <div className={styles.formHeading}><strong>{editor==='create'?'Nuevo cliente':'Editar cliente'}</strong>
-            <button type="button" className={styles.close} aria-label="Cancelar edición" onClick={()=>setEditor(null)}>×</button></div>
-          <div className={styles.formScroll}>
-            <label className={styles.field}>Nombre<input autoFocus required maxLength={120} value={name}
-              onChange={e=>setName(e.target.value)}/></label>
-            {editor==='create'&&<label className={styles.field}>Primer representante (correo o ID Tickard)
-              <input required maxLength={255} value={representative} placeholder="correo@empresa.com o usuario#00001"
-                onChange={event=>setRepresentative(event.target.value)}/>
-              <small className={styles.hint}>Debe tener cuenta registrada y correo verificado. Recibirá una invitación en Tickard; la empresa solo se creará si acepta.</small>
-            </label>}
-            <label className={styles.field}>Descripción<textarea rows={3} maxLength={1500}
-              value={description} onChange={e=>setDescription(e.target.value)}/></label>
-            <label className={styles.field}>Sector o actividad (opcional)<input maxLength={120}
-              value={sector} onChange={e=>setSector(e.target.value)}/></label>
-            <div className={styles.formRow}>
-              <label className={styles.field}>Tipo<select value={type} onChange={e=>setType(e.target.value as ClientType)}>
-                {Object.entries(labels).map(([key,label])=><option value={key} key={key}>{label}</option>)}</select></label>
-              <label className={styles.field}>Estado<select value={status} onChange={e=>setStatus(e.target.value as Status)}>
-                {Object.entries(statuses).map(([key,label])=><option value={key} key={key}>{label}</option>)}</select></label>
-            </div>
-            {editor==='edit'&&workspaceId&&<EntityAppearanceEditor kind="clients" id={selectedId}
-              workspaceId={workspaceId} imageUrl={selected?.image_url??null} icon={icon}
-              icons={[{id:'building',label:'Empresa'},{id:'users',label:'Personas'},{id:'folder',label:'Proyectos'}]}
-              renderIcon={value=><LineIcon name={value as ClientIcon}/>}
-              onIconChange={value=>setIcon(value as ClientIcon)}
-              onImageChanged={reload} pendingImage={null} onPendingImageChange={()=>{}}
-              error={imageError} onError={setImageError} busy={imageBusy} onBusy={setImageBusy}/>}
-            {editor==='create'&&<p className={styles.hint}>Podrás añadir el logo y elegir el icono cuando el representante haya aceptado la invitación.</p>}
-            {editor==='edit'&&<label className={styles.field}>Contacto principal
-              <select value={contactId??''} onChange={e=>setContactId(e.target.value?Number(e.target.value):null)}>
-                <option value="">Sin asignar</option>
-                {selected?.people.map(person=><option value={person.id} key={person.id}>{person.name}</option>)}
-              </select>
-              <small className={styles.hint}>Solo usuarios activos y con correo verificado asociados a este cliente.</small>
-            </label>}
-            <p className={styles.hint}>Las personas se vinculan a esta empresa mediante sus cuentas de Tickard. No se crea una agenda independiente.</p>
-          </div>
-          {editor==='edit'&&selected&&<div className={styles.editDangerZone}>
-            <strong>Eliminar cliente</strong>
-            <p>Solo se puede eliminar una empresa sin usuarios ni proyectos vinculados.</p>
-            <button type="button" className={styles.dangerLink}
-              disabled={busy||imageBusy||selected.projects_count>0||selected.people_count>0}
-              onClick={()=>setConfirmDeleteIds([selected.id])}><TrashIcon/> Eliminar cliente</button>
-            {(selected.projects_count>0||selected.people_count>0)&&<small className={styles.hint}>
-              Desvincula primero los proyectos y usuarios de esta empresa.</small>}
-          </div>}
-          {error&&<p className={styles.formError} role="alert">{error}</p>}
-          <footer className={styles.formActions}>
-            <button type="button" className={styles.subtle} disabled={busy} onClick={()=>setEditor(null)}>Cancelar</button>
-            <button type="submit" className={styles.primary} disabled={busy||imageBusy||!name.trim()||(editor==='create'&&!representative.trim())}>
-              <FloppyIcon/>{busy?'Guardando…':editor==='create'?'Enviar invitación':'Guardar'}</button>
-          </footer>
-        </form>:selected?<>
+        {selected ? <>
           <div className={styles.detailHead}><Logo client={selected} size="large"/>
             <div className={styles.detailTitle}>
               <div className={teamStyles.detailName}><strong>{selected.name}</strong><ClientStatus status={selected.status}/></div>
@@ -478,6 +438,72 @@ export function ClientsSurface({workspaceId}:{workspaceId:number|null}) {
           <p>Consulta sus usuarios, contacto principal y proyectos asociados.</p></div>}
       </aside>
     </div>}
+    {editor && data && createPortal(
+      <div className={styles.backdrop} onMouseDown={event => {
+        if (event.target === event.currentTarget && !busy && !imageBusy) {
+          setEditor(null)
+          setError('')
+        }
+      }}>
+        <div className={styles.editorDialog} role="dialog" aria-modal="true" aria-labelledby="clients-editor-title">
+          <form className={styles.form} onSubmit={save}>
+          <div className={styles.formHeading}><strong id="clients-editor-title">{editor==='create'?'Nuevo cliente':'Editar cliente'}</strong>
+            <button type="button" className={styles.close} aria-label="Cancelar edición" onClick={()=>setEditor(null)}>×</button></div>
+          <div className={styles.formScroll}>
+            <label className={styles.field}>Nombre<input autoFocus required maxLength={120} value={name}
+              onChange={e=>setName(e.target.value)}/></label>
+            {editor==='create'&&<label className={styles.field}>Primer representante (correo o ID Tickard)
+              <input required maxLength={255} value={representative} placeholder="correo@empresa.com o usuario#00001"
+                onChange={event=>setRepresentative(event.target.value)}/>
+              <small className={styles.hint}>Debe tener cuenta registrada y correo verificado. Recibirá una invitación en Tickard; la empresa solo se creará si acepta.</small>
+            </label>}
+            <label className={styles.field}>Descripción<textarea rows={3} maxLength={1500}
+              value={description} onChange={e=>setDescription(e.target.value)}/></label>
+            <label className={styles.field}>Sector o actividad (opcional)<input maxLength={120}
+              value={sector} onChange={e=>setSector(e.target.value)}/></label>
+            <div className={styles.formRow}>
+              <label className={styles.field}>Tipo<select value={type} onChange={e=>setType(e.target.value as ClientType)}>
+                {Object.entries(labels).map(([key,label])=><option value={key} key={key}>{label}</option>)}</select></label>
+              <label className={styles.field}>Estado<select value={status} onChange={e=>setStatus(e.target.value as Status)}>
+                {Object.entries(statuses).map(([key,label])=><option value={key} key={key}>{label}</option>)}</select></label>
+            </div>
+            {editor==='edit'&&workspaceId&&<EntityAppearanceEditor kind="clients" id={selectedId}
+              workspaceId={workspaceId} imageUrl={selected?.image_url??null} icon={icon}
+              icons={[{id:'building',label:'Empresa'},{id:'users',label:'Personas'},{id:'folder',label:'Proyectos'}]}
+              renderIcon={value=><LineIcon name={value as ClientIcon}/>}
+              onIconChange={value=>setIcon(value as ClientIcon)}
+              onImageChanged={reload} pendingImage={null} onPendingImageChange={()=>{}}
+              error={imageError} onError={setImageError} busy={imageBusy} onBusy={setImageBusy}/>}
+            {editor==='create'&&<p className={styles.hint}>Podrás añadir el logo y elegir el icono cuando el representante haya aceptado la invitación.</p>}
+            {editor==='edit'&&<label className={styles.field}>Contacto principal
+              <select value={contactId??''} onChange={e=>setContactId(e.target.value?Number(e.target.value):null)}>
+                <option value="">Sin asignar</option>
+                {selected?.people.map(person=><option value={person.id} key={person.id}>{person.name}</option>)}
+              </select>
+              <small className={styles.hint}>Solo usuarios activos y con correo verificado asociados a este cliente.</small>
+            </label>}
+            <p className={styles.hint}>Las personas se vinculan a esta empresa mediante sus cuentas de Tickard. No se crea una agenda independiente.</p>
+          </div>
+          {editor==='edit'&&selected&&<div className={styles.editDangerZone}>
+            <strong>Eliminar cliente</strong>
+            <p>Solo se puede eliminar una empresa sin usuarios ni proyectos vinculados.</p>
+            <button type="button" className={styles.dangerLink}
+              disabled={busy||imageBusy||selected.projects_count>0||selected.people_count>0}
+              onClick={()=>setConfirmDeleteIds([selected.id])}><TrashIcon/> Eliminar cliente</button>
+            {(selected.projects_count>0||selected.people_count>0)&&<small className={styles.hint}>
+              Desvincula primero los proyectos y usuarios de esta empresa.</small>}
+          </div>}
+          {error&&<p className={styles.formError} role="alert">{error}</p>}
+          <footer className={styles.formActions}>
+            <button type="button" className={styles.subtle} disabled={busy} onClick={()=>setEditor(null)}>Cancelar</button>
+            <button type="submit" className={styles.primary} disabled={busy||imageBusy||!name.trim()||(editor==='create'&&!representative.trim())}>
+              <FloppyIcon/>{busy?'Guardando…':editor==='create'?'Enviar invitación':'Guardar'}</button>
+          </footer>
+        </form>
+        </div>
+      </div>,
+      document.body,
+    )}
     {confirmDeleteIds.length>0&&createPortal(<div className={styles.backdrop} onMouseDown={e=>{
       if(e.target===e.currentTarget&&!busy)setConfirmDeleteIds([])
     }}><div className={styles.confirmDialog} role="alertdialog" aria-modal="true" aria-labelledby="delete-client-title">

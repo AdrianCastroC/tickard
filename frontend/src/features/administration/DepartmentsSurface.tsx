@@ -270,6 +270,18 @@ export function DepartmentsSurface({ workspaceId }: { workspaceId: number | null
     } finally { setBusy(false) }
   }
 
+  useEffect(() => {
+    if (!editor) return
+    const onEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && !busy && !imageBusy && !(confirmDelete)) {
+        setEditor(null)
+        setError('')
+      }
+    }
+    document.addEventListener('keydown', onEscape)
+    return () => document.removeEventListener('keydown', onEscape)
+  }, [editor, busy, imageBusy, confirmDelete])
+
   if (!workspaceId) return <section className={styles.root}><p>Selecciona un Workspace.</p></section>
 
   return <section className={styles.root} aria-label="Gestión de departamentos">
@@ -385,79 +397,7 @@ export function DepartmentsSurface({ workspaceId }: { workspaceId: number | null
           </div>
         </div>
         <aside className={styles.inspector} aria-label="Detalle del departamento">
-          {editor ? <form className={styles.form} onSubmit={save}>
-            <div className={styles.formHeading}><strong>{editor === 'create' ? 'Nuevo departamento' : 'Editar departamento'}</strong>
-              <button type="button" className={styles.close} onClick={() => { setEditor(null); setError('') }}
-                aria-label="Cerrar edición">×</button></div>
-            <div className={styles.formScroll}>
-              <label className={styles.field}>Nombre
-                <input required autoFocus maxLength={80} value={name} onChange={event => setName(event.target.value)}/></label>
-              <label className={styles.field}>Descripción
-                <textarea rows={3} maxLength={1000} value={description} onChange={event => setDescription(event.target.value)}
-                  placeholder="¿A qué se dedica este departamento?"/></label>
-              <div className={styles.formRow}>
-                <label className={styles.field}>Estado
-                  <select value={status} onChange={event => setStatus(event.target.value as 'active' | 'inactive')}>
-                    <option value="active">Activo</option><option value="inactive">Inactivo</option>
-                  </select></label>
-
-              </div>
-              {workspaceId && <EntityAppearanceEditor kind="departments"
-                id={editor === 'edit' ? selectedId : null} workspaceId={workspaceId}
-                imageUrl={editor === 'edit' ? selected?.image_url ?? null : null}
-                icon={icon} icons={icons.map(id => ({ id, label: iconNames[id] }))}
-                renderIcon={id => <Glyph name={id as IconName} size={26}/>}
-                onIconChange={id => setIcon(id as IconName)}
-                pendingImage={pendingImage} onPendingImageChange={setPendingImage}
-                onImageChanged={load} error={imageError} onError={setImageError}
-                busy={imageBusy} onBusy={setImageBusy}/>}
-              {editor === 'create' && <><div className={styles.editorSection}><strong>Miembros <small>({memberIds.length})</small></strong>
-                <div className={styles.checkList}>{data.people.map(person => <label key={person.id}>
-                  <input type="checkbox" checked={memberIds.includes(person.id)}
-                    onChange={event => toggle(memberIds, setMemberIds, person.id, event.target.checked)}/>
-                  <Avatar id={person.id} name={person.name} src={person.avatar_url} size={26}/>
-                  <span>{person.name}</span>
-                </label>)}
-                {!data.people.length && <small>No hay miembros internos en este Workspace.</small>}</div>
-              </div>
-              <label className={styles.field}>Responsable
-                <select required value={leadId ?? ''} onChange={event => setLeadId(event.target.value ? Number(event.target.value) : null)}>
-                  <option value="">Seleccionar responsable</option>
-                  {data.people.filter(person => memberIds.includes(person.id)).map(person =>
-                    <option key={person.id} value={person.id}>{person.name}</option>)}
-                </select></label>
-              <div className={styles.editorSection}><strong>Equipos <small>({teamIds.length})</small></strong>
-                <div className={styles.checkList}>{data.teams.map(team => <label key={team.id}>
-                  <input type="checkbox" checked={teamIds.includes(team.id)}
-                    onChange={event => toggle(teamIds, setTeamIds, team.id, event.target.checked)}/>
-                  <Glyph name="layers" size={17}/><span>{team.name}</span>
-                </label>)}
-                {!data.teams.length && <small>Sin equipos creados.</small>}</div>
-              </div>
-              <div className={styles.editorSection}><strong>Proyectos <small>({projectIds.length})</small></strong>
-                <div className={styles.checkList}>{data.projects.map(project => <label key={project.id}>
-                  <input type="checkbox" checked={projectIds.includes(project.id)}
-                    onChange={event => toggle(projectIds, setProjectIds, project.id, event.target.checked)}/>
-                  <Glyph name="folder" size={17}/><span>{project.name}</span>
-                </label>)}
-                {!data.projects.length && <small>Sin proyectos en este Workspace.</small>}</div>
-              </div>
-              <p className={styles.hint}>Agrupar personas, equipos y proyectos no modifica sus permisos de acceso.</p></>}
-              {editor === 'edit' && selected && <div className={styles.editDangerZone}>
-                <strong>Eliminar departamento</strong>
-                <p>Los miembros, equipos y proyectos seguirán existiendo, pero dejarán de estar agrupados aquí.</p>
-                <button type="button" className={styles.dangerLink} disabled={busy || imageBusy}
-                  onClick={() => setConfirmDelete(true)}><TrashIcon/> Eliminar departamento</button>
-              </div>}
-            </div>
-            {error && <p role="alert" className={styles.formError}>{error}</p>}
-            <footer className={styles.formActions}>
-              <button className={styles.subtle} type="button" disabled={busy} onClick={() => setEditor(null)}>Cancelar</button>
-              <button className={styles.primary} type="submit" disabled={busy || imageBusy || !name.trim() || (editor === 'create' && (!leadId || !memberIds.includes(leadId)))}>
-                <FloppyIcon/>{busy ? 'Guardando…' : 'Guardar'}
-              </button>
-            </footer>
-          </form> : selected ? <>
+          {selected ? <>
             <div className={styles.detailHead}>
               <span className={styles.detailIcon} data-tone={tones[Math.max(0, data.departments.indexOf(selected)) % tones.length]}>
                 <EntityVisual url={selected.image_url}><Glyph name={icons.includes(selected.icon) ? selected.icon : 'layers'} size={24}/></EntityVisual></span>
@@ -542,6 +482,91 @@ export function DepartmentsSurface({ workspaceId }: { workspaceId: number | null
         </aside>
       </div>
     </>}
+    {editor && data && createPortal(
+      <div className={styles.backdrop} onMouseDown={event => {
+        if (event.target === event.currentTarget && !busy && !imageBusy) {
+          setEditor(null)
+          setError('')
+        }
+      }}>
+        <div className={styles.editorDialog} role="dialog" aria-modal="true" aria-labelledby="departments-editor-title">
+          <form className={styles.form} onSubmit={save}>
+            <div className={styles.formHeading}><strong id="departments-editor-title">{editor === 'create' ? 'Nuevo departamento' : 'Editar departamento'}</strong>
+              <button type="button" className={styles.close} onClick={() => { setEditor(null); setError('') }}
+                aria-label="Cerrar edición">×</button></div>
+            <div className={styles.formScroll}>
+              <label className={styles.field}>Nombre
+                <input required autoFocus maxLength={80} value={name} onChange={event => setName(event.target.value)}/></label>
+              <label className={styles.field}>Descripción
+                <textarea rows={3} maxLength={1000} value={description} onChange={event => setDescription(event.target.value)}
+                  placeholder="¿A qué se dedica este departamento?"/></label>
+              <div className={styles.formRow}>
+                <label className={styles.field}>Estado
+                  <select value={status} onChange={event => setStatus(event.target.value as 'active' | 'inactive')}>
+                    <option value="active">Activo</option><option value="inactive">Inactivo</option>
+                  </select></label>
+
+              </div>
+              {workspaceId && <EntityAppearanceEditor kind="departments"
+                id={editor === 'edit' ? selectedId : null} workspaceId={workspaceId}
+                imageUrl={editor === 'edit' ? selected?.image_url ?? null : null}
+                icon={icon} icons={icons.map(id => ({ id, label: iconNames[id] }))}
+                renderIcon={id => <Glyph name={id as IconName} size={26}/>}
+                onIconChange={id => setIcon(id as IconName)}
+                pendingImage={pendingImage} onPendingImageChange={setPendingImage}
+                onImageChanged={load} error={imageError} onError={setImageError}
+                busy={imageBusy} onBusy={setImageBusy}/>}
+              {editor === 'create' && <><div className={styles.editorSection}><strong>Miembros <small>({memberIds.length})</small></strong>
+                <div className={styles.checkList}>{data.people.map(person => <label key={person.id}>
+                  <input type="checkbox" checked={memberIds.includes(person.id)}
+                    onChange={event => toggle(memberIds, setMemberIds, person.id, event.target.checked)}/>
+                  <Avatar id={person.id} name={person.name} src={person.avatar_url} size={26}/>
+                  <span>{person.name}</span>
+                </label>)}
+                {!data.people.length && <small>No hay miembros internos en este Workspace.</small>}</div>
+              </div>
+              <label className={styles.field}>Responsable
+                <select required value={leadId ?? ''} onChange={event => setLeadId(event.target.value ? Number(event.target.value) : null)}>
+                  <option value="">Seleccionar responsable</option>
+                  {data.people.filter(person => memberIds.includes(person.id)).map(person =>
+                    <option key={person.id} value={person.id}>{person.name}</option>)}
+                </select></label>
+              <div className={styles.editorSection}><strong>Equipos <small>({teamIds.length})</small></strong>
+                <div className={styles.checkList}>{data.teams.map(team => <label key={team.id}>
+                  <input type="checkbox" checked={teamIds.includes(team.id)}
+                    onChange={event => toggle(teamIds, setTeamIds, team.id, event.target.checked)}/>
+                  <Glyph name="layers" size={17}/><span>{team.name}</span>
+                </label>)}
+                {!data.teams.length && <small>Sin equipos creados.</small>}</div>
+              </div>
+              <div className={styles.editorSection}><strong>Proyectos <small>({projectIds.length})</small></strong>
+                <div className={styles.checkList}>{data.projects.map(project => <label key={project.id}>
+                  <input type="checkbox" checked={projectIds.includes(project.id)}
+                    onChange={event => toggle(projectIds, setProjectIds, project.id, event.target.checked)}/>
+                  <Glyph name="folder" size={17}/><span>{project.name}</span>
+                </label>)}
+                {!data.projects.length && <small>Sin proyectos en este Workspace.</small>}</div>
+              </div>
+              <p className={styles.hint}>Agrupar personas, equipos y proyectos no modifica sus permisos de acceso.</p></>}
+              {editor === 'edit' && selected && <div className={styles.editDangerZone}>
+                <strong>Eliminar departamento</strong>
+                <p>Los miembros, equipos y proyectos seguirán existiendo, pero dejarán de estar agrupados aquí.</p>
+                <button type="button" className={styles.dangerLink} disabled={busy || imageBusy}
+                  onClick={() => setConfirmDelete(true)}><TrashIcon/> Eliminar departamento</button>
+              </div>}
+            </div>
+            {error && <p role="alert" className={styles.formError}>{error}</p>}
+            <footer className={styles.formActions}>
+              <button className={styles.subtle} type="button" disabled={busy} onClick={() => setEditor(null)}>Cancelar</button>
+              <button className={styles.primary} type="submit" disabled={busy || imageBusy || !name.trim() || (editor === 'create' && (!leadId || !memberIds.includes(leadId)))}>
+                <FloppyIcon/>{busy ? 'Guardando…' : 'Guardar'}
+              </button>
+            </footer>
+          </form>
+        </div>
+      </div>,
+      document.body,
+    )}
     {confirmDelete && selected && createPortal(<div className={styles.backdrop} onMouseDown={event => {
       if (event.target === event.currentTarget && !busy) setConfirmDelete(false)
     }}>

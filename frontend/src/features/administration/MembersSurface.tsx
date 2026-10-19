@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from 'react'
+import { createPortal } from 'react-dom'
 import { api } from '../../api'
 import { Avatar, formatDateLong } from '../../shared/ui'
 import { EditIcon, FilterFunnelIcon, SortIcon } from '../../shared/icons'
@@ -115,7 +116,8 @@ export function MembersSurface({ workspaceId, workspaceName }: {
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc')
   const [filtersOpen, setFiltersOpen] = useState(false)
   const filterRef = useRef<HTMLDivElement>(null)
-  const [editingJob, setEditingJob] = useState(false)
+  const [editingMember, setEditingMember] = useState(false)
+  const [editError, setEditError] = useState('')
   const [draftJob, setDraftJob] = useState('')
   const [draftRole, setDraftRole] = useState<'admin' | 'member'>('member')
   const [saving, setSaving] = useState(false)
@@ -146,7 +148,24 @@ export function MembersSurface({ workspaceId, workspaceName }: {
     setDraftRole(selected?.role === 'admin' ? 'admin' : 'member')
   }, [selected?.id, selected?.role])
 
-  useEffect(() => { setDraftJob(selected?.job_title ?? ''); setEditingJob(false) }, [selected?.id, selected?.job_title])
+  useEffect(() => { setDraftJob(selected?.job_title ?? ''); setEditingMember(false); setEditError('') }, [selected?.id, selected?.job_title])
+  const canEditJob = !!(selected && data?.can_manage_jobs && !selected.is_client)
+  const canEditRole = !!(selected && data?.can_manage_roles && selected.role !== 'owner' && selected.role !== 'client')
+  function beginEditMember() {
+    if (!selected || (!canEditJob && !canEditRole)) return
+    setDraftJob(selected.job_title ?? '')
+    setDraftRole(selected.role === 'admin' ? 'admin' : 'member')
+    setEditError('')
+    setEditingMember(true)
+  }
+  useEffect(() => {
+    if (!editingMember) return
+    const dismiss = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && !savingJob) { setEditingMember(false); setEditError('') }
+    }
+    document.addEventListener('keydown', dismiss)
+    return () => document.removeEventListener('keydown', dismiss)
+  }, [editingMember, savingJob])
 
   useEffect(() => {
     if (!filtersOpen) return
@@ -223,20 +242,31 @@ export function MembersSurface({ workspaceId, workspaceName }: {
     </th>
   }
 
-  async function saveJob() {
-    if (workspaceId === null || !selected || !data?.can_manage_jobs || selected.is_client || savingJob) return
-    const next = draftJob.trim()
-    if (next.length > 120) { setError('El cargo no puede superar los 120 caracteres.'); return }
-    setSavingJob(true); setError(''); setNotice('')
+  async function saveMember(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    if (workspaceId === null || !selected || savingJob || saving) return
+    const nextJob = draftJob.trim()
+    const jobChanged = canEditJob && nextJob !== (selected.job_title ?? '')
+    const roleChanged = canEditRole && draftRole !== selected.role
+    if (!jobChanged && !roleChanged) { setEditingMember(false); return }
+    if (nextJob.length > 120) { setEditError('El cargo no puede superar los 120 caracteres.'); return }
+    setSavingJob(true); setEditError(''); setError(''); setNotice('')
     try {
-      await api('/workspaces/' + workspaceId + '/members/' + selected.id + '/job-title', {
-        method: 'PATCH', body: JSON.stringify({ job_title: next || null }),
-      })
+      if (jobChanged) {
+        await api('/workspaces/' + workspaceId + '/members/' + selected.id + '/job-title', {
+          method: 'PATCH', body: JSON.stringify({ job_title: nextJob || null }),
+        })
+      }
+      if (roleChanged) {
+        await api('/workspaces/' + workspaceId + '/members/' + selected.id + '/role', {
+          method: 'PATCH', body: JSON.stringify({ role: draftRole }),
+        })
+      }
       await load()
-      setEditingJob(false)
-      setNotice('Cargo actualizado.')
+      setEditingMember(false)
+      setNotice('Miembro actualizado.')
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : 'No se pudo actualizar el cargo.')
+      setEditError(cause instanceof Error ? cause.message : 'No se pudo actualizar el miembro.')
     } finally { setSavingJob(false) }
   }
 
@@ -449,19 +479,10 @@ export function MembersSurface({ workspaceId, workspaceName }: {
             {tab === 'summary' && <>
               <section className={styles.detailGroup}>
                 <div className={styles.sectionHeading}><strong>Información</strong>
-                  {data.can_manage_jobs && !selected.is_client && <button type="button"
-                    onClick={() => { setDraftJob(selected.job_title ?? ''); setEditingJob(!editingJob) }}>
-                    <EditIcon/> {editingJob ? 'Cancelar' : 'Editar cargo'}
+                  {(canEditJob || canEditRole) && <button type="button" onClick={beginEditMember}>
+                    <EditIcon/> Editar
                   </button>}
                 </div>
-                {editingJob && data.can_manage_jobs && !selected.is_client && <div className={styles.jobEditor}>
-                  <label className={styles.field}>Cargo en el Workspace
-                    <input maxLength={120} value={draftJob} disabled={savingJob}
-                      placeholder="Ej.: Programador junior" onChange={event => setDraftJob(event.target.value)}/>
-                  </label>
-                  <button className={styles.primary} type="button" disabled={savingJob}
-                    onClick={() => void saveJob()}>{savingJob ? 'Guardando…' : 'Guardar cargo'}</button>
-                </div>}
                 <dl className={styles.info}>
                   <dt>Nombre</dt><dd>{selected.name}</dd>
                   <dt>Correo</dt><dd title={selected.email}>{selected.email}</dd>
@@ -493,22 +514,15 @@ export function MembersSurface({ workspaceId, workspaceName }: {
             </>}
             {tab === 'permissions' && <section className={styles.detailGroup}>
               <div className={styles.sectionHeading}><strong>Permisos del Workspace</strong></div>
-              {data.can_manage_roles && selected.role !== 'owner' && selected.role !== 'client'
-                ? <><label className={styles.field}>Rol
-                    <select value={draftRole} disabled={saving}
-                      onChange={event => setDraftRole(event.target.value as 'admin' | 'member')}>
-                      <option value="member">Miembro</option><option value="admin">Administrador</option>
-                    </select>
-                  </label>
-                  <p>El rol del Workspace es independiente de los permisos en cada proyecto.</p>
-                  {draftRole !== selected.role && <button type="button" className={styles.primary} disabled={saving}
-                    onClick={() => void updateRoles([selected.id], draftRole)}>
-                    {saving ? 'Guardando…' : 'Guardar rol'}
-                  </button>}</>
-                : <><Role role={selected.role}/><p>{selected.role === 'owner'
-                  ? 'El Owner no puede cambiarse desde esta ficha.'
-                  : selected.role === 'client' ? 'Los accesos de cliente se administran desde Clientes.'
-                    : 'Solo el Owner puede asignar roles de administración.'}</p></>}
+              <Role role={selected.role}/>
+              <p>El rol del Workspace es independiente de los permisos en cada proyecto.</p>
+              {canEditRole && <div className={styles.sectionHeading}>
+                <button type="button" onClick={beginEditMember}><EditIcon/> Editar rol</button>
+              </div>}
+              {!canEditRole && <p>{selected.role === 'owner'
+                ? 'El Owner no puede cambiarse desde esta ficha.'
+                : selected.role === 'client' ? 'Los accesos de cliente se administran desde Clientes.'
+                  : 'Solo el Owner puede asignar roles de administración.'}</p>}
             </section>}
             {tab === 'activity' && <section className={styles.detailGroup}>
               <div className={styles.sectionHeading}><strong>Actividad</strong></div>
@@ -523,5 +537,46 @@ export function MembersSurface({ workspaceId, workspaceName }: {
         </div>}
       </aside>}
     </>}
+    {editingMember && selected && (canEditJob || canEditRole) && createPortal(
+      <div className={styles.editorBackdrop} onMouseDown={event => {
+        if (event.target === event.currentTarget && !savingJob) { setEditingMember(false); setEditError('') }
+      }}>
+        <div className={styles.editorModal} role="dialog" aria-modal="true" aria-labelledby="member-editor-title">
+          <form onSubmit={saveMember} className={styles.editorForm}>
+            <header className={styles.editorHeader}>
+              <div><h2 id="member-editor-title">Editar miembro</h2><p>{selected.name}</p></div>
+              <button type="button" className={styles.close} aria-label="Cerrar edición"
+                disabled={savingJob} onClick={() => { setEditingMember(false); setEditError('') }}>
+                <Glyph name="close" size={19}/>
+              </button>
+            </header>
+            <div className={styles.editorFields}>
+              {canEditJob && <label className={styles.field}>Cargo en el Workspace
+                <input autoFocus maxLength={120} value={draftJob} disabled={savingJob}
+                  placeholder="Ej.: Programador junior" onChange={event => setDraftJob(event.target.value)}/>
+              </label>}
+              {canEditRole && <label className={styles.field}>Rol en el Workspace
+                <select autoFocus={!canEditJob} value={draftRole} disabled={savingJob}
+                  onChange={event => setDraftRole(event.target.value as 'admin' | 'member')}>
+                  <option value="member">Miembro</option><option value="admin">Administrador</option>
+                </select>
+              </label>}
+              {canEditRole && <p className={styles.muted}>Los permisos del Workspace son independientes de los roles de cada proyecto.</p>}
+              {editError && <p className={styles.editorError} role="alert">{editError}</p>}
+            </div>
+            <footer className={styles.editorFooter}>
+              <button type="button" className={styles.editorCancel} disabled={savingJob}
+                onClick={() => { setEditingMember(false); setEditError('') }}>Cancelar</button>
+              <button type="submit" className={styles.primary}
+                disabled={savingJob || saving || !(
+                  (canEditJob && draftJob.trim() !== (selected.job_title ?? ''))
+                  || (canEditRole && draftRole !== selected.role)
+                )}>{savingJob ? 'Guardando…' : 'Guardar cambios'}</button>
+            </footer>
+          </form>
+        </div>
+      </div>,
+      document.body,
+    )}
   </section>
 }
