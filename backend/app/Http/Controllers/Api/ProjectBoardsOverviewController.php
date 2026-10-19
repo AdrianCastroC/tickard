@@ -65,7 +65,7 @@ class ProjectBoardsOverviewController extends ApiController
             ->get(['id', 'name', 'avatar_path'])->keyBy('id');
 
         return response()->json([
-            'can_manage' => ProjectAccess::canManage($request->user(), $project),
+            'can_manage' => ProjectAccess::canManageBoards($request->user(), $project),
             'boards' => $project->boards()->get(['id', 'name', 'position', 'updated_at'])
                 ->map(function ($board) use ($columns, $columnCounts, $totals, $assignmentRows, $users) {
                     $stats = $totals->get($board->id);
