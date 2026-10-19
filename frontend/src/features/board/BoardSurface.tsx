@@ -45,6 +45,12 @@ export function BoardSurface({ state, filters, activeBoardId, project, profile, 
   const canEdit = Boolean(view && canProject(view, 'cards.edit'))
   const canCreate = Boolean(view && canProject(view, 'cards.create'))
   const canManage = Boolean(view && canProject(view, 'boards.manage'))
+  const canMove = Boolean(view && canProject(view, 'cards.state'))
+  const canDates = Boolean(view && canProject(view, 'cards.dates'))
+  const canAssign = Boolean(view && canProject(view, 'cards.assign'))
+  const canDelete = Boolean(view && canProject(view, 'cards.delete'))
+  const canUpload = Boolean(view && canProject(view, 'files.upload'))
+  const canComment = Boolean(view && canProject(view, 'cards.comment'))
   const clientView = view?.role === 'cliente'
   const backlog = view?.columns.find((column) => column.workflow_state === 'backlog') ?? view?.columns[0]
   const filteredColumns = useMemo(() => view ? filteredBoardColumns(view, query, filters.assignee, filters.teamId, filters.label, filters.priority) : [], [view, query, filters.assignee, filters.teamId, filters.label, filters.priority])
@@ -121,12 +127,12 @@ export function BoardSurface({ state, filters, activeBoardId, project, profile, 
           onClose={() => changeViewMode('board')}>
           <GanttView board={view}
             cards={ganttFocus?.boardId === view.board.id ? view.columns : filteredColumns}
-            canEdit={canEdit} onOpen={(card) => setSelected({ card, mode: 'view' })}
+            canEdit={canDates} canManageDependencies={canEdit} onOpen={(card) => setSelected({ card, mode: 'view' })}
             onNavigateExternalCard={onNavigateExternalCard}
             focus={ganttFocus?.boardId === view.board.id ? ganttFocus : null}
             onChange={refresh} />
         </GanttErrorBoundary>}
-      {viewMode === 'board' && <Kanban board={view} canEdit={canEdit} canCreate={canCreate} canManage={canManage} query={query}
+      {viewMode === 'board' && <Kanban board={view} canEdit={canEdit} canMove={canMove} canCreate={canCreate} canManage={canManage} query={query}
         assignee={filters.assignee} teamId={filters.teamId} label={filters.label} priority={filters.priority}
         onOpen={(card) => setSelected({ card, mode: 'view' })}
         onEdit={(card) => setSelected({ card, mode: 'edit' })}
@@ -138,7 +144,7 @@ export function BoardSurface({ state, filters, activeBoardId, project, profile, 
     </div>}
     {createPortal(<>
       {selected && view && openCard && <CardDrawer key={openCard.id} card={openCard} mode={selected.mode}
-        board={view} currentUser={profile.user} canEdit={canEdit}
+        board={view} currentUser={profile.user} canEdit={canEdit} canMove={canMove} canDates={canDates} canAssign={canAssign} canDelete={canDelete} canUpload={canUpload} canComment={canComment}
         onClose={() => setSelected(null)}
         onEdit={() => setSelected({ card: openCard, mode: 'edit' })}
         onView={() => setSelected({ card: openCard, mode: 'view' })}

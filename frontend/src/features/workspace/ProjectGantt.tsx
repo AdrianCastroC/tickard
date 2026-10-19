@@ -1,7 +1,7 @@
 import { cachedProjectRequest, invalidateProjectRequestCache } from '../../shared/projectRequestCache'
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { api, type BoardPayload, type Project, type Profile } from '../../api'
+import { api, canProject, type BoardPayload, type Project, type Profile } from '../../api'
 import { CardDrawer } from '../cards/CardDetail'
 import { GanttView, type GanttDependencyNavigation } from '../board/GanttView'
 import { ProjectLoadingIndicator } from './ProjectLoadingIndicator'
@@ -228,6 +228,9 @@ export function ProjectGantt({ project, profile, onNavigateExternalCard }: Props
       <CardDrawer key={cardData.card.id} card={cardData.card} mode="view"
         board={cardData.board} currentUser={profile.user}
         canEdit={false}
+        canMove={false} canDates={false} canAssign={false} canDelete={false}
+        canUpload={canProject(cardData.board, 'files.upload')}
+        canComment={canProject(cardData.board, 'cards.comment')}
         onClose={() => setSelected(null)}
         onEdit={() => {}}
         onView={() => {}}
