@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } fro
 import { createPortal } from 'react-dom'
 import { api } from '../../api'
 import { Avatar, formatDateLong } from '../../shared/ui'
-import { EditIcon, FilterFunnelIcon, FloppyIcon, PlusIcon, TrashIcon } from '../../shared/icons'
+import { EditIcon, FilterFunnelIcon, FloppyIcon, PlusIcon, SortIcon, TrashIcon } from '../../shared/icons'
 import styles from './DepartmentsDashboard.module.css'
 import { AdministrationLoading } from './AdministrationLoading'
 import { EntityAppearanceEditor } from './EntityAppearanceEditor'
@@ -23,6 +23,8 @@ type Client = {
 type PendingClient = { id: number; name: string; representative: string | null; created_at: string | null }
 type Data = { can_manage: boolean; clients: Client[]; pending_clients: PendingClient[] }
 type Tab = 'summary' | 'members' | 'projects'
+type Sort = 'name' | 'type' | 'contact' | 'projects' | 'status' | 'recent'
+type SortDirection = 'asc' | 'desc'
 const labels: Record<ClientType,string> = {
   company: 'Empresa', self_employed: 'Autónomo', individual: 'Particular', institution: 'Institución',
 }
@@ -70,7 +72,8 @@ export function ClientsSurface({workspaceId}:{workspaceId:number|null}) {
   const [search,setSearch]=useState('')
   const [statusFilter,setStatusFilter]=useState('all')
   const [typeFilter,setTypeFilter]=useState('all')
-  const [sort,setSort]=useState('name')
+  const [sort,setSort]=useState<Sort>('name')
+  const [sortDirection,setSortDirection]=useState<SortDirection>('asc')
   const [filtersOpen,setFiltersOpen]=useState(false)
   const filterRef=useRef<HTMLDivElement>(null)
   const [layout,setLayout]=useState<'list'|'grid'>('list')
@@ -118,15 +121,47 @@ export function ClientsSurface({workspaceId}:{workspaceId:number|null}) {
     document.addEventListener('pointerdown',outside);document.addEventListener('keydown',escape)
     return()=>{document.removeEventListener('pointerdown',outside);document.removeEventListener('keydown',escape)}
   },[filtersOpen])
-  const visible=useMemo(()=>(data?.clients??[]).filter(c=>
-    (statusFilter==='all'||c.status===statusFilter)&&
-    (typeFilter==='all'||c.client_type===typeFilter)&&
-    (!search.trim()||[c.name,c.sector,c.description,c.primary_contact?.name]
-      .some(v=>v?.toLocaleLowerCase('es').includes(search.trim().toLocaleLowerCase('es'))))
-  ).sort((a,b)=>sort==='projects'?b.projects_count-a.projects_count||collator.compare(a.name,b.name):
-    sort==='recent'?(b.updated_at??'').localeCompare(a.updated_at??''):collator.compare(a.name,b.name)),
-    [data,search,statusFilter,typeFilter,sort])
-  const filterCount=Number(statusFilter!=='all')+Number(typeFilter!=='all')+Number(sort!=='name')
+  const visible=useMemo(()=>{
+    const rows=(data?.clients??[]).filter(c=>
+      (statusFilter==='all'||c.status===statusFilter)&&
+      (typeFilter==='all'||c.client_type===typeFilter)&&
+      (!search.trim()||[c.name,c.sector,c.description,c.primary_contact?.name]
+        .some(v=>v?.toLocaleLowerCase('es').includes(search.trim().toLocaleLowerCase('es')))))
+    const value=(c:Client):string|number=>{
+      switch(sort){
+        case 'type':return labels[c.client_type]
+        case 'contact':return c.needs_representative?'':c.primary_contact?.name??''
+        case 'projects':return c.projects_count
+        case 'status':return statuses[c.status]
+        case 'recent':return c.updated_at??''
+        default:return c.name
+      }
+    }
+    return rows.sort((a,b)=>{
+      const left=value(a),right=value(b)
+      // Clients without contacts or dates stay last in either direction.
+      if(left===''&&right!=='')return 1
+      if(right===''&&left!=='')return -1
+      const result=typeof left==='number'&&typeof right==='number'
+        ?left-right:collator.compare(String(left),String(right))
+      return (sortDirection==='asc'?result:-result)||collator.compare(a.name,b.name)||a.id-b.id
+    })
+  },[data,search,statusFilter,typeFilter,sort,sortDirection])
+  const filterCount=Number(statusFilter!=='all')+Number(typeFilter!=='all')+Number(sort!=='name'||sortDirection!=='asc')
+  function changeSort(key:Sort){
+    if(sort===key)setSortDirection(direction=>direction==='asc'?'desc':'asc')
+    else{setSort(key);setSortDirection('asc')}
+  }
+  function sortHeading(key:Sort,label:string){
+    const active=sort===key
+    const next=active&&sortDirection==='asc'?'descendente':'ascendente'
+    return <th key={key} aria-sort={active?(sortDirection==='asc'?'ascending':'descending'):'none'}>
+      <button type="button" className={teamStyles.sortButton} onClick={()=>changeSort(key)}
+        aria-label={`Ordenar ${label} de forma ${next}`} title={`Ordenar ${label} de forma ${next}`}>
+        {label}<SortIcon direction={active?sortDirection:null} className={teamStyles.sortIcon}/>
+      </button>
+    </th>
+  }
   const selected=data?.clients.find(c=>c.id===selectedId)??null
   const canManage=data?.can_manage===true
   const allChecked=visible.length>0&&visible.every(c=>selectedRows.includes(c.id))
@@ -221,15 +256,20 @@ export function ClientsSurface({workspaceId}:{workspaceId:number|null}) {
             {filtersOpen&&<div className={styles.filterPopover} role="dialog" aria-label="Filtros de clientes">
               <div className={styles.filterPopoverHeader}><strong>Filtros</strong>
                 {filterCount>0&&<button type="button" onClick={()=>{
-                  setStatusFilter('all');setTypeFilter('all');setSort('name')}}>Limpiar</button>}</div>
+                  setStatusFilter('all');setTypeFilter('all');setSort('name');setSortDirection('asc')}}>Limpiar</button>}</div>
               <label>Estado<select value={statusFilter} onChange={e=>setStatusFilter(e.target.value)}>
                 <option value="all">Todos</option>{Object.entries(statuses).map(([key,label])=>
                 <option key={key} value={key}>{label}</option>)}</select></label>
               <label>Tipo<select value={typeFilter} onChange={e=>setTypeFilter(e.target.value)}>
                 <option value="all">Todos</option>{Object.entries(labels).map(([key,label])=>
                 <option key={key} value={key}>{label}</option>)}</select></label>
-              <label>Ordenar por<select value={sort} onChange={e=>setSort(e.target.value)}>
-                <option value="name">Nombre</option><option value="projects">Más proyectos</option>
+              <label>Ordenar por<select value={sort} onChange={e=>{
+                const key=e.target.value as Sort
+                setSort(key);setSortDirection(['projects','recent'].includes(key)?'desc':'asc')
+              }}>
+                <option value="name">Nombre</option><option value="type">Tipo</option>
+                <option value="contact">Contacto principal</option>
+                <option value="projects">Más proyectos</option><option value="status">Estado</option>
                 <option value="recent">Más recientes</option></select></label>
             </div>}
           </div>
@@ -261,8 +301,9 @@ export function ClientsSurface({workspaceId}:{workspaceId:number|null}) {
           {layout==='list'?<table className={teamStyles.table+' '+css.table}>
             <thead><tr><th><input type="checkbox" checked={allChecked} aria-label="Seleccionar clientes visibles"
               onChange={e=>toggleVisible(e.target.checked)}/></th>
-              <th>Cliente</th><th>Tipo</th><th>Contacto principal</th><th>Proyectos</th>
-              <th>Estado</th>
+              {sortHeading('name','Cliente')}{sortHeading('type','Tipo')}
+              {sortHeading('contact','Contacto principal')}{sortHeading('projects','Proyectos')}
+              {sortHeading('status','Estado')}
             </tr></thead>
             <tbody>{visible.map(c=><tr key={c.id} data-selected={selectedId===c.id&&editor!=='create'}>
               <td><input type="checkbox" aria-label={'Seleccionar '+c.name}
