@@ -48,6 +48,8 @@ type Props = {
   workspaceId: number | null
   onProfileRefresh: () => Promise<unknown>
   onOpenSection: (section: Section) => void
+  openProjectList?: boolean
+  onProjectListOpened?: () => void
   onOpenProject: (id: number) => void
   onOpenTask: (task: Pick<DashboardTask, 'id' | 'board_id' | 'project_id'>) => void
   onOpenTasks: () => void
@@ -57,7 +59,7 @@ type Props = {
   onDeleted: (workspaceId: number) => Promise<void>
 }
 
-export function WorkspaceOverview({ profile, workspaceId, onProfileRefresh, onOpenSection, onOpenProject, onOpenTask, onOpenTasks, onCreatedProject, onInviteMembers, onCreateClient, onDeleted }: Props) {
+export function WorkspaceOverview({ profile, workspaceId, onProfileRefresh, onOpenSection, openProjectList = false, onProjectListOpened, onOpenProject, onOpenTask, onOpenTasks, onCreatedProject, onInviteMembers, onCreateClient, onDeleted }: Props) {
   const [summary, setSummary] = useState<WorkspaceSummary | null>(null)
   const [mode, setMode] = useState<'dashboard' | 'settings'>('dashboard')
   const [loading, setLoading] = useState(true)
@@ -71,6 +73,12 @@ export function WorkspaceOverview({ profile, workspaceId, onProfileRefresh, onOp
   const [removalError, setRemovalError] = useState('')
   const [newProject, setNewProject] = useState(false)
   const [allProjectsOpen, setAllProjectsOpen] = useState(false)
+  useEffect(() => {
+    if (openProjectList) {
+      setAllProjectsOpen(true)
+      onProjectListOpened?.()
+    }
+  }, [openProjectList, onProjectListOpened])
   const [projectName, setProjectName] = useState('')
   const [projectDescription, setProjectDescription] = useState('')
   const [creatingProject, setCreatingProject] = useState(false)
