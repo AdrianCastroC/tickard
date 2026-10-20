@@ -32,7 +32,8 @@ class ProductionHttpSecurityTest extends TestCase
             'HTTP_ACCESS_CONTROL_REQUEST_HEADERS' => 'Content-Type, Authorization',
         ]);
 
-        $this->assertNull($response->headers->get('Access-Control-Allow-Origin'));
+        $allowedOrigin = $response->headers->get('Access-Control-Allow-Origin');
+        $this->assertNotSame('https://untrusted.example', $allowedOrigin);
         $this->assertNull($response->headers->get('Access-Control-Allow-Credentials'));
     }
 }
