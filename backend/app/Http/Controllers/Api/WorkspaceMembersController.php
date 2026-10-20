@@ -9,6 +9,7 @@ use App\Support\WorkspaceClientAccess;
 use App\Support\RoleAvailability;
 use App\Support\WorkspacePersonnelGuard;
 use App\Support\WorkspaceLimits;
+use App\Support\WorkspaceAudit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -135,6 +136,7 @@ class WorkspaceMembersController extends ApiController
             $member->update(['role' => $data['role'], 'custom_role_id' => $data['custom_role_id'] ?? null]);
         });
 
+        WorkspaceAudit::record($workspace, $request->user(), 'member.role_changed', ['member_id' => $user->id, 'role' => $data['role']]);
         return response()->json(['user_id' => $user->id, 'role' => $data['role'], 'custom_role_id' => $data['custom_role_id'] ?? null]);
     }
     /**
