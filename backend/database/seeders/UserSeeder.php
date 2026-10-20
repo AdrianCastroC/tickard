@@ -48,5 +48,11 @@ class UserSeeder extends Seeder
             'email_verified_at' => now(),
             'plan' => User::PLAN_FREE,
         ]);
+        // email_verified_at is intentionally not mass assignable. Demo accounts
+        // are explicitly verified, and this seeder is blocked in production.
+        User::whereIn('email', [
+            'ana@gestor.test', 'luis@gestor.test',
+            'marta@gestor.test', 'elena@gestor.test',
+        ])->update(['email_verified_at' => now()]);
     }
 }
