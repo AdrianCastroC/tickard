@@ -31,7 +31,9 @@ class WorkspacePersonnelGuard
     public static function canManageUser(User $user, Workspace $workspace, string $permission = 'workspace.manage'): bool
     {
         $membership = $workspace->memberships()->where('user_id', $user->id)->first();
-        if (! $membership && ! $user->is_admin) return false;
+        // Global admins can manage only Workspaces they still belong to.
+        // In particular, a removed inviter must not retain authority.
+        if (! $membership && (int) $workspace->owner_id !== (int) $user->id) return false;
         if (WorkspaceClientAccess::isClient($user, $workspace)) return false;
         if ((int) $workspace->owner_id === (int) $user->id || (bool) $user->is_admin) return true;
         if ($membership?->role === 'admin' && $membership->custom_role_id === null) {

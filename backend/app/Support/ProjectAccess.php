@@ -13,15 +13,22 @@ class ProjectAccess
         // Workspace ownership is independent of project membership.
         // Keep the existing project-role contract for consumers: the owner has
         // the effective permissions of a responsible on every owned project.
-        if ($user->is_admin || self::isWorkspaceOwner($user, $project)) {
+        if (self::isWorkspaceOwner($user, $project)) {
             return 'responsable';
         }
 
-        // A stale project membership must not survive revocation at Workspace level.
+        // A global administrator still needs an active Workspace membership.
+        // Otherwise the is_admin flag would bypass tenant isolation.
         $workspaceMembership = $project->workspace->memberships()
             ->where('user_id', $user->id)->first();
         if (! $workspaceMembership) {
             return null;
+        }
+        if ($user->is_admin) {
+            // Account-level administration does not turn a client account into
+            // an internal member of a customer's Workspace.
+            return WorkspaceClientAccess::isClient($user, $project->workspace)
+                ? null : 'responsable';
         }
 
         $member = $user->memberships()->where('project_id', $project->id)->first();
