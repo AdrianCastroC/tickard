@@ -298,6 +298,8 @@ class WorkspaceInvitationsController extends ApiController
                 ]);
             }
             if ($action === 'accept') {
+                abort_if(WorkspaceClientAccess::isClient($request->user(), $workspace), 409,
+                    'Una cuenta cliente no puede aceptar invitaciones internas al Workspace o proyecto.');
                 // A pending invitation cannot outlive the sender's authority.
                 // A project manager may only invite existing Workspace members;
                 // only the Workspace owner may onboard someone from outside.
