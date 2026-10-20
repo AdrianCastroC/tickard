@@ -66,4 +66,33 @@ class GlobalAdminTenantIsolationSecurityTest extends TestCase
         $this->actingAs($client)->getJson("/api/projects/{$project->id}/dashboard")
             ->assertForbidden();
     }
+
+    public function test_removed_global_admin_cannot_authorize_pending_client_invitation(): void
+    {
+        $owner = User::factory()->create(['is_admin' => false]);
+        $globalAdmin = User::factory()->create(['is_admin' => true]);
+        $representative = User::factory()->create(['is_admin' => false, 'email_verified_at' => now()]);
+        $workspace = Workspace::create([
+            'name' => 'Agencia', 'owner_id' => $owner->id, 'show_clients' => true,
+        ]);
+        $workspace->memberships()->create(['user_id' => $owner->id, 'role' => 'owner']);
+        $workspace->memberships()->create(['user_id' => $globalAdmin->id, 'role' => 'admin']);
+
+        $id = $this->actingAs($globalAdmin)->postJson('/api/clients', [
+            'workspace_id' => $workspace->id,
+            'name' => 'Empresa pendiente', 'representative' => $representative->email,
+        ])->assertCreated()->json('invitation_id');
+
+        $this->actingAs($owner)->deleteJson("/api/workspaces/{$workspace->id}/members/{$globalAdmin->id}")
+            ->assertNoContent();
+        $this->assertFalse(\App\Support\WorkspacePersonnelGuard::canManageUser(
+            $globalAdmin, $workspace, 'workspace.clients'
+        ));
+
+        $this->actingAs($representative)->postJson("/api/my/invitations/{$id}/respond", [
+            'action' => 'accept',
+        ])->assertStatus(409);
+
+        $this->assertDatabaseCount('client_companies', 0);
+    }
 }
