@@ -6,29 +6,33 @@ use Tests\TestCase;
 
 class ProductionHttpSecurityTest extends TestCase
 {
-    public function test_cors_preflight_only_approves_configured_frontend_origin(): void
+    public function test_cors_approves_the_configured_frontend_origin(): void
     {
         config()->set('cors.allowed_origins', ['https://app.tickard.example']);
         config()->set('cors.supports_credentials', false);
 
-        $headers = [
-            'Access-Control-Request-Method' => 'POST',
-            'Access-Control-Request-Headers' => 'Content-Type, Authorization',
-        ];
-
-        $approved = $this->call('OPTIONS', '/api/login', server: [
+        $response = $this->call('OPTIONS', '/api/login', server: [
             'HTTP_ORIGIN' => 'https://app.tickard.example',
             'HTTP_ACCESS_CONTROL_REQUEST_METHOD' => 'POST',
             'HTTP_ACCESS_CONTROL_REQUEST_HEADERS' => 'Content-Type, Authorization',
         ]);
-        $approved->assertHeader('Access-Control-Allow-Origin', 'https://app.tickard.example');
 
-        $rejected = $this->call('OPTIONS', '/api/login', server: [
+        $response->assertHeader('Access-Control-Allow-Origin', 'https://app.tickard.example');
+        $this->assertNull($response->headers->get('Access-Control-Allow-Credentials'));
+    }
+
+    public function test_cors_does_not_approve_untrusted_origins(): void
+    {
+        config()->set('cors.allowed_origins', ['https://app.tickard.example']);
+        config()->set('cors.supports_credentials', false);
+
+        $response = $this->call('OPTIONS', '/api/login', server: [
             'HTTP_ORIGIN' => 'https://untrusted.example',
             'HTTP_ACCESS_CONTROL_REQUEST_METHOD' => 'POST',
             'HTTP_ACCESS_CONTROL_REQUEST_HEADERS' => 'Content-Type, Authorization',
         ]);
-        $this->assertNull($rejected->headers->get('Access-Control-Allow-Origin'));
-        $this->assertNull($rejected->headers->get('Access-Control-Allow-Credentials'));
+
+        $this->assertNull($response->headers->get('Access-Control-Allow-Origin'));
+        $this->assertNull($response->headers->get('Access-Control-Allow-Credentials'));
     }
 }
