@@ -52,7 +52,7 @@ class MvpJourneyTest extends TestCase
         $this->assertSame('Primera tarea', Card::findOrFail($cardId)->title);
 
         $this->patchJson('/api/cards/'.$cardId, ['title' => 'Tarea actualizada'])
-            ->assertOk();
+            ->assertNoContent();
         $this->assertSame('Tarea actualizada', Card::findOrFail($cardId)->title);
         $this->getJson('/api/boards/'.$board->id)->assertOk();
 
