@@ -381,8 +381,11 @@ public function updateCommentVisibility(Request $request, Comment $comment)
 
         $project = $comment->card->board->project;
         $role = ProjectAccess::role($request->user(), $project);
+        // Publishing a thread to external clients is a content-editing action,
+        // not an implicit privilege of merely being able to comment.
         abort_unless($role !== 'cliente' && ProjectAccess::canView($request->user(), $project)
-            && ProjectAccess::canComment($request->user(), $project), 403);
+            && ProjectAccess::canComment($request->user(), $project)
+            && ProjectAccess::canEditCards($request->user(), $project), 403);
 
         $data = $request->validate([
             'is_internal' => ['required', 'boolean'],

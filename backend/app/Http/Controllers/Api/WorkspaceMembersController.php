@@ -21,8 +21,7 @@ class WorkspaceMembersController extends ApiController
         abort_unless($membership, 403);
 
         $owner = (int) $workspace->owner_id === (int) $request->user()->id;
-        abort_unless($owner || $membership->role === 'admin' || (bool) $request->user()->is_admin
-            || WorkspacePersonnelGuard::canManage($request, $workspace, 'workspace.members'), 403);
+        abort_unless(WorkspacePersonnelGuard::canManage($request, $workspace, 'workspace.members'), 403);
 
         return $owner;
     }

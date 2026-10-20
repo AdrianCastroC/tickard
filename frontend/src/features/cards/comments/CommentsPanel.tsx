@@ -260,6 +260,7 @@ export function CommentsPanel({ card, board, currentUser, editing, canComment, c
                 {buildCommentForest(comments).map((rootNode) => {
                   const root = rootNode.comment
                   const canToggle = canComment && !editing
+                    && (board.permissions?.includes('cards.edit') ?? ['responsable', 'editor'].includes(board.role))
                     && board.role !== 'cliente'
                     && root.author_id === currentUser.id
                   async function toggleVisibility() {

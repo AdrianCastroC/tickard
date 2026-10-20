@@ -35,7 +35,7 @@ class WorkspaceAccessSecurityTest extends TestCase
         $url = "/api/workspaces/{$workspace->id}/members/{$member->id}/job-title";
 
         $this->actingAs($admin)->getJson("/api/workspaces/{$workspace->id}/members")
-            ->assertOk()->assertJsonPath('can_manage_jobs', false);
+            ->assertForbidden();
         $this->patchJson($url, ['job_title' => 'Cargo no autorizado'])->assertForbidden();
         $this->assertDatabaseHas('workspace_members', [
             'workspace_id' => $workspace->id,
