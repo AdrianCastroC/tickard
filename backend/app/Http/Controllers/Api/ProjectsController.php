@@ -390,7 +390,7 @@ class ProjectsController extends ApiController
             $project
         );
 
-        abort_unless($role, 403);
+        abort_unless(ProjectAccess::canView($request->user(), $project), 403);
 
         // Project Gantt only needs scheduling fields. Avoid hydrating comments,
         // reactions, activities and full checklist payloads on every board.
