@@ -121,4 +121,35 @@ class RegistrationTest extends TestCase
         $this->assertSame('ana#100000', $example->publicHandle());
     }
 
+
+    public function test_registration_rejects_password_without_required_complexity(): void
+    {
+        foreach (['abcdefghij', 'abcdefghij1', 'ABCDEFGHIJ1', 'Abcdefghij1'] as $password) {
+            $this->postJson('/api/register', [
+                'first_name' => 'Test',
+                'email' => 'new@example.com',
+                'password' => $password,
+                'password_confirmation' => $password,
+            ])->assertUnprocessable()->assertJsonValidationErrors('password');
+        }
+    }
+
+    public function test_login_has_a_per_email_limit_across_different_ip_addresses(): void
+    {
+        \App\Models\User::factory()->create([
+            'email' => 'login-limit@example.com',
+            'password' => 'Password123!',
+        ]);
+        for ($i = 1; $i <= 5; $i++) {
+            $this->withServerVariables(['REMOTE_ADDR' => "192.0.2.$i"])
+                ->postJson('/api/login', [
+                    'email' => 'login-limit@example.com', 'password' => 'Incorrect123!',
+                ])->assertUnprocessable();
+        }
+
+        $this->withServerVariables(['REMOTE_ADDR' => '198.51.100.77'])
+            ->postJson('/api/login', [
+                'email' => 'login-limit@example.com', 'password' => 'Password123!',
+            ])->assertStatus(429);
+    }
 }
