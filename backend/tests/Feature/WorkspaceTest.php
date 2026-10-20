@@ -518,7 +518,7 @@ class WorkspaceTest extends TestCase
             ->assertOk()->assertJsonPath('projects.0.allocation_mb', null);
         $this->patchJson($url, ['allocations' => [
             (string) $first->id => 1024, (string) $second->id => null,
-        ]])->assertOk()->assertJsonPath('projects.0.allocation_mb', 1024);
+        ]])->assertOk()->assertJsonPath('projects.1.allocation_mb', 1024);
         $this->assertSame(1024 * 1024 * 1024,
             \App\Support\ProjectFileStorage::projectLimitBytes($first->fresh()));
         $this->assertSame(1024 * 1024 * 1024,
