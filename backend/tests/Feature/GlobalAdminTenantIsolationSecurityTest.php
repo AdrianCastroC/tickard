@@ -41,7 +41,7 @@ class GlobalAdminTenantIsolationSecurityTest extends TestCase
         $this->assertSame('responsable', ProjectAccess::role($admin, $project));
         $this->getJson("/api/projects/{$project->id}/dashboard")->assertOk();
         $this->patchJson("/api/cards/{$card->id}", ['title' => 'Permitida'])
-            ->assertOk();
+            ->assertNoContent();
     }
 
     public function test_global_admin_flag_does_not_override_client_membership_privacy(): void
