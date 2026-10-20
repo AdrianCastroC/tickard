@@ -23,8 +23,8 @@ class MvpJourneyTest extends TestCase
         $registration = $this->postJson('/api/register', [
             'first_name' => 'Eva',
             'email' => 'eva.mvp@example.com',
-            'password' => 'password123',
-            'password_confirmation' => 'password123',
+            'password' => 'Password123!',
+            'password_confirmation' => 'Password123!',
         ])->assertCreated()->assertJsonStructure(['token', 'user']);
 
         $token = $registration->json('token');
