@@ -53,12 +53,9 @@ class ProjectFileStorage
                         && $zip->locateName($required) !== false;
                     $zip->close();
                 }
-            } elseif ($valid) {
-                // Fallback for PHP runtimes without ext-zip (files are max 10 MB).
-                $bytes = file_get_contents($file->getRealPath());
-                $valid = $bytes !== false && str_starts_with($bytes, 'PK')
-                    && str_contains($bytes, '[Content_Types].xml')
-                    && str_contains($bytes, $required);
+            } else {
+                // Without ext-zip the OOXML structure cannot be verified safely.
+                $valid = false;
             }
             if ($valid) return;
         } elseif (in_array($mime, self::EXTENSIONS[$extension], true)) {
