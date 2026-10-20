@@ -120,7 +120,7 @@ class CalendarEventsController extends ApiController
         $role = ProjectAccess::role($request->user(), $project);
         // Calendar events are currently internal to project members: do not expose
         // meetings, descriptions or locations to external clients.
-        abort_unless($role !== null && $role !== 'cliente', 403);
+        abort_unless($role !== 'cliente' && ProjectAccess::canView($request->user(), $project), 403);
     }
 
     private function eventData(Request $request): array
