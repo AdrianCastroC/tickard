@@ -71,17 +71,44 @@ export function formatRelative(value?: string | null) {
 
 function sanitizeDescriptionHtml(html: string) {
   const doc = new DOMParser().parseFromString(html, 'text/html')
-  doc.querySelectorAll('script, style, iframe, object, embed').forEach((node) => node.remove())
-  doc.querySelectorAll('*').forEach((el) => {
-    ;[...el.attributes].forEach((attr) => {
-      if (attr.name.startsWith('on')) el.removeAttribute(attr.name)
-      if (attr.name === 'href' && /^\s*javascript:/i.test(attr.value)) el.removeAttribute(attr.name)
-    })
-  })
-  doc.querySelectorAll('a[href]').forEach((anchor) => {
-    anchor.setAttribute('target', '_blank')
-    anchor.setAttribute('rel', 'noopener noreferrer')
-  })
+  // Never pass arbitrary HTML from Cards to dangerouslySetInnerHTML.
+  // Preserve the subset emitted by the rich-text editor; strip dangerous
+  // nodes instead of relying solely on removing on* event attributes.
+  const safeTags = new Set(['A', 'B', 'BLOCKQUOTE', 'BR', 'DIV', 'EM', 'I', 'LI', 'OL', 'P', 'S', 'SPAN', 'STRIKE', 'STRONG', 'U', 'UL'])
+  const discardTags = new Set(['SCRIPT', 'STYLE', 'IFRAME', 'OBJECT', 'EMBED', 'SVG', 'MATH', 'FORM', 'INPUT', 'BUTTON', 'TEMPLATE', 'LINK', 'META', 'BASE'])
+  const clean = (root: Node) => {
+    for (const child of Array.from(root.childNodes)) {
+      if (child.nodeType === Node.COMMENT_NODE) {
+        child.parentNode?.removeChild(child)
+        continue
+      }
+      if (child.nodeType !== Node.ELEMENT_NODE) continue
+      const element = child as Element
+      if (discardTags.has(element.tagName)) {
+        element.remove()
+        continue
+      }
+      clean(element)
+      if (!safeTags.has(element.tagName)) {
+        element.replaceWith(...Array.from(element.childNodes))
+        continue
+      }
+      for (const attribute of Array.from(element.attributes)) {
+        if (element.tagName !== 'A' || attribute.name !== 'href') {
+          element.removeAttribute(attribute.name)
+        }
+      }
+      if (element.tagName === 'A') {
+        const href = element.getAttribute('href') ?? ''
+        if (!/^https?:\/\//i.test(href.trim()) && !/^mailto:/i.test(href.trim())) {
+          element.removeAttribute('href')
+        }
+        element.setAttribute('target', '_blank')
+        element.setAttribute('rel', 'noopener noreferrer')
+      }
+    }
+  }
+  clean(doc.body)
   return doc.body.innerHTML
 }
 
