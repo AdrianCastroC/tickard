@@ -501,4 +501,36 @@ class WorkspaceTest extends TestCase
         ])->assertForbidden();
     }
 
+    public function test_workspace_owner_can_distribute_storage_across_projects(): void
+    {
+        $owner = User::factory()->create(['is_admin' => false, 'plan' => User::PLAN_BASE]);
+        $stranger = User::factory()->create(['is_admin' => false]);
+        $workspace = Workspace::create(['name' => 'Equipo', 'owner_id' => $owner->id]);
+        $workspace->memberships()->create(['user_id' => $owner->id, 'role' => 'owner']);
+        $first = Project::create(['name' => 'Uno', 'workspace_id' => $workspace->id]);
+        $second = Project::create(['name' => 'Dos', 'workspace_id' => $workspace->id]);
+        $url = "/api/workspaces/{$workspace->id}/storage";
+
+        $this->actingAs($stranger)->patchJson($url, [
+            'allocations' => [(string) $first->id => 1024, (string) $second->id => null],
+        ])->assertForbidden();
+        $this->actingAs($owner)->getJson($url)
+            ->assertOk()->assertJsonPath('projects.0.allocation_mb', null);
+        $this->patchJson($url, ['allocations' => [
+            (string) $first->id => 1024, (string) $second->id => null,
+        ]])->assertOk()->assertJsonPath('projects.0.allocation_mb', 1024);
+        $this->assertSame(1024 * 1024 * 1024,
+            \App\Support\ProjectFileStorage::projectLimitBytes($first->fresh()));
+        $this->assertSame(1024 * 1024 * 1024,
+            \App\Support\ProjectFileStorage::projectLimitBytes($second->fresh()));
+
+        $this->patchJson($url, ['allocations' => [
+            (string) $first->id => 1600, (string) $second->id => 600,
+        ]])->assertUnprocessable();
+        $this->patchJson($url, ['allocations' => [
+            (string) $first->id => 500,
+        ]])->assertUnprocessable();
+        $this->assertSame(1024, $first->fresh()->storage_allocation_mb);
+    }
+
 }
