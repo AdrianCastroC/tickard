@@ -24,6 +24,8 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
       - name: Install dependencies
         run: npm ci
+      - name: Audit npm dependencies (high/critical)
+        run: npm audit --audit-level=high
       - name: TypeScript and production build
         run: npm run build
       - name: Lint
@@ -44,6 +46,8 @@ jobs:
           coverage: none
       - name: Install dependencies
         run: composer install --no-interaction --prefer-dist --no-progress
+      - name: Audit Composer locked dependencies
+        run: composer audit --locked --no-interaction
       - name: Configure test application
         run: |
           cp .env.example .env
