@@ -13,6 +13,7 @@ use App\Support\ProjectAccess;
 use App\Support\RoleAvailability;
 use App\Support\WorkspaceLimits;
 use App\Support\WorkspaceClientAccess;
+use App\Support\WorkspacePersonnelGuard;
 use App\Models\ClientCompany;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -261,6 +262,9 @@ class WorkspaceInvitationsController extends ApiController
                 abort_unless($workspace->show_clients, 422, 'Este Workspace ya no admite clientes.');
                 abort_if($invitation->expires_at?->isPast(), 409, 'La invitación ha caducado.');
                 if ($action === 'accept') {
+                    $inviter = User::find($invitation->invited_by);
+                    abort_unless($inviter && WorkspacePersonnelGuard::canManageUser($inviter, $workspace, 'workspace.clients'), 409,
+                        'La persona que envió la invitación ya no puede gestionar clientes. Solicita otra invitación.');
                     abort_unless($request->user()->email_verified_at !== null, 422,
                         'Verifica tu correo antes de aceptar la invitación.');
                     abort_unless(! $workspace->memberships()
