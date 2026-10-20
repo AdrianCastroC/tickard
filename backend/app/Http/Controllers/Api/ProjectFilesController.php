@@ -228,7 +228,7 @@ class ProjectFilesController extends ApiController
         $attachment->loadMissing('card.board.project');
         $project = $attachment->card->board->project;
         $role = ProjectAccess::role($request->user(), $project);
-        abort_unless($role !== null, 403);
+        abort_unless(ProjectAccess::canView($request->user(), $project), 403);
         if ($role === 'cliente') {
             abort_if($attachment->card->is_internal || $attachment->card->archived_at !== null, 404);
         }
