@@ -6,7 +6,7 @@ import { CreateWorkspaceModal } from './CreateWorkspaceModal'
 import styles from './WorkspaceSelector.module.css'
 
 type Props = { profile: Profile; activeWorkspaceId: number | null; mini: boolean; activeContext?: boolean; onOpenOverview: () => void; onWorkspaceChange: (id: number) => void | Promise<void>; onProfileRefresh: (workspaceId?: number | null) => Promise<Profile | undefined> }
-export function WorkspaceSelector({ profile, activeWorkspaceId, mini, activeContext = false, onOpenOverview, onWorkspaceChange, onProfileRefresh }: Props) {
+export function WorkspaceSelector({ profile, activeWorkspaceId, mini, activeContext = false, onOpenOverview, onWorkspaceChange }: Props) {
   const [open, setOpen] = useState(false)
   const triggerRef = useRef<HTMLDivElement>(null)
   const menuRef = useRef<HTMLDivElement>(null)
