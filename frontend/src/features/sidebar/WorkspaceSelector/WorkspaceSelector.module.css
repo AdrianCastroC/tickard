@@ -1,4 +1,4 @@
-.header { position: relative; margin: 4px 0 12px; }
+.header { position: relative; margin: auto 0 0; padding-top: 10px; }
 .headerMain { display: flex; align-items: center; gap: 4px; }
 .headerMain.active { border-color: color-mix(in srgb, #147a5f 35%, var(--line)); }
 .trigger { display: flex; flex: 1; min-width: 0; align-items: stretch; border: 1px solid var(--line); border-radius: 12px; background: color-mix(in srgb, #d7f3ea 55%, var(--surface)); overflow: hidden; }
@@ -15,7 +15,7 @@
 :global(.side.is-mini) .selector { flex: 0 0 auto; justify-content: center; padding-left: 8px; padding-right: 8px; }
 :global(.side.is-mini) .chevron { display: none; }
 .open { transform: rotate(90deg); }
-.menu { position: absolute; top: calc(100% + 4px); left: 0; right: 0; z-index: 30; padding: 4px; border: 1px solid var(--line); border-radius: 12px; background: color-mix(in srgb, var(--surface) 96%, #d7f3ea); box-shadow: 0 10px 28px rgb(12 36 32 / 12%); }
+.menu { position: absolute; top: calc(100% + 4px); left: 0; right: 0; z-index: 10020; padding: 4px; border: 1px solid var(--line); border-radius: 12px; background: color-mix(in srgb, var(--surface) 96%, #d7f3ea); box-shadow: 0 10px 28px rgb(12 36 32 / 12%); }
 .menuItem { min-height: 36px; padding: 7px 10px; border-radius: 7px; display: flex; align-items: center; gap: 9px; position: relative; }
 .menuItem.on { background: #d7f3ea; font-weight: 600; }
 .menuItem:hover { background: var(--canvas); }
