@@ -79,8 +79,13 @@ class InvitationInviterAuthoritySecurityTest extends TestCase
             ->postJson("/api/my/invitations/{$id}/respond", ['action' => 'accept'])
             ->assertOk();
 
+        // Use a separate Workspace so the Free-plan member cap remains respected.
+        $ownerWorkspace = Workspace::createInitialFor($owner);
+        $ownerProject = Project::create([
+            'workspace_id' => $ownerWorkspace->id, 'name' => 'Segundo proyecto',
+        ]);
         $external = User::factory()->create(['is_admin' => false]);
-        $ownerId = $this->actingAs($owner)->postJson("/api/projects/{$project->id}/invitations", [
+        $ownerId = $this->actingAs($owner)->postJson("/api/projects/{$ownerProject->id}/invitations", [
             'recipients' => [$external->email], 'role' => 'lector',
         ])->assertCreated()->json('created.0.id');
 
@@ -89,7 +94,7 @@ class InvitationInviterAuthoritySecurityTest extends TestCase
             ->assertOk();
 
         $this->assertDatabaseHas('project_members', [
-            'project_id' => $project->id, 'user_id' => $external->id, 'role' => 'lector',
+            'project_id' => $ownerProject->id, 'user_id' => $external->id, 'role' => 'lector',
         ]);
     }
 }
