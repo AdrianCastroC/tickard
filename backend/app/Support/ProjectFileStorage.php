@@ -59,7 +59,7 @@ class ProjectFileStorage
                             $valid = false;
                             break;
                         }
-                        $entryName = str_replace('\\\\', '/', $entry['name']);
+                        $entryName = str_replace(chr(92), '/', $entry['name']);
                         // Reject traversal and unexpectedly large expanded archives.
                         if (str_starts_with($entryName, '/') || preg_match('~(^|/)\\.\\.(/|$)~', $entryName)) {
                             $valid = false;
