@@ -9,6 +9,9 @@ class UserSeeder extends Seeder
 {
     public function run(): void
     {
+        if (! app()->environment(['local', 'testing'])) {
+            throw new \RuntimeException('Los datos y contraseñas de demostración solo pueden sembrarse en entornos locales o de prueba.');
+        }
         User::create([
             'first_name' => 'Ana',
             'last_name' => 'Ruiz',

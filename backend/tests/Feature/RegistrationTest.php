@@ -18,8 +18,8 @@ class RegistrationTest extends TestCase
             'first_name' => 'Ada',
             'last_name' => 'Lovelace',
             'email' => 'ada@example.com',
-            'password' => 'secret123',
-            'password_confirmation' => 'secret123',
+            'password' => 'Password123!',
+            'password_confirmation' => 'Password123!',
         ]);
 
         $response->assertCreated()->assertJsonStructure(['token', 'user']);
@@ -32,7 +32,7 @@ class RegistrationTest extends TestCase
         $this->assertSame('ada#'.str_pad((string) $user->id, 5, '0', STR_PAD_LEFT), $user->publicHandle());
         $this->assertFalse($user->is_admin);
         $this->assertNull($user->client_company_id);
-        $this->assertTrue(Hash::check('secret123', $user->password));
+        $this->assertTrue(Hash::check('Password123!', $user->password));
         $workspace = $user->ownedWorkspaces()->firstOrFail();
         $this->assertSame('Mi espacio', $workspace->name);
         $this->assertSame($user->id, $workspace->owner_id);
@@ -56,8 +56,8 @@ class RegistrationTest extends TestCase
             'first_name' => 'Another',
             'last_name' => 'Ada',
             'email' => 'ada@example.com',
-            'password' => 'secret123',
-            'password_confirmation' => 'secret123',
+            'password' => 'Password123!',
+            'password_confirmation' => 'Password123!',
         ])->assertUnprocessable()->assertJsonValidationErrors('email');
     }
 
@@ -67,7 +67,7 @@ class RegistrationTest extends TestCase
             'first_name' => 'Ada',
             'last_name' => 'Lovelace',
             'email' => 'ada@example.com',
-            'password' => 'secret123',
+            'password' => 'Password123!',
             'password_confirmation' => 'different123',
         ])->assertUnprocessable()->assertJsonValidationErrors('password');
     }
@@ -87,8 +87,8 @@ class RegistrationTest extends TestCase
         $payload = [
             'first_name' => 'María',
             'email' => 'maria@example.com',
-            'password' => 'secret123',
-            'password_confirmation' => 'secret123',
+            'password' => 'Password123!',
+            'password_confirmation' => 'Password123!',
         ];
         $this->postJson('/api/register', $payload)->assertCreated();
         $user = User::where('email', 'maria@example.com')->firstOrFail();
@@ -121,4 +121,35 @@ class RegistrationTest extends TestCase
         $this->assertSame('ana#100000', $example->publicHandle());
     }
 
+
+    public function test_registration_rejects_password_without_required_complexity(): void
+    {
+        foreach (['abcdefghij', 'abcdefghij1', 'ABCDEFGHIJ1', 'Abcdefghij1'] as $password) {
+            $this->postJson('/api/register', [
+                'first_name' => 'Test',
+                'email' => 'new@example.com',
+                'password' => $password,
+                'password_confirmation' => $password,
+            ])->assertUnprocessable()->assertJsonValidationErrors('password');
+        }
+    }
+
+    public function test_login_has_a_per_email_limit_across_different_ip_addresses(): void
+    {
+        \App\Models\User::factory()->create([
+            'email' => 'login-limit@example.com',
+            'password' => 'Password123!',
+        ]);
+        for ($i = 1; $i <= 5; $i++) {
+            $this->withServerVariables(['REMOTE_ADDR' => "192.0.2.$i"])
+                ->postJson('/api/login', [
+                    'email' => 'login-limit@example.com', 'password' => 'Incorrect123!',
+                ])->assertUnprocessable();
+        }
+
+        $this->withServerVariables(['REMOTE_ADDR' => '198.51.100.77'])
+            ->postJson('/api/login', [
+                'email' => 'login-limit@example.com', 'password' => 'Password123!',
+            ])->assertStatus(429);
+    }
 }

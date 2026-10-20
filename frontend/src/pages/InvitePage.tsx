@@ -95,6 +95,7 @@ export function Invite({ token, kind = 'project' }: Props) {
             <p>Sesión iniciada {account && <>como <strong>{account}</strong></>}</p>
             {info.email && account && info.email.toLowerCase() !== account.toLowerCase() &&
               <p className="error">Este enlace está dirigido a otra dirección de correo. Cambia de cuenta para aceptarlo.</p>}
+            {mode === 'register' && <p style={{fontSize:12, color:'var(--muted)'}}>La contraseña debe incluir mayúsculas, minúsculas, números y símbolos.</p>}
             <button className="auth-submit" type="submit" disabled={busy}>Aceptar invitación →</button>
             <button className="ghost" type="button" onClick={() => { setToken(null); setAuthed(false); setAccount(''); setError('') }}>Usar otra cuenta</button>
           </> : <>
@@ -107,8 +108,9 @@ export function Invite({ token, kind = 'project' }: Props) {
               <label className="auth-field"><span>Apellidos (opcional)</span><input value={lastName} onChange={event => setLastName(event.target.value)} placeholder="Tus apellidos" autoComplete="family-name" maxLength={120}/></label>
             </>}
             <label className="auth-field"><span>Correo</span><input type="email" required value={email} onChange={event => setEmail(event.target.value)} placeholder="Correo electrónico"/></label>
-            <label className="auth-field"><span>Contraseña</span><input type="password" required minLength={8} value={password} onChange={event => setPassword(event.target.value)} placeholder="Contraseña"/></label>
-            {mode === 'register' && <label className="auth-field"><span>Repetir contraseña</span><input type="password" required minLength={8} value={confirmation} onChange={event => setConfirmation(event.target.value)} placeholder="Repetir contraseña"/></label>}
+            <label className="auth-field"><span>Contraseña</span><input type="password" required minLength={10} value={password} onChange={event => setPassword(event.target.value)} placeholder="Contraseña"/></label>
+            {mode === 'register' && <label className="auth-field"><span>Repetir contraseña</span><input type="password" required minLength={10} value={confirmation} onChange={event => setConfirmation(event.target.value)} placeholder="Repetir contraseña"/></label>}
+            {mode === 'register' && <p style={{fontSize:12, color:'var(--muted)'}}>La contraseña debe incluir mayúsculas, minúsculas, números y símbolos.</p>}
             <button className="auth-submit" type="submit" disabled={busy}>{busy ? 'Procesando…' : 'Acceder y aceptar invitación →'}</button>
           </>}
         </>}

@@ -8,6 +8,9 @@ class DatabaseSeeder extends Seeder
 {
     public function run(): void
     {
+        if (! app()->environment(['local', 'testing'])) {
+            throw new \RuntimeException('Los datos y contraseñas de demostración solo pueden sembrarse en entornos locales o de prueba.');
+        }
         $this->call([
             UserSeeder::class,
             WorkspaceSeeder::class,
