@@ -102,8 +102,13 @@ class RegistrationController extends ApiController
                 || $pending->attempts >= 5) {
                 return ['invalid' => true];
             }
-            if (! hash_equals($pending->nonce_hash, hash('sha256', $data['nonce']))
-                || ! Hash::check($data['code'], $pending->code_hash)) {
+            // Only the browser that initiated registration can consume code
+            // attempts. An outsider who only knows an email must not be able
+            // to lock someone else's pending registration with bogus nonces.
+            if (! hash_equals($pending->nonce_hash, hash('sha256', $data['nonce']))) {
+                return ['invalid' => true];
+            }
+            if (! Hash::check($data['code'], $pending->code_hash)) {
                 DB::table('pending_registrations')->where('id', $pending->id)
                     ->update(['attempts' => $pending->attempts + 1]);
                 return ['invalid' => true];
