@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Support\ReadableProjects;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -11,10 +12,12 @@ class GlobalHomeController extends Controller
     public function projects(Request $request)
     {
         $user = $request->user();
+        $readableProjectIds = ReadableProjects::ids($user);
 
         // Workspace membership alone must not reveal another project's name.
         // Owner and global administrator privileges mirror ProjectAccess.
         $projects = DB::table('projects')
+            ->whereIn('projects.id', $readableProjectIds)
             ->join('workspaces', 'workspaces.id', '=', 'projects.workspace_id')
             ->join('workspace_members', function ($join) use ($user) {
                 $join->on('workspace_members.workspace_id', '=', 'workspaces.id')
