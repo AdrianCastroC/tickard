@@ -10,6 +10,7 @@ class Project extends Model
 {
     protected $fillable = [
         'workspace_id',
+        'storage_allocation_mb',
         'client_company_id',
         'client_access_enabled',
         'name',
@@ -26,6 +27,7 @@ class Project extends Model
     protected function casts(): array
     {
         return [
+            'storage_allocation_mb' => 'integer',
             'client_access_enabled' => 'boolean',
             'show_description' => 'boolean',
             'show_assignee' => 'boolean',
