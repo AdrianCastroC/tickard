@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Support\ReadableProjects;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -23,6 +24,7 @@ class MyTasksController extends Controller
         ]);
         $user = $request->user();
         $today = $filters['today'] ?? now()->toDateString();
+        $readableProjectIds = ReadableProjects::ids($user);
 
         // Only explicitly assigned, non-archived Cards in Workspaces the
         // requester currently belongs to. Team assignments do not implicitly
@@ -32,6 +34,7 @@ class MyTasksController extends Controller
             ->join('columns', 'columns.id', '=', 'cards.column_id')
             ->join('boards', 'boards.id', '=', 'cards.board_id')
             ->join('projects', 'projects.id', '=', 'boards.project_id')
+            ->whereIn('projects.id', $readableProjectIds)
             ->join('workspaces', 'workspaces.id', '=', 'projects.workspace_id')
             ->join('workspace_members', function ($join) use ($user) {
                 $join->on('workspace_members.workspace_id', '=', 'workspaces.id')
@@ -133,6 +136,7 @@ class MyTasksController extends Controller
         // calendar the current user may read (never external clients).
         $meetingsQuery = DB::table('calendar_events')
             ->join('projects', 'projects.id', '=', 'calendar_events.project_id')
+            ->whereIn('projects.id', $readableProjectIds)
             ->join('workspaces', 'workspaces.id', '=', 'projects.workspace_id')
             ->join('workspace_members', function ($join) use ($user) {
                 $join->on('workspace_members.workspace_id', '=', 'workspaces.id')

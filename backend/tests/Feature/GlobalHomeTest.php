@@ -103,8 +103,13 @@ class GlobalHomeTest extends TestCase
         $owner = User::factory()->create(['is_admin' => false]);
         $workspace = Workspace::createInitialFor($owner);
         [$project, $board] = $this->makeProject($workspace, 'Cliente');
-        $client = User::factory()->create(['is_admin' => false]);
-        $workspace->memberships()->create(['user_id' => $client->id, 'role' => 'member']);
+        $client = User::factory()->create(['is_admin' => false, 'email_verified_at' => now()]);
+        $workspace->update(['show_clients' => true]);
+        $project->update(['client_access_enabled' => true]);
+        $workspace->memberships()->create([
+            'user_id' => $client->id, 'role' => 'client',
+            'client_company_id' => $project->client_company_id,
+        ]);
         $project->members()->create(['user_id' => $client->id, 'role' => 'cliente']);
 
         $this->card($board, 'Visible completa', 'done');

@@ -7,6 +7,7 @@ use App\Models\Workspace;
 use App\Support\WorkspaceClientAccess;
 use App\Support\WorkspacePersonnelGuard;
 use App\Support\WorkspaceLimits;
+use App\Support\ReadableProjects;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rules\File;
@@ -69,21 +70,13 @@ class WorkspacesController extends Controller
             || WorkspaceClientAccess::isClient($user, $workspace);
         $isOwner = (int) $workspace->owner_id === (int) $user->id;
         $canSeeOrganization = ! $isClient && (
-            $isOwner || $membership->role === 'admin' || $user->is_admin
+            $isOwner || $user->is_admin
             || WorkspacePersonnelGuard::canManage($request, $workspace, 'workspace.projects')
         );
 
+        $visibleProjectIds = $canSeeOrganization ? null : ReadableProjects::ids($user, $workspace);
         $projectsCount = $canSeeOrganization
-            ? $workspace->projects()->count()
-            : $workspace->projects()
-                ->whereHas('members', fn ($query) =>
-                    $query->where('user_id', $user->id))
-                ->when($isClient, fn ($query) => $query
-                    ->where('client_access_enabled', true)
-                    ->where('client_company_id', WorkspaceClientAccess::companyId($user, $workspace)))
-                ->when($isClient && (! $workspace->show_clients || ! $user->email_verified_at),
-                    fn ($query) => $query->whereRaw('1 = 0'))
-                ->count();
+            ? $workspace->projects()->count() : count($visibleProjectIds);
 
         return response()->json([
             'id' => $workspace->id,
@@ -108,7 +101,7 @@ class WorkspacesController extends Controller
                 'clients' => $canSeeOrganization && $workspace->show_clients
                     ? $workspace->clientCompanies()->count() : null,
             ],
-            'dashboard' => $this->overviewDashboard($workspace, $user, $canSeeOrganization, $isClient),
+            'dashboard' => $this->overviewDashboard($workspace, $user, $canSeeOrganization, $isClient, $visibleProjectIds),
         ]);
     }
 
@@ -117,9 +110,11 @@ class WorkspacesController extends Controller
      * Compact dashboard: all queries are bounded to this Workspace and to
      * project/card permissions. Return real data only (no artificial examples).
      */
-    private function overviewDashboard(Workspace $workspace, \App\Models\User $user, bool $canSeeOrganization, bool $isClient): array
+    private function overviewDashboard(Workspace $workspace, \App\Models\User $user, bool $canSeeOrganization, bool $isClient, ?array $visibleProjectIds): array
     {
         $projectsQuery = $workspace->projects()
+            ->when($visibleProjectIds !== null,
+                fn ($query) => $query->whereIn('projects.id', $visibleProjectIds))
             ->when(! $canSeeOrganization, fn ($query) => $query
                 ->whereHas('members', fn ($members) => $members->where('user_id', $user->id)))
             ->when($isClient, fn ($query) => $query
