@@ -36,7 +36,7 @@ class RegistrationController extends ApiController
         abort_if(RateLimiter::tooManyAttempts($key, 5), 429,
             'Demasiadas solicitudes de verificación para este correo.');
         $recent = DB::table('pending_registrations')->where('email', $email)->first();
-        if ($recent && now()->diffInSeconds($recent->updated_at) < 60) {
+        if ($recent && now()->lessThan(\Illuminate\Support\Carbon::parse($recent->updated_at)->addMinute())) {
             throw ValidationException::withMessages([
                 'email' => 'Espera un minuto antes de volver a solicitar otro código.',
             ]);
