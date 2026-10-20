@@ -80,7 +80,8 @@ class InvitationInviterAuthoritySecurityTest extends TestCase
             ->assertOk();
 
         // Use a separate Workspace so the Free-plan member cap remains respected.
-        $ownerWorkspace = Workspace::createInitialFor($owner);
+        $ownerWorkspace = Workspace::create(['name' => 'Independiente', 'owner_id' => $owner->id]);
+        $ownerWorkspace->memberships()->create(['user_id' => $owner->id, 'role' => 'owner']);
         $ownerProject = Project::create([
             'workspace_id' => $ownerWorkspace->id, 'name' => 'Segundo proyecto',
         ]);
