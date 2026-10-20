@@ -3,6 +3,7 @@
 namespace App\Support;
 
 use App\Models\Workspace;
+use App\Models\User;
 use App\Support\WorkspaceClientAccess;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
@@ -24,7 +25,11 @@ class WorkspacePersonnelGuard
 
     public static function canManage(Request $request, Workspace $workspace, string $permission = 'workspace.manage'): bool
     {
-        $user = $request->user();
+        return self::canManageUser($request->user(), $workspace, $permission);
+    }
+
+    public static function canManageUser(User $user, Workspace $workspace, string $permission = 'workspace.manage'): bool
+    {
         $membership = $workspace->memberships()->where('user_id', $user->id)->first();
         if (! $membership && ! $user->is_admin) return false;
         if (WorkspaceClientAccess::isClient($user, $workspace)) return false;
