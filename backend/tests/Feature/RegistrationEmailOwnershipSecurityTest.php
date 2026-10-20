@@ -62,6 +62,7 @@ class RegistrationEmailOwnershipSecurityTest extends TestCase
     {
         $user = User::factory()->create([
             'email' => 'reclamar@example.com', 'email_verified_at' => null,
+            'password' => 'Password123!',
         ]);
         $token = $user->createToken('api')->plainTextToken;
         $this->withToken($token)->getJson('/api/me')->assertForbidden();
