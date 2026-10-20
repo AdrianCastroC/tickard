@@ -32,6 +32,33 @@ class AccountStorageController extends Controller
         ]);
     }
 
+    public function workspace(Request $request, Workspace $workspace)
+    {
+        $member = $workspace->memberships()->where('user_id', $request->user()->id)->exists();
+        abort_unless($member && \App\Support\WorkspacePersonnelGuard::canConfigure($request, $workspace), 403);
+
+        $projects = $workspace->projects()->orderBy('name')->get(['id', 'name']);
+        $counts = DB::table('project_files')
+            ->whereIn('project_id', $projects->pluck('id'))
+            ->selectRaw('project_id, SUM(size) as bytes')->groupBy('project_id')->pluck('bytes', 'project_id');
+        $attachments = DB::table('card_attachments')
+            ->join('cards', 'cards.id', '=', 'card_attachments.card_id')
+            ->join('boards', 'boards.id', '=', 'cards.board_id')
+            ->whereIn('boards.project_id', $projects->pluck('id'))
+            ->selectRaw('boards.project_id, SUM(card_attachments.size) as bytes')
+            ->groupBy('boards.project_id')->pluck('bytes', 'boards.project_id');
+
+        return response()->json([
+            'used_bytes' => ProjectFileStorage::usedBytes($workspace),
+            'limit_bytes' => ProjectFileStorage::limitBytes($workspace),
+            'is_account_shared' => $workspace->effectivePlan() === User::PLAN_PRO,
+            'projects' => $projects->map(fn ($project) => [
+                'id' => $project->id, 'name' => $project->name,
+                'used_bytes' => (int) ($counts[$project->id] ?? 0) + (int) ($attachments[$project->id] ?? 0),
+            ])->values(),
+        ]);
+    }
+
     public function update(Request $request)
     {
         $user = $request->user();
