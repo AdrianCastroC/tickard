@@ -27,7 +27,8 @@ class NotificationsController extends Controller
             if (! $project || ! in_array((int) $project->workspace_id, $workspaceIds, true)
                 || $card->archived_at !== null) return false;
             $role = ProjectAccess::role($user, $project);
-            return $role !== null && ($role !== 'cliente' || ! $card->is_internal);
+            return ProjectAccess::canView($user, $project)
+                && ($role !== 'cliente' || ! $card->is_internal);
         })->map(function (AppNotification $note) {
             $card = $note->card;
             $project = $card?->board?->project;
