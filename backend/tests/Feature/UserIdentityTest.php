@@ -19,12 +19,23 @@ class UserIdentityTest extends TestCase
             'password' => 'Password123!',
             'password_confirmation' => 'Password123!',
         ];
-        $this->postJson('/api/register', [
+        $codes = [];
+        \Illuminate\Support\Facades\Mail::shouldReceive('raw')->twice()
+            ->andReturnUsing(function (string $body) use (&$codes) {
+                preg_match('/\\b[0-9]{6}\\b/', $body, $matches);
+                $codes[] = $matches[0] ?? null;
+            });
+        $first = $this->postJson('/api/register', [
             ...$base, 'last_name' => 'Castro', 'email' => 'adrian-a@example.com',
-        ])->assertCreated();
-
-        $this->postJson('/api/register', [
+        ])->assertStatus(202);
+        $second = $this->postJson('/api/register', [
             ...$base, 'last_name' => 'Pérez', 'email' => 'adrian-b@example.com',
+        ])->assertStatus(202);
+        $this->postJson('/api/registration/verify', [
+            'email' => 'adrian-a@example.com', 'nonce' => $first->json('nonce'), 'code' => $codes[0],
+        ])->assertCreated();
+        $this->postJson('/api/registration/verify', [
+            'email' => 'adrian-b@example.com', 'nonce' => $second->json('nonce'), 'code' => $codes[1],
         ])->assertCreated();
 
         $one = User::where('email', 'adrian-a@example.com')->firstOrFail();
