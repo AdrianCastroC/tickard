@@ -183,7 +183,7 @@ class ProjectFilesController extends ApiController
         try {
             $entry = DB::transaction(function () use ($project, $request, $file, $path, &$stored) {
                 $workspace = Workspace::whereKey($project->workspace_id)->lockForUpdate()->firstOrFail();
-                ProjectFileStorage::assertRoom($workspace, $file->getSize() ?: 0);
+                ProjectFileStorage::assertRoom($workspace, $file->getSize() ?: 0, $project);
                 $stored = $file->storeAs(dirname($path), basename($path), 'local') !== false;
                 abort_unless($stored, 500, 'No se pudo guardar el archivo.');
                 return ProjectFile::create([
