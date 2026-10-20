@@ -25,6 +25,8 @@ export function Login() {
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [verification, setVerification] = useState<{email: string; nonce: string} | null>(null)
+  const [code, setCode] = useState('')
 
   async function submit(event: FormEvent) {
     event.preventDefault()
@@ -35,15 +37,67 @@ export function Login() {
     }
     setIsSubmitting(true)
     try {
-      const result = await api<{ token: string; user: Profile }>(mode === 'login' ? '/login' : '/register', { method: 'POST', body: JSON.stringify(mode === 'login' ? { email, password } : { first_name: firstName.trim(), last_name: lastName.trim() || null, email, password, password_confirmation: confirmation }) })
-      setToken(result.token)
-      window.location.href = '/'
+      if (mode === 'register') {
+        const pending = await api<{verification_required: boolean; email: string; nonce: string}>('/register', {
+          method: 'POST',
+          body: JSON.stringify({ first_name: firstName.trim(), last_name: lastName.trim() || null, email, password, password_confirmation: confirmation }),
+        })
+        setVerification({ email: pending.email, nonce: pending.nonce })
+        setCode('')
+      } else {
+        const result = await api<{ token: string; user: Profile }>('/login', {
+          method: 'POST', body: JSON.stringify({ email, password }),
+        })
+        setToken(result.token)
+        window.location.href = '/'
+      }
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'No se pudo entrar.')
     } finally {
       setIsSubmitting(false)
     }
   }
+
+  async function confirmEmail(event: FormEvent) {
+    event.preventDefault()
+    if (!verification || isSubmitting) return
+    setError('')
+    setIsSubmitting(true)
+    try {
+      const result = await api<{ token: string; user: Profile }>('/registration/verify', {
+        method: 'POST',
+        body: JSON.stringify({ ...verification, code }),
+      })
+      setToken(result.token)
+      window.location.href = '/'
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'No se pudo verificar el correo.')
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  if (verification) return <main className="auth-screen">
+    <header className="auth-header"><img src="/logo-removebg.png" alt="Tickard" /></header>
+    <section className="auth-layout" style={{display: 'flex', justifyContent: 'center'}}>
+      <form className="auth-card" onSubmit={confirmEmail} aria-busy={isSubmitting}>
+        <div className="auth-heading"><h2>Verifica tu correo</h2>
+          <p>Hemos enviado un código de 6 cifras a <strong>{verification.email}</strong>. Caduca en 15 minutos.</p>
+        </div>
+        <label className="auth-field"><span>Código de verificación</span>
+          <input value={code} onChange={event => setCode(event.target.value.replace(/\\D/g, '').slice(0, 6))}
+            inputMode="numeric" autoComplete="one-time-code" maxLength={6} required pattern="[0-9]{6}" placeholder="000000" />
+        </label>
+        {error && <p className="error auth-error" role="alert">{error}</p>}
+        <button className="auth-submit" type="submit" disabled={isSubmitting || code.length !== 6}>
+          {isSubmitting ? 'Verificando…' : 'Verificar y entrar'}
+        </button>
+        <button className="ghost" type="button" onClick={() => { setVerification(null); setCode(''); setError('') }}>
+          Volver al registro
+        </button>
+      </form>
+    </section>
+  </main>
 
   return <main className="auth-screen">
     <header className="auth-header"><img src="/logo-removebg.png" alt="tickard" /><span className="auth-language">◎ &nbsp; Español &nbsp;⌄</span></header>
