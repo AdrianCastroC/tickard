@@ -16,6 +16,8 @@ export function Invite({ token, kind = 'project' }: Props) {
   const [confirmation, setConfirmation] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  const [verification, setVerification] = useState<{email: string; nonce: string} | null>(null)
+  const [verificationCode, setVerificationCode] = useState('')
   const path = kind === 'workspace' ? `/workspace-invitations/${token}` : `/invitations/${token}`
 
   useEffect(() => {
@@ -55,16 +57,33 @@ export function Invite({ token, kind = 'project' }: Props) {
     setBusy(true)
     setError('')
     try {
+      if (verification) {
+        const result = await api<{ token: string; user: Profile }>('/registration/verify', {
+          method: 'POST', body: JSON.stringify({ ...verification, code: verificationCode }),
+        })
+        setToken(result.token)
+        setAuthed(true)
+        setAccount(result.user.user.email)
+        setVerification(null)
+        await accept()
+        return
+      }
       if (!authed) {
         if (mode === 'register' && password !== confirmation) {
           setError('Las contraseñas no coinciden.')
           return
         }
-        const result = await api<{ token: string; user: Profile }>(mode === 'register' ? '/register' : '/login', {
-          method:'POST',
-          body:JSON.stringify(mode === 'register'
-            ? { first_name: firstName.trim(), last_name: lastName.trim() || null, email, password, password_confirmation: confirmation }
-            : { email, password }),
+        if (mode === 'register') {
+          const pending = await api<{email: string; nonce: string}>('/register', {
+            method: 'POST',
+            body: JSON.stringify({ first_name: firstName.trim(), last_name: lastName.trim() || null, email, password, password_confirmation: confirmation }),
+          })
+          setVerification({ email: pending.email, nonce: pending.nonce })
+          setVerificationCode('')
+          return
+        }
+        const result = await api<{ token: string; user: Profile }>('/login', {
+          method: 'POST', body: JSON.stringify({ email, password }),
         })
         setToken(result.token)
         setAuthed(true)
@@ -90,6 +109,15 @@ export function Invite({ token, kind = 'project' }: Props) {
             : 'Comprobando invitación…'}</p>
         </div>
         {info && <>
+          {verification ? <>
+            <p>Comprueba el correo <strong>{verification.email}</strong> y escribe el código de seis cifras.</p>
+            <label className="auth-field"><span>Código</span>
+              <input value={verificationCode} onChange={event => setVerificationCode(event.target.value.replace(/\D/g, '').slice(0, 6))}
+                inputMode="numeric" autoComplete="one-time-code" maxLength={6} pattern="[0-9]{6}" required />
+            </label>
+            <button className="auth-submit" type="submit" disabled={busy || verificationCode.length !== 6}>Verificar correo y aceptar invitación</button>
+            <button className="ghost" type="button" onClick={() => setVerification(null)}>Volver</button>
+          </> : <>
           {info.email && <p style={{ fontSize:12, color:'var(--muted)' }}>Invitación para: <strong>{info.email}</strong></p>}
           {authed ? <>
             <p>Sesión iniciada {account && <>como <strong>{account}</strong></>}</p>
@@ -112,6 +140,7 @@ export function Invite({ token, kind = 'project' }: Props) {
             {mode === 'register' && <label className="auth-field"><span>Repetir contraseña</span><input type="password" required minLength={10} value={confirmation} onChange={event => setConfirmation(event.target.value)} placeholder="Repetir contraseña"/></label>}
             {mode === 'register' && <p style={{fontSize:12, color:'var(--muted)'}}>La contraseña debe incluir mayúsculas, minúsculas, números y símbolos.</p>}
             <button className="auth-submit" type="submit" disabled={busy}>{busy ? 'Procesando…' : 'Acceder y aceptar invitación →'}</button>
+          </>}
           </>}
         </>}
         {error && <p className="error" role="alert">{error}</p>}
