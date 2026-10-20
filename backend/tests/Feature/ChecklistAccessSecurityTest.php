@@ -61,4 +61,28 @@ class ChecklistAccessSecurityTest extends TestCase
         ])->assertForbidden();
         $this->assertDatabaseHas('card_checklist_items', ['id' => $item->id, 'body' => 'Pendiente']);
     }
+
+    public function test_empty_card_patch_cannot_trigger_side_effects_without_access(): void
+    {
+        $owner = User::factory()->create(['is_admin' => false]);
+        $outsider = User::factory()->create(['is_admin' => false]);
+        $workspace = Workspace::createInitialFor($owner);
+        $project = Project::create(['workspace_id' => $workspace->id, 'name' => 'Privado']);
+        $board = Board::create(['project_id' => $project->id, 'name' => 'Tablero']);
+        $board->createDefaultColumns();
+        $card = Card::create([
+            'board_id' => $board->id,
+            'column_id' => $board->columns()->firstOrFail()->id,
+            'title' => 'Original',
+        ]);
+
+        $this->actingAs($outsider)->patchJson("/api/cards/{$card->id}", [])
+            ->assertForbidden();
+        $this->assertDatabaseHas('cards', ['id' => $card->id, 'title' => 'Original']);
+        $this->actingAs($owner)->patchJson("/api/cards/{$card->id}", [])
+            ->assertUnprocessable();
+        $this->patchJson("/api/cards/{$card->id}", ['title' => 'Actualizada'])
+            ->assertNoContent();
+        $this->assertDatabaseHas('cards', ['id' => $card->id, 'title' => 'Actualizada']);
+    }
 }
