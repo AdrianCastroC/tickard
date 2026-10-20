@@ -25,7 +25,10 @@ class ProjectAccess
             return null;
         }
         if ($user->is_admin) {
-            return 'responsable';
+            // Account-level administration does not turn a client account into
+            // an internal member of a customer's Workspace.
+            return WorkspaceClientAccess::isClient($user, $project->workspace)
+                ? null : 'responsable';
         }
 
         $member = $user->memberships()->where('project_id', $project->id)->first();
