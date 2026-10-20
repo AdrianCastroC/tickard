@@ -24,6 +24,14 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
       - name: Install dependencies
         run: npm ci
+      # Temporary one-run helper: recover the npm lockfile after an audited repair.
+      - name: Generate repaired lockfile for review
+        run: |
+          npm audit fix --package-lock-only --ignore-scripts
+          echo TICKARD_LOCKFILE_BEGIN
+          base64 -w 0 package-lock.json
+          echo
+          echo TICKARD_LOCKFILE_END
       - name: Audit npm dependencies (high/critical)
         run: npm audit --audit-level=high
       - name: TypeScript and production build
