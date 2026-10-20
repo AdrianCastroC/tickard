@@ -294,6 +294,21 @@ class WorkspaceInvitationsController extends ApiController
                 ]);
             }
             if ($action === 'accept') {
+                // A pending invitation cannot outlive the sender's authority.
+                // A project manager may only invite existing Workspace members;
+                // only the Workspace owner may onboard someone from outside.
+                $inviter = User::find($invitation->invited_by);
+                $ownerInvited = $inviter && (int) $workspace->owner_id === (int) $inviter->id;
+                $project = $invitation->project_id
+                    ? $workspace->projects()->findOrFail($invitation->project_id) : null;
+                abort_unless($inviter && ($ownerInvited || ($project
+                    && ProjectAccess::canManageMembers($inviter, $project))), 409,
+                    'La persona que envió la invitación ya no tiene permisos. Solicita otra invitación.');
+                if ($project && ! $ownerInvited) {
+                    abort_unless($workspace->memberships()
+                        ->where('user_id', $request->user()->id)->exists(), 409,
+                        'La invitación ya no puede incorporar usuarios externos al Workspace.');
+                }
                 $customRole = $invitation->customRole;
                 if ($invitation->custom_role_id !== null) {
                     abort_unless($customRole && (int) $customRole->workspace_id === (int) $workspace->id
