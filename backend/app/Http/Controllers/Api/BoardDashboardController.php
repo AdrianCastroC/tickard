@@ -18,7 +18,7 @@ class BoardDashboardController extends ApiController
     {
         $project = $board->project;
         $role = ProjectAccess::role($request->user(), $project);
-        abort_unless($role !== null, 403);
+        abort_unless(ProjectAccess::canView($request->user(), $project), 403);
         $client = $role === 'cliente';
         $today = now()->toDateString();
 
@@ -51,7 +51,9 @@ class BoardDashboardController extends ApiController
         // positions and colors, not only those with active Cards.
         $columns = $board->columns()->orderBy('position')->get([
             'id', 'name', 'workflow_state', 'color', 'position',
-        ])->map(fn ($column) => [
+        ])->filter(fn ($column) => ! $client
+            || (int) ($columnCounts->get($column->id)?->total ?? 0) > 0
+        )->map(fn ($column) => [
             'id' => $column->id,
             'name' => $column->name,
             'workflow_state' => $column->workflow_state,

@@ -390,7 +390,7 @@ class ProjectsController extends ApiController
             $project
         );
 
-        abort_unless($role, 403);
+        abort_unless(ProjectAccess::canView($request->user(), $project), 403);
 
         // Project Gantt only needs scheduling fields. Avoid hydrating comments,
         // reactions, activities and full checklist payloads on every board.
@@ -437,7 +437,11 @@ class ProjectsController extends ApiController
                 ->orderBy('position'),
         ]);
 
-        $columns = $board->columns->map(
+        $columns = $board->columns
+            ->filter(fn (Column $column) => $role !== 'cliente' || $column->cards->contains(
+                fn (Card $card) => ! $card->is_internal
+            ))
+            ->map(
             function (Column $column) use ($request, $project, $role, $compactGantt, $compactCalendar) {
                 $cards = $column->cards
                     ->filter(
@@ -461,7 +465,7 @@ class ProjectsController extends ApiController
                     'cards' => $cards,
                 ];
             }
-        );
+        )->values();
 
         return [
             'revision' => $board->revision,
