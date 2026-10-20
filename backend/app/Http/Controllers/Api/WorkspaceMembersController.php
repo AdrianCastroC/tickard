@@ -92,6 +92,7 @@ class WorkspaceMembersController extends ApiController
     public function updateJobTitle(Request $request, Workspace $workspace, User $user)
     {
         $this->authorizeViewer($request, $workspace);
+        abort_unless(WorkspacePersonnelGuard::canManage($request, $workspace, 'workspace.members'), 403);
         $data = $request->validate([
             'job_title' => ['nullable', 'string', 'max:120'],
         ]);
