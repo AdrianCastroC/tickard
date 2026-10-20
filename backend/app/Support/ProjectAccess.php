@@ -17,6 +17,11 @@ class ProjectAccess
             return 'responsable';
         }
 
+        // A stale project membership must not survive revocation at Workspace level.
+        if (! $project->workspace->memberships()->where('user_id', $user->id)->exists()) {
+            return null;
+        }
+
         $member = $user->memberships()->where('project_id', $project->id)->first();
         $role = $member?->role;
         if ($role === null) {
