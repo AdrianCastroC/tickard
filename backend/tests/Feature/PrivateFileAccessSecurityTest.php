@@ -46,11 +46,15 @@ class PrivateFileAccessSecurityTest extends TestCase
             'mime_type' => 'text/plain', 'size' => 11,
         ]);
 
-        foreach ([
+        $urls = [
             "/api/project-files/{$general->id}/content",
             "/api/attachments/{$attachment->id}/content",
-        ] as $url) {
+        ];
+        foreach ($urls as $url) {
             $this->get($url, ['Accept' => 'application/json'])->assertUnauthorized();
+        }
+
+        foreach ($urls as $url) {
             $this->actingAs($outsider)->get($url, ['Accept' => 'application/json'])
                 ->assertForbidden();
             $response = $this->actingAs($owner)->get($url)->assertOk()
