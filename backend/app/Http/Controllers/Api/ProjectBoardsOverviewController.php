@@ -13,7 +13,7 @@ class ProjectBoardsOverviewController extends ApiController
     public function index(Request $request, Project $project)
     {
         $role = ProjectAccess::role($request->user(), $project);
-        abort_unless($role !== null, 403);
+        abort_unless(ProjectAccess::canView($request->user(), $project), 403);
         $client = $role === 'cliente';
 
         // Keep the overview light: aggregate in SQL instead of hydrating Cards,
@@ -67,7 +67,7 @@ class ProjectBoardsOverviewController extends ApiController
         return response()->json([
             'can_manage' => ProjectAccess::canManageBoards($request->user(), $project),
             'boards' => $project->boards()->get(['id', 'name', 'position', 'updated_at'])
-                ->map(function ($board) use ($columns, $columnCounts, $totals, $assignmentRows, $users) {
+                ->map(function ($board) use ($columns, $columnCounts, $totals, $assignmentRows, $users, $client) {
                     $stats = $totals->get($board->id);
                     $assigned = $assignmentRows->get($board->id, collect())
                         ->pluck('user_id')->unique()->filter(fn ($id) => $users->has($id))->values();
@@ -91,7 +91,10 @@ class ProjectBoardsOverviewController extends ApiController
                             $user = $users->get($id);
                             return ['id' => $user->id, 'name' => $user->name, 'avatar_url' => $user->avatarUrl()];
                         })->values(),
-                        'columns' => $columns->get($board->id, collect())->map(fn ($column) => [
+                        'columns' => $columns->get($board->id, collect())
+                            ->filter(fn ($column) => ! $client
+                                || (int) ($columnCounts->get($board->id.':'.$column->id)?->task_count ?? 0) > 0)
+                            ->map(fn ($column) => [
                             'id' => $column->id,
                             'name' => $column->name,
                             'color' => $column->color,
