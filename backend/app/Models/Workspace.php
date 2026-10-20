@@ -16,6 +16,7 @@ class Workspace extends Model
         'website_url',
         'contact_email',
         'image_path',
+        'accent_color',
         'owner_id',
         'extra_seats',
         'show_birthdays',
