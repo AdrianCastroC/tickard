@@ -86,7 +86,14 @@ export function AccountStorageSection() {
                   step={1} value={allocation === null ? automaticMb : allocation}
                   disabled={busy || allocation === null}
                   onChange={event => setAllocations(old => ({...old, [w.id]: Number(event.target.value)}))}/>
-                <strong className="account-storage-value">{formatBytes((allocation === null ? automaticMb : allocation) * 1024**2)}</strong>
+                <label className="account-storage-number">MB
+                  <input type="number" aria-label={'Cuota numérica de '+w.name}
+                    min={Math.ceil(w.used_bytes / 1024**2)}
+                    max={Math.max(Math.ceil(w.used_bytes / 1024**2), totalMb - (reserved - (allocation ?? 0)))}
+                    step={1} value={allocation === null ? automaticMb : allocation}
+                    disabled={busy || allocation === null}
+                    onChange={event => setAllocations(old => ({...old,[w.id]:Number(event.target.value)}))}/>
+                </label>
               </div>
               {allocation === null && <small className={styles.settingsHint}>Cuota calculada automáticamente. Desactívalo para ajustarla con el slider.</small>}
             </div>}
