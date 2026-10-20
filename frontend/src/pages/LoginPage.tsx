@@ -85,7 +85,7 @@ export function Login() {
           <p>Hemos enviado un código de 6 cifras a <strong>{verification.email}</strong>. Caduca en 15 minutos.</p>
         </div>
         <label className="auth-field"><span>Código de verificación</span>
-          <input value={code} onChange={event => setCode(event.target.value.replace(/\\D/g, '').slice(0, 6))}
+          <input value={code} onChange={event => setCode(event.target.value.replace(/\D/g, '').slice(0, 6))}
             inputMode="numeric" autoComplete="one-time-code" maxLength={6} required pattern="[0-9]{6}" placeholder="000000" />
         </label>
         {error && <p className="error auth-error" role="alert">{error}</p>}
