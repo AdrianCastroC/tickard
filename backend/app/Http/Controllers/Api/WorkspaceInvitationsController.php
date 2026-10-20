@@ -253,6 +253,9 @@ class WorkspaceInvitationsController extends ApiController
             $invitation = WorkspaceInvitation::whereKey($invitation->id)->lockForUpdate()->firstOrFail();
             abort_unless($invitation->status === 'pending' && ! $invitation->revoked_at, 409,
                 'Esta invitación ya se ha respondido o cancelado.');
+            if ($action === 'accept') {
+                abort_if($invitation->expires_at?->isPast(), 409, 'La invitación ha caducado.');
+            }
             if ($invitation->client_company_name !== null) {
                 $name = trim($invitation->client_company_name);
                 abort_unless($workspace->show_clients, 422, 'Este Workspace ya no admite clientes.');
