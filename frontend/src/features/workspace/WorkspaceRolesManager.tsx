@@ -76,8 +76,8 @@ export function WorkspaceRolesManager({ workspaceId }: { workspaceId: number }) 
         : `/workspaces/${workspaceId}/roles/${selected}`
       const updated = await api<Role>(url, { method: selected === 'new' ? 'POST' : 'PATCH',
         body: JSON.stringify({ ...(selected === 'new' ? { scope } : {}), name: name.trim(), description: description.trim(), permissions, enabled }) })
-      setData(old => old && ({ ...old, roles: [...old.roles.filter(role => role.id !== updated.id), updated].sort((a,b) => a.name.localeCompare(b.name)) }))
-      setSelected(null); setNotice('Rol guardado.')
+      setData(old => old && ({ ...old, roles: [...old.roles.filter(role => role.id !== updated.id), {...old.roles.find(role=>role.id===updated.id),...updated}].sort((a,b) => a.name.localeCompare(b.name)) }))
+      setSelected(updated.id); setNotice('Rol guardado.')
     } catch (e) { setError(e instanceof Error ? e.message : 'No se pudo guardar el rol.') }
     finally { setBusy(false) }
   }
@@ -133,8 +133,8 @@ export function WorkspaceRolesManager({ workspaceId }: { workspaceId: number }) 
       <strong>Roles personalizados</strong>
       {data.can_manage && <button type="button" className="ghost" onClick={() => edit()}>+ Crear rol</button>}
     </div>
-    {data.roles.map(role => <div className="tickard-role-item" key={role.id}>
-      <div><strong>{role.name}</strong><small>{role.scope === 'both' ? 'Workspace y Proyecto' : role.scope === 'workspace' ? 'Workspace' : 'Proyecto'} · {role.enabled ? 'Activo' : 'Inactivo'} · {role.description || role.permissions.length + ' permisos'}</small></div>
+    {data.roles.map(role => <div className={`tickard-role-item${selected === role.id ? ' is-selected' : ''}`} key={role.id}>
+      <div><strong>{role.name}</strong><small>{role.scope === 'both' ? 'Workspace y Proyecto' : role.scope === 'workspace' ? 'Workspace' : 'Proyecto'} · {role.enabled ? 'Activo' : 'Inactivo'} · {role.member_count ?? 0} miembros · {role.description || role.permissions.length + ' permisos'}</small></div>
       {data.can_manage && <div className="tickard-role-actions">
         <button type="button" className="ghost" onClick={() => edit(role)}>Editar</button>
         <button type="button" className="ghost" disabled={busy} onClick={() => void remove(role)}>Eliminar</button>
@@ -146,8 +146,8 @@ export function WorkspaceRolesManager({ workspaceId }: { workspaceId: number }) 
       {selectedBuiltin && (() => {
         const builtin = data.builtin_roles.find(item => item.key === selectedBuiltin)
         if (!builtin) return null
-        const allPermissions = [...data.permissions.workspace, ...data.permissions.project]
-        const granted = selectedBuiltin === builtin.key && builtinDraft.length ? builtinDraft : builtin.permissions
+        const allPermissions = data.permissions[builtin.scope]
+        const granted = builtinDraft.length ? builtinDraft : builtin.permissions
         const requiredPermission = builtin.scope === 'workspace' ? 'workspace.view' : 'project.view'
         const canEditBuiltin = data.can_manage && !builtin.locked
         return <section className="tickard-roles-builtin-detail">
@@ -202,6 +202,18 @@ export function WorkspaceRolesManager({ workspaceId }: { workspaceId: number }) 
         </select>
       </label>
       <label className="tickard-role-availability"><span>Rol activo</span><input type="checkbox" checked={enabled} disabled={busy} onChange={event=>setEnabled(event.target.checked)}/></label>
+      {selected !== 'new' && <div className="tickard-roles-detail-tabs"><div className="tickard-role-actions">
+        <button type="button" className="ghost" aria-pressed={detailTab==='permissions'} onClick={()=>setDetailTab('permissions')}>Permisos</button>
+        <button type="button" className="ghost" aria-pressed={detailTab==='members'} onClick={()=>setDetailTab('members')}>Miembros ({data.roles.find(role=>role.id===selected)?.member_count ?? 0})</button>
+        <button type="button" className="ghost" aria-pressed={detailTab==='scope'} onClick={()=>setDetailTab('scope')}>Ámbitos</button>
+      </div></div>}
+      {detailTab==='members' && selected !== 'new' && <div className="tickard-roles-members">
+        {(data.roles.find(role=>role.id===selected)?.members ?? []).length
+          ? data.roles.find(role=>role.id===selected)?.members?.map(person=><p key={person.id}>{person.name}</p>)
+          : <p className="workspace-overview-hint">Este rol no tiene miembros asignados.</p>}
+      </div>}
+      {detailTab==='scope' && selected !== 'new' && <p className="workspace-overview-hint">Ámbito: {scope==='both'?'Workspace y Proyecto':scope==='workspace'?'Workspace':'Proyecto'}. Se asigna desde las vistas de personal correspondientes.</p>}
+      {detailTab==='permissions' && <>
       <strong>Permisos por categoría</strong>
       <div className="tickard-roles-category-grid">
         {GROUPS.map(item => {
@@ -219,6 +231,7 @@ export function WorkspaceRolesManager({ workspaceId }: { workspaceId: number }) 
           </section>
         })}
       </div>
+      </>}
       <div className="tickard-role-actions"><button type="button" className="ghost" onClick={() => setSelected(null)} disabled={busy}>Cancelar</button>
         <button type="submit" className="primary" disabled={busy || !name.trim()}>{busy ? 'Guardando…' : 'Guardar rol'}</button></div>
     </form>}
