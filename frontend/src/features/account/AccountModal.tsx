@@ -1,6 +1,6 @@
 import { useEffect, useEffectEvent, useState } from 'react'
 import { api, setToken, type Profile } from '../../api'
-import { BellIcon, CloseIcon, LogoutIcon, ProfileUserIcon, SettingsIcon } from '../../shared/icons'
+import { BellIcon, CloseIcon, LogoutIcon, ProfileUserIcon, SettingsIcon, StorageIcon } from '../../shared/icons'
 import styles from './AccountModal.module.css'
 import { NotificationsSection } from './NotificationsSection'
 import { ProfileSection } from './ProfileSection'
@@ -40,7 +40,7 @@ export function AccountModal({ section, profile, notes, workspaceId, onSection, 
     <div className={styles.nav}>
       <button type="button" className={section === 'profile' ? styles.active : undefined} onClick={() => onSection('profile')}><ProfileUserIcon /> Mi perfil</button>
       <button type="button" className={section === 'settings' ? styles.active : undefined} onClick={() => onSection('settings')}><SettingsIcon /> Configuración</button>
-      <button type="button" className={section === 'storage' ? styles.active : undefined} onClick={() => onSection('storage')}><SettingsIcon /> Almacenamiento</button>
+      <button type="button" className={section === 'storage' ? styles.active : undefined} onClick={() => onSection('storage')}><StorageIcon /> Almacenamiento</button>
       <button type="button" className={section === 'notifications' ? styles.active : undefined} onClick={() => onSection('notifications')}><BellIcon /> Notificaciones {profile.unread > 0 && <i className="account-badge">{profile.unread}</i>}</button>
       <div className={styles.navLogout}>
         {logoutError && <p role="alert">{logoutError}</p>}
