@@ -180,6 +180,10 @@ class WorkspaceInvitationsController extends ApiController
             if (! $user) { $errors[] = ['value' => $value, 'reason' => 'Usuario no encontrado']; continue; }
             if (isset($seen[$user->id])) continue;
             $seen[$user->id] = true;
+            if ($user->email_verified_at === null) {
+                $errors[] = ['value' => $value, 'reason' => 'Este usuario debe verificar su correo antes de recibir invitaciones'];
+                continue;
+            }
             if (WorkspaceClientAccess::isClient($user, $workspace)) {
                 $errors[] = ['value' => $value, 'reason' => 'Las cuentas de cliente requieren otro tipo de acceso'];
                 continue;
