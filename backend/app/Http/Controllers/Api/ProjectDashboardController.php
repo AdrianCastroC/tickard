@@ -13,7 +13,7 @@ class ProjectDashboardController extends ApiController
     public function index(Request $request, Project $project)
     {
         $role = ProjectAccess::role($request->user(), $project);
-        abort_unless($role !== null, 403);
+        abort_unless(ProjectAccess::canView($request->user(), $project), 403);
         $client = $role === 'cliente';
         $today = now()->toDateString();
 
