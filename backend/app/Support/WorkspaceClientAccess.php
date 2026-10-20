@@ -25,6 +25,12 @@ class WorkspaceClientAccess
 
     public static function isClient(User $user, Workspace $workspace): bool
     {
+        // An orphaned client membership must never become an internal member
+        // simply because its company link was cleared or deleted.
+        $membership = WorkspaceMember::where('workspace_id', $workspace->id)
+            ->where('user_id', $user->id)->first();
+        if ($membership?->role === 'client') return true;
+
         return self::companyId($user, $workspace) !== null;
     }
 }
