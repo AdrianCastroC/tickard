@@ -250,7 +250,7 @@ public function storeAttachment(Request $request, Card $card)
         try {
             $attachment = DB::transaction(function () use ($request, $card, $project, $file, $path, &$stored) {
                 $workspace = \App\Models\Workspace::whereKey($project->workspace_id)->lockForUpdate()->firstOrFail();
-                ProjectFileStorage::assertRoom($workspace, $file->getSize() ?: 0);
+                ProjectFileStorage::assertRoom($workspace, $file->getSize() ?: 0, $project);
                 $stored = $file->storeAs(dirname($path), basename($path), 'local') !== false;
                 abort_unless($stored, 500, 'No se pudo guardar el adjunto.');
                 $attachment = $card->attachments()->create([
