@@ -37,7 +37,7 @@ class AccountStorageController extends Controller
         $member = $workspace->memberships()->where('user_id', $request->user()->id)->exists();
         abort_unless($member && \App\Support\WorkspacePersonnelGuard::canConfigure($request, $workspace), 403);
 
-        $projects = $workspace->projects()->orderBy('name')->get(['id', 'name']);
+        $projects = $workspace->projects()->orderBy('name')->get(['id', 'name', 'storage_allocation_mb']);
         $counts = DB::table('project_files')
             ->whereIn('project_id', $projects->pluck('id'))
             ->selectRaw('project_id, SUM(size) as bytes')->groupBy('project_id')->pluck('bytes', 'project_id');
