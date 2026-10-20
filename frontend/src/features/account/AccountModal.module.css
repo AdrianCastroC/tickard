@@ -368,3 +368,15 @@
 .birthdayShare small { color:var(--muted); font-size:10px; line-height:1.4; }
 .birthdayShare input { flex:0 0 16px; height:16px; width:16px; accent-color:var(--accent); }
 .birthdayShare input:disabled { opacity:.5; cursor:not-allowed; }
+
+/* Storage quota controls: single slider per Workspace, with explicit auto mode. */
+:global(.account-storage-allocation) { display:flex; flex-direction:column; gap:10px; margin-top:10px; }
+:global(.account-storage-mode) { display:flex; align-items:center; justify-content:space-between; gap:12px; color:var(--ink); font-size:12px; cursor:pointer; }
+:global(.account-storage-mode input) { accent-color:var(--accent); width:16px; height:16px; cursor:pointer; }
+:global(.account-storage-range-row) { display:flex; align-items:center; gap:16px; min-width:0; }
+:global(.account-storage-range-row input[type="range"]) {
+  flex:1 1 auto; min-width:0; width:100%; accent-color:var(--accent);
+  cursor:pointer; height:22px;
+}
+:global(.account-storage-range-row input[type="range"]:disabled) { opacity:.48; cursor:default; }
+:global(.account-storage-value) { flex:0 0 74px; text-align:right; font-size:13px; font-variant-numeric:tabular-nums; color:var(--ink); }
