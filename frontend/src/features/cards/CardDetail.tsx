@@ -11,6 +11,7 @@ import { FilesPanel } from './files/FilesPanel'
 import { CommentsPanel } from './comments/CommentsPanel'
 import { ChecklistPanel } from './checklist/ChecklistPanel'
 import { MilestoneDependencyList } from './MilestoneDependencyList'
+import { CardDependencyList } from './CardDependencyList'
 import { SortableModuleShell } from './modules/SortableModuleShell'
 import { DateTimePicker, formatStartedAt } from './DateTimePicker'
 
@@ -342,9 +343,14 @@ export function CardDrawer({ card, mode, board, currentUser, canEdit, canMove, c
                 <div className="card-modules">
                   {card.is_milestone && card.dependencies && (
                     <MilestoneDependencyList
-                      predecessors={card.dependencies?.predecessors ?? []}
+                      predecessors={card.dependencies.predecessors ?? []}
                       onOpenCard={onOpenRelatedCard}
                     />
+                  )}
+                  {card.dependencies && (
+                    <CardDependencyList dependencies={card.is_milestone
+                      ? { predecessors: [], successors: card.dependencies.successors ?? [] }
+                      : card.dependencies} onOpenCard={onOpenRelatedCard} />
                   )}
                   {visibleModules.map((module) => (
                     <SortableModuleShell key={module.id} id={module.id} disabled={!editingContent}>
