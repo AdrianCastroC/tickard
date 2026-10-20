@@ -10,7 +10,7 @@ const planNames: Record<string, string> = {
   free: 'Free', base: 'Base', pro: 'Pro', business: 'Business',
 }
 
-export function AccountFooter({ profile, mini }: { profile: Profile; mini: boolean }) {
+export function AccountFooter({ profile, mini, placement = 'sidebar' }: { profile: Profile; mini: boolean; placement?: 'sidebar' | 'header' }) {
   const [open, setOpen] = useState(false)
   const [signingOut, setSigningOut] = useState(false)
   const [error, setError] = useState('')
@@ -32,7 +32,7 @@ export function AccountFooter({ profile, mini }: { profile: Profile; mini: boole
       // Bottom-anchored and rendered in document.body, so the sidebar's
       // overflow:hidden cannot clip it, including in collapsed mode.
       const left = Math.min(Math.max(margin, rect.left), window.innerWidth - menuWidth - margin)
-      const bottom = Math.max(margin, window.innerHeight - rect.top + 7)
+      const bottom = placement === 'header' ? Math.max(margin, window.innerHeight - rect.bottom - popup.offsetHeight - 7) : Math.max(margin, window.innerHeight - rect.top + 7)
       setPosition(current => current?.left === left && current?.bottom === bottom
         ? current : { left, bottom })
     }
@@ -43,7 +43,7 @@ export function AccountFooter({ profile, mini }: { profile: Profile; mini: boole
       window.removeEventListener('resize', place)
       window.removeEventListener('scroll', place, true)
     }
-  }, [open, mini])
+  }, [open, mini, placement])
 
   useEffect(() => {
     if (!open) return
@@ -84,8 +84,8 @@ export function AccountFooter({ profile, mini }: { profile: Profile; mini: boole
     }
   }
 
-  return <div className={styles.wrapper}>
-    <button ref={trigger} type="button" className={`account-footer ${styles.trigger}`}
+  return <div className={`${styles.wrapper}${placement === 'header' ? ` ${styles.headerPlacement}` : ''}`}>
+    <button ref={trigger} type="button" className={`${placement === 'header' ? styles.headerTrigger : 'account-footer'} ${styles.trigger}`}
       title={`Mi cuenta · ${plan}`} aria-label={`Mi cuenta · ${plan}`}
       aria-haspopup="menu" aria-expanded={open}
       onClick={() => setOpen(value => !value)}>
