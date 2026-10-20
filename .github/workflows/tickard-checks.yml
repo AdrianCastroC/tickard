@@ -30,7 +30,7 @@ jobs:
         run: npm run lint
 
   backend:
-    name: Laravel personnel and calendar feature tests
+    name: Laravel full test suite
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -48,5 +48,5 @@ jobs:
         run: |
           cp .env.example .env
           php artisan key:generate
-      - name: Test calendar and personnel permissions
-        run: php artisan test --filter='CalendarEventsTest|ProjectCalendarAssignmentsTest|ProjectPersonnelTest|ProjectBoardsOverviewTest|ProjectDashboardTest|WorkspaceInvitationsTest|RegistrationTest|MyTasksTest|NotificationsInboxTest|GlobalHomeTest|UserIdentityTest|AccountSecurityTest|WorkspaceDepartmentsTest|WorkspaceBirthdayTest|WorkspaceTeamsClientsTest|OptionalClientAccessTest|ClientCompanyInvitationTest|EntityAppearanceRosterTest|WorkspaceMembersTest|WorkspaceTest|WorkspaceCustomRolesTest|WorkspaceOwnerProjectAccessTest'
+      - name: Run all Laravel tests
+        run: php artisan test
