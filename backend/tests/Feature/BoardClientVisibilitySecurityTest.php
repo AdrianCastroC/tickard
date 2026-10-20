@@ -49,11 +49,11 @@ class BoardClientVisibilitySecurityTest extends TestCase
         $public->update(['name' => 'Entregas cliente']);
         Card::create([
             'board_id' => $board->id, 'column_id' => $private->id,
-            'title' => 'Información privada', 'is_internal' => true, 'creator_id' => $owner->id,
+            'title' => 'Información privada', 'is_internal' => true, 'created_by' => $owner->id,
         ]);
         Card::create([
             'board_id' => $board->id, 'column_id' => $public->id,
-            'title' => 'Entrega pública', 'is_internal' => false, 'creator_id' => $owner->id,
+            'title' => 'Entrega pública', 'is_internal' => false, 'created_by' => $owner->id,
         ]);
 
         $this->actingAs($client)->getJson("/api/boards/{$board->id}/dashboard")
