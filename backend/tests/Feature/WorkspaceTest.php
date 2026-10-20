@@ -435,4 +435,20 @@ class WorkspaceTest extends TestCase
                 "/storage/workspace-entities/{$workspace->id}/projects/nebula-mobile.png");
     }
 
+    public function test_workspace_personalization_is_owner_scoped_and_validated(): void
+    {
+        $owner = \App\Models\User::factory()->create(['is_admin' => false]);
+        $outsider = \App\Models\User::factory()->create(['is_admin' => false]);
+        $workspace = \App\Models\Workspace::create(['name' => 'Marca', 'owner_id' => $owner->id]);
+        $workspace->memberships()->create(['user_id' => $owner->id, 'role' => 'owner']);
+        $url = "/api/workspaces/{$workspace->id}/personalization";
+
+        $this->actingAs($outsider)->patchJson($url, ['accent_color' => '#0e7490'])->assertForbidden();
+        $this->actingAs($owner)->patchJson($url, ['accent_color' => '#123456'])->assertUnprocessable();
+        $this->patchJson($url, ['accent_color' => '#6d28d9'])
+            ->assertOk()->assertJsonPath('accent_color', '#6d28d9');
+        $this->getJson("/api/workspaces/{$workspace->id}/overview")
+            ->assertOk()->assertJsonPath('accent_color', '#6d28d9');
+    }
+
 }
