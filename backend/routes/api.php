@@ -24,6 +24,7 @@ use App\Http\Controllers\Api\BoardDashboardController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\WorkspacesController;
 use App\Http\Controllers\Api\WorkspaceRolesController;
+use App\Http\Controllers\Api\WorkspaceSecurityController;
 use App\Http\Controllers\Api\MyTasksController;
 use App\Http\Controllers\Api\GlobalHomeController;
 use App\Http\Controllers\Api\NotificationsController;
@@ -64,6 +65,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/notifications/read', [NotificationsController::class, 'readAll']);
     Route::post('/notifications/{notification}/read', [NotificationsController::class, 'read']);
 
+    Route::get('/workspaces/{workspace}/security', [WorkspaceSecurityController::class, 'index']);
     Route::get('/workspaces/{workspace}/roles', [WorkspaceRolesController::class, 'index']);
     Route::patch('/workspaces/{workspace}/roles/builtin/{key}', [WorkspaceRolesController::class, 'setBuiltin']);
     Route::post('/workspaces/{workspace}/roles', [WorkspaceRolesController::class, 'store']);
