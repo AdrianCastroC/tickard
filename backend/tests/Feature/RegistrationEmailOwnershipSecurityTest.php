@@ -76,9 +76,13 @@ class RegistrationEmailOwnershipSecurityTest extends TestCase
         ])->assertCreated();
         $this->assertNotNull($user->fresh()->email_verified_at);
         $this->assertDatabaseCount('personal_access_tokens', 1);
+        // The HTTP test harness reuses the same auth guard between simulated
+        // requests; independent browser requests do not share that cached user.
+        $this->app['auth']->forgetGuards();
         $this->withToken($verified->json('token'))->getJson('/api/me')->assertOk();
 
         // The account's former session must never survive mailbox reclamation.
+        $this->app['auth']->forgetGuards();
         $this->withToken($token)->getJson('/api/me')->assertUnauthorized();
     }
 
