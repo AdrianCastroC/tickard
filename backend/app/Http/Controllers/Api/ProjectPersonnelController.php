@@ -8,6 +8,7 @@ use App\Models\Project;
 use App\Models\ProjectMember;
 use App\Models\Team;
 use App\Models\User;
+use App\Models\Workspace;
 use App\Support\ProjectAccess;
 use App\Support\RoleAvailability;
 use App\Support\WorkspaceClientAccess;
