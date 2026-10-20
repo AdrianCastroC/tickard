@@ -91,6 +91,7 @@ class WorkspacesController extends Controller
             'description' => $workspace->description,
             'website_url' => $workspace->website_url,
             'contact_email' => $workspace->contact_email,
+            'accent_color' => $workspace->accent_color ?: '#147a5f',
             'image_url' => $workspace->image_path ? '/storage/'.$workspace->image_path : null,
             'role' => $membership->role,
             'plan' => $workspace->effectivePlan(),
@@ -320,6 +321,17 @@ class WorkspacesController extends Controller
             'role' => $workspace->memberships()->where('user_id', $user->id)->value('role'),
             'plan' => $workspace->effectivePlan(),
         ]);
+    }
+
+    public function updatePersonalization(Request $request, Workspace $workspace): JsonResponse
+    {
+        abort_unless(WorkspacePersonnelGuard::canConfigure($request, $workspace), 403);
+        $data = $request->validate([
+            'accent_color' => ['required', 'string', 'in:#147a5f,#0e7490,#6d28d9,#b45309,#be185d'],
+        ]);
+        $workspace->update($data);
+
+        return response()->json(['id' => $workspace->id, 'accent_color' => $workspace->accent_color]);
     }
 
     public function uploadImage(Request $request, Workspace $workspace): JsonResponse

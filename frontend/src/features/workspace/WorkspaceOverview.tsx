@@ -34,6 +34,7 @@ type WorkspaceSummary = {
   description: string | null
   website_url: string | null
   contact_email: string | null
+  accent_color: string
   role: WorkspaceRef['role']
   plan: WorkspaceRef['plan']
   can_manage: boolean
@@ -68,7 +69,7 @@ type Props = {
 export function WorkspaceOverview({ profile, workspaceId, onProfileRefresh, onOpenSection, openProjectList = false, onProjectListOpened, onOpenProject, onOpenTask, onOpenTasks, onCreatedProject, onInviteMembers, onCreateClient, onDeleted }: Props) {
   const [summary, setSummary] = useState<WorkspaceSummary | null>(null)
   const [settingsOpen, setSettingsOpen] = useState(false)
-  const [settingsTab, setSettingsTab] = useState<'general' | 'roles' | 'danger'>('general')
+  const [settingsTab, setSettingsTab] = useState<'general' | 'roles' | 'personalization' | 'danger'>('general')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
@@ -78,6 +79,7 @@ export function WorkspaceOverview({ profile, workspaceId, onProfileRefresh, onOp
   const [draftDescription, setDraftDescription] = useState('')
   const [draftWebsite, setDraftWebsite] = useState('')
   const [draftEmail, setDraftEmail] = useState('')
+  const [draftAccent, setDraftAccent] = useState('#147a5f')
   const [removalOpen, setRemovalOpen] = useState(false)
   const [confirmation, setConfirmation] = useState('')
   const [removing, setRemoving] = useState(false)
@@ -108,6 +110,7 @@ export function WorkspaceOverview({ profile, workspaceId, onProfileRefresh, onOp
       setDraftDescription(data.description ?? '')
       setDraftWebsite(data.website_url ?? '')
       setDraftEmail(data.contact_email ?? '')
+      setDraftAccent(data.accent_color ?? '#147a5f')
     }).catch(cause => {
       if (mounted) setError(cause instanceof Error ? cause.message : 'No se pudo cargar el Workspace.')
     }).finally(() => { if (mounted) setLoading(false) })
@@ -126,6 +129,7 @@ export function WorkspaceOverview({ profile, workspaceId, onProfileRefresh, onOp
       setDraftDescription(refreshed.description ?? '')
       setDraftWebsite(refreshed.website_url ?? '')
       setDraftEmail(refreshed.contact_email ?? '')
+      setDraftAccent(refreshed.accent_color ?? '#147a5f')
       await onProfileRefresh()
       setNotice(success)
     } catch (cause) {
@@ -247,7 +251,7 @@ export function WorkspaceOverview({ profile, workspaceId, onProfileRefresh, onOp
   const cardAction = (entry: Pick<DashboardTask, 'id' | 'board_id' | 'project_id'>) =>
     onOpenTask(entry)
 
-  return <section className="workspace-overview workspace-overview-page">
+  return <section className="workspace-overview workspace-overview-page" style={{ '--workspace-identity-color': summary.accent_color ?? '#147a5f' } as React.CSSProperties}>
     <header className="wd-header">
       <div className="wd-brand-tile" aria-hidden="true">
         {summary.image_url
@@ -457,6 +461,7 @@ export function WorkspaceOverview({ profile, workspaceId, onProfileRefresh, onOp
             <nav className="workspace-settings-side" aria-label="Secciones de configuración">
               <button type="button" className={settingsTab === 'general' ? 'on' : ''} onClick={() => setSettingsTab('general')}>General</button>
               <button type="button" className={settingsTab === 'roles' ? 'on' : ''} onClick={() => setSettingsTab('roles')}>Roles y permisos</button>
+              <button type="button" className={settingsTab === 'personalization' ? 'on' : ''} onClick={() => { setDraftAccent(summary.accent_color ?? '#147a5f'); setSettingsTab('personalization') }}>Personalización</button>
               <div className="workspace-settings-side-spacer"/>
               <button type="button" className={settingsTab === 'danger' ? 'on workspace-settings-danger-tab' : 'workspace-settings-danger-tab'} onClick={() => setSettingsTab('danger')}>Zona de peligro</button>
             </nav>
@@ -543,6 +548,37 @@ export function WorkspaceOverview({ profile, workspaceId, onProfileRefresh, onOp
 
             </>}
             {settingsTab === 'roles' && <WorkspaceRolesManager workspaceId={summary.id}/>}
+            {settingsTab === 'personalization' && <>
+              <div className="workspace-settings-section-heading"><h3>Personalización</h3><p>Color de identidad de tu organización.</p></div>
+              {error && <p className="workspace-overview-alert" role="alert">{error}</p>}
+              {notice && <p className="workspace-overview-notice" role="status">{notice}</p>}
+              <section className="workspace-overview-section">
+                <div className="workspace-overview-section-title"><h2>Color de identidad</h2></div>
+                <p className="workspace-overview-hint">El color identifica este Workspace en su vista de resumen. El tema de tickard permanece intacto.</p>
+                <div className="workspace-personalization-swatches" role="group" aria-label="Color del Workspace">
+                  {([
+                    ['#147a5f','Verde Tickard'], ['#0e7490','Azul petróleo'],
+                    ['#6d28d9','Violeta'], ['#b45309','Ámbar'], ['#be185d','Rosa'],
+                  ] as const).map(([color,label]) => <button type="button" key={color}
+                    className={draftAccent === color ? 'is-selected' : ''} disabled={saving}
+                    style={{backgroundColor:color}} aria-label={label} aria-pressed={draftAccent === color}
+                    title={label} onClick={() => setDraftAccent(color)} />)}
+                </div>
+                <div className="workspace-personalization-preview">
+                  <div className="workspace-personalization-preview-tile" style={{backgroundColor:draftAccent}}>
+                    {summary.image_url ? <img src={summary.image_url} alt=""/> : summary.name.charAt(0).toUpperCase()}
+                  </div>
+                  <div><strong>{summary.name}</strong><small>Vista previa de identidad</small></div>
+                </div>
+                <div className="tickard-role-actions">
+                  <button type="button" className="ghost" disabled={saving || draftAccent === '#147a5f'} onClick={() => setDraftAccent('#147a5f')}>Restablecer</button>
+                  <button type="button" className="primary" disabled={saving || draftAccent === (summary.accent_color ?? '#147a5f')}
+                    onClick={() => void save({ accent_color:draftAccent }, '/workspaces/' + summary.id + '/personalization', 'Color actualizado.')}>
+                    {saving ? 'Guardando…' : 'Guardar color'}
+                  </button>
+                </div>
+              </section>
+            </>}
             {settingsTab === 'danger' && <>
               <div className="workspace-settings-section-heading"><h3>Zona de peligro</h3><p>Acciones irreversibles sobre este Workspace.</p></div>
       <section className="workspace-overview-section workspace-overview-danger">

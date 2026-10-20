@@ -4591,3 +4591,29 @@ h1, h2, h3, p { margin: 0; }
 .workspace-settings-wide .ghost:hover {
   background:color-mix(in srgb,var(--accent) 9%,var(--surface));
 }
+
+/* Workspace identity is intentionally independent of Tickard's theme tokens. */
+.workspace-overview-page > .wd-header .wd-brand-tile {
+  background: var(--workspace-identity-color, var(--accent));
+}
+.workspace-personalization-swatches { display:flex; flex-wrap:wrap; gap:12px; padding:16px 0; }
+.workspace-personalization-swatches button {
+  width:42px; height:42px; border-radius:12px; border:3px solid var(--surface);
+  box-shadow:0 0 0 1px var(--line); cursor:pointer;
+}
+.workspace-personalization-swatches button.is-selected {
+  outline:3px solid var(--ink); outline-offset:2px;
+}
+.workspace-personalization-swatches button:disabled { cursor:default; opacity:.6; }
+.workspace-personalization-preview {
+  display:flex; align-items:center; gap:14px; padding:18px;
+  border:1px solid var(--line); border-radius:14px; background:var(--surface);
+}
+.workspace-personalization-preview-tile {
+  width:58px; height:58px; border-radius:14px; display:grid; place-items:center;
+  overflow:hidden; color:#fff; font-size:24px; font-weight:700; flex-shrink:0;
+}
+.workspace-personalization-preview-tile img { width:100%; height:100%; object-fit:contain; }
+.workspace-personalization-preview strong,
+.workspace-personalization-preview small { display:block; }
+.workspace-personalization-preview small { color:var(--muted); margin-top:4px; }
