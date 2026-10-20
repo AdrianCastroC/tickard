@@ -1,11 +1,14 @@
 import styles from './Header.module.css'
 import { SearchBar } from './SearchBar'
-import { BellIcon, HelpCircleIcon } from '../../shared/icons'
+import { BellIcon } from '../../shared/icons'
 import { Brand } from './Brand'
+import { AccountFooter } from '../account/AccountFooter'
+import type { Profile } from '../../api'
 
 export type BreadcrumbItem = { label: string; onClick?: () => void }
 
 type HeaderProps = {
+  profile: Profile
   query: string
   onQueryChange: (value: string) => void
   onOpenNotifications: () => void
@@ -14,6 +17,7 @@ type HeaderProps = {
 }
 
 export function Header({
+  profile,
   query,
   onQueryChange,
   onOpenNotifications,
@@ -36,7 +40,7 @@ export function Header({
         <div className={styles.topMain}>
         <SearchBar value={query} onChange={onQueryChange} />
         <button className={styles.topAction} type="button" title="Notificaciones" aria-label="Notificaciones" onClick={onOpenNotifications}><BellIcon /></button>
-        <button className={styles.topAction} type="button" title="Ayuda" aria-label="Ayuda"><HelpCircleIcon /></button>
+        <AccountFooter profile={profile} mini={true} placement="header" />
         </div>
       </div>
     </header>
