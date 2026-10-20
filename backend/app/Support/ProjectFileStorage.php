@@ -3,6 +3,7 @@
 namespace App\Support;
 
 use App\Models\CardAttachment;
+use App\Models\Project;
 use App\Models\User;
 use App\Models\Workspace;
 use Illuminate\Http\UploadedFile;
@@ -89,6 +90,56 @@ class ProjectFileStorage
         return (int) $projectFiles + (int) $cardFiles;
     }
 
+    public static function usedBytesForProject(Project $project): int
+    {
+        $files = DB::table('project_files')->where('project_id', $project->id)->sum('size');
+        $attachments = DB::table('card_attachments')
+            ->join('cards', 'cards.id', '=', 'card_attachments.card_id')
+            ->join('boards', 'boards.id', '=', 'cards.board_id')
+            ->where('boards.project_id', $project->id)->sum('card_attachments.size');
+        return (int) $files + (int) $attachments;
+    }
+
+    /** The unreserved Workspace quota is split between automatic projects. */
+    public static function projectLimitBytes(Project $project, ?int $workspaceLimit = null): ?int
+    {
+        if ($project->storage_allocation_mb !== null) {
+            return (int) $project->storage_allocation_mb * 1024 * 1024;
+        }
+        $workspace = $project->workspace;
+        $workspaceLimit ??= self::limitBytes($workspace);
+        if ($workspaceLimit === null) return null;
+        $projects = $workspace->projects()->get(['id', 'storage_allocation_mb']);
+        $reserved = (int) $projects->sum('storage_allocation_mb');
+        $automatic = max(1, $projects->whereNull('storage_allocation_mb')->count());
+        // Divide bytes, not rounded-down megabytes, to avoid losing usable space.
+        return intdiv(max(0, $workspaceLimit - $reserved * 1024 * 1024), $automatic);
+    }
+
+    /** Check all effective project quotas against real usage before shrinking a Workspace. */
+    public static function assertProjectsFit(Workspace $workspace, ?int $workspaceLimit): void
+    {
+        if ($workspaceLimit === null) return;
+        $projects = $workspace->projects()->get(['id', 'name', 'workspace_id', 'storage_allocation_mb']);
+        $reserved = (int) $projects->sum('storage_allocation_mb') * 1024 * 1024;
+        if ($reserved > $workspaceLimit) {
+            throw ValidationException::withMessages([
+                'allocations' => 'Las cuotas manuales de los proyectos superan la capacidad de '.$workspace->name.'.',
+            ]);
+        }
+        $automaticCount = $projects->whereNull('storage_allocation_mb')->count();
+        $automaticLimit = $automaticCount ? intdiv($workspaceLimit - $reserved, $automaticCount) : 0;
+        foreach ($projects as $project) {
+            $limit = $project->storage_allocation_mb === null
+                ? $automaticLimit : (int) $project->storage_allocation_mb * 1024 * 1024;
+            if (self::usedBytesForProject($project) > $limit) {
+                throw ValidationException::withMessages([
+                    'allocations' => 'El proyecto '.$project->name.' supera su cuota con la nueva distribución.',
+                ]);
+            }
+        }
+    }
+
     /** Default quota for each Workspace, based on its owner's plan. */
     public static function limitBytes(Workspace $workspace): ?int
     {
@@ -153,7 +204,7 @@ class ProjectFileStorage
     }
 
     /** Must run inside the upload transaction so row locks are held until commit. */
-    public static function assertRoom(Workspace $workspace, int $additionalBytes): void
+    public static function assertRoom(Workspace $workspace, int $additionalBytes, ?Project $project = null): void
     {
         // Synchronize quota checks across uploads to different Workspaces owned
         // by the same user. Both upload controllers call this in a transaction.
@@ -166,6 +217,18 @@ class ProjectFileStorage
             throw ValidationException::withMessages([
                 'file' => 'Se ha alcanzado la cuota de almacenamiento de este Workspace.',
             ]);
+        }
+
+        if ($project !== null) {
+            abort_unless((int) $project->workspace_id === (int) $workspace->id, 422);
+            // Refresh after taking the owner lock: quotas may change between requests.
+            $project->refresh();
+            $projectLimit = self::projectLimitBytes($project, $limit);
+            if ($projectLimit !== null && self::usedBytesForProject($project) + $additionalBytes > $projectLimit) {
+                throw ValidationException::withMessages([
+                    'file' => 'Se ha alcanzado la cuota de almacenamiento de este proyecto.',
+                ]);
+            }
         }
 
         $accountLimit = self::accountLimitBytes($workspace);
