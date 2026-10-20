@@ -24,6 +24,8 @@ class ProjectCalendarAssignmentsTest extends TestCase
         $workspace = Workspace::create(['name' => 'Demo', 'owner_id' => $admin->id]);
         $client = ClientCompany::create(['workspace_id' => $workspace->id, 'name' => 'Aster']);
         $project = Project::create(['workspace_id' => $workspace->id, 'client_company_id' => $client->id, 'name' => 'Nébula']);
+        $workspace->memberships()->create(['user_id' => $editor->id, 'role' => 'member']);
+        $workspace->memberships()->create(['user_id' => $colleague->id, 'role' => 'member']);
         ProjectMember::create(['project_id' => $project->id, 'user_id' => $editor->id, 'role' => 'editor']);
         ProjectMember::create(['project_id' => $project->id, 'user_id' => $colleague->id, 'role' => 'lector']);
         $board = Board::create(['project_id' => $project->id, 'name' => 'General']);
@@ -97,6 +99,7 @@ class ProjectCalendarAssignmentsTest extends TestCase
     {
         [, , $colleague, $board] = $this->project();
         $responsable = User::factory()->create(['is_admin' => false]);
+        $board->project->workspace->memberships()->create(['user_id' => $responsable->id, 'role' => 'member']);
         ProjectMember::create(['project_id' => $board->project_id, 'user_id' => $responsable->id, 'role' => 'responsable']);
 
         $data = $this->actingAs($responsable)->getJson("/api/boards/{$board->id}?calendar=1")
@@ -115,6 +118,7 @@ class ProjectCalendarAssignmentsTest extends TestCase
     {
         [, , , $board] = $this->project();
         $editor = User::factory()->create(['is_admin' => false]);
+        $board->project->workspace->memberships()->create(['user_id' => $editor->id, 'role' => 'member']);
         ProjectMember::create(['project_id' => $board->project_id, 'user_id' => $editor->id, 'role' => 'editor']);
         $this->actingAs($editor)->getJson("/api/boards/{$board->id}?calendar=1")
             ->assertOk()->assertJsonCount(0, 'columns.0.cards');
