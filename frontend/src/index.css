@@ -4617,3 +4617,19 @@ h1, h2, h3, p { margin: 0; }
 .workspace-personalization-preview strong,
 .workspace-personalization-preview small { display:block; }
 .workspace-personalization-preview small { color:var(--muted); margin-top:4px; }
+
+/* Project and account storage allocation controls. */
+.workspace-storage-project { padding:14px 0; border-bottom:1px solid var(--line); }
+.workspace-storage-controls { display:flex; flex-direction:column; gap:10px; margin-top:10px; }
+.workspace-storage-auto { display:flex; align-items:center; justify-content:space-between; gap:12px; font-size:13px; }
+.workspace-storage-auto input { width:17px; height:17px; accent-color:var(--accent); }
+.workspace-storage-range-row { display:flex; align-items:center; gap:12px; min-width:0; }
+.workspace-storage-range-row input[type="range"] { flex:1; min-width:0; accent-color:var(--accent); }
+.workspace-storage-range-row input[type="range"]:disabled { opacity:.45; }
+.workspace-storage-number, .account-storage-number { display:flex; align-items:center; gap:7px; font-size:12px; color:var(--muted); }
+.workspace-storage-number input, .account-storage-number input {
+  width:95px; min-width:0; box-sizing:border-box; padding:7px 8px;
+  border:1px solid var(--line); background:var(--surface); color:var(--ink); border-radius:8px;
+  font:inherit; font-size:13px; font-variant-numeric:tabular-nums;
+}
+@media(max-width:600px) { .workspace-storage-range-row { flex-wrap:wrap; } .workspace-storage-range-row input[type="range"] { flex-basis:100%; } }
