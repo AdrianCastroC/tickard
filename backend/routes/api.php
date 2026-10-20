@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\WorkspaceTeamsController;
 use App\Http\Controllers\Api\WorkspaceClientsController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\AccountSecurityController;
+use App\Http\Controllers\Api\AccountStorageController;
 use App\Http\Controllers\Api\CardsController;
 use App\Http\Controllers\Api\CalendarEventsController;
 use App\Http\Controllers\Api\CardDependenciesController;
@@ -34,6 +35,9 @@ Route::get('/workspace-invitations/{token}', [WorkspaceInvitationsController::cl
 
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
+    Route::get('/me/storage', [AccountStorageController::class, 'index']);
+    Route::get('/workspaces/{workspace}/storage', [AccountStorageController::class, 'workspace']);
+    Route::patch('/me/storage', [AccountStorageController::class, 'update']);
     Route::post('/invitations/{token}/accept', [InvitationsController::class, 'acceptInvitation']);
     Route::post('/workspace-invitations/{token}/accept', [WorkspaceInvitationsController::class, 'accept']);
     Route::get('/my/invitations', [WorkspaceInvitationsController::class, 'received']);

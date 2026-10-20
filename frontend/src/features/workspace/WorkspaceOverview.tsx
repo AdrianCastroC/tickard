@@ -4,6 +4,7 @@ import { api, type Profile, type WorkspaceRef } from '../../api'
 import { ProjectContentLoading } from './ProjectContentLoading'
 import { CreateProjectModal } from './CreateProjectModal'
 import { WorkspaceRolesManager } from './WorkspaceRolesManager'
+import { WorkspaceStorageSettings } from './WorkspaceStorageSettings'
 import { Avatar, formatRelative } from '../../shared/ui'
 import { NavIcon, SettingsIcon } from '../../shared/icons'
 import { DeleteWorkspaceModal } from '../sidebar/WorkspaceSelector/DeleteWorkspaceModal'
@@ -69,7 +70,7 @@ type Props = {
 export function WorkspaceOverview({ profile, workspaceId, onProfileRefresh, onOpenSection, openProjectList = false, onProjectListOpened, onOpenProject, onOpenTask, onOpenTasks, onCreatedProject, onInviteMembers, onCreateClient, onDeleted }: Props) {
   const [summary, setSummary] = useState<WorkspaceSummary | null>(null)
   const [settingsOpen, setSettingsOpen] = useState(false)
-  const [settingsTab, setSettingsTab] = useState<'general' | 'roles' | 'personalization' | 'danger'>('general')
+  const [settingsTab, setSettingsTab] = useState<'general' | 'roles' | 'personalization' | 'storage' | 'danger'>('general')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
@@ -462,6 +463,7 @@ export function WorkspaceOverview({ profile, workspaceId, onProfileRefresh, onOp
               <button type="button" className={settingsTab === 'general' ? 'on' : ''} onClick={() => setSettingsTab('general')}>General</button>
               <button type="button" className={settingsTab === 'roles' ? 'on' : ''} onClick={() => setSettingsTab('roles')}>Roles y permisos</button>
               <button type="button" className={settingsTab === 'personalization' ? 'on' : ''} onClick={() => { setDraftAccent(summary.accent_color ?? '#147a5f'); setSettingsTab('personalization') }}>Personalización</button>
+              <button type="button" className={settingsTab === 'storage' ? 'on' : ''} onClick={() => setSettingsTab('storage')}>Almacenamiento</button>
               <div className="workspace-settings-side-spacer"/>
               <button type="button" className={settingsTab === 'danger' ? 'on workspace-settings-danger-tab' : 'workspace-settings-danger-tab'} onClick={() => setSettingsTab('danger')}>Zona de peligro</button>
             </nav>
@@ -548,6 +550,7 @@ export function WorkspaceOverview({ profile, workspaceId, onProfileRefresh, onOp
 
             </>}
             {settingsTab === 'roles' && <WorkspaceRolesManager workspaceId={summary.id}/>}
+            {settingsTab === 'storage' && <WorkspaceStorageSettings workspaceId={summary.id} />}
             {settingsTab === 'personalization' && <>
               <div className="workspace-settings-section-heading"><h3>Personalización</h3><p>Color de identidad de tu organización.</p></div>
               {error && <p className="workspace-overview-alert" role="alert">{error}</p>}

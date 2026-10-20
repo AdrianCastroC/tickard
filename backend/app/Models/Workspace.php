@@ -19,6 +19,7 @@ class Workspace extends Model
         'accent_color',
         'owner_id',
         'extra_seats',
+        'storage_allocation_mb',
         'show_birthdays',
         'show_clients',
     ];
@@ -27,6 +28,7 @@ class Workspace extends Model
     {
         return [
             'extra_seats' => 'integer',
+            'storage_allocation_mb' => 'integer',
             'show_birthdays' => 'boolean',
             'show_clients' => 'boolean',
         ];

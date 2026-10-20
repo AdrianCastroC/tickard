@@ -451,4 +451,54 @@ class WorkspaceTest extends TestCase
             ->assertOk()->assertJsonPath('accent_color', '#6d28d9');
     }
 
+    public function test_pro_account_storage_allocations_are_scoped_validated_and_effective(): void
+    {
+        $owner = User::factory()->create(['is_admin' => false, 'plan' => User::PLAN_PRO]);
+        $outsider = User::factory()->create(['is_admin' => false, 'plan' => User::PLAN_PRO]);
+        $first = Workspace::create(['name' => 'Uno', 'owner_id' => $owner->id]);
+        $second = Workspace::create(['name' => 'Dos', 'owner_id' => $owner->id]);
+        foreach ([$first, $second] as $workspace) {
+            $workspace->memberships()->create(['user_id' => $owner->id, 'role' => 'owner']);
+        }
+        $this->actingAs($owner)->getJson('/api/me/storage')
+            ->assertOk()->assertJsonPath('can_allocate', true)
+            ->assertJsonPath('workspaces.0.limit_bytes', 10 * 1024 * 1024 * 1024);
+
+        $this->patchJson('/api/me/storage', [
+            'allocations' => [(string) $first->id => 15360, (string) $second->id => null],
+        ])->assertOk()
+            ->assertJsonPath('workspaces.0.allocation_mb', 15360)
+            ->assertJsonPath('workspaces.1.limit_bytes', 5 * 1024 * 1024 * 1024);
+
+        $this->patchJson('/api/me/storage', [
+            'allocations' => [(string) $first->id => 20480, (string) $second->id => 1],
+        ])->assertUnprocessable();
+
+        $this->patchJson('/api/me/storage', [
+            'allocations' => [(string) $first->id => 1024],
+        ])->assertUnprocessable();
+
+        $this->actingAs($outsider)->patchJson('/api/me/storage', [
+            'allocations' => [(string) $first->id => 100],
+        ])->assertUnprocessable();
+        $this->assertEquals(15360, $first->fresh()->storage_allocation_mb);
+
+        $this->actingAs($owner)->getJson("/api/workspaces/{$first->id}/storage")
+            ->assertOk()->assertJsonPath('limit_bytes', 15 * 1024 * 1024 * 1024);
+        $this->actingAs($outsider)->getJson("/api/workspaces/{$first->id}/storage")
+            ->assertForbidden();
+    }
+
+    public function test_non_pro_owner_cannot_allocate_storage_manually(): void
+    {
+        $owner = User::factory()->create(['is_admin' => false, 'plan' => User::PLAN_BASE]);
+        $workspace = Workspace::create(['name' => 'Base', 'owner_id' => $owner->id]);
+        $workspace->memberships()->create(['user_id' => $owner->id, 'role' => 'owner']);
+        $this->actingAs($owner)->getJson('/api/me/storage')
+            ->assertOk()->assertJsonPath('can_allocate', false);
+        $this->patchJson('/api/me/storage', [
+            'allocations' => [(string) $workspace->id => 1024],
+        ])->assertForbidden();
+    }
+
 }
