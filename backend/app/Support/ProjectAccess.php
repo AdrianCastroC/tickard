@@ -34,7 +34,8 @@ class ProjectAccess
         $clientCompanyId = WorkspaceClientAccess::companyId($user, $project->workspace);
         // Client affiliation never confers an internal project role, including
         // when old memberships or pending invitations predate client onboarding.
-        if ($clientCompanyId !== null && $role !== 'cliente') return null;
+        if (($workspaceMembership->role === 'client' || $clientCompanyId !== null)
+            && $role !== 'cliente') return null;
         if ($role === 'cliente' || $clientCompanyId !== null) {
             if (! $project->client_access_enabled || ! $project->workspace->show_clients
                 || $user->email_verified_at === null
