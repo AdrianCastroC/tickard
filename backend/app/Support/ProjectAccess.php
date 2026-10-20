@@ -18,7 +18,9 @@ class ProjectAccess
         }
 
         // A stale project membership must not survive revocation at Workspace level.
-        if (! $project->workspace->memberships()->where('user_id', $user->id)->exists()) {
+        $workspaceMembership = $project->workspace->memberships()
+            ->where('user_id', $user->id)->first();
+        if (! $workspaceMembership) {
             return null;
         }
 
