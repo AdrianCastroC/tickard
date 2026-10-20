@@ -50,15 +50,31 @@ class ProjectFileStorage
                 $valid = $zip->open($file->getRealPath()) === true;
                 if ($valid) {
                     $valid = $zip->locateName('[Content_Types].xml') !== false
-                        && $zip->locateName($required) !== false;
+                        && $zip->locateName($required) !== false
+                        && $zip->numFiles <= 4096;
+                    $expandedBytes = 0;
+                    for ($index = 0; $valid && $index < $zip->numFiles; $index++) {
+                        $entry = $zip->statIndex($index);
+                        if (! $entry) {
+                            $valid = false;
+                            break;
+                        }
+                        $entryName = str_replace(chr(92), '/', $entry['name']);
+                        // Reject traversal and unexpectedly large expanded archives.
+                        if (str_starts_with($entryName, '/') || preg_match('~(^|/)\\.\\.(/|$)~', $entryName)) {
+                            $valid = false;
+                            break;
+                        }
+                        $expandedBytes += (int) $entry['size'];
+                        if ($expandedBytes > 100 * 1024 * 1024) {
+                            $valid = false;
+                        }
+                    }
                     $zip->close();
                 }
-            } elseif ($valid) {
-                // Fallback for PHP runtimes without ext-zip (files are max 10 MB).
-                $bytes = file_get_contents($file->getRealPath());
-                $valid = $bytes !== false && str_starts_with($bytes, 'PK')
-                    && str_contains($bytes, '[Content_Types].xml')
-                    && str_contains($bytes, $required);
+            } else {
+                // Without ext-zip the OOXML structure cannot be verified safely.
+                $valid = false;
             }
             if ($valid) return;
         } elseif (in_array($mime, self::EXTENSIONS[$extension], true)) {
