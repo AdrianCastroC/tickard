@@ -29,7 +29,7 @@ export function AccountHeader({ profile, workspaceId, query, onQueryChange, onPr
   }
 
   return <>
-    <Header query={query} breadcrumb={breadcrumb} mini={mini} onQueryChange={onQueryChange} onOpenNotifications={() => setSection('notifications')} />
+    <Header profile={profile} query={query} breadcrumb={breadcrumb} mini={mini} onQueryChange={onQueryChange} onOpenNotifications={() => setSection('notifications')} />
     {section && <AccountModal section={section} profile={profile} notes={notes}
       workspaceId={workspaceId} onSection={setSection} onProfile={onProfile}
       onNotes={setNotes} onClose={() => setSection(null)} onAvatar={changeAvatar} />}

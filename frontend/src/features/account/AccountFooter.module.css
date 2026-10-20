@@ -38,3 +38,8 @@
 .signOut>button:hover { color:#bc524e; background:color-mix(in srgb,#bc524e 7%,var(--surface)); }
 .signOut>button:disabled { opacity:.55; cursor:wait; }
 .error { margin:5px 12px; font-size:11px; color:#bc524e; }
+
+.headerPlacement { margin-top:0; align-items:center; }
+.headerTrigger { display:grid; place-items:center; width:38px; height:38px; padding:3px; border-radius:50%; border:1px solid var(--line); background:var(--surface); cursor:pointer; }
+.headerTrigger :global(.avatar) { width:30px; height:30px; border-radius:50%; }
+.headerTrigger:hover { border-color:var(--accent); }
