@@ -16,8 +16,8 @@ class UserIdentityTest extends TestCase
     {
         $base = [
             'first_name' => 'Adrián',
-            'password' => 'secret123',
-            'password_confirmation' => 'secret123',
+            'password' => 'Password123!',
+            'password_confirmation' => 'Password123!',
         ];
         $this->postJson('/api/register', [
             ...$base, 'last_name' => 'Castro', 'email' => 'adrian-a@example.com',
