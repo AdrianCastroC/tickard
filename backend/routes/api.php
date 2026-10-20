@@ -28,8 +28,8 @@ use App\Http\Controllers\Api\MyTasksController;
 use App\Http\Controllers\Api\GlobalHomeController;
 use App\Http\Controllers\Api\NotificationsController;
 
-Route::post('/login', [AuthController::class, 'login']);
-Route::post('/register', [AuthController::class, 'register']);
+Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:5,1');
+Route::post('/register', [AuthController::class, 'register'])->middleware('throttle:5,1');
 Route::get('/invitations/{token}', [InvitationsController::class, 'showInvitation']);
 Route::get('/workspace-invitations/{token}', [WorkspaceInvitationsController::class, 'show']);
 
