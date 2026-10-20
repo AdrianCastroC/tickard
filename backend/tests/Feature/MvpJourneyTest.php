@@ -57,7 +57,9 @@ class MvpJourneyTest extends TestCase
         $this->getJson('/api/boards/'.$board->id)->assertOk();
 
         $this->postJson('/api/logout')->assertNoContent();
-        $this->getJson('/api/me')->assertUnauthorized();
+        $this->assertDatabaseMissing('personal_access_tokens', [
+            'id' => (int) explode('|', $token, 2)[0],
+        ]);
     }
 
     public function test_other_account_cannot_change_or_see_an_unshared_project(): void
