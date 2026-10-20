@@ -294,7 +294,8 @@ public function storeComment(Request $request, Card $card)
     {
         $project = $card->board->project()->with('members.user')->first();
         $role = ProjectAccess::role($request->user(), $project);
-        abort_unless($role && ProjectAccess::canComment($request->user(), $project), 403);
+        abort_unless(ProjectAccess::canView($request->user(), $project)
+            && ProjectAccess::canComment($request->user(), $project), 403);
         abort_if($role === 'cliente' && $card->is_internal, 404);
 
         $data = $request->validate([
@@ -359,7 +360,10 @@ public function destroyComment(Request $request, Comment $comment)
 
         $project = $comment->card->board->project;
         $role = ProjectAccess::role($request->user(), $project);
-        abort_unless($role && ProjectAccess::canComment($request->user(), $project), 403);
+        abort_unless(ProjectAccess::canView($request->user(), $project)
+            && ProjectAccess::canComment($request->user(), $project), 403);
+
+        abort_if($role === 'cliente' && ($comment->card->is_internal || $comment->root()->is_internal), 404);
 
         abort_if($comment->replies()->exists(), 422, 'No se puede borrar un comentario con respuestas.');
 
@@ -377,7 +381,8 @@ public function updateCommentVisibility(Request $request, Comment $comment)
 
         $project = $comment->card->board->project;
         $role = ProjectAccess::role($request->user(), $project);
-        abort_unless($role && $role !== 'cliente' && ProjectAccess::canComment($request->user(), $project), 403);
+        abort_unless($role !== 'cliente' && ProjectAccess::canView($request->user(), $project)
+            && ProjectAccess::canComment($request->user(), $project), 403);
 
         $data = $request->validate([
             'is_internal' => ['required', 'boolean'],
@@ -400,8 +405,9 @@ public function reactToComment(Request $request, Comment $comment)
         $card = $comment->card;
         $project = $card->board->project;
         $role = ProjectAccess::role($request->user(), $project);
-        abort_unless($role && ProjectAccess::canComment($request->user(), $project), 403);
-        abort_if($role === 'cliente' && ($card->is_internal || $comment->is_internal), 404);
+        abort_unless(ProjectAccess::canView($request->user(), $project)
+            && ProjectAccess::canComment($request->user(), $project), 403);
+        abort_if($role === 'cliente' && ($card->is_internal || $comment->root()->is_internal), 404);
 
         $data = $request->validate([
             'type' => ['required', Rule::in(['like', 'love', 'kiss', 'encantado'])],
