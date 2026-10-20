@@ -8,6 +8,7 @@ use App\Models\Project;
 use App\Models\ProjectMember;
 use App\Models\Team;
 use App\Models\User;
+use App\Models\Workspace;
 use App\Support\ProjectAccess;
 use App\Support\RoleAvailability;
 use App\Support\WorkspaceClientAccess;
@@ -256,7 +257,19 @@ class ProjectPersonnelController extends ApiController
             $this->ensureOtherResponsible($project, $member->id);
         }
         DB::transaction(function () use ($project, $user, $member) {
+            // Accepting an invitation locks this Workspace before locking the invitation.
+            // Use the same lock order so an in-flight acceptance cannot reinstate
+            // a project membership just after its removal.
+            Workspace::whereKey($project->workspace_id)->lockForUpdate()->firstOrFail();
             $member->delete();
+            // Old outstanding invitations must never reinstate removed members.
+            DB::table('workspace_invitations')
+                ->where('workspace_id', $project->workspace_id)
+                ->where('project_id', $project->id)
+                ->where('recipient_user_id', $user->id)
+                ->where('status', 'pending')
+                ->whereNull('revoked_at')
+                ->update(['revoked_at' => now(), 'updated_at' => now()]);
             // Removing project access must also clear stale Card assignments.
             DB::table('card_user')->where('user_id', $user->id)->whereIn('card_id',
                 Card::query()->whereHas('board', fn ($query) =>
