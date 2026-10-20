@@ -26,6 +26,7 @@ class CalendarEventsTest extends TestCase
             'client_company_id' => $client->id,
             'name' => 'Test project',
         ]);
+        $workspace->memberships()->create(['user_id' => $user->id, 'role' => 'member']);
         ProjectMember::create(['project_id' => $project->id, 'user_id' => $user->id, 'role' => $role]);
 
         return [$user, $project];
