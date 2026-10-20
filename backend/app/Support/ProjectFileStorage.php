@@ -102,17 +102,18 @@ class ProjectFileStorage
     }
 
     /**
-     * Evenly divide the included 20 GiB between existing owned Workspaces.
-     * Calculated dynamically: adding/removing a Workspace redistributes the
-     * default share without storing or migrating individual allocations.
+     * Explicit allocations are reserved first. Any unallocated capacity is
+     * shared equally among Workspaces without a manual allocation.
      */
     private static function proWorkspaceLimitBytes(Workspace $workspace): int
     {
-        $count = max(1, (int) Workspace::query()
-            ->where('owner_id', $workspace->owner_id)
-            ->count());
-
-        return intdiv(self::PRO_ACCOUNT_QUOTA_BYTES, $count);
+        if ($workspace->storage_allocation_mb !== null) {
+            return (int) $workspace->storage_allocation_mb * 1024 * 1024;
+        }
+        $owned = Workspace::query()->where('owner_id', $workspace->owner_id)->get(['id', 'storage_allocation_mb']);
+        $reserved = (int) $owned->sum('storage_allocation_mb');
+        $automatic = max(1, $owned->whereNull('storage_allocation_mb')->count());
+        return intdiv(max(0, 20 * 1024 - $reserved), $automatic) * 1024 * 1024;
     }
 
     private static function businessLimitBytes(Workspace $workspace): ?int
