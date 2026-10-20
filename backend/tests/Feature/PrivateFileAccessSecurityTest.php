@@ -53,9 +53,12 @@ class PrivateFileAccessSecurityTest extends TestCase
             $this->get($url, ['Accept' => 'application/json'])->assertUnauthorized();
             $this->actingAs($outsider)->get($url, ['Accept' => 'application/json'])
                 ->assertForbidden();
-            $this->actingAs($owner)->get($url)->assertOk()
-                ->assertHeader('X-Content-Type-Options', 'nosniff')
-                ->assertHeader('Cache-Control', 'private, no-store');
+            $response = $this->actingAs($owner)->get($url)->assertOk()
+                ->assertHeader('X-Content-Type-Options', 'nosniff');
+            $cacheControl = $response->headers->get('Cache-Control', '');
+            $this->assertStringContainsString('private', $cacheControl);
+            $this->assertStringContainsString('no-store', $cacheControl);
+            $this->assertStringNotContainsString('public', $cacheControl);
         }
 
         $this->actingAs($outsider)
