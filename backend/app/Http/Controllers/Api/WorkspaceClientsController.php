@@ -136,7 +136,8 @@ class WorkspaceClientsController extends ApiController
         if (WorkspaceInvitation::where('workspace_id', $workspace->id)
             ->where('status', 'pending')->whereNotNull('client_company_name')
             ->whereRaw('LOWER(client_company_name) = ?', [Str::lower($data['name'])])
-            ->whereNull('revoked_at')->exists()) {
+            ->whereNull('revoked_at')
+            ->where('expires_at', '>', now())->exists()) {
             throw ValidationException::withMessages(['name' => 'Ya hay una invitación pendiente para esta empresa.']);
         }
 

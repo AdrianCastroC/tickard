@@ -200,7 +200,9 @@ class WorkspaceInvitationsController extends ApiController
 
                 $pending = WorkspaceInvitation::where('workspace_id', $workspace->id)
                     ->where('project_id', $project?->id)->where('recipient_user_id', $user->id)
-                    ->where('status', 'pending')->whereNull('revoked_at')->exists();
+                    ->where('status', 'pending')->whereNull('revoked_at')
+                    ->where('expires_at', '>', now())
+                    ->where('created_at', '>', now()->subDays(30))->exists();
                 if ($pending) return 'Ya tiene una invitación pendiente';
                 if (! $inWorkspace && ! WorkspaceLimits::canAddMember($workspace))
                     return 'No quedan plazas libres en el Workspace';
@@ -214,7 +216,7 @@ class WorkspaceInvitationsController extends ApiController
                     'token_hash' => hash('sha256', Str::random(64)),
                     'max_uses' => 1,
                     'used_count' => 0,
-                    'expires_at' => now()->addYears(50),
+                    'expires_at' => now()->addDays(30),
                     'status' => 'pending',
                     'project_role' => $role,
                     'custom_role_id' => $customRole?->id,
@@ -255,13 +257,14 @@ class WorkspaceInvitationsController extends ApiController
             abort_unless($invitation->status === 'pending' && ! $invitation->revoked_at, 409,
                 'Esta invitación ya se ha respondido o cancelado.');
             if ($action === 'accept') {
-                abort_if($invitation->expires_at?->isPast(), 409, 'La invitación ha caducado.');
+                abort_if($invitation->expires_at?->isPast()
+                    || $invitation->created_at?->lt(now()->subDays(30)), 409,
+                    'La invitación ha caducado.');
             }
             if ($invitation->client_company_name !== null) {
                 $name = trim($invitation->client_company_name);
-                abort_unless($workspace->show_clients, 422, 'Este Workspace ya no admite clientes.');
-                abort_if($invitation->expires_at?->isPast(), 409, 'La invitación ha caducado.');
                 if ($action === 'accept') {
+                    abort_unless($workspace->show_clients, 422, 'Este Workspace ya no admite clientes.');
                     $inviter = User::find($invitation->invited_by);
                     abort_unless($inviter && WorkspacePersonnelGuard::canManageUser($inviter, $workspace, 'workspace.clients'), 409,
                         'La persona que envió la invitación ya no puede gestionar clientes. Solicita otra invitación.');
@@ -324,6 +327,7 @@ class WorkspaceInvitationsController extends ApiController
                 if ($customRole) abort_unless(RoleAvailability::custom($customRole, $workspace,
                     $invitation->project_id ? 'project' : 'workspace'), 409, 'El rol está desactivado.');
                 elseif ($invitation->project_id) abort_unless(RoleAvailability::builtin($workspace, $invitation->project_role), 409, 'El rol está desactivado.');
+                else abort_unless(RoleAvailability::builtin($workspace, 'member'), 409, 'El rol Miembro está desactivado.');
                 $hasWorkspace = $workspace->memberships()->where('user_id', $request->user()->id)->exists();
                 if (! $hasWorkspace) {
                     abort_unless(WorkspaceLimits::canAddMember($workspace), 422,
