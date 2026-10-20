@@ -20,6 +20,7 @@ class TokenExpirationSecurityTest extends TestCase
 
         $this->travel(7)->days();
         $this->travel(1)->minutes();
+        $this->app['auth']->forgetGuards();
         $this->withToken($token)->getJson('/api/me')->assertUnauthorized();
     }
 
@@ -30,6 +31,7 @@ class TokenExpirationSecurityTest extends TestCase
 
         $this->withToken($token)->getJson('/api/me')->assertOk();
         $this->withToken($token)->postJson('/api/logout')->assertNoContent();
+        $this->app['auth']->forgetGuards();
         $this->withToken($token)->getJson('/api/me')->assertUnauthorized();
     }
 }
