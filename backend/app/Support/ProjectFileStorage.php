@@ -310,11 +310,14 @@ class ProjectFileStorage
             Str::ascii(basename($name)) ?: 'archivo'
         );
 
-        return response()->file(Storage::disk('local')->path($path), [
+        $response = response()->file(Storage::disk('local')->path($path), [
             'Content-Type' => $mime ?: 'application/octet-stream',
             'Content-Disposition' => $disposition,
             'X-Content-Type-Options' => 'nosniff',
-            'Cache-Control' => 'private, no-store',
+            'Cache-Control' => 'no-store',
         ]);
+        $response->setPrivate();
+
+        return $response;
     }
 }
