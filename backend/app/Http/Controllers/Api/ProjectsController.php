@@ -465,7 +465,7 @@ class ProjectsController extends ApiController
                     'cards' => $cards,
                 ];
             }
-        );
+        )->values();
 
         return [
             'revision' => $board->revision,
