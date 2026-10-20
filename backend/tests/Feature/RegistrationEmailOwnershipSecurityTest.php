@@ -44,6 +44,9 @@ class RegistrationEmailOwnershipSecurityTest extends TestCase
             'email' => 'prueba@example.com',
             'nonce' => str_repeat('f', 64), 'code' => $code,
         ])->assertUnprocessable();
+        $this->assertDatabaseHas('pending_registrations', [
+            'email' => 'prueba@example.com', 'attempts' => 1,
+        ]);
 
         $verified = $this->postJson('/api/registration/verify', [
             'email' => 'prueba@example.com', 'nonce' => $nonce, 'code' => $code,
