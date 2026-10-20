@@ -7,6 +7,7 @@ use App\Models\WorkspaceCustomRole;
 use Illuminate\Support\Facades\DB;
 use App\Support\RolePermissions;
 use App\Support\BuiltinRolePermissions;
+use App\Support\WorkspaceAudit;
 use App\Support\WorkspaceClientAccess;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -59,6 +60,7 @@ class WorkspaceRolesController extends ApiController
                 'created_at' => now(), 'updated_at' => now(),
             ]);
         }
+        WorkspaceAudit::record($workspace, $request->user(), 'builtin_role.updated', ['role' => $key]);
         return response()->json([
             'key' => $key,
             'enabled' => (bool) ($data['enabled'] ?? $existing?->enabled ?? true),
@@ -156,7 +158,9 @@ class WorkspaceRolesController extends ApiController
     {
         $this->workspace($request, $workspace, true);
         $data = $this->validateRole($request, $workspace);
-        return response()->json(WorkspaceCustomRole::create(['workspace_id' => $workspace->id, ...$data]), 201);
+        $created = WorkspaceCustomRole::create(['workspace_id' => $workspace->id, ...$data]);
+        WorkspaceAudit::record($workspace, $request->user(), 'custom_role.created', ['role' => $created->name]);
+        return response()->json($created, 201);
     }
 
     public function update(Request $request, Workspace $workspace, WorkspaceCustomRole $role)
@@ -165,6 +169,7 @@ class WorkspaceRolesController extends ApiController
         abort_unless($role->workspace_id === $workspace->id, 404);
         $values = $this->validateRole($request, $workspace, $role);
         $role->update($values);
+        WorkspaceAudit::record($workspace, $request->user(), 'custom_role.updated', ['role' => $role->name]);
         return response()->json($role->fresh());
     }
 
@@ -179,7 +184,9 @@ class WorkspaceRolesController extends ApiController
         abort_if(\App\Models\WorkspaceInvitation::where('custom_role_id', $role->id)
             ->where('status', 'pending')->whereNull('revoked_at')->exists(), 422,
             'Cancela antes las invitaciones pendientes que utilizan este rol.');
+        $name = $role->name;
         $role->delete();
+        WorkspaceAudit::record($workspace, $request->user(), 'custom_role.deleted', ['role' => $name]);
         return response()->noContent();
     }
 }
