@@ -18,8 +18,8 @@ class RegistrationTest extends TestCase
             'first_name' => 'Ada',
             'last_name' => 'Lovelace',
             'email' => 'ada@example.com',
-            'password' => 'secret123',
-            'password_confirmation' => 'secret123',
+            'password' => 'Password123!',
+            'password_confirmation' => 'Password123!',
         ]);
 
         $response->assertCreated()->assertJsonStructure(['token', 'user']);
@@ -32,7 +32,7 @@ class RegistrationTest extends TestCase
         $this->assertSame('ada#'.str_pad((string) $user->id, 5, '0', STR_PAD_LEFT), $user->publicHandle());
         $this->assertFalse($user->is_admin);
         $this->assertNull($user->client_company_id);
-        $this->assertTrue(Hash::check('secret123', $user->password));
+        $this->assertTrue(Hash::check('Password123!', $user->password));
         $workspace = $user->ownedWorkspaces()->firstOrFail();
         $this->assertSame('Mi espacio', $workspace->name);
         $this->assertSame($user->id, $workspace->owner_id);
@@ -56,8 +56,8 @@ class RegistrationTest extends TestCase
             'first_name' => 'Another',
             'last_name' => 'Ada',
             'email' => 'ada@example.com',
-            'password' => 'secret123',
-            'password_confirmation' => 'secret123',
+            'password' => 'Password123!',
+            'password_confirmation' => 'Password123!',
         ])->assertUnprocessable()->assertJsonValidationErrors('email');
     }
 
@@ -67,7 +67,7 @@ class RegistrationTest extends TestCase
             'first_name' => 'Ada',
             'last_name' => 'Lovelace',
             'email' => 'ada@example.com',
-            'password' => 'secret123',
+            'password' => 'Password123!',
             'password_confirmation' => 'different123',
         ])->assertUnprocessable()->assertJsonValidationErrors('password');
     }
@@ -87,8 +87,8 @@ class RegistrationTest extends TestCase
         $payload = [
             'first_name' => 'María',
             'email' => 'maria@example.com',
-            'password' => 'secret123',
-            'password_confirmation' => 'secret123',
+            'password' => 'Password123!',
+            'password_confirmation' => 'Password123!',
         ];
         $this->postJson('/api/register', $payload)->assertCreated();
         $user = User::where('email', 'maria@example.com')->firstOrFail();
