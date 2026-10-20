@@ -164,7 +164,7 @@ class ProjectFileStorage
         $owned = Workspace::query()->where('owner_id', $workspace->owner_id)->get(['id', 'storage_allocation_mb']);
         $reserved = (int) $owned->sum('storage_allocation_mb');
         $automatic = max(1, $owned->whereNull('storage_allocation_mb')->count());
-        return intdiv(max(0, 20 * 1024 - $reserved), $automatic) * 1024 * 1024;
+        return intdiv(max(0, self::PRO_ACCOUNT_QUOTA_BYTES - $reserved * 1024 * 1024), $automatic);
     }
 
     private static function businessLimitBytes(Workspace $workspace): ?int
