@@ -69,17 +69,27 @@ export function AccountStorageSection() {
           return <div key={w.id} style={{borderBottom:'1px solid var(--line)',padding:'12px 0'}}>
             <strong>{w.name}</strong>
             <p className={styles.settingsHint}>Usado: {formatBytes(w.used_bytes)} · Cuota: {effective === null ? 'Sin límite configurado' : formatBytes(effective)}</p>
-            {data.can_allocate && <label style={{display:'flex',gap:10,alignItems:'center',flexWrap:'wrap'}}>
-              <span>Asignación</span>
-              <select value={allocation === null ? 'auto' : 'manual'} disabled={busy}
-                onChange={event => setAllocations(old => ({...old,[w.id]:event.target.value === 'auto' ? null : Math.max(Math.ceil(w.used_bytes / 1024**2), automaticMb)}))}>
-                <option value="auto">Automática</option><option value="manual">Manual</option>
-              </select>
-              {allocation !== null && <><input type="number" aria-label={'Cuota en MB de '+w.name}
-                value={allocation} min={Math.ceil(w.used_bytes/1024**2)} max={totalMb} step={1} disabled={busy}
-                style={{width:110}} onChange={event => setAllocations(old => ({...old,[w.id]:Number(event.target.value)}))}/>
-                <span>MB</span></>}
-            </label>}
+            {data.can_allocate && <div className="account-storage-allocation">
+              <label className="account-storage-mode">
+                <span>Reparto automático</span>
+                <input type="checkbox" checked={allocation === null} disabled={busy}
+                  onChange={event => setAllocations(old => ({
+                    ...old, [w.id]: event.target.checked ? null :
+                      Math.min(totalMb - (reserved - (old[w.id] ?? 0)),
+                        Math.max(Math.ceil(w.used_bytes / 1024**2), automaticMb)),
+                  }))}/>
+              </label>
+              <div className="account-storage-range-row">
+                <input type="range" aria-label={'Cuota de almacenamiento de '+w.name}
+                  min={Math.ceil(w.used_bytes / 1024**2)}
+                  max={Math.max(Math.ceil(w.used_bytes / 1024**2), totalMb - (reserved - (allocation ?? 0)))}
+                  step={1} value={allocation === null ? automaticMb : allocation}
+                  disabled={busy || allocation === null}
+                  onChange={event => setAllocations(old => ({...old, [w.id]: Number(event.target.value)}))}/>
+                <strong className="account-storage-value">{formatBytes((allocation === null ? automaticMb : allocation) * 1024**2)}</strong>
+              </div>
+              {allocation === null && <small className={styles.settingsHint}>Cuota calculada automáticamente. Desactívalo para ajustarla con el slider.</small>}
+            </div>}
           </div>
         })}
         {data.can_allocate && <>
