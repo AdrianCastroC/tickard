@@ -20,14 +20,25 @@ class MvpJourneyTest extends TestCase
 
     public function test_registration_to_first_project_board_and_card_then_logout(): void
     {
+        $code = null;
+        \Illuminate\Support\Facades\Mail::shouldReceive('raw')->once()
+            ->andReturnUsing(function (string $body) use (&$code) {
+                preg_match('/\\b[0-9]{6}\\b/', $body, $matches);
+                $code = $matches[0] ?? null;
+            });
         $registration = $this->postJson('/api/register', [
             'first_name' => 'Eva',
             'email' => 'eva.mvp@example.com',
             'password' => 'Password123!',
             'password_confirmation' => 'Password123!',
-        ])->assertCreated()->assertJsonStructure(['token', 'user']);
+        ])->assertStatus(202);
+        $verified = $this->postJson('/api/registration/verify', [
+            'email' => 'eva.mvp@example.com',
+            'nonce' => $registration->json('nonce'),
+            'code' => $code,
+        ])->assertCreated();
 
-        $token = $registration->json('token');
+        $token = $verified->json('token');
         $this->withToken($token);
         $user = User::where('email', 'eva.mvp@example.com')->firstOrFail();
         $workspace = Workspace::where('owner_id', $user->id)->firstOrFail();

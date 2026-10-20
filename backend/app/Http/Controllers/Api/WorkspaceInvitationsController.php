@@ -180,6 +180,10 @@ class WorkspaceInvitationsController extends ApiController
             if (! $user) { $errors[] = ['value' => $value, 'reason' => 'Usuario no encontrado']; continue; }
             if (isset($seen[$user->id])) continue;
             $seen[$user->id] = true;
+            if ($user->email_verified_at === null) {
+                $errors[] = ['value' => $value, 'reason' => 'Este usuario debe verificar su correo antes de recibir invitaciones'];
+                continue;
+            }
             if (WorkspaceClientAccess::isClient($user, $workspace)) {
                 $errors[] = ['value' => $value, 'reason' => 'Las cuentas de cliente requieren otro tipo de acceso'];
                 continue;
@@ -257,6 +261,8 @@ class WorkspaceInvitationsController extends ApiController
             abort_unless($invitation->status === 'pending' && ! $invitation->revoked_at, 409,
                 'Esta invitación ya se ha respondido o cancelado.');
             if ($action === 'accept') {
+                abort_unless($request->user()->email_verified_at !== null, 422,
+                    'Verifica tu correo antes de aceptar invitaciones.');
                 abort_if($invitation->expires_at?->isPast()
                     || $invitation->created_at?->lt(now()->subDays(30)), 409,
                     'La invitación ha caducado.');

@@ -14,6 +14,12 @@ class RegistrationTest extends TestCase
 
     public function test_user_can_register_and_use_the_returned_token(): void
     {
+        $code = null;
+        \Illuminate\Support\Facades\Mail::shouldReceive('raw')->once()
+            ->andReturnUsing(function (string $body) use (&$code) {
+                preg_match('/\\b[0-9]{6}\\b/', $body, $matches);
+                $code = $matches[0] ?? null;
+            });
         $response = $this->postJson('/api/register', [
             'first_name' => 'Ada',
             'last_name' => 'Lovelace',
@@ -22,8 +28,15 @@ class RegistrationTest extends TestCase
             'password_confirmation' => 'Password123!',
         ]);
 
-        $response->assertCreated()->assertJsonStructure(['token', 'user']);
+        $response->assertStatus(202)->assertJsonStructure(['nonce', 'email', 'verification_required']);
+        $this->assertDatabaseMissing('users', ['email' => 'ada@example.com']);
+        $this->assertDatabaseCount('personal_access_tokens', 0);
+
+        $verification = $this->postJson('/api/registration/verify', [
+            'email' => 'ada@example.com', 'nonce' => $response->json('nonce'), 'code' => $code,
+        ])->assertCreated()->assertJsonStructure(['token', 'user']);
         $user = User::where('email', 'ada@example.com')->firstOrFail();
+        $this->assertNotNull($user->email_verified_at);
 
         $this->assertSame('Ada Lovelace', $user->name);
         $this->assertSame('Ada', $user->first_name);
@@ -42,7 +55,7 @@ class RegistrationTest extends TestCase
             'role' => 'owner',
         ]);
         $this->assertTrue($user->workspaces->contains($workspace));
-        $this->withHeader('Authorization', 'Bearer '.$response->json('token'))
+        $this->withHeader('Authorization', 'Bearer '.$verification->json('token'))
             ->getJson('/api/me')
             ->assertOk()
             ->assertJsonPath('user.email', 'ada@example.com');
@@ -90,7 +103,16 @@ class RegistrationTest extends TestCase
             'password' => 'Password123!',
             'password_confirmation' => 'Password123!',
         ];
-        $this->postJson('/api/register', $payload)->assertCreated();
+        $code = null;
+        \Illuminate\Support\Facades\Mail::shouldReceive('raw')->once()
+            ->andReturnUsing(function (string $body) use (&$code) {
+                preg_match('/\\b[0-9]{6}\\b/', $body, $matches);
+                $code = $matches[0] ?? null;
+            });
+        $pending = $this->postJson('/api/register', $payload)->assertStatus(202);
+        $this->postJson('/api/registration/verify', [
+            'email' => 'maria@example.com', 'nonce' => $pending->json('nonce'), 'code' => $code,
+        ])->assertCreated();
         $user = User::where('email', 'maria@example.com')->firstOrFail();
         $this->assertSame('María', $user->name);
         $this->assertSame('María', $user->first_name);

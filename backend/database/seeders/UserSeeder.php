@@ -17,6 +17,7 @@ class UserSeeder extends Seeder
             'last_name' => 'Ruiz',
             'email' => 'ana@gestor.test',
             'password' => 'password',
+            'email_verified_at' => now(),
             'is_admin' => true,
             'plan' => User::PLAN_PRO,
         ]);
@@ -26,6 +27,7 @@ class UserSeeder extends Seeder
             'last_name' => 'Pérez',
             'email' => 'luis@gestor.test',
             'password' => 'password',
+            'email_verified_at' => now(),
             'plan' => User::PLAN_BASE,
         ]);
 
@@ -34,6 +36,7 @@ class UserSeeder extends Seeder
             'last_name' => 'Gil',
             'email' => 'marta@gestor.test',
             'password' => 'password',
+            'email_verified_at' => now(),
             'plan' => User::PLAN_FREE,
         ]);
 
@@ -42,7 +45,14 @@ class UserSeeder extends Seeder
             'last_name' => 'Soto',
             'email' => 'elena@gestor.test',
             'password' => 'password',
+            'email_verified_at' => now(),
             'plan' => User::PLAN_FREE,
         ]);
+        // email_verified_at is intentionally not mass assignable. Demo accounts
+        // are explicitly verified, and this seeder is blocked in production.
+        User::whereIn('email', [
+            'ana@gestor.test', 'luis@gestor.test',
+            'marta@gestor.test', 'elena@gestor.test',
+        ])->update(['email_verified_at' => now()]);
     }
 }

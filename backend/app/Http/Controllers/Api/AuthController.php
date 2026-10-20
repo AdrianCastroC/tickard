@@ -57,39 +57,17 @@ class AuthController extends ApiController
             ]);
         }
 
+        if ($user->email_verified_at === null) {
+            throw ValidationException::withMessages([
+                'email' => 'Esta cuenta aún no ha verificado su correo. Regístrate de nuevo con el mismo correo para completar la verificación.',
+            ]);
+        }
         RateLimiter::clear($key);
 
         return [
             'token' => $user->createToken('api')->plainTextToken,
             'user' => $this->profile($user),
         ];
-    }
-
-    public function register(Request $request)
-    {
-        $data = $request->validate([
-            'first_name' => ['required', 'string', 'max:120'],
-            'last_name' => ['nullable', 'string', 'max:120'],
-            'email' => ['required', 'email', 'unique:users,email'],
-            'password' => ['required', 'string', 'max:128', Password::min(10)->mixedCase()->numbers()->symbols(), 'confirmed'],
-        ]);
-
-        $user = DB::transaction(function () use ($data) {
-            $user = User::create([
-                'first_name' => trim($data['first_name']),
-                'last_name' => trim($data['last_name'] ?? '') ?: null,
-                'email' => $data['email'],
-                'password' => $data['password'],
-            ]);
-            Workspace::createInitialFor($user);
-
-            return $user;
-        });
-
-        return response()->json([
-            'token' => $user->createToken('api')->plainTextToken,
-            'user' => $this->profile($user),
-        ], 201);
     }
 
     public function logout(Request $request)

@@ -6,6 +6,8 @@ use App\Http\Controllers\Api\WorkspaceEntityImagesController;
 use App\Http\Controllers\Api\WorkspaceTeamsController;
 use App\Http\Controllers\Api\WorkspaceClientsController;
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\RegistrationController;
+use App\Http\Middleware\EnsureVerifiedEmail;
 use App\Http\Controllers\Api\AccountSecurityController;
 use App\Http\Controllers\Api\AccountStorageController;
 use App\Http\Controllers\Api\CardsController;
@@ -29,12 +31,14 @@ use App\Http\Controllers\Api\GlobalHomeController;
 use App\Http\Controllers\Api\NotificationsController;
 
 Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:5,1');
-Route::post('/register', [AuthController::class, 'register'])->middleware('throttle:5,1');
+Route::post('/register', [RegistrationController::class, 'register'])->middleware('throttle:5,1');
+Route::post('/registration/verify', [RegistrationController::class, 'verify'])->middleware('throttle:8,1');
 Route::get('/invitations/{token}', [InvitationsController::class, 'showInvitation']);
 Route::get('/workspace-invitations/{token}', [WorkspaceInvitationsController::class, 'show']);
 
-Route::middleware('auth:sanctum')->group(function () {
-    Route::post('/logout', [AuthController::class, 'logout']);
+Route::post('/logout', [AuthController::class, 'logout'])->middleware('auth:sanctum');
+
+Route::middleware(['auth:sanctum', EnsureVerifiedEmail::class])->group(function () {
     Route::get('/me/storage', [AccountStorageController::class, 'index']);
     Route::get('/workspaces/{workspace}/storage', [AccountStorageController::class, 'workspace']);
     Route::patch('/workspaces/{workspace}/storage', [AccountStorageController::class, 'updateWorkspace']);

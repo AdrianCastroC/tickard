@@ -49,3 +49,24 @@ Configurar en el servidor, nunca versionar el `.env` real:
 
 No declarar el MVP publicado hasta que CI pase, se documenten los resultados de la
 prueba de humo y exista un procedimiento probado de backup/rollback.
+
+## Registro y recuperación de cuentas sin verificar
+
+- `POST /api/register` envía un código de seis cifras por correo y responde
+  **202**, con un identificador temporal de desafío; no crea una sesión ni entrega token.
+- `POST /api/registration/verify` requiere el desafío guardado en el navegador
+  y el código recibido. Solo entonces verifica la identidad, crea el Workspace
+  inicial y emite un token Sanctum. Los desafíos expiran a los 15 minutos y
+  admiten como máximo cinco intentos.
+- Las cuentas antiguas con `email_verified_at=null` no pueden usar sesiones
+  previas ni aceptar invitaciones. Su titular debe repetir el alta con **el mismo
+  correo** y una contraseña nueva; al verificarlo se conserva su cuenta y se
+  revocan sus tokens anteriores. No pedir códigos de terceros ni reutilizar
+  contraseñas de la demostración.
+- Configurar SMTP saliente real **antes de abrir el registro** y comprobar la
+  recepción del código (no usar `MAIL_MAILER=log` en entornos compartidos).
+- La migración `pending_registrations` debe ejecutarse antes de desplegar la
+  nueva API/frontend, preferiblemente en una ventana coordinada.
+- Validar casos manuales: código erróneo/caducado, recarga del navegador antes
+  de verificar (volver a iniciar el registro), reclamación de cuenta antigua,
+  rechazo de invitación por correo sin verificar y login verificado.
