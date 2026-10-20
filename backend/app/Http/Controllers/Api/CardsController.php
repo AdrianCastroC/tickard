@@ -212,7 +212,7 @@ class CardsController extends ApiController
             'column_id' => ['required', 'integer'],
             'category_id' => ['nullable', 'integer'],
             'title' => ['required', 'string', 'max:180'],
-            'description' => ['nullable', 'string'],
+            'description' => ['nullable', 'string', 'max:12000'],
             'start_date' => ['nullable', 'date'],
             'due_date' => ['nullable', 'date'],
             'priority' => ['sometimes', Rule::in(['baja', 'media', 'alta', 'urgente'])],
@@ -305,7 +305,7 @@ class CardsController extends ApiController
         abort_unless(ProjectAccess::canView($request->user(), $project), 403);
         $data = $request->validate([
             'title' => ['sometimes', 'string', 'max:180'],
-            'description' => ['nullable', 'string'],
+            'description' => ['nullable', 'string', 'max:12000'],
             'start_date' => ['sometimes', 'nullable', 'date'],
             'due_date' => ['nullable', 'date'],
             'started_at' => ['sometimes', 'nullable', 'date'],
