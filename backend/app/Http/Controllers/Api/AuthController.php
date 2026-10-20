@@ -30,6 +30,8 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Rules\Password;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Validation\ValidationException;
 
 class AuthController extends ApiController
@@ -41,13 +43,21 @@ class AuthController extends ApiController
             'password' => ['required', 'string'],
         ]);
 
+        $key = 'login-account:'.hash('sha256', mb_strtolower(trim($data['email'])));
+        abort_if(RateLimiter::tooManyAttempts($key, 5), 429, 'Demasiados intentos. Inténtalo más tarde.');
+
         $user = User::where('email', $data['email'])->first();
 
-        if (! $user || ! Hash::check($data['password'], $user->password)) {
+        // Constant-cost password verification, even when the email is unknown.
+        $dummyHash = '$2y$12$1joC4XGXCs0.oCdJnHqR0ORU67kvwl6KgS3sRXW5vABEc.pWSUnFm';
+        if (! Hash::check($data['password'], $user?->password ?? $dummyHash)) {
+            RateLimiter::hit($key, 60);
             throw ValidationException::withMessages([
                 'email' => 'El correo o la contraseña no coinciden.',
             ]);
         }
+
+        RateLimiter::clear($key);
 
         return [
             'token' => $user->createToken('api')->plainTextToken,
@@ -61,7 +71,7 @@ class AuthController extends ApiController
             'first_name' => ['required', 'string', 'max:120'],
             'last_name' => ['nullable', 'string', 'max:120'],
             'email' => ['required', 'email', 'unique:users,email'],
-            'password' => ['required', 'string', 'min:8', 'confirmed'],
+            'password' => ['required', 'string', 'max:128', Password::min(10)->mixedCase()->numbers()->symbols(), 'confirmed'],
         ]);
 
         $user = DB::transaction(function () use ($data) {
