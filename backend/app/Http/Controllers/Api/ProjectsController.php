@@ -437,7 +437,11 @@ class ProjectsController extends ApiController
                 ->orderBy('position'),
         ]);
 
-        $columns = $board->columns->map(
+        $columns = $board->columns
+            ->filter(fn (Column $column) => $role !== 'cliente' || $column->cards->contains(
+                fn (Card $card) => ! $card->is_internal
+            ))
+            ->map(
             function (Column $column) use ($request, $project, $role, $compactGantt, $compactCalendar) {
                 $cards = $column->cards
                     ->filter(
