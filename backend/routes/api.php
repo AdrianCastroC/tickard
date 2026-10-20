@@ -37,6 +37,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/me/storage', [AccountStorageController::class, 'index']);
     Route::get('/workspaces/{workspace}/storage', [AccountStorageController::class, 'workspace']);
+    Route::patch('/workspaces/{workspace}/storage', [AccountStorageController::class, 'updateWorkspace']);
     Route::patch('/me/storage', [AccountStorageController::class, 'update']);
     Route::post('/invitations/{token}/accept', [InvitationsController::class, 'acceptInvitation']);
     Route::post('/workspace-invitations/{token}/accept', [WorkspaceInvitationsController::class, 'accept']);
